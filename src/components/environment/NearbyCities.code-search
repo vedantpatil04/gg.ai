@@ -1,0 +1,39 @@
+# Query: NearbyCities
+# ContextLines: 1
+
+9 results - 4 files
+
+src\components\environment\env-nearby-cities.tsx:
+   4  import { measureDistanceMeters, formatDistance } from "@/lib/map/map-visuals";
+   5: import { EnvNearbyCitiesSkeleton } from "@/components/environment/phase8/env-phase8-skeletons";
+   6  import { EnvEmptyState, EnvErrorState } from "@/components/environment/env-state-views";
+
+  50  
+  51: export function NearbyCities({ className }: { className?: string }) {
+  52    const { city, cities, isCityListLoading, isCityError, refreshCity } = useCity();
+
+  54    if (isCityListLoading) {
+  55:     return <EnvNearbyCitiesSkeleton className={className} />;
+  56    }
+
+src\components\environment\env-phase8-skeletons.tsx:
+   6   *
+   7:  * Mirrors `NearbyCities`'s layout: a row of comparison cards, each with a
+   8   * name, AQI badge, and a couple of secondary metrics.
+   9   */
+  10: export function EnvNearbyCitiesSkeleton({ className, count = 4 }: { className?: string; count?: number }) {
+  11    return (
+
+src\components\environment\index.ts:
+  1: export { NearbyCities } from "./env-nearby-cities";
+  2  export { EnvironmentalMetrics } from "./env-environmental-metrics";
+  3: export { EnvNearbyCitiesSkeleton, EnvEnvironmentalMetricsSkeleton } from "./env-phase8-skeletons";
+
+src\routes\environment.tsx:
+   19  import { EnvMap } from "@/components/environment/env-map";
+   20: import { NearbyCities } from "@/components/environment/env-nearby-cities";
+   21  import { EnvironmentalMetrics } from "@/components/environment/env-environmental-metrics";
+
+  127        <EnvSection eyebrow="Comparison" title="Nearby cities">
+  128:         <NearbyCities />
+  129        </EnvSection>

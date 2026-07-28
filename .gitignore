@@ -1,0 +1,37 @@
+# Node
+node_modules/
+
+# Build outputs
+dist/
+.output/
+build/
+
+# Backend build
+backend/dist/
+
+# Wrangler
+.wrangler/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Cache
+.cache/
+
+# Uploads folder
+backend/uploads/

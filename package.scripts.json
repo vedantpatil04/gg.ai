@@ -1,0 +1,18 @@
+{
+  "name": "greenguard-ai",
+  "version": "1.0.0",
+  "description": "GreenGuard AI — Environmental Intelligence Platform",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently --names \"API,APP\" --prefix-colors \"green,cyan\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "cd .. && bun run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "install:all": "bun install && cd backend && npm install",
+    "seed": "cd backend && npm run seed",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "bun run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
