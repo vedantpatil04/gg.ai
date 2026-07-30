@@ -55,6 +55,7 @@ import { Route as AdminReportsRouteImport } from './routes/admin.reports'
 import { Route as AdminSecurityCenterRouteImport } from './routes/admin.security-center'
 import { Route as AdminUserManagementRouteImport } from './routes/admin.user-management'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as HelpIndexRouteImport } from './routes/help.index'
 import { Route as HelpAboutRouteImport } from './routes/help.about'
 import { Route as HelpCommunityRouteImport } from './routes/help.community'
 import { Route as HelpFeedbackRouteImport } from './routes/help.feedback'
@@ -298,6 +299,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AdminRoute,
 } as any)
+const HelpIndexRoute = HelpIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => HelpRoute,
+} as any)
 const HelpAboutRoute = HelpAboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -394,6 +400,7 @@ export interface FileRoutesByFullPath {
   '/help/tutorials': typeof HelpTutorialsRoute
   '/help/whats-new': typeof HelpWhatsNewRoute
   '/admin/': typeof AdminIndexRoute
+  '/help/': typeof HelpIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -407,7 +414,6 @@ export interface FileRoutesByTo {
   '/environment': typeof EnvironmentRoute
   '/forecast': typeof ForecastRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/help': typeof HelpRouteWithChildren
   '/intelligence': typeof IntelligenceRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
@@ -449,6 +455,7 @@ export interface FileRoutesByTo {
   '/help/tutorials': typeof HelpTutorialsRoute
   '/help/whats-new': typeof HelpWhatsNewRoute
   '/admin': typeof AdminIndexRoute
+  '/help': typeof HelpIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -506,6 +513,7 @@ export interface FileRoutesById {
   '/help/tutorials': typeof HelpTutorialsRoute
   '/help/whats-new': typeof HelpWhatsNewRoute
   '/admin/': typeof AdminIndexRoute
+  '/help/': typeof HelpIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -564,6 +572,7 @@ export interface FileRouteTypes {
     | '/help/tutorials'
     | '/help/whats-new'
     | '/admin/'
+    | '/help/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -577,7 +586,6 @@ export interface FileRouteTypes {
     | '/environment'
     | '/forecast'
     | '/forgot-password'
-    | '/help'
     | '/intelligence'
     | '/login'
     | '/map'
@@ -619,6 +627,7 @@ export interface FileRouteTypes {
     | '/help/tutorials'
     | '/help/whats-new'
     | '/admin'
+    | '/help'
   id:
     | '__root__'
     | '/'
@@ -675,6 +684,7 @@ export interface FileRouteTypes {
     | '/help/tutorials'
     | '/help/whats-new'
     | '/admin/'
+    | '/help/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1031,6 +1041,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/help/': {
+      id: '/help/'
+      path: '/'
+      fullPath: '/help/'
+      preLoaderRoute: typeof HelpIndexRouteImport
+      parentRoute: typeof HelpRoute
+    }
     '/help/about': {
       id: '/help/about'
       path: '/about'
@@ -1145,6 +1162,7 @@ interface HelpRouteChildren {
   HelpSupportRoute: typeof HelpSupportRoute
   HelpTutorialsRoute: typeof HelpTutorialsRoute
   HelpWhatsNewRoute: typeof HelpWhatsNewRoute
+  HelpIndexRoute: typeof HelpIndexRoute
 }
 
 const HelpRouteChildren: HelpRouteChildren = {
@@ -1156,6 +1174,7 @@ const HelpRouteChildren: HelpRouteChildren = {
   HelpSupportRoute: HelpSupportRoute,
   HelpTutorialsRoute: HelpTutorialsRoute,
   HelpWhatsNewRoute: HelpWhatsNewRoute,
+  HelpIndexRoute: HelpIndexRoute,
 }
 
 const HelpRouteWithChildren = HelpRoute._addFileChildren(HelpRouteChildren)

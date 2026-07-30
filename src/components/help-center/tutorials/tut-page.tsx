@@ -1,7 +1,5 @@
 import { useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { HelpCenterLayout } from "../help-center-layout";
-import { HelpSearchBar } from "../help-search-bar";
 import { TutHome } from "./tut-home";
 import { TutListPage } from "./tut-list";
 import { TutCategoryPage } from "./tut-category";
@@ -38,10 +36,10 @@ function PageTransition({ children, viewKey }: { children: React.ReactNode; view
 }
 
 // ─── Tutorials page ───────────────────────────────────────────────────────────
+// HelpCenterLayout and HelpSearchBar are provided by the /help layout route.
 
 export function TutorialsPage() {
-  const [view, setView]              = useState<TutView>({ type: "home" });
-  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [view, setView] = useState<TutView>({ type: "home" });
 
   const goHome     = useCallback(() => setView({ type: "home" }), []);
   const goList     = useCallback((categoryId?: string, query?: string) =>
@@ -88,18 +86,9 @@ export function TutorialsPage() {
       const cat = TUT_CATEGORIES_BY_ID[view.categoryId];
       viewKey = `cat-${view.categoryId}`;
       content = cat ? (
-        <TutCategoryPage
-          category={cat}
-          onBack={goHome}
-          onTutorialClick={goTutorial}
-        />
+        <TutCategoryPage category={cat} onBack={goHome} onTutorialClick={goTutorial} />
       ) : (
-        <TutHome
-          onSearch={q => goList(undefined, q)}
-          onTutorialClick={goTutorial}
-          onCategoryClick={goCategory}
-          onPathClick={goPath}
-        />
+        <TutHome onSearch={q => goList(undefined, q)} onTutorialClick={goTutorial} onCategoryClick={goCategory} onPathClick={goPath} />
       );
       break;
     }
@@ -108,18 +97,9 @@ export function TutorialsPage() {
       const tut = TUTORIALS_BY_ID[view.tutorialId];
       viewKey = `tut-${view.tutorialId}`;
       content = tut ? (
-        <TutReader
-          tutorial={tut}
-          onBack={goHome}
-          onTutorialClick={goTutorial}
-        />
+        <TutReader tutorial={tut} onBack={goHome} onTutorialClick={goTutorial} />
       ) : (
-        <TutHome
-          onSearch={q => goList(undefined, q)}
-          onTutorialClick={goTutorial}
-          onCategoryClick={goCategory}
-          onPathClick={goPath}
-        />
+        <TutHome onSearch={q => goList(undefined, q)} onTutorialClick={goTutorial} onCategoryClick={goCategory} onPathClick={goPath} />
       );
       break;
     }
@@ -128,27 +108,13 @@ export function TutorialsPage() {
       const path = LEARNING_PATHS_BY_ID[view.pathId];
       viewKey = `path-${view.pathId}`;
       content = path ? (
-        <LearningPathPage
-          path={path}
-          onBack={goHome}
-          onTutorialClick={goTutorial}
-        />
+        <LearningPathPage path={path} onBack={goHome} onTutorialClick={goTutorial} />
       ) : (
-        <TutHome
-          onSearch={q => goList(undefined, q)}
-          onTutorialClick={goTutorial}
-          onCategoryClick={goCategory}
-          onPathClick={goPath}
-        />
+        <TutHome onSearch={q => goList(undefined, q)} onTutorialClick={goTutorial} onCategoryClick={goCategory} onPathClick={goPath} />
       );
       break;
     }
   }
 
-  return (
-    <HelpCenterLayout onSearchClick={() => setGlobalSearchOpen(true)}>
-      <PageTransition viewKey={viewKey}>{content}</PageTransition>
-      <HelpSearchBar open={globalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
-    </HelpCenterLayout>
-  );
+  return <PageTransition viewKey={viewKey}>{content}</PageTransition>;
 }

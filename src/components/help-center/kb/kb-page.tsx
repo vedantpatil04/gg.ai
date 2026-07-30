@@ -1,7 +1,5 @@
 import { useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { HelpCenterLayout } from "../help-center-layout";
-import { HelpSearchBar } from "../help-search-bar";
 import { KbHome } from "./kb-home";
 import { KbArticleList } from "./kb-article-list";
 import { KbCategoryPage } from "./kb-category-page";
@@ -36,30 +34,20 @@ function PageTransition({ children, viewKey }: { children: React.ReactNode; view
 }
 
 // ─── Knowledge Base page ───────────────────────────────────────────────────────
+// HelpCenterLayout and HelpSearchBar are provided by the /help layout route.
 
 export function KnowledgeBasePage() {
   const [view, setView] = useState<KbView>({ type: "home" });
-  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
 
-  // ── Navigation handlers ──────────────────────────────────────────────────
-
-  const goHome = useCallback(() => setView({ type: "home" }), []);
-
-  const goList = useCallback((categoryId?: string, query?: string) =>
+  const goHome     = useCallback(() => setView({ type: "home" }), []);
+  const goList     = useCallback((categoryId?: string, query?: string) =>
     setView({ type: "list", categoryId, query }), []);
-
   const goCategory = useCallback((categoryId: string) => {
-    if (categoryId === "all") {
-      setView({ type: "list" });
-    } else {
-      setView({ type: "category", categoryId });
-    }
+    if (categoryId === "all") { setView({ type: "list" }); return; }
+    setView({ type: "category", categoryId });
   }, []);
-
-  const goArticle = useCallback((articleId: string) =>
+  const goArticle  = useCallback((articleId: string) =>
     setView({ type: "article", articleId }), []);
-
-  // ── Render current view ───────────────────────────────────────────────────
 
   let content: React.ReactNode;
   let viewKey: string;
@@ -91,17 +79,9 @@ export function KnowledgeBasePage() {
       const cat = KB_CATEGORIES_BY_ID[view.categoryId];
       viewKey = `cat-${view.categoryId}`;
       content = cat ? (
-        <KbCategoryPage
-          category={cat}
-          onBack={goHome}
-          onArticleClick={goArticle}
-        />
+        <KbCategoryPage category={cat} onBack={goHome} onArticleClick={goArticle} />
       ) : (
-        <KbHome
-          onSearch={q => goList(undefined, q)}
-          onArticleClick={goArticle}
-          onCategoryClick={goCategory}
-        />
+        <KbHome onSearch={q => goList(undefined, q)} onArticleClick={goArticle} onCategoryClick={goCategory} />
       );
       break;
     }
@@ -110,30 +90,13 @@ export function KnowledgeBasePage() {
       const article = KB_ARTICLES_BY_ID[view.articleId];
       viewKey = `article-${view.articleId}`;
       content = article ? (
-        <KbArticlePage
-          article={article}
-          onBack={goHome}
-          onArticleClick={goArticle}
-        />
+        <KbArticlePage article={article} onBack={goHome} onArticleClick={goArticle} />
       ) : (
-        <KbHome
-          onSearch={q => goList(undefined, q)}
-          onArticleClick={goArticle}
-          onCategoryClick={goCategory}
-        />
+        <KbHome onSearch={q => goList(undefined, q)} onArticleClick={goArticle} onCategoryClick={goCategory} />
       );
       break;
     }
   }
 
-  return (
-    <HelpCenterLayout onSearchClick={() => setGlobalSearchOpen(true)}>
-      <PageTransition viewKey={viewKey}>{content}</PageTransition>
-
-      <HelpSearchBar
-        open={globalSearchOpen}
-        onClose={() => setGlobalSearchOpen(false)}
-      />
-    </HelpCenterLayout>
-  );
+  return <PageTransition viewKey={viewKey}>{content}</PageTransition>;
 }
