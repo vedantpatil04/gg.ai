@@ -1,47 +1,30 @@
 import { Router } from "express";
 import {
-  getExecutiveDashboard,
-  listUsersAdmin,
-  updateUserAdmin,
-  lockUserAccount,
-  unlockUserAccount,
-  listCitiesAdmin,
-  createCityAdmin,
-  updateCityAdmin,
-  toggleCityAdmin,
-  getAuditLog,
+  getPlatformOverview,
+  listUsersEnhanced,
+  updateUserEnhanced,
+  lockUser,
+  unlockUser,
   getSystemHealth,
+  getAuditLog,
   getPlatformConfig,
+  getPlatformAnalytics,
 } from "../controllers/platform-admin.controller";
 import { authenticate, authorize } from "../middleware/auth";
 
 const router = Router();
 
-// All platform-admin routes: administrator only
+// All routes: administrator only
 router.use(authenticate, authorize("administrator"));
 
-// Executive dashboard
-router.get("/executive-dashboard", getExecutiveDashboard);
-
-// User management
-router.get("/users", listUsersAdmin);
-router.patch("/users/:id", updateUserAdmin);
-router.post("/users/:id/lock", lockUserAccount);
-router.post("/users/:id/unlock", unlockUserAccount);
-
-// City management
-router.get("/cities", listCitiesAdmin);
-router.post("/cities", createCityAdmin);
-router.patch("/cities/:id", updateCityAdmin);
-router.patch("/cities/:id/toggle", toggleCityAdmin);
-
-// Audit
-router.get("/audit", getAuditLog);
-
-// System health
+router.get("/overview", getPlatformOverview);
+router.get("/users", listUsersEnhanced);
+router.patch("/users/:id", updateUserEnhanced);
+router.post("/users/:id/lock", lockUser);
+router.post("/users/:id/unlock", unlockUser);
 router.get("/system-health", getSystemHealth);
-
-// Platform config
+router.get("/audit", getAuditLog);
 router.get("/config", getPlatformConfig);
+router.get("/analytics", getPlatformAnalytics);
 
 export default router;

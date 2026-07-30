@@ -1,36 +1,39 @@
-/**
- * section-heading.tsx — Phase 1 enterprise section header
- *
- * A larger, page-level section header (icon + title + short description +
- * accent divider) for the Sustainability page's own sections. This is
- * intentionally separate from `@/components/map/intelligence-ui`'s
- * `SectionHeader`, which is a compact 9px drawer/subsection label used
- * inside popups and side panels — a different visual tier for a different
- * context. Reusing that one here would under-style a top-level page
- * section, so a distinct primitive was added instead of overloading it.
- */
 import type { LucideIcon } from "lucide-react";
 
 export function SustainabilitySectionHeading({
-  icon: Icon, title, description, accent = "var(--color-primary)",
-}: { icon: LucideIcon; title: string; description?: string; accent?: string }) {
+  icon: Icon,
+  title,
+  description,
+  accent = "var(--color-primary)",
+}: {
+  icon: LucideIcon;
+  title: string;
+  description?: string;
+  accent?: string;
+}) {
   return (
-    <div className="mb-4">
-      <div className="flex items-center gap-2.5">
+    <div className="mb-6 pt-4 sm:pt-6">
+      <div className="flex items-center gap-3">
         <div
-          className="size-8 rounded-lg grid place-items-center shrink-0"
-          style={{ background: `color-mix(in oklab, ${accent} 16%, transparent)`, color: accent }}
+          className="size-9 sm:size-10 rounded-xl grid place-items-center shrink-0 shadow-sm"
+          style={{ background: `color-mix(in oklab, ${accent} 18%, transparent)`, color: accent }}
         >
-          <Icon className="size-4" />
+          <Icon className="size-4.5 sm:size-5" />
         </div>
-        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+        <div>
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">{title}</h2>
+          {description && (
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 leading-relaxed">
+              {description}
+            </p>
+          )}
+        </div>
       </div>
-      {description && (
-        <p className="text-xs text-muted-foreground mt-1.5 ml-[42px] leading-relaxed">{description}</p>
-      )}
       <div
-        className="h-px mt-3"
-        style={{ background: `linear-gradient(to right, color-mix(in oklab, ${accent} 45%, transparent), var(--color-border) 55%, transparent)` }}
+        className="h-0.5 mt-4 rounded-full"
+        style={{
+          background: `linear-gradient(to right, ${accent}, color-mix(in oklab, ${accent} 40%, transparent) 40%, var(--color-border) 80%, transparent)`,
+        }}
       />
     </div>
   );

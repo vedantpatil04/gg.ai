@@ -1,14 +1,3 @@
-/**
- * kpi-strip.tsx — Phase 2 executive KPI strip (upgraded)
- *
- * Phase 1 already had glass cards, count-up numbers, hover glow, and
- * progress bars. Phase 2 adds:
- *   • Optional trend arrow + coloured delta label (trend field)
- *   • Status badge (e.g. "On track", "Below target", "Critical")
- *
- * KpiItem is extended with optional `trend` and `status` fields.
- * All existing callers work unchanged because the new fields are optional.
- */
 import type { LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
@@ -21,12 +10,9 @@ export interface KpiItem {
   decimals?: number;
   suffix?: string;
   accent: string;
-  /** Reference value for the mini progress bar — percentage metrics only. */
   target?: number;
   targetLabel?: string;
-  /** Phase 2 — optional trend indicator */
   trend?: { direction: "up" | "down" | "flat"; delta: number; unit?: string };
-  /** Phase 2 — optional status badge */
   status?: { label: string; tone: "good" | "warning" | "critical" };
 }
 
@@ -38,7 +24,7 @@ const TONE_COLORS = {
 
 export function ExecutiveKpiStrip({ items }: { items: KpiItem[] }) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
       {items.map((k, i) => {
         const progress = k.target ? Math.min(100, Math.round((k.value / k.target) * 100)) : null;
         const toneColors = k.status ? TONE_COLORS[k.status.tone] : null;
@@ -61,7 +47,7 @@ export function ExecutiveKpiStrip({ items }: { items: KpiItem[] }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
             whileHover={{ y: -3 }}
-            className="glass rounded-2xl p-4 relative overflow-hidden group transition-shadow duration-300"
+            className="glass rounded-2xl p-4 sm:p-5 relative overflow-hidden group transition-shadow duration-300 flex flex-col justify-between"
             style={{ boxShadow: "var(--shadow-elev)" }}
             role="group"
             aria-label={`${k.label}: ${k.value}${k.suffix ?? ""}`}
@@ -73,32 +59,32 @@ export function ExecutiveKpiStrip({ items }: { items: KpiItem[] }) {
             />
 
             {/* Header row — icon + label */}
-            <div className="relative flex items-center justify-between">
+            <div className="relative flex items-center justify-between gap-2">
               <div
-                className="size-9 rounded-lg grid place-items-center shrink-0"
+                className="size-10 rounded-xl grid place-items-center shrink-0 shadow-sm"
                 style={{ background: `color-mix(in oklab, ${k.accent} 18%, transparent)`, color: k.accent }}
               >
-                <k.icon className="size-4" aria-hidden="true" />
+                <k.icon className="size-5" aria-hidden="true" />
               </div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground text-right leading-tight max-w-[7rem]">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground text-right font-semibold leading-tight truncate">
                 {k.label}
               </div>
             </div>
 
-            {/* Value */}
-            <div className="relative text-2xl font-semibold tabular-nums mt-3">
+            {/* Value (+15% larger typography) */}
+            <div className="relative text-2xl sm:text-3xl font-extrabold tabular-nums tracking-tight mt-3">
               <CountUp value={k.value} decimals={k.decimals ?? 0} />
               {k.suffix}
             </div>
 
-            {/* Phase 2 — trend arrow */}
+            {/* Trend indicator */}
             {k.trend && (
               <div
-                className="relative inline-flex items-center gap-1 text-[10px] font-medium mt-1 tabular-nums"
+                className="relative inline-flex items-center gap-1 text-xs font-semibold mt-1 tabular-nums"
                 style={{ color: trendColor }}
                 aria-label={`Trend: ${k.trend.direction}, ${k.trend.delta}${k.trend.unit ?? ""}`}
               >
-                <TrendIcon className="size-3" aria-hidden="true" />
+                <TrendIcon className="size-3.5" aria-hidden="true" />
                 {k.trend.direction !== "flat" && (
                   `${k.trend.direction === "up" ? "+" : "-"}${k.trend.delta}${k.trend.unit ?? ""}`
                 )}
@@ -106,17 +92,17 @@ export function ExecutiveKpiStrip({ items }: { items: KpiItem[] }) {
               </div>
             )}
 
-            {/* Phase 2 — status badge */}
+            {/* Status badge */}
             {k.status && toneColors && (
               <div
-                className="relative inline-block px-2 py-0.5 rounded-full text-[9px] font-medium mt-1.5"
+                className="relative inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold mt-2"
                 style={{ color: toneColors.fg, background: toneColors.bg }}
               >
                 {k.status.label}
               </div>
             )}
 
-            {/* Progress bar (Phase 1, unchanged) */}
+            {/* Progress bar */}
             {progress !== null && (
               <div className="relative mt-3">
                 <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
@@ -129,7 +115,7 @@ export function ExecutiveKpiStrip({ items }: { items: KpiItem[] }) {
                   />
                 </div>
                 {k.targetLabel && (
-                  <div className="text-[9px] text-muted-foreground mt-1">{k.targetLabel}</div>
+                  <div className="text-[10px] text-muted-foreground font-medium mt-1 truncate">{k.targetLabel}</div>
                 )}
               </div>
             )}

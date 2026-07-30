@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
 import { AppLayout } from "@/components/app-layout";
 import { Panel } from "@/components/ui-bits";
 import { useCity } from "@/lib/city-context";
@@ -94,24 +93,29 @@ function Sustainability() {
   return (
     <div className="relative">
       <SustainabilityBackground />
-      <div className="relative p-4 md:p-8 space-y-8 max-w-[1600px] mx-auto">
+      <div className="relative p-3 sm:p-4 md:p-8 space-y-8 sm:space-y-10 md:space-y-12 max-w-[1600px] mx-auto overflow-hidden">
 
-        {/* ── 1. HERO OVERVIEW ──────────────────────────────────── */}
-        <SustainabilityHero city={city} isApiConnected={isApiConnected} grade={grade} band={band.label} tone={tone} trendDirection="up" trendValue={2} />
+        {/* ── 1. HERO OVERVIEW & QUICK ACTIONS ─────────────────── */}
+        <section id="hero">
+          <SustainabilityHero city={city} isApiConnected={isApiConnected} grade={grade} band={band.label} tone={tone} trendDirection="up" trendValue={2} />
+        </section>
+
         <LiveStatusRibbon city={city} />
-        <section>
+
+        {/* ── EXECUTIVE SUMMARY ───────────────────────────────── */}
+        <section id="executive-summary">
           <SustainabilitySectionHeading icon={Sparkles} title="AI Executive Summary" description={`Rule-based sustainability brief for ${city.name}.`} />
           <AiExecutiveSummary city={city} renewableShare={renewableShare} greenCover={greenCover} />
         </section>
 
-        {/* ── 2. EXECUTIVE KPIs ─────────────────────────────────── */}
+        {/* ── EXECUTIVE KPIs ─────────────────────────────────── */}
         <section id="kpis">
           <SustainabilitySectionHeading icon={BarChart3} title="Executive KPIs" description="Core sustainability metrics for executive overview." />
           <ExecutiveKpiStrip items={kpis} />
         </section>
 
-        {/* ── 3. AI SUSTAINABILITY COPILOT ──────────────────────── */}
-        <section aria-labelledby="copilot-heading">
+        {/* ── AI SUSTAINABILITY COPILOT ──────────────────────── */}
+        <section id="copilot" aria-labelledby="copilot-heading">
           <SustainabilitySectionHeading
             icon={BotMessageSquare}
             title="AI Sustainability Copilot"
@@ -126,8 +130,8 @@ function Sustainability() {
           />
         </section>
 
-        {/* ── 4. PREDICTIVE INTELLIGENCE ────────────────────────── */}
-        <section aria-labelledby="predictive-heading">
+        {/* ── PREDICTIVE INTELLIGENCE (ANALYTICS) ─────────────── */}
+        <section id="analytics" aria-labelledby="predictive-heading">
           <SustainabilitySectionHeading
             icon={Brain}
             title="Predictive Sustainability Intelligence"
@@ -144,11 +148,11 @@ function Sustainability() {
           </div>
         </section>
 
-        {/* ── 5. AI INTELLIGENCE (Risks + Opportunities + Recommendations) ── */}
-        <section aria-labelledby="ai-intelligence-heading">
+        {/* ── AI INTELLIGENCE & RECOMMENDATIONS ──────────────── */}
+        <section id="recommendations" aria-labelledby="ai-intelligence-heading">
           <SustainabilitySectionHeading
             icon={Sparkles}
-            title="AI Intelligence"
+            title="AI Intelligence & Recommendations"
             description="Unified AI risk predictions, opportunity matrix, and strategic recommendations."
             accent="var(--color-primary)"
           />
@@ -166,30 +170,30 @@ function Sustainability() {
                 <GlassPanelSkeleton rows={3} />
               ) : aiInsightsData ? (
                 <Panel eyebrow="AI Strategic Insights" title="AI Recommendations">
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid sm:grid-cols-2 gap-4">
                     {(Array.isArray(aiInsightsData) ? aiInsightsData : []).map((insight: { title: string; body: string; tag: string }) => (
                       <div key={insight.title} className="rounded-xl bg-muted/30 border border-border p-4 hover:border-primary/40 transition-colors">
-                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{insight.tag}</div>
-                        <div className="text-sm font-medium mt-1">{insight.title}</div>
-                        <div className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{insight.body}</div>
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{insight.tag}</div>
+                        <div className="text-sm sm:text-base font-semibold mt-1">{insight.title}</div>
+                        <div className="text-xs sm:text-sm text-muted-foreground mt-1.5 leading-relaxed">{insight.body}</div>
                       </div>
                     ))}
                   </div>
                 </Panel>
               ) : (
                 <Panel eyebrow="AI Strategic Insights" title="AI Recommendations">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="rounded-xl bg-muted/30 border border-border p-4">
-                      <div className="text-[10px] uppercase tracking-wider text-primary">Priority Recommendation</div>
-                      <div className="text-sm font-medium mt-1">Accelerate Solar & Microgrid Integration</div>
-                      <div className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="rounded-xl bg-muted/30 border border-border p-4 hover:border-primary/40 transition-colors">
+                      <div className="text-[10px] uppercase tracking-wider text-primary font-semibold">Priority Recommendation</div>
+                      <div className="text-sm sm:text-base font-semibold mt-1">Accelerate Solar & Microgrid Integration</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground mt-1.5 leading-relaxed">
                         Expand rooftop photovoltaic installations across municipal buildings in {city.name} to push renewable share beyond target thresholds.
                       </div>
                     </div>
-                    <div className="rounded-xl bg-muted/30 border border-border p-4">
-                      <div className="text-[10px] uppercase tracking-wider text-info">Urban Planning</div>
-                      <div className="text-sm font-medium mt-1">Expand Urban Forest & Canopy Cover</div>
-                      <div className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+                    <div className="rounded-xl bg-muted/30 border border-border p-4 hover:border-primary/40 transition-colors">
+                      <div className="text-[10px] uppercase tracking-wider text-info font-semibold">Urban Planning</div>
+                      <div className="text-sm sm:text-base font-semibold mt-1">Expand Urban Forest & Canopy Cover</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground mt-1.5 leading-relaxed">
                         Deploy targeted native afforestation in high-density corridors to mitigate urban heat island effects and improve carbon sequestration.
                       </div>
                     </div>
@@ -200,8 +204,8 @@ function Sustainability() {
           </div>
         </section>
 
-        {/* ── 6. ESG INTELLIGENCE ───────────────────────────────── */}
-        <section aria-labelledby="esg-heading">
+        {/* ── ESG INTELLIGENCE ───────────────────────────────── */}
+        <section id="esg" aria-labelledby="esg-heading">
           <SustainabilitySectionHeading
             icon={Award}
             title="ESG Intelligence"
@@ -221,8 +225,8 @@ function Sustainability() {
           </div>
         </section>
 
-        {/* ── 7. SDG ALIGNMENT ──────────────────────────────────── */}
-        <section aria-labelledby="sdg-heading">
+        {/* ── SDG ALIGNMENT ──────────────────────────────────── */}
+        <section id="sdg" aria-labelledby="sdg-heading">
           <SustainabilitySectionHeading
             icon={Target}
             title="SDG Alignment Center"

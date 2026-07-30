@@ -6,7 +6,6 @@ import morgan from "morgan";
 import mongoose from "mongoose";
 import path from "path";
 import rateLimit from "express-rate-limit";
-import securityRoutes from "./routes/security.routes";
 
 import { connectDB } from "./database/connection";
 import { logger } from "./utils/logger";
@@ -23,52 +22,54 @@ import profileRoutes from "./routes/profile.routes";
 import alertRoutes from "./routes/alert.routes";
 import simulatorRoutes from "./routes/simulator.routes";
 import adminRoutes from "./routes/admin.routes";
+import authorityRoutes from "./routes/authority.routes";
+import citizenRoutes from "./routes/citizen.routes";
 import copilotRoutes from "./routes/copilot.routes";
 import intelligenceRoutes from "./routes/intelligence.routes";
 import commandRoutes from "./routes/command.routes";
-import citizenRoutes from "./routes/citizen.routes"; // Phase 5
-import { startScheduler, getSchedulerStatus } from "./jobs/scheduler";
-import authorityRoutes from "./routes/authority.routes";
+import securityRoutes from "./routes/security.routes";
 import platformAdminRoutes from "./routes/platform-admin.routes";
 
-// Phase 3 — direct city AI insights controller (avoids broken req.url shortcut)
 import { getCityAIInsights } from "./controllers/copilot.controller";
+import { startScheduler, getSchedulerStatus } from "./jobs/scheduler";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ─── Security ─────────────────────────────────────────────────────────────────
+// ─── Security & Core Middleware ───────────────────────────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 if (process.env.NODE_ENV !== "production") app.use(morgan("dev"));
 
-// Phase 4 — Profile Picture Management. LocalStorageProvider writes here;
-// this just makes those files reachable over HTTP. Swapping to a cloud
-// storage provider later removes the need for this line entirely (the
-// provider would return its own CDN URL instead).
+// Serve uploaded profile pictures statically
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
-// ─── Rate limiters ────────────────────────────────────────────────────────────
+// ─── Rate Limiters ────────────────────────────────────────────────────────────
 const limiter = rateLimit({
   windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: Number(process.env.RATE_LIMIT_MAX) || 200,
-  standardHeaders: true, legacyHeaders: false,
+  max: Number(process.env.RATE_LIMIT_MAX) || 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { success: false, message: "Too many requests." },
 });
+
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, max: 1000,
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
   message: { success: false, message: "Too many auth attempts." },
 });
+
 const aiLimiter = rateLimit({
-  windowMs: 60 * 1000, max: 30,
+  windowMs: 60 * 1000,
+  max: 100,
   message: { success: false, message: "AI rate limit reached. Please wait a moment." },
 });
 
 app.use("/api", limiter);
 
-// ─── Routes ───────────────────────────────────────────────────────────────────
+// ─── API Routes ───────────────────────────────────────────────────────────────
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/environmental", environmentalRoutes);
@@ -80,23 +81,26 @@ app.use("/api/alerts", alertRoutes);
 app.use("/api/simulator", simulatorRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/admin/authorities", authorityRoutes);
-app.use("/api/citizen", citizenRoutes); // Phase 5
+app.use("/api/citizen", citizenRoutes);
 app.use("/api/copilot", aiLimiter, copilotRoutes);
 app.use("/api/intelligence", aiLimiter, intelligenceRoutes);
 app.use("/api/command", aiLimiter, commandRoutes);
 app.use("/api/security", securityRoutes);
-app.use("/api/platform-admin", platformAdminRoutes); // Phase 6
+app.use("/api/platform-admin", platformAdminRoutes);
 
-// Phase 3 — GET /api/cities/:city/ai-insights  (spec-required top-level path)
+// Direct City AI Insights route
 app.get("/api/cities/:city/ai-insights", aiLimiter, getCityAIInsights);
 
-// ─── Health ───────────────────────────────────────────────────────────────────
+// ─── Health Checks ────────────────────────────────────────────────────────────
 const DB_STATE_LABELS: Record<number, string> = {
-  0: "disconnected", 1: "connected", 2: "connecting", 3: "disconnecting",
+  0: "disconnected",
+  1: "connected",
+  2: "connecting",
+  3: "disconnecting",
 };
 
-app.get("/api/health", (_req, res) => {
-  const dbState = mongoose.connection.readyState; // 0-3 (+ driver-internal states)
+const handleHealthCheck = (_req: express.Request, res: express.Response) => {
+  const dbState = mongoose.connection.readyState;
   res.json({
     success: true,
     status: "healthy",
@@ -110,21 +114,29 @@ app.get("/api/health", (_req, res) => {
     },
     scheduler: getSchedulerStatus(),
   });
-});
+};
 
+app.get("/health", handleHealthCheck);
+app.get("/api/health", handleHealthCheck);
+
+// ─── Error Handling ───────────────────────────────────────────────────────────
 app.use(notFound);
 app.use(errorHandler);
 
+// ─── Bootstrap Server ─────────────────────────────────────────────────────────
 async function bootstrap() {
   await connectDB();
   app.listen(PORT, () => {
-    logger.info(`🚀 GreenGuard API v4.0 → http://localhost:${PORT}`);
-    logger.info(`🤖 Gemini AI: ${process.env.GEMINI_API_KEY ? "✅ enabled" : "⚠️  disabled — set GEMINI_API_KEY"}`);
-    logger.info(`🌍 Real-time data: ${process.env.OPENWEATHER_API_KEY ? "✅ OpenWeather enabled" : "⚠️  no API key — using seeded data"}`);
+    logger.info(`🚀 GreenGuard API v6.0 → http://localhost:${PORT}`);
+    logger.info(`🤖 Gemini AI: ${process.env.GEMINI_API_KEY ? "✅ enabled" : "⚠️ disabled — set GEMINI_API_KEY"}`);
+    logger.info(`🌍 Real-time data: ${process.env.OPENWEATHER_API_KEY ? "✅ OpenWeather enabled" : "⚠️ no API key — using seeded data"}`);
   });
   startScheduler();
 }
 
-bootstrap().catch((err) => { logger.error("Bootstrap failed:", err); process.exit(1); });
+bootstrap().catch((err) => {
+  logger.error("Bootstrap failed:", err);
+  process.exit(1);
+});
 
 export default app;

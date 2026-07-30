@@ -12,7 +12,6 @@ import {
   CartesianGrid,
   Line,
   LineChart,
-  ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -493,12 +492,12 @@ function Forecast() {
   );
 
   return (
-    <div className="p-4 md:p-8 space-y-8 max-w-[1600px] mx-auto">
+    <div className="p-3 sm:p-4 md:p-6 lg:p-8 space-y-6 sm:space-y-8 max-w-[1600px] mx-auto overflow-hidden">
       {/* ── 1. FORECAST HERO SECTION ────────────────────────────────────────── */}
       <section
         ref={heroRef}
         onMouseMove={onHeroMouseMove}
-        className="glass relative overflow-hidden rounded-2xl p-6 md:p-10 animate-in fade-in-0 slide-in-from-bottom-2 duration-700 motion-reduce:animate-none"
+        className="glass relative overflow-hidden rounded-2xl p-4 sm:p-6 md:p-8 lg:p-10 animate-in fade-in-0 slide-in-from-bottom-2 duration-700 motion-reduce:animate-none"
         style={{ boxShadow: glowVars.ambient, transition: "box-shadow 1.5s ease" }}
       >
         {/* Background ambient lighting effects */}
@@ -520,48 +519,48 @@ function Forecast() {
         </div>
 
         {/* Content */}
-        <div className="relative flex flex-wrap items-start justify-between gap-6">
-          <div className="space-y-3 min-w-0">
-            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+        <div className="relative flex flex-col md:flex-row md:items-start justify-between gap-6">
+          <div className="space-y-3 min-w-0 flex-1">
+            <div className="flex items-center gap-2 text-[10px] sm:text-xs uppercase tracking-[0.2em] text-muted-foreground font-semibold flex-wrap">
               <span
                 className={cn(
-                  "size-1.5 rounded-full",
+                  "size-1.5 rounded-full shrink-0",
                   isApiConnected ? "bg-[var(--color-success)] pulse-dot" : "bg-muted-foreground/50",
                 )}
               />
               {isApiConnected ? "Live data" : "Offline · mock"} · {now || "—"}
             </div>
-            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">Forecast Center</h1>
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="inline-flex items-center gap-1.5 text-lg text-muted-foreground">
-                <MapPin className="size-4" /> {city.name}, {city.country}
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight">Forecast Center</h1>
+            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+              <span className="inline-flex items-center gap-1.5 text-base sm:text-lg text-muted-foreground font-medium">
+                <MapPin className="size-4 shrink-0" /> {city.name}, {city.country}
               </span>
               <Pill tone={aqiAccent(city.aqi)}>
                 <span className="size-1.5 rounded-full" style={{ background: band.color }} />{" "}
                 {band.label}
               </Pill>
             </div>
-            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5">
-                <Thermometer className="size-3.5" /> {city.temp}°C · feels {feelsLikeC}°
+            <div className="flex flex-wrap gap-x-4 sm:gap-x-5 gap-y-2 text-xs sm:text-sm text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                <Thermometer className="size-3.5 text-primary shrink-0" /> {city.temp}°C · feels {feelsLikeC}°
               </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Droplets className="size-3.5" /> {city.humidity}%
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                <Droplets className="size-3.5 text-info shrink-0" /> {city.humidity}%
               </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Activity className="size-3.5" /> PM2.5 {city.pm25}
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                <Activity className="size-3.5 text-warning shrink-0" /> PM2.5 {city.pm25}
               </span>
-              <span className="inline-flex items-center gap-1.5">
-                <WindIcon className="size-3.5" /> {windSpeed} m/s {degToCompass(windDirection)}
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                <WindIcon className="size-3.5 text-success shrink-0" /> {windSpeed} m/s {degToCompass(windDirection)}
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground/80 leading-relaxed">
               Ensemble model · {(conf * 100).toFixed(1)}% accuracy · ±{predictionError} AQI error
               band
             </p>
           </div>
 
-          <div className="flex flex-col items-end gap-4 shrink-0">
+          <div className="flex flex-col sm:flex-row md:flex-col items-center sm:items-end justify-between sm:justify-start w-full md:w-auto gap-4 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-border/40">
             <AqiRing
               value={animatedAqi}
               pct={Math.max(2, Math.min(100, (effectiveAqi / 300) * 100))}
@@ -569,14 +568,14 @@ function Forecast() {
               label={band.label}
               glowColor={glowVars.glow}
             />
-            <div className="flex glass rounded-lg p-1" role="group" aria-label="Forecast horizon">
+            <div className="flex glass rounded-lg p-1 w-full sm:w-auto overflow-x-auto no-scrollbar justify-center" role="group" aria-label="Forecast horizon">
               {RANGES.map((r) => (
                 <button
                   key={r.id}
                   onClick={() => setActive(r.id)}
                   aria-pressed={active === r.id}
                   className={cn(
-                    "px-3 py-1.5 rounded-md text-xs transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-ring)]",
+                    "px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-ring)] flex-1 sm:flex-none text-center",
                     active === r.id
                       ? "aurora text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground",
@@ -613,7 +612,7 @@ function Forecast() {
       {forecastLoading && <ChartSkeleton />}
 
       {/* ── 2. CURRENT CONDITIONS ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3.5 md:gap-4">
         <MiniCard
           label="Current AQI"
           value={animatedAqi}
@@ -656,7 +655,7 @@ function Forecast() {
       {/* ── 3. HOURLY FORECAST (12 Two-Hour Slots) ───────────────────────────── */}
       <Panel eyebrow="Timeline" title="Hour-by-hour forecast">
         <div
-          className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-2.5 md:gap-3 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 snap-x scroll-smooth"
+          className="flex gap-2.5 sm:gap-3 overflow-x-auto pb-3 pt-1 snap-x scroll-smooth no-scrollbar -mx-1 px-1 sm:mx-0 sm:px-0"
           role="list"
           aria-label="Hourly AQI forecast"
         >
@@ -667,13 +666,13 @@ function Forecast() {
                 key={i}
                 role="listitem"
                 aria-label={`${slot.label}: AQI ${slot.predicted}, ${b.label}`}
-                className="snap-start shrink-0 lg:shrink flex flex-col items-center justify-between glass rounded-xl min-w-[105px] sm:min-w-[115px] lg:min-w-0 h-[148px] md:h-[156px] p-3.5 md:p-4 text-center transition-all duration-200 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30 motion-reduce:hover:translate-y-0 cursor-default"
+                className="snap-start shrink-0 min-w-[110px] sm:min-w-[125px] md:min-w-[135px] lg:flex-1 h-[142px] sm:h-[152px] p-3 sm:p-4 text-center flex flex-col items-center justify-between glass rounded-xl transition-all duration-200 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30 motion-reduce:hover:translate-y-0 cursor-default"
                 style={{ boxShadow: `0 0 0 1px color-mix(in oklab, ${b.color} 25%, transparent)` }}
               >
                 <div className="text-xs font-semibold text-muted-foreground tracking-tight">
                   {slot.label}
                 </div>
-                <div className="text-2xl md:text-3xl my-0.5" aria-hidden>
+                <div className="text-2xl sm:text-3xl my-0.5" aria-hidden>
                   {slot.predicted <= 50
                     ? "☀️"
                     : slot.predicted <= 100
@@ -684,7 +683,7 @@ function Forecast() {
                 </div>
                 <div className="space-y-0.5 w-full">
                   <div
-                    className="text-lg md:text-xl font-bold tabular-nums tracking-tight"
+                    className="text-base sm:text-lg md:text-xl font-bold tabular-nums tracking-tight"
                     style={{ color: b.color }}
                   >
                     {slot.predicted}
@@ -694,7 +693,7 @@ function Forecast() {
                       current={slot.predicted}
                       previous={i > 0 ? timelineData[i - 1].predicted : undefined}
                     />
-                    <span className="text-[10px] md:text-[11px] font-medium text-muted-foreground truncate max-w-[70px]">
+                    <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground truncate max-w-[70px]">
                       {b.shortLabel ?? b.label.slice(0, 3)}
                     </span>
                   </div>
@@ -710,7 +709,7 @@ function Forecast() {
         eyebrow="Forecast"
         title={`${range.label} AQI projection`}
         action={
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-muted-foreground">
             <span className="flex items-center gap-1">
               <span className="size-1.5 rounded-full bg-primary" />
               Predicted
@@ -723,9 +722,9 @@ function Forecast() {
         }
       >
         {hasSeries ? (
-          <div className="h-80">
-            <ResponsiveContainer>
-              <AreaChart data={data}>
+          <div className="h-56 sm:h-72 md:h-80 w-full overflow-hidden">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="band-p3" x1="0" x2="0" y1="0" y2="1">
                     <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.3} />
@@ -735,12 +734,14 @@ function Forecast() {
                 <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
                 <XAxis
                   dataKey="label"
-                  tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
                   axisLine={false}
                   tickLine={false}
+                  interval="preserveStartEnd"
+                  minTickGap={15}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
                   axisLine={false}
                   tickLine={false}
                 />
@@ -798,16 +799,17 @@ function Forecast() {
 
       {/* ── 5. POLLUTANT FORECAST ────────────────────────────────────────────── */}
       <Panel eyebrow="Pollutant Forecast" title="PM2.5 · NO₂ projection (next 24 hours)">
-        <div className="h-56">
-          <ResponsiveContainer>
-            <LineChart data={hourlyTrend}>
+        <div className="h-48 sm:h-56 w-full overflow-hidden">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={hourlyTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
               <XAxis
                 dataKey="label"
                 tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
                 axisLine={false}
                 tickLine={false}
-                interval={5}
+                interval="preserveStartEnd"
+                minTickGap={15}
               />
               <YAxis
                 tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
@@ -845,25 +847,27 @@ function Forecast() {
 
       {/* ── 6. WHY AQI IS CHANGING (DRIVER ANALYSIS) ─────────────────────────── */}
       <Panel eyebrow="Driver Analysis" title="Why AQI is changing">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {drivers.map((d) => (
             <div
               key={d.title}
-              className="rounded-xl border border-border p-4 transition-transform duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 glass"
+              className="rounded-xl border border-border p-3.5 sm:p-4 transition-transform duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 glass flex flex-col justify-between"
             >
-              <div className="flex items-center justify-between mb-2">
-                <d.icon className="size-4 text-primary" />
-                {d.trend === "up" ? (
-                  <ArrowUp className="size-3.5 text-[var(--color-warning)]" />
-                ) : d.trend === "down" ? (
-                  <ArrowDown className="size-3.5 text-[var(--color-success)]" />
-                ) : (
-                  <ArrowRight className="size-3.5 text-muted-foreground" />
-                )}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <d.icon className="size-4 text-primary shrink-0" />
+                  {d.trend === "up" ? (
+                    <ArrowUp className="size-3.5 text-[var(--color-warning)]" />
+                  ) : d.trend === "down" ? (
+                    <ArrowDown className="size-3.5 text-[var(--color-success)]" />
+                  ) : (
+                    <ArrowRight className="size-3.5 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="text-sm font-semibold">{d.title}</div>
+                <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{d.body}</p>
               </div>
-              <div className="text-sm font-medium">{d.title}</div>
-              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{d.body}</p>
-              <div className="mt-3 flex items-center gap-1.5">
+              <div className="mt-3.5 flex items-center gap-1.5">
                 <div className="h-1 flex-1 rounded-full bg-muted overflow-hidden">
                   <div
                     className="h-full rounded-full bg-primary/70"
@@ -881,11 +885,11 @@ function Forecast() {
 
       {/* ── 7. AI RECOMMENDATIONS (MAX 3 CARDS) ─────────────────────────────── */}
       <div>
-        <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-3 flex items-center gap-2">
+        <div className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-muted-foreground mb-3 flex items-center gap-2 font-semibold">
           <Sparkles className="size-3.5 text-[var(--color-primary)]" />
           AI Recommendations{!isApiConnected && <Pill tone="muted">offline fallback</Pill>}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
           {recs.slice(0, 3).map((rec, i) => (
             <RecommendationCard key={i} index={i} rec={rec} />
           ))}
@@ -894,19 +898,23 @@ function Forecast() {
 
       {/* ── 8. SEVEN DAY OUTLOOK ────────────────────────────────────────────── */}
       <div>
-        <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-3">
+        <div className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-muted-foreground mb-3 font-semibold">
           7-day outlook
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3.5">
+        <div className="flex gap-2.5 sm:gap-3.5 overflow-x-auto pb-2 sm:pb-0 no-scrollbar snap-x scroll-smooth -mx-1 px-1 sm:mx-0 sm:px-0 lg:grid lg:grid-cols-7">
           {weekly.map((d: { label: string; predicted: number }, i: number) => {
             const b = aqiBand(d.predicted);
             return (
-              <TiltCard key={i} accentColor={b.color}>
-                <div className="text-xs text-muted-foreground">{d.label}</div>
-                <div className="text-xl font-semibold tabular-nums mt-2" style={{ color: b.color }}>
+              <TiltCard
+                key={i}
+                accentColor={b.color}
+                className="snap-start shrink-0 min-w-[100px] sm:min-w-[120px] lg:min-w-0 flex-1"
+              >
+                <div className="text-xs text-muted-foreground font-medium">{d.label}</div>
+                <div className="text-lg sm:text-xl font-bold tabular-nums mt-1.5" style={{ color: b.color }}>
                   {d.predicted}
                 </div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">{b.label}</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{b.label}</div>
               </TiltCard>
             );
           })}
@@ -915,18 +923,18 @@ function Forecast() {
 
       {/* ── 9. WEEKLY TREND ─────────────────────────────────────────────────── */}
       <Panel eyebrow="Weekly Outlook" title="7-day pollutant trajectory">
-        <div className="h-64">
-          <ResponsiveContainer>
-            <LineChart data={weekly}>
+        <div className="h-52 sm:h-64 w-full overflow-hidden">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={weekly} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
               <XAxis
                 dataKey="label"
-                tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
                 axisLine={false}
                 tickLine={false}
               />
@@ -984,9 +992,9 @@ function Forecast() {
           </Pill>
         }
       >
-        <div className="flex items-center gap-6 flex-wrap">
-          <div className="relative size-24 shrink-0">
-            <svg viewBox="0 0 80 80" className="size-24 -rotate-90">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start justify-center sm:justify-start gap-6 sm:gap-8">
+          <div className="relative size-24 sm:size-28 shrink-0">
+            <svg viewBox="0 0 80 80" className="size-24 sm:size-28 -rotate-90">
               <circle
                 cx="40"
                 cy="40"
@@ -1012,13 +1020,13 @@ function Forecast() {
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div className="text-2xl font-bold" style={{ color: band.color }}>
+              <div className="text-2xl sm:text-3xl font-bold" style={{ color: band.color }}>
                 {envHealthScore.pct}
               </div>
-              <div className="text-[9px] text-muted-foreground">/ 100</div>
+              <div className="text-[9px] sm:text-[10px] text-muted-foreground">/ 100</div>
             </div>
           </div>
-          <div className="flex-1 min-w-[200px] space-y-2.5">
+          <div className="w-full sm:flex-1 max-w-md space-y-3">
             {[
               {
                 icon: <Shield className="size-3.5" />,
@@ -1041,9 +1049,11 @@ function Forecast() {
                 stars: envHealthScore.risk,
               },
             ].map((item) => (
-              <div key={item.label} className="flex items-center gap-3">
-                <span className="text-muted-foreground shrink-0">{item.icon}</span>
-                <span className="text-xs text-muted-foreground w-20 shrink-0">{item.label}</span>
+              <div key={item.label} className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-muted-foreground shrink-0">{item.icon}</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground truncate">{item.label}</span>
+                </div>
                 <StarRating value={item.stars} />
               </div>
             ))}
@@ -1057,20 +1067,22 @@ function Forecast() {
         title="AI Health Guidance"
         action={<Pill tone={aqiAccent(effectiveAqi)}>{healthAdvice.riskLevel}</Pill>}
       >
-        <p className="text-xs text-muted-foreground mb-4 leading-relaxed">{healthAdvice.summary}</p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <p className="text-xs sm:text-sm text-muted-foreground mb-4 leading-relaxed">{healthAdvice.summary}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {healthItems.map((item) => (
             <div
               key={item.label}
-              className="glass rounded-xl p-3.5 transition-transform duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0"
+              className="glass rounded-xl p-3.5 transition-transform duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 flex flex-col justify-between"
             >
-              <div className="text-lg mb-1.5" aria-hidden>
-                {item.icon}
+              <div>
+                <div className="text-xl mb-1.5" aria-hidden>
+                  {item.icon}
+                </div>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+                  {item.label}
+                </div>
               </div>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
-                {item.label}
-              </div>
-              <div className="text-xs font-medium mt-1 leading-snug">{item.value}</div>
+              <div className="text-xs font-semibold mt-1.5 leading-snug">{item.value}</div>
             </div>
           ))}
         </div>
@@ -1098,22 +1110,24 @@ function MiniCard({
   accent?: string;
 }) {
   return (
-    <div className="glass rounded-2xl p-4 relative overflow-hidden group transition-transform duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
+    <div className="glass rounded-xl sm:rounded-2xl p-3.5 sm:p-4 relative overflow-hidden group transition-transform duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 flex flex-col justify-between min-w-0">
       <div
-        className="absolute -top-10 -right-10 size-32 rounded-full blur-2xl opacity-20 group-hover:opacity-35 transition-opacity"
+        className="absolute -top-10 -right-10 size-32 rounded-full blur-2xl opacity-20 group-hover:opacity-35 transition-opacity pointer-events-none"
         style={{ background: accent ?? "var(--color-primary)" }}
       />
-      <div className="flex items-start justify-between mb-2">
-        <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground font-medium">{label}</div>
-        <div className="text-muted-foreground">{icon}</div>
+      <div className="flex items-center justify-between gap-1 mb-1.5 sm:mb-2">
+        <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground font-semibold truncate">{label}</div>
+        <div className="text-muted-foreground shrink-0">{icon}</div>
       </div>
-      <div
-        className="text-2xl font-semibold tabular-nums tracking-tight"
-        style={accent ? { color: accent } : undefined}
-      >
-        {value}
+      <div>
+        <div
+          className="text-xl sm:text-2xl font-bold tabular-nums tracking-tight truncate"
+          style={accent ? { color: accent } : undefined}
+        >
+          {value}
+        </div>
+        {hint && <div className="text-[10px] sm:text-xs text-muted-foreground mt-1 truncate">{hint}</div>}
       </div>
-      {hint && <div className="text-[10px] text-muted-foreground mt-1 truncate">{hint}</div>}
     </div>
   );
 }
@@ -1135,8 +1149,8 @@ function AqiRing({
   const c = 2 * Math.PI * r;
   const offset = c - (pct / 100) * c;
   return (
-    <div className="relative size-28 shrink-0">
-      <svg viewBox="0 0 100 100" className="size-28 -rotate-90">
+    <div className="relative size-24 sm:size-28 shrink-0">
+      <svg viewBox="0 0 100 100" className="size-24 sm:size-28 -rotate-90">
         <circle cx="50" cy="50" r={r} fill="none" stroke="var(--color-border)" strokeWidth="8" />
         <circle
           cx="50"
@@ -1161,16 +1175,24 @@ function AqiRing({
         />
       </div>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <div className="text-3xl font-semibold tabular-nums tracking-tight" style={{ color }}>
+        <div className="text-2xl sm:text-3xl font-bold tabular-nums tracking-tight" style={{ color }}>
           {value}
         </div>
-        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{label}</div>
+        <div className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wide">{label}</div>
       </div>
     </div>
   );
 }
 
-function TiltCard({ children, accentColor }: { children: ReactNode; accentColor: string }) {
+function TiltCard({
+  children,
+  accentColor,
+  className,
+}: {
+  children: ReactNode;
+  accentColor: string;
+  className?: string;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const el = ref.current;
@@ -1188,7 +1210,10 @@ function TiltCard({ children, accentColor }: { children: ReactNode; accentColor:
       ref={ref}
       onMouseMove={onMove}
       onMouseLeave={onLeave}
-      className="glass rounded-2xl p-4 transition-[transform,box-shadow] duration-200 will-change-transform motion-reduce:!transform-none hover:shadow-lg"
+      className={cn(
+        "glass rounded-xl sm:rounded-2xl p-3.5 sm:p-4 transition-[transform,box-shadow] duration-200 will-change-transform motion-reduce:!transform-none hover:shadow-lg flex flex-col justify-between min-w-0",
+        className,
+      )}
       style={{ boxShadow: `0 0 0 1px color-mix(in oklab, ${accentColor} 20%, transparent)` }}
     >
       {children}
@@ -1317,8 +1342,8 @@ function PremiumFooter({
   ];
 
   return (
-    <footer className="glass rounded-2xl p-4 md:px-6 md:py-3.5 flex flex-wrap items-center justify-between gap-4 text-xs border border-border/50">
-      <div className="flex items-center gap-3 flex-wrap">
+    <footer className="glass rounded-xl sm:rounded-2xl p-4 md:px-6 md:py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 text-xs border border-border/50">
+      <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
         <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
           Sources:
         </span>
@@ -1335,7 +1360,7 @@ function PremiumFooter({
         ))}
       </div>
 
-      <div className="flex items-center gap-5 text-muted-foreground flex-wrap">
+      <div className="flex items-center gap-3 sm:gap-5 text-muted-foreground flex-wrap text-[11px] sm:text-xs">
         <span>
           Last updated:{" "}
           <strong className="text-foreground font-medium">
@@ -1371,7 +1396,7 @@ function TrendArrow({ current, previous }: { current: number; previous?: number 
 
 function ChartSkeleton() {
   return (
-    <div className="h-72 flex items-center justify-center bg-muted/10 rounded-xl animate-pulse">
+    <div className="h-56 sm:h-72 flex items-center justify-center bg-muted/10 rounded-xl animate-pulse">
       <div className="text-xs text-muted-foreground">Generating forecast projection…</div>
     </div>
   );
@@ -1379,7 +1404,7 @@ function ChartSkeleton() {
 
 function EmptyState({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="h-72 flex flex-col items-center justify-center gap-3 text-center p-6 glass rounded-xl">
+    <div className="h-56 sm:h-72 flex flex-col items-center justify-center gap-3 text-center p-6 glass rounded-xl">
       <AlertTriangle className="size-8 text-[var(--color-warning)]" />
       <div className="text-sm font-medium">Forecast projection offline</div>
       <p className="text-xs text-muted-foreground max-w-sm">
