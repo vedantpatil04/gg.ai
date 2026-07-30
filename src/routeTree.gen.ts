@@ -37,13 +37,23 @@ import { Route as SustainabilityRouteImport } from './routes/sustainability'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as Verify2faRouteImport } from './routes/verify-2fa'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminAuthoritiesRouteImport } from './routes/admin.authorities'
+import { Route as AdminAuthorityManagementRouteImport } from './routes/admin.authority-management'
 import { Route as AdminAuthorityRequestsRouteImport } from './routes/admin.authority-requests'
 import { Route as AdminCitiesRouteImport } from './routes/admin.cities'
+import { Route as AdminCityManagementRouteImport } from './routes/admin.city-management'
+import { Route as AdminComplaintManagementRouteImport } from './routes/admin.complaint-management'
 import { Route as AdminComplaintsRouteImport } from './routes/admin.complaints'
+import { Route as AdminEnvironmentalMonitoringRouteImport } from './routes/admin.environmental-monitoring'
 import { Route as AdminPlatformRouteImport } from './routes/admin.platform'
+import { Route as AdminPlatformAdministrationRouteImport } from './routes/admin.platform-administration'
 import { Route as AdminPlatformHealthRouteImport } from './routes/admin.platform-health'
+import { Route as AdminPlatformSettingsRouteImport } from './routes/admin.platform-settings'
 import { Route as AdminProfileRouteImport } from './routes/admin.profile'
+import { Route as AdminReportsRouteImport } from './routes/admin.reports'
+import { Route as AdminSecurityCenterRouteImport } from './routes/admin.security-center'
+import { Route as AdminUserManagementRouteImport } from './routes/admin.user-management'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as HelpAboutRouteImport } from './routes/help.about'
 import { Route as HelpCommunityRouteImport } from './routes/help.community'
@@ -194,11 +204,22 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAuthoritiesRoute = AdminAuthoritiesRouteImport.update({
   id: '/authorities',
   path: '/authorities',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAuthorityManagementRoute =
+  AdminAuthorityManagementRouteImport.update({
+    id: '/authority-management',
+    path: '/authority-management',
+    getParentRoute: () => AdminRoute,
+  } as any)
 const AdminAuthorityRequestsRoute = AdminAuthorityRequestsRouteImport.update({
   id: '/authority-requests',
   path: '/authority-requests',
@@ -209,24 +230,67 @@ const AdminCitiesRoute = AdminCitiesRouteImport.update({
   path: '/cities',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCityManagementRoute = AdminCityManagementRouteImport.update({
+  id: '/city-management',
+  path: '/city-management',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminComplaintManagementRoute =
+  AdminComplaintManagementRouteImport.update({
+    id: '/complaint-management',
+    path: '/complaint-management',
+    getParentRoute: () => AdminRoute,
+  } as any)
 const AdminComplaintsRoute = AdminComplaintsRouteImport.update({
   id: '/complaints',
   path: '/complaints',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminEnvironmentalMonitoringRoute =
+  AdminEnvironmentalMonitoringRouteImport.update({
+    id: '/environmental-monitoring',
+    path: '/environmental-monitoring',
+    getParentRoute: () => AdminRoute,
+  } as any)
 const AdminPlatformRoute = AdminPlatformRouteImport.update({
   id: '/platform',
   path: '/platform',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminPlatformAdministrationRoute =
+  AdminPlatformAdministrationRouteImport.update({
+    id: '/platform-administration',
+    path: '/platform-administration',
+    getParentRoute: () => AdminRoute,
+  } as any)
 const AdminPlatformHealthRoute = AdminPlatformHealthRouteImport.update({
   id: '/platform-health',
   path: '/platform-health',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminPlatformSettingsRoute = AdminPlatformSettingsRouteImport.update({
+  id: '/platform-settings',
+  path: '/platform-settings',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminProfileRoute = AdminProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminReportsRoute = AdminReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSecurityCenterRoute = AdminSecurityCenterRouteImport.update({
+  id: '/security-center',
+  path: '/security-center',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUserManagementRoute = AdminUserManagementRouteImport.update({
+  id: '/user-management',
+  path: '/user-management',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
@@ -303,13 +367,23 @@ export interface FileRoutesByFullPath {
   '/sustainability': typeof SustainabilityRoute
   '/terms': typeof TermsRoute
   '/verify-2fa': typeof Verify2faRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/authorities': typeof AdminAuthoritiesRoute
+  '/admin/authority-management': typeof AdminAuthorityManagementRoute
   '/admin/authority-requests': typeof AdminAuthorityRequestsRoute
   '/admin/cities': typeof AdminCitiesRoute
+  '/admin/city-management': typeof AdminCityManagementRoute
+  '/admin/complaint-management': typeof AdminComplaintManagementRoute
   '/admin/complaints': typeof AdminComplaintsRoute
+  '/admin/environmental-monitoring': typeof AdminEnvironmentalMonitoringRoute
   '/admin/platform': typeof AdminPlatformRoute
+  '/admin/platform-administration': typeof AdminPlatformAdministrationRoute
   '/admin/platform-health': typeof AdminPlatformHealthRoute
+  '/admin/platform-settings': typeof AdminPlatformSettingsRoute
   '/admin/profile': typeof AdminProfileRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/security-center': typeof AdminSecurityCenterRoute
+  '/admin/user-management': typeof AdminUserManagementRoute
   '/admin/users': typeof AdminUsersRoute
   '/help/about': typeof HelpAboutRoute
   '/help/community': typeof HelpCommunityRoute
@@ -348,13 +422,23 @@ export interface FileRoutesByTo {
   '/sustainability': typeof SustainabilityRoute
   '/terms': typeof TermsRoute
   '/verify-2fa': typeof Verify2faRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/authorities': typeof AdminAuthoritiesRoute
+  '/admin/authority-management': typeof AdminAuthorityManagementRoute
   '/admin/authority-requests': typeof AdminAuthorityRequestsRoute
   '/admin/cities': typeof AdminCitiesRoute
+  '/admin/city-management': typeof AdminCityManagementRoute
+  '/admin/complaint-management': typeof AdminComplaintManagementRoute
   '/admin/complaints': typeof AdminComplaintsRoute
+  '/admin/environmental-monitoring': typeof AdminEnvironmentalMonitoringRoute
   '/admin/platform': typeof AdminPlatformRoute
+  '/admin/platform-administration': typeof AdminPlatformAdministrationRoute
   '/admin/platform-health': typeof AdminPlatformHealthRoute
+  '/admin/platform-settings': typeof AdminPlatformSettingsRoute
   '/admin/profile': typeof AdminProfileRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/security-center': typeof AdminSecurityCenterRoute
+  '/admin/user-management': typeof AdminUserManagementRoute
   '/admin/users': typeof AdminUsersRoute
   '/help/about': typeof HelpAboutRoute
   '/help/community': typeof HelpCommunityRoute
@@ -395,13 +479,23 @@ export interface FileRoutesById {
   '/sustainability': typeof SustainabilityRoute
   '/terms': typeof TermsRoute
   '/verify-2fa': typeof Verify2faRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/authorities': typeof AdminAuthoritiesRoute
+  '/admin/authority-management': typeof AdminAuthorityManagementRoute
   '/admin/authority-requests': typeof AdminAuthorityRequestsRoute
   '/admin/cities': typeof AdminCitiesRoute
+  '/admin/city-management': typeof AdminCityManagementRoute
+  '/admin/complaint-management': typeof AdminComplaintManagementRoute
   '/admin/complaints': typeof AdminComplaintsRoute
+  '/admin/environmental-monitoring': typeof AdminEnvironmentalMonitoringRoute
   '/admin/platform': typeof AdminPlatformRoute
+  '/admin/platform-administration': typeof AdminPlatformAdministrationRoute
   '/admin/platform-health': typeof AdminPlatformHealthRoute
+  '/admin/platform-settings': typeof AdminPlatformSettingsRoute
   '/admin/profile': typeof AdminProfileRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/security-center': typeof AdminSecurityCenterRoute
+  '/admin/user-management': typeof AdminUserManagementRoute
   '/admin/users': typeof AdminUsersRoute
   '/help/about': typeof HelpAboutRoute
   '/help/community': typeof HelpCommunityRoute
@@ -443,13 +537,23 @@ export interface FileRouteTypes {
     | '/sustainability'
     | '/terms'
     | '/verify-2fa'
+    | '/admin/analytics'
     | '/admin/authorities'
+    | '/admin/authority-management'
     | '/admin/authority-requests'
     | '/admin/cities'
+    | '/admin/city-management'
+    | '/admin/complaint-management'
     | '/admin/complaints'
+    | '/admin/environmental-monitoring'
     | '/admin/platform'
+    | '/admin/platform-administration'
     | '/admin/platform-health'
+    | '/admin/platform-settings'
     | '/admin/profile'
+    | '/admin/reports'
+    | '/admin/security-center'
+    | '/admin/user-management'
     | '/admin/users'
     | '/help/about'
     | '/help/community'
@@ -488,13 +592,23 @@ export interface FileRouteTypes {
     | '/sustainability'
     | '/terms'
     | '/verify-2fa'
+    | '/admin/analytics'
     | '/admin/authorities'
+    | '/admin/authority-management'
     | '/admin/authority-requests'
     | '/admin/cities'
+    | '/admin/city-management'
+    | '/admin/complaint-management'
     | '/admin/complaints'
+    | '/admin/environmental-monitoring'
     | '/admin/platform'
+    | '/admin/platform-administration'
     | '/admin/platform-health'
+    | '/admin/platform-settings'
     | '/admin/profile'
+    | '/admin/reports'
+    | '/admin/security-center'
+    | '/admin/user-management'
     | '/admin/users'
     | '/help/about'
     | '/help/community'
@@ -534,13 +648,23 @@ export interface FileRouteTypes {
     | '/sustainability'
     | '/terms'
     | '/verify-2fa'
+    | '/admin/analytics'
     | '/admin/authorities'
+    | '/admin/authority-management'
     | '/admin/authority-requests'
     | '/admin/cities'
+    | '/admin/city-management'
+    | '/admin/complaint-management'
     | '/admin/complaints'
+    | '/admin/environmental-monitoring'
     | '/admin/platform'
+    | '/admin/platform-administration'
     | '/admin/platform-health'
+    | '/admin/platform-settings'
     | '/admin/profile'
+    | '/admin/reports'
+    | '/admin/security-center'
+    | '/admin/user-management'
     | '/admin/users'
     | '/help/about'
     | '/help/community'
@@ -781,11 +905,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/authorities': {
       id: '/admin/authorities'
       path: '/authorities'
       fullPath: '/admin/authorities'
       preLoaderRoute: typeof AdminAuthoritiesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/authority-management': {
+      id: '/admin/authority-management'
+      path: '/authority-management'
+      fullPath: '/admin/authority-management'
+      preLoaderRoute: typeof AdminAuthorityManagementRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/authority-requests': {
@@ -802,11 +940,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCitiesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/city-management': {
+      id: '/admin/city-management'
+      path: '/city-management'
+      fullPath: '/admin/city-management'
+      preLoaderRoute: typeof AdminCityManagementRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/complaint-management': {
+      id: '/admin/complaint-management'
+      path: '/complaint-management'
+      fullPath: '/admin/complaint-management'
+      preLoaderRoute: typeof AdminComplaintManagementRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/complaints': {
       id: '/admin/complaints'
       path: '/complaints'
       fullPath: '/admin/complaints'
       preLoaderRoute: typeof AdminComplaintsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/environmental-monitoring': {
+      id: '/admin/environmental-monitoring'
+      path: '/environmental-monitoring'
+      fullPath: '/admin/environmental-monitoring'
+      preLoaderRoute: typeof AdminEnvironmentalMonitoringRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/platform': {
@@ -816,6 +975,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPlatformRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/platform-administration': {
+      id: '/admin/platform-administration'
+      path: '/platform-administration'
+      fullPath: '/admin/platform-administration'
+      preLoaderRoute: typeof AdminPlatformAdministrationRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/platform-health': {
       id: '/admin/platform-health'
       path: '/platform-health'
@@ -823,11 +989,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPlatformHealthRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/platform-settings': {
+      id: '/admin/platform-settings'
+      path: '/platform-settings'
+      fullPath: '/admin/platform-settings'
+      preLoaderRoute: typeof AdminPlatformSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/profile': {
       id: '/admin/profile'
       path: '/profile'
       fullPath: '/admin/profile'
       preLoaderRoute: typeof AdminProfileRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/reports': {
+      id: '/admin/reports'
+      path: '/reports'
+      fullPath: '/admin/reports'
+      preLoaderRoute: typeof AdminReportsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/security-center': {
+      id: '/admin/security-center'
+      path: '/security-center'
+      fullPath: '/admin/security-center'
+      preLoaderRoute: typeof AdminSecurityCenterRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/user-management': {
+      id: '/admin/user-management'
+      path: '/user-management'
+      fullPath: '/admin/user-management'
+      preLoaderRoute: typeof AdminUserManagementRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/users': {
@@ -897,25 +1091,45 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminAuthoritiesRoute: typeof AdminAuthoritiesRoute
+  AdminAuthorityManagementRoute: typeof AdminAuthorityManagementRoute
   AdminAuthorityRequestsRoute: typeof AdminAuthorityRequestsRoute
   AdminCitiesRoute: typeof AdminCitiesRoute
+  AdminCityManagementRoute: typeof AdminCityManagementRoute
+  AdminComplaintManagementRoute: typeof AdminComplaintManagementRoute
   AdminComplaintsRoute: typeof AdminComplaintsRoute
+  AdminEnvironmentalMonitoringRoute: typeof AdminEnvironmentalMonitoringRoute
   AdminPlatformRoute: typeof AdminPlatformRoute
+  AdminPlatformAdministrationRoute: typeof AdminPlatformAdministrationRoute
   AdminPlatformHealthRoute: typeof AdminPlatformHealthRoute
+  AdminPlatformSettingsRoute: typeof AdminPlatformSettingsRoute
   AdminProfileRoute: typeof AdminProfileRoute
+  AdminReportsRoute: typeof AdminReportsRoute
+  AdminSecurityCenterRoute: typeof AdminSecurityCenterRoute
+  AdminUserManagementRoute: typeof AdminUserManagementRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminAuthoritiesRoute: AdminAuthoritiesRoute,
+  AdminAuthorityManagementRoute: AdminAuthorityManagementRoute,
   AdminAuthorityRequestsRoute: AdminAuthorityRequestsRoute,
   AdminCitiesRoute: AdminCitiesRoute,
+  AdminCityManagementRoute: AdminCityManagementRoute,
+  AdminComplaintManagementRoute: AdminComplaintManagementRoute,
   AdminComplaintsRoute: AdminComplaintsRoute,
+  AdminEnvironmentalMonitoringRoute: AdminEnvironmentalMonitoringRoute,
   AdminPlatformRoute: AdminPlatformRoute,
+  AdminPlatformAdministrationRoute: AdminPlatformAdministrationRoute,
   AdminPlatformHealthRoute: AdminPlatformHealthRoute,
+  AdminPlatformSettingsRoute: AdminPlatformSettingsRoute,
   AdminProfileRoute: AdminProfileRoute,
+  AdminReportsRoute: AdminReportsRoute,
+  AdminSecurityCenterRoute: AdminSecurityCenterRoute,
+  AdminUserManagementRoute: AdminUserManagementRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
