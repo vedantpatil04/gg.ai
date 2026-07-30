@@ -198,7 +198,9 @@ function BrowseCategories({ onCategoryClick }: { onCategoryClick: (id: string) =
                   className="size-9 rounded-lg flex items-center justify-center mb-3"
                   style={{ background: `color-mix(in oklab, ${cat.accentColor} 12%, transparent)` }}
                 >
-                  <Icon className="size-4" style={{ color: cat.accentColor }} />
+                  <div style={{ color: cat.accentColor }}>
+                    <Icon className="size-4" />
+                  </div>
                 </div>
                 <h3 className="text-xs font-semibold leading-tight mb-1">{cat.title}</h3>
                 <div className="flex items-center justify-between text-[10px] text-muted-foreground/70">

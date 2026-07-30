@@ -4,21 +4,13 @@
  * Complete browser Geolocation API state machine.
  *
  * States:
- *   idle        — never requested
- *   requesting  — waiting for browser response
- *   granted     — position available
- *   denied      — user refused or revoked permission
- *   unavailable — hardware not available
- *   timeout     — position acquisition timed out
- *
- * Features:
- *  - One-shot (locate once) vs. continuous watch mode
- *  - Throttled position updates (min 2 s between React state updates)
- *  - Automatically pauses the watcher when the page is hidden and
- *    resumes when it comes back (Section 11: pause when tab is inactive)
- *  - Full cleanup on unmount / mode change (Section 11: no leaked watchers)
- *  - Privacy: coordinates never written to localStorage or any persistent
- *    store — in-memory only for the active session (Section 10)
+ *   idle            — never requested
+ *   requesting      — waiting for browser response
+ *   granted         — position available
+ *   denied          — user refused or revoked permission
+ *   insecure_origin — origin is not secure (requires HTTPS or localhost)
+ *   unavailable     — hardware not available
+ *   timeout         — position acquisition timed out
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -28,6 +20,7 @@ export type GeolocationStatus =
   | "requesting"
   | "granted"
   | "denied"
+  | "insecure_origin"
   | "unavailable"
   | "timeout";
 
@@ -73,6 +66,7 @@ const STATUS_MESSAGES: Record<GeolocationStatus, string> = {
   requesting: "Acquiring your location…",
   granted: "Location acquired",
   denied: "Location permission denied — enable it in browser settings",
+  insecure_origin: "Location requires a secure connection (HTTPS or localhost)",
   unavailable: "Location unavailable on this device",
   timeout: "Location request timed out — please try again",
 };
@@ -103,6 +97,18 @@ export function useGeolocation(): UseGeolocationResult {
     [],
   );
 
+  // ── Clear active watch ───────────────────────────────────────────────────────
+  const clearWatch = useCallback(() => {
+    if (watchIdRef.current != null) {
+      navigator.geolocation?.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    if (throttleTimerRef.current) {
+      clearTimeout(throttleTimerRef.current);
+      throttleTimerRef.current = null;
+    }
+  }, []);
+
   // ── Throttled position setter ────────────────────────────────────────────────
   const applyPosition = useCallback((pos: GeoPosition) => {
     const now = Date.now();
@@ -112,7 +118,6 @@ export function useGeolocation(): UseGeolocationResult {
       setStatus("granted");
       setPosition(pos);
     } else {
-      // Schedule for when the throttle window expires
       pendingPositionRef.current = pos;
       if (!throttleTimerRef.current) {
         throttleTimerRef.current = setTimeout(() => {
@@ -132,25 +137,27 @@ export function useGeolocation(): UseGeolocationResult {
   const handleError = useCallback((err: GeolocationPositionError) => {
     clearWatch();
     setIsTracking(false);
-    if (err.code === err.PERMISSION_DENIED) setStatus("denied");
-    else if (err.code === err.POSITION_UNAVAILABLE) setStatus("unavailable");
-    else setStatus("timeout");
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Clear active watch ───────────────────────────────────────────────────────
-  const clearWatch = useCallback(() => {
-    if (watchIdRef.current != null) {
-      navigator.geolocation?.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
+    if (err.message && err.message.toLowerCase().includes("secure origin")) {
+      setStatus("insecure_origin");
+    } else if (err.code === err.PERMISSION_DENIED) {
+      if (typeof window !== "undefined" && window.isSecureContext === false) {
+        setStatus("insecure_origin");
+      } else {
+        setStatus("denied");
+      }
+    } else if (err.code === err.POSITION_UNAVAILABLE) {
+      setStatus("unavailable");
+    } else {
+      setStatus("timeout");
     }
-    if (throttleTimerRef.current) {
-      clearTimeout(throttleTimerRef.current);
-      throttleTimerRef.current = null;
-    }
-  }, []);
+  }, [clearWatch]);
 
   // ── One-shot locate ──────────────────────────────────────────────────────────
   const locate = useCallback(() => {
+    if (typeof window !== "undefined" && window.isSecureContext === false) {
+      setStatus("insecure_origin");
+      return;
+    }
     if (!navigator.geolocation) {
       setStatus("unavailable");
       return;
@@ -167,6 +174,10 @@ export function useGeolocation(): UseGeolocationResult {
 
   // ── Continuous tracking ───────────────────────────────────────────────────────
   const startTracking = useCallback(() => {
+    if (typeof window !== "undefined" && window.isSecureContext === false) {
+      setStatus("insecure_origin");
+      return;
+    }
     if (!navigator.geolocation) {
       setStatus("unavailable");
       return;
@@ -199,26 +210,17 @@ export function useGeolocation(): UseGeolocationResult {
       if (document.hidden) {
         clearWatch();
       } else {
-        // Re-start the watch after the tab becomes visible again
-        if (!navigator.geolocation) return;
-        watchIdRef.current = navigator.geolocation.watchPosition(
-          (raw) => applyPosition(fromRaw(raw)),
-          handleError,
-          { enableHighAccuracy: true, timeout: 15_000, maximumAge: 5_000 },
-        );
+        startTracking();
       }
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
-  }, [isTracking, applyPosition, clearWatch, fromRaw, handleError]);
+  }, [clearWatch, isTracking, startTracking]);
 
   // ── Cleanup on unmount ───────────────────────────────────────────────────────
-  useEffect(
-    () => () => {
-      clearWatch();
-    },
-    [clearWatch],
-  );
+  useEffect(() => {
+    return () => clearWatch();
+  }, [clearWatch]);
 
   return {
     status,

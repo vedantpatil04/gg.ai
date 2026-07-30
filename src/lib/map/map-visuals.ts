@@ -20,8 +20,18 @@ import {
 import { findAqiBand, type City } from "@/lib/mock-data";
 import type { MapLocation } from "@/lib/api/environmental.api";
 
+export interface LayerDef {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  color: string;
+  group: string;
+  description: string;
+  comingSoon?: boolean;
+}
+
 // ─── Layer definitions (extended for Phase 3, descriptions added Phase 3A) ───
-export const LAYERS = [
+export const LAYERS: LayerDef[] = [
   {
     id: "aqi",
     label: "Air Quality",

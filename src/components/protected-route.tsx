@@ -15,6 +15,8 @@ interface ProtectedRouteProps {
   children: ReactNode;
   /** Restrict access to these roles. Omit to allow any authenticated user. */
   roles?: UserRole[];
+  /** Alias for roles */
+  allowedRoles?: UserRole[];
   /** Where to send an authenticated user whose role isn't allowed. Omit to
    *  use that user's own role-appropriate landing page (getRoleLandingPage). */
   unauthorizedRedirect?: string;
@@ -32,11 +34,12 @@ interface ProtectedRouteProps {
  * the user is redirected to /login. Protected content is never rendered
  * for an unauthenticated or unauthorized visitor.
  */
-export function ProtectedRoute({ children, roles, unauthorizedRedirect }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, roles, allowedRoles, unauthorizedRedirect }: ProtectedRouteProps) {
   const { user, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
 
-  const authorized = isAuthenticated && (!roles || (!!user && roles.includes(user.role)));
+  const activeRoles = roles || allowedRoles;
+  const authorized = isAuthenticated && (!activeRoles || (!!user && activeRoles.includes(user.role)));
 
   useEffect(() => {
     if (isLoading) return;

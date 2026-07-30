@@ -384,7 +384,7 @@ export function AiSummary({ className }: { className?: string }) {
     queryKey: ["ai-city-insights", city.id],
     queryFn: async () => {
       const res = await copilotApi.cityInsights(city.id);
-      return res.data.insights.environmentalSummary as string;
+      return res?.data?.insights?.environmentalSummary as string | undefined;
     },
     enabled: !!city.id,
     staleTime: 30 * 60 * 1000,

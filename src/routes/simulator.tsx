@@ -41,6 +41,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ScenarioSimulator } from "@/components/sustainability/scenario-simulator";
+
 
 export const Route = createFileRoute("/simulator")({
   head: () => ({ meta: [{ title: "Policy Simulator — GreenGuard AI" }] }),
@@ -834,6 +836,9 @@ function Simulator() {
             <p className="text-sm text-muted-foreground leading-relaxed">{aiInsight}</p>
           </Panel>
         )}
+
+        {/* Embedded What-If Scenario Simulator */}
+        <ScenarioSimulator city={city} isApiConnected={isApiConnected} />
       </div>
     </div>
   );

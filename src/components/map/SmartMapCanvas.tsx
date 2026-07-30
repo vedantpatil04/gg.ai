@@ -19,7 +19,9 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { GeoPosition, GeolocationStatus } from "@/hooks/use-geolocation";
+export { OSM_DARK_STYLE as OSM_STYLE } from "@/lib/map/base-map-config";
 import maplibregl from "maplibre-gl";
+
 import "maplibre-gl/dist/maplibre-gl.css";
 import Supercluster from "supercluster";
 import { useQuery } from "@tanstack/react-query";

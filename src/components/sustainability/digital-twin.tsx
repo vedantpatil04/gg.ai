@@ -42,7 +42,7 @@ import { aqiBand, type City } from "@/lib/mock-data";
 function LayerChip({
   layer, active, onToggle,
 }: {
-  layer: typeof LAYERS[number];
+  layer: typeof LAYERS[number] & { comingSoon?: boolean };
   active: boolean;
   onToggle: () => void;
 }) {

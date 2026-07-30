@@ -69,7 +69,9 @@ export function TutCategoryPage({ category, onBack, onTutorialClick }: TutCatego
             className="size-14 md:size-16 rounded-2xl flex items-center justify-center shrink-0"
             style={{ background: `color-mix(in oklab, ${category.accentColor} 12%, transparent)` }}
           >
-            <Icon className="size-7 md:size-8" style={{ color: category.accentColor }} />
+            <div style={{ color: category.accentColor }}>
+              <Icon className="size-7 md:size-8" />
+            </div>
           </div>
           <div className="flex-1 min-w-0">
             <div

@@ -296,7 +296,7 @@ export function EnvAlerts({ className }: { className?: string }) {
     queryKey: ["active-alerts", city.id],
     queryFn: async () => {
       const res = await alertApi.getActive(city.id);
-      return (res.data.alerts ?? []) as EnvAlert[];
+      return (res?.data?.alerts ?? []) as EnvAlert[];
     },
     enabled: !!city.id,
     staleTime: 2 * 60 * 1000,

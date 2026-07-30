@@ -121,7 +121,7 @@ export function TutCard({ tutorial, onClick, variant = "default" }: TutCardProps
           className="size-6 rounded-md flex items-center justify-center shrink-0"
           style={{ background: `color-mix(in oklab, ${cat?.accentColor ?? "var(--color-primary)"} 12%, transparent)` }}
         >
-          {(() => { const Icon = TUT_FORMAT_ICON[tutorial.format]; return <Icon className="size-3.5" style={{ color: cat?.accentColor ?? "var(--color-primary)" }} />; })()}
+          {(() => { const Icon = TUT_FORMAT_ICON[tutorial.format]; return <div style={{ color: cat?.accentColor ?? "var(--color-primary)" }}><Icon className="size-3.5" /></div>; })()}
         </div>
         <span className="flex-1 text-sm text-muted-foreground group-hover:text-foreground truncate transition-colors">
           {tutorial.title}
@@ -147,7 +147,7 @@ export function TutCard({ tutorial, onClick, variant = "default" }: TutCardProps
           className="size-10 rounded-xl flex items-center justify-center shrink-0"
           style={{ background: `color-mix(in oklab, ${cat?.accentColor ?? "var(--color-primary)"} 12%, transparent)` }}
         >
-          {(() => { const Icon = TUT_FORMAT_ICON[tutorial.format]; return <Icon className="size-5" style={{ color: cat?.accentColor ?? "var(--color-primary)" }} />; })()}
+          {(() => { const Icon = TUT_FORMAT_ICON[tutorial.format]; return <div style={{ color: cat?.accentColor ?? "var(--color-primary)" }}><Icon className="size-5" /></div>; })()}
         </div>
 
         <div className="flex-1 min-w-0">
@@ -212,7 +212,7 @@ export function TutCard({ tutorial, onClick, variant = "default" }: TutCardProps
           className="size-9 rounded-xl flex items-center justify-center shrink-0"
           style={{ background: `color-mix(in oklab, ${cat?.accentColor ?? "var(--color-primary)"} 12%, transparent)` }}
         >
-          {(() => { const Icon = TUT_FORMAT_ICON[tutorial.format]; return <Icon className="size-4" style={{ color: cat?.accentColor ?? "var(--color-primary)" }} />; })()}
+          {(() => { const Icon = TUT_FORMAT_ICON[tutorial.format]; return <div style={{ color: cat?.accentColor ?? "var(--color-primary)" }}><Icon className="size-4" /></div>; })()}
         </div>
         <TutBookmarkButton tutorialId={tutorial.id} size="sm" />
       </div>
@@ -328,7 +328,9 @@ export function LearningPathCard({
           className="size-10 rounded-xl flex items-center justify-center shrink-0"
           style={{ background: `color-mix(in oklab, ${path.accentColor} 12%, transparent)` }}
         >
-          <Icon className="size-5" style={{ color: path.accentColor }} />
+          <div style={{ color: path.accentColor }}>
+            <Icon className="size-5" />
+          </div>
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground mb-0.5">

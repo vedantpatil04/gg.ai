@@ -65,7 +65,9 @@ export function LearningPathPage({ path, onBack, onTutorialClick }: LearningPath
               className="size-14 md:size-16 rounded-2xl flex items-center justify-center shrink-0"
               style={{ background: `color-mix(in oklab, ${path.accentColor} 12%, transparent)` }}
             >
-              <PathIcon className="size-7 md:size-8" style={{ color: path.accentColor }} />
+              <div style={{ color: path.accentColor }}>
+                <PathIcon className="size-7 md:size-8" />
+              </div>
             </div>
             <div className="flex-1 min-w-0">
               <div
@@ -192,7 +194,9 @@ export function LearningPathPage({ path, onBack, onTutorialClick }: LearningPath
                     className="size-8 rounded-lg flex items-center justify-center shrink-0"
                     style={{ background: `color-mix(in oklab, ${cat?.accentColor ?? "var(--color-primary)"} 10%, transparent)` }}
                   >
-                    <FmtIcon className="size-4" style={{ color: cat?.accentColor ?? "var(--color-primary)" }} />
+                    <div style={{ color: cat?.accentColor ?? "var(--color-primary)" }}>
+                      <FmtIcon className="size-4" />
+                    </div>
                   </div>
 
                   {/* Info */}
