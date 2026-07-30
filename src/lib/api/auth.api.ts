@@ -22,8 +22,26 @@ export interface UpdateProfilePayload {
   city?: string;
 }
 
+/** Shape returned by POST /auth/login */
+export type LoginApiResponse =
+  | {
+      requires2FA: true;
+      challengeToken: string;
+      data?: undefined;
+    }
+  | {
+      requires2FA?: false;
+      challengeToken?: undefined;
+      data: {
+        user: import("../auth-context").AuthUser;
+        accessToken: string;
+        refreshToken: string;
+      };
+    };
+
 export const authApi = {
-  login: (data: LoginPayload) => client.post("/auth/login", data).then((r) => r.data),
+  login: (data: LoginPayload) =>
+    client.post<LoginApiResponse>("/auth/login", data).then((r) => r.data),
 
   signup: (data: SignupPayload) => client.post("/auth/signup", data).then((r) => r.data),
 

@@ -35,11 +35,13 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SimulatorRouteImport } from './routes/simulator'
 import { Route as SustainabilityRouteImport } from './routes/sustainability'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as Verify2faRouteImport } from './routes/verify-2fa'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAuthoritiesRouteImport } from './routes/admin.authorities'
 import { Route as AdminAuthorityRequestsRouteImport } from './routes/admin.authority-requests'
 import { Route as AdminCitiesRouteImport } from './routes/admin.cities'
 import { Route as AdminComplaintsRouteImport } from './routes/admin.complaints'
+import { Route as AdminPlatformRouteImport } from './routes/admin.platform'
 import { Route as AdminPlatformHealthRouteImport } from './routes/admin.platform-health'
 import { Route as AdminProfileRouteImport } from './routes/admin.profile'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
@@ -182,6 +184,11 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Verify2faRoute = Verify2faRouteImport.update({
+  id: '/verify-2fa',
+  path: '/verify-2fa',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -205,6 +212,11 @@ const AdminCitiesRoute = AdminCitiesRouteImport.update({
 const AdminComplaintsRoute = AdminComplaintsRouteImport.update({
   id: '/complaints',
   path: '/complaints',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPlatformRoute = AdminPlatformRouteImport.update({
+  id: '/platform',
+  path: '/platform',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminPlatformHealthRoute = AdminPlatformHealthRouteImport.update({
@@ -290,10 +302,12 @@ export interface FileRoutesByFullPath {
   '/simulator': typeof SimulatorRoute
   '/sustainability': typeof SustainabilityRoute
   '/terms': typeof TermsRoute
+  '/verify-2fa': typeof Verify2faRoute
   '/admin/authorities': typeof AdminAuthoritiesRoute
   '/admin/authority-requests': typeof AdminAuthorityRequestsRoute
   '/admin/cities': typeof AdminCitiesRoute
   '/admin/complaints': typeof AdminComplaintsRoute
+  '/admin/platform': typeof AdminPlatformRoute
   '/admin/platform-health': typeof AdminPlatformHealthRoute
   '/admin/profile': typeof AdminProfileRoute
   '/admin/users': typeof AdminUsersRoute
@@ -333,10 +347,12 @@ export interface FileRoutesByTo {
   '/simulator': typeof SimulatorRoute
   '/sustainability': typeof SustainabilityRoute
   '/terms': typeof TermsRoute
+  '/verify-2fa': typeof Verify2faRoute
   '/admin/authorities': typeof AdminAuthoritiesRoute
   '/admin/authority-requests': typeof AdminAuthorityRequestsRoute
   '/admin/cities': typeof AdminCitiesRoute
   '/admin/complaints': typeof AdminComplaintsRoute
+  '/admin/platform': typeof AdminPlatformRoute
   '/admin/platform-health': typeof AdminPlatformHealthRoute
   '/admin/profile': typeof AdminProfileRoute
   '/admin/users': typeof AdminUsersRoute
@@ -378,10 +394,12 @@ export interface FileRoutesById {
   '/simulator': typeof SimulatorRoute
   '/sustainability': typeof SustainabilityRoute
   '/terms': typeof TermsRoute
+  '/verify-2fa': typeof Verify2faRoute
   '/admin/authorities': typeof AdminAuthoritiesRoute
   '/admin/authority-requests': typeof AdminAuthorityRequestsRoute
   '/admin/cities': typeof AdminCitiesRoute
   '/admin/complaints': typeof AdminComplaintsRoute
+  '/admin/platform': typeof AdminPlatformRoute
   '/admin/platform-health': typeof AdminPlatformHealthRoute
   '/admin/profile': typeof AdminProfileRoute
   '/admin/users': typeof AdminUsersRoute
@@ -424,10 +442,12 @@ export interface FileRouteTypes {
     | '/simulator'
     | '/sustainability'
     | '/terms'
+    | '/verify-2fa'
     | '/admin/authorities'
     | '/admin/authority-requests'
     | '/admin/cities'
     | '/admin/complaints'
+    | '/admin/platform'
     | '/admin/platform-health'
     | '/admin/profile'
     | '/admin/users'
@@ -467,10 +487,12 @@ export interface FileRouteTypes {
     | '/simulator'
     | '/sustainability'
     | '/terms'
+    | '/verify-2fa'
     | '/admin/authorities'
     | '/admin/authority-requests'
     | '/admin/cities'
     | '/admin/complaints'
+    | '/admin/platform'
     | '/admin/platform-health'
     | '/admin/profile'
     | '/admin/users'
@@ -511,10 +533,12 @@ export interface FileRouteTypes {
     | '/simulator'
     | '/sustainability'
     | '/terms'
+    | '/verify-2fa'
     | '/admin/authorities'
     | '/admin/authority-requests'
     | '/admin/cities'
     | '/admin/complaints'
+    | '/admin/platform'
     | '/admin/platform-health'
     | '/admin/profile'
     | '/admin/users'
@@ -556,6 +580,7 @@ export interface RootRouteChildren {
   SimulatorRoute: typeof SimulatorRoute
   SustainabilityRoute: typeof SustainabilityRoute
   TermsRoute: typeof TermsRoute
+  Verify2faRoute: typeof Verify2faRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -742,6 +767,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/verify-2fa': {
+      id: '/verify-2fa'
+      path: '/verify-2fa'
+      fullPath: '/verify-2fa'
+      preLoaderRoute: typeof Verify2faRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/': {
       id: '/admin/'
       path: '/'
@@ -775,6 +807,13 @@ declare module '@tanstack/react-router' {
       path: '/complaints'
       fullPath: '/admin/complaints'
       preLoaderRoute: typeof AdminComplaintsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/platform': {
+      id: '/admin/platform'
+      path: '/platform'
+      fullPath: '/admin/platform'
+      preLoaderRoute: typeof AdminPlatformRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/platform-health': {
@@ -862,6 +901,7 @@ interface AdminRouteChildren {
   AdminAuthorityRequestsRoute: typeof AdminAuthorityRequestsRoute
   AdminCitiesRoute: typeof AdminCitiesRoute
   AdminComplaintsRoute: typeof AdminComplaintsRoute
+  AdminPlatformRoute: typeof AdminPlatformRoute
   AdminPlatformHealthRoute: typeof AdminPlatformHealthRoute
   AdminProfileRoute: typeof AdminProfileRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -873,6 +913,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAuthorityRequestsRoute: AdminAuthorityRequestsRoute,
   AdminCitiesRoute: AdminCitiesRoute,
   AdminComplaintsRoute: AdminComplaintsRoute,
+  AdminPlatformRoute: AdminPlatformRoute,
   AdminPlatformHealthRoute: AdminPlatformHealthRoute,
   AdminProfileRoute: AdminProfileRoute,
   AdminUsersRoute: AdminUsersRoute,
@@ -932,6 +973,7 @@ const rootRouteChildren: RootRouteChildren = {
   SimulatorRoute: SimulatorRoute,
   SustainabilityRoute: SustainabilityRoute,
   TermsRoute: TermsRoute,
+  Verify2faRoute: Verify2faRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

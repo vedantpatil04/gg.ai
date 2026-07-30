@@ -26,7 +26,10 @@ import adminRoutes from "./routes/admin.routes";
 import copilotRoutes from "./routes/copilot.routes";
 import intelligenceRoutes from "./routes/intelligence.routes";
 import commandRoutes from "./routes/command.routes";
+import citizenRoutes from "./routes/citizen.routes"; // Phase 5
 import { startScheduler, getSchedulerStatus } from "./jobs/scheduler";
+import authorityRoutes from "./routes/authority.routes";
+import platformAdminRoutes from "./routes/platform-admin.routes";
 
 // Phase 3 — direct city AI insights controller (avoids broken req.url shortcut)
 import { getCityAIInsights } from "./controllers/copilot.controller";
@@ -51,18 +54,15 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 const limiter = rateLimit({
   windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   max: Number(process.env.RATE_LIMIT_MAX) || 200,
-  standardHeaders: true,
-  legacyHeaders: false,
+  standardHeaders: true, legacyHeaders: false,
   message: { success: false, message: "Too many requests." },
 });
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
+  windowMs: 15 * 60 * 1000, max: 1000,
   message: { success: false, message: "Too many auth attempts." },
 });
 const aiLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 30,
+  windowMs: 60 * 1000, max: 30,
   message: { success: false, message: "AI rate limit reached. Please wait a moment." },
 });
 
@@ -79,20 +79,20 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/alerts", alertRoutes);
 app.use("/api/simulator", simulatorRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/admin/authorities", authorityRoutes);
+app.use("/api/citizen", citizenRoutes); // Phase 5
 app.use("/api/copilot", aiLimiter, copilotRoutes);
 app.use("/api/intelligence", aiLimiter, intelligenceRoutes);
 app.use("/api/command", aiLimiter, commandRoutes);
 app.use("/api/security", securityRoutes);
+app.use("/api/platform-admin", platformAdminRoutes); // Phase 6
 
 // Phase 3 — GET /api/cities/:city/ai-insights  (spec-required top-level path)
 app.get("/api/cities/:city/ai-insights", aiLimiter, getCityAIInsights);
 
 // ─── Health ───────────────────────────────────────────────────────────────────
 const DB_STATE_LABELS: Record<number, string> = {
-  0: "disconnected",
-  1: "connected",
-  2: "connecting",
-  3: "disconnecting",
+  0: "disconnected", 1: "connected", 2: "connecting", 3: "disconnecting",
 };
 
 app.get("/api/health", (_req, res) => {
@@ -119,19 +119,12 @@ async function bootstrap() {
   await connectDB();
   app.listen(PORT, () => {
     logger.info(`🚀 GreenGuard API v4.0 → http://localhost:${PORT}`);
-    logger.info(
-      `🤖 Gemini AI: ${process.env.GEMINI_API_KEY ? "✅ enabled" : "⚠️  disabled — set GEMINI_API_KEY"}`,
-    );
-    logger.info(
-      `🌍 Real-time data: ${process.env.OPENWEATHER_API_KEY ? "✅ OpenWeather enabled" : "⚠️  no API key — using seeded data"}`,
-    );
+    logger.info(`🤖 Gemini AI: ${process.env.GEMINI_API_KEY ? "✅ enabled" : "⚠️  disabled — set GEMINI_API_KEY"}`);
+    logger.info(`🌍 Real-time data: ${process.env.OPENWEATHER_API_KEY ? "✅ OpenWeather enabled" : "⚠️  no API key — using seeded data"}`);
   });
   startScheduler();
 }
 
-bootstrap().catch((err) => {
-  logger.error("Bootstrap failed:", err);
-  process.exit(1);
-});
+bootstrap().catch((err) => { logger.error("Bootstrap failed:", err); process.exit(1); });
 
 export default app;

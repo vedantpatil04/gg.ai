@@ -9,16 +9,11 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  AreaChart,
-  Area,
 } from "recharts";
 import {
   Shield,
-  TrendingUp,
-  Leaf,
   AlertTriangle,
   MessageSquare,
-  Building2,
   Activity,
   Sparkles,
   Loader2,
@@ -26,43 +21,455 @@ import {
   Clock,
   MapPin,
   CheckCircle2,
-  Zap,
   ArrowUpRight,
-  CheckSquare,
-  Radio,
-  Layers,
   Globe,
-  Gauge,
-  Check,
   ExternalLink,
-  Filter,
+  FileText,
+  Users,
+  Inbox,
+  PlayCircle,
+  ClipboardCheck,
+  XCircle,
+  CalendarClock,
+  Leaf,
+  TriangleAlert,
 } from "lucide-react";
 import {
   commandApi,
   type ExecutiveDashboardData,
   type ComplaintIntelligenceData,
 } from "@/lib/api/command.api";
-import { Panel, StatCard, Pill } from "@/components/ui-bits";
+import { complaintApi, alertApi } from "@/lib/api/services.api";
+import { EmptyState } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
+import { formatDistanceToNow } from "date-fns";
 
-// ─── Risk Badge Component ───────────────────────────────────────────────────
-function RiskBadge({ value }: { value: number }) {
-  const tone = value > 65 ? "destructive" : value > 40 ? "warning" : "success";
-  const label = value > 65 ? "High Risk" : value > 40 ? "Moderate" : "Low Risk";
-  return <Pill tone={tone}>{label}</Pill>;
+// ─── Shared helpers ───────────────────────────────────────────────────────────
+function ageLabel(d: string) {
+  try {
+    return formatDistanceToNow(new Date(d), { addSuffix: true });
+  } catch {
+    return "—";
+  }
 }
 
-// ─── Gemini Intelligence Panel ──────────────────────────────────────────────
-function GeminiPanel({ data }: { data: ExecutiveDashboardData }) {
+function statusColor(status: string): string {
+  const map: Record<string, string> = {
+    open: "#f59e0b",
+    "in-progress": "#3b82f6",
+    resolved: "#10b981",
+    closed: "#6b7280",
+    pending: "#f97316",
+    rework: "#ef4444",
+    assigned: "#8b5cf6",
+  };
+  return map[status] ?? "#6b7280";
+}
+
+function severityColor(severity: string): string {
+  const map: Record<string, string> = {
+    critical: "var(--color-destructive)",
+    high: "#f97316",
+    medium: "#f59e0b",
+    low: "#10b981",
+  };
+  return map[severity] ?? "#6b7280";
+}
+
+// ─── Stat tile — clean, no glow ──────────────────────────────────────────────
+function StatTile({
+  label,
+  value,
+  hint,
+  icon: Icon,
+  accent,
+}: {
+  label: string;
+  value: React.ReactNode;
+  hint?: string;
+  icon: React.ElementType;
+  accent?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <div
+          className="size-7 rounded-lg grid place-items-center"
+          style={{ background: accent ? `color-mix(in oklab, ${accent} 12%, transparent)` : "var(--color-muted)" }}
+        >
+          <Icon className="size-3.5" style={{ color: accent ?? "var(--color-muted-foreground)" }} />
+        </div>
+      </div>
+      <div className="text-2xl font-semibold tabular-nums tracking-tight">{value}</div>
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+// ─── Status badge ─────────────────────────────────────────────────────────────
+function StatusBadge({ status }: { status: string }) {
+  const labels: Record<string, string> = {
+    open: "Open",
+    "in-progress": "In Progress",
+    resolved: "Resolved",
+    closed: "Closed",
+    pending: "Pending",
+    rework: "Rework",
+    assigned: "Assigned",
+  };
+  const color = statusColor(status);
+  return (
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold"
+      style={{
+        color,
+        background: `color-mix(in oklab, ${color} 12%, transparent)`,
+        border: `1px solid color-mix(in oklab, ${color} 25%, transparent)`,
+      }}
+    >
+      {labels[status] ?? status}
+    </span>
+  );
+}
+
+// ─── Complaint Status Bar — from real complaint intelligence data ──────────────
+function ComplaintStatusBreakdown({ data }: { data: ComplaintIntelligenceData }) {
+  const statusOrder = ["open", "assigned", "in-progress", "pending", "resolved", "closed"];
+  const statusIcons: Record<string, React.ElementType> = {
+    open: Inbox,
+    assigned: Users,
+    "in-progress": PlayCircle,
+    pending: ClipboardCheck,
+    resolved: CheckCircle2,
+    closed: XCircle,
+  };
+  const statusLabels: Record<string, string> = {
+    open: "New",
+    assigned: "Assigned",
+    "in-progress": "In Progress",
+    pending: "Pending Verification",
+    resolved: "Resolved",
+    closed: "Closed",
+  };
+
+  const total = data.summary.total;
+
+  const rows = statusOrder
+    .map((s) => {
+      const found = data.byStatus.find((b) => b.status === s);
+      return { status: s, count: found?.count ?? 0 };
+    })
+    .filter((r) => r.count > 0 || ["open", "in-progress", "pending"].includes(r.status));
+
+  if (total === 0) {
+    return (
+      <EmptyState
+        icon={<MessageSquare className="size-4" />}
+        title="No complaints yet"
+        description="Complaints submitted by citizens will appear here once the system receives reports."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {rows.map(({ status, count }) => {
+        const Icon = statusIcons[status] ?? FileText;
+        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+        const color = statusColor(status);
+        return (
+          <div key={status} className="flex items-center gap-3">
+            <div
+              className="size-7 rounded-lg grid place-items-center shrink-0"
+              style={{ background: `color-mix(in oklab, ${color} 10%, transparent)` }}
+            >
+              <Icon className="size-3.5" style={{ color }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="font-medium text-foreground">{statusLabels[status]}</span>
+                <span className="tabular-nums font-semibold" style={{ color }}>
+                  {count}
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${pct}%`, background: color }}
+                />
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Recent Complaints Feed (real data) ──────────────────────────────────────
+interface ComplaintRow {
+  _id: string;
+  title: string;
+  status: string;
+  severity: string;
+  issueType: string;
+  cityId?: string;
+  createdAt: string;
+  location?: { address?: string };
+}
+
+function RecentComplaintsFeed() {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["executive-recent-complaints"],
+    queryFn: () => complaintApi.getAll({ limit: 8, page: 1 }).then((r) => r.data.complaints as ComplaintRow[]),
+    staleTime: 30_000,
+    throwOnError: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-14 rounded-lg bg-muted/50 animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <EmptyState
+        icon={<AlertTriangle className="size-4" />}
+        title="Could not load complaints"
+        description="Check your connection or try refreshing."
+      />
+    );
+  }
+
+  const complaints = data ?? [];
+
+  if (complaints.length === 0) {
+    return (
+      <EmptyState
+        icon={<MessageSquare className="size-4" />}
+        title="No complaints on record"
+        description="When citizens file complaints they'll appear here in real time."
+      />
+    );
+  }
+
+  return (
+    <div className="divide-y divide-border/60">
+      {complaints.map((c) => (
+        <div key={c._id} className="flex items-start gap-3 py-3 first:pt-0">
+          <div
+            className="size-2 rounded-full mt-1.5 shrink-0"
+            style={{ background: severityColor(c.severity) }}
+          />
+          <div className="flex-1 min-w-0 space-y-0.5">
+            <p className="text-sm font-medium text-foreground truncate">{c.title}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground">{c.issueType}</span>
+              {c.location?.address && (
+                <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                  <MapPin className="size-2.5" />
+                  {c.location.address}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="shrink-0 flex flex-col items-end gap-1">
+            <StatusBadge status={c.status} />
+            <span className="text-[10px] text-muted-foreground">{ageLabel(c.createdAt)}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Active Alerts Feed (real data) ──────────────────────────────────────────
+interface AlertRow {
+  _id: string;
+  title: string;
+  severity: string;
+  category?: string;
+  cityId?: string;
+  area?: string;
+  createdAt: string;
+  status?: string;
+}
+
+function ActiveAlertsFeed() {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["executive-active-alerts"],
+    queryFn: () => alertApi.getActive().then((r) => r.data.alerts as AlertRow[]),
+    staleTime: 30_000,
+    throwOnError: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="h-12 rounded-lg bg-muted/50 animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <EmptyState
+        icon={<AlertTriangle className="size-4" />}
+        title="Could not load alerts"
+        description="Check your connection or try refreshing."
+      />
+    );
+  }
+
+  const alerts = (data ?? []).slice(0, 6);
+
+  if (alerts.length === 0) {
+    return (
+      <EmptyState
+        icon={<CheckCircle2 className="size-4" />}
+        title="No active alerts"
+        description="Active environmental alerts will appear here when the sensor network detects anomalies."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {alerts.map((a) => {
+        const color = severityColor(a.severity);
+        return (
+          <div
+            key={a._id}
+            className="flex items-start gap-3 p-3 rounded-lg border border-border/60 bg-card"
+          >
+            <div
+              className="size-7 rounded-lg grid place-items-center shrink-0 mt-0.5"
+              style={{ background: `color-mix(in oklab, ${color} 10%, transparent)` }}
+            >
+              <TriangleAlert className="size-3.5" style={{ color }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-foreground truncate">{a.title}</p>
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
+                {a.area && <span>{a.area}</span>}
+                {a.category && <span>· {a.category}</span>}
+              </div>
+            </div>
+            <div className="shrink-0 text-right">
+              <span
+                className="text-[10px] font-bold capitalize"
+                style={{ color }}
+              >
+                {a.severity}
+              </span>
+              <div className="text-[10px] text-muted-foreground mt-0.5">{ageLabel(a.createdAt)}</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Environmental Monitoring Panel ──────────────────────────────────────────
+function EnvironmentalMonitoringPanel({ data }: { data: ExecutiveDashboardData }) {
+  const hasNetwork = data.network.cityCount > 0;
+  const hasCityData = data.cityRankings.length > 0;
+
+  const aqiChartData = data.cityRankings.slice(0, 8).map((c) => ({
+    name: c.cityName.length > 10 ? c.cityName.slice(0, 9) + "…" : c.cityName,
+    aqi: c.aqi,
+  }));
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Environmental Monitoring</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Latest readings across monitored cities</p>
+        </div>
+        {data.generatedAt && (
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <Clock className="size-3" />
+            <span>Updated {ageLabel(data.generatedAt)}</span>
+          </div>
+        )}
+      </div>
+
+      {hasNetwork && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="text-center p-3 rounded-lg bg-muted/40 border border-border/60">
+            <div className="text-lg font-semibold tabular-nums text-foreground">{data.network.cityCount}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">Cities monitored</div>
+          </div>
+          <div className="text-center p-3 rounded-lg bg-muted/40 border border-border/60">
+            <div className="text-lg font-semibold tabular-nums text-foreground">{data.network.avgAqi}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">Avg AQI</div>
+          </div>
+          <div className="text-center p-3 rounded-lg bg-muted/40 border border-border/60">
+            <div className="text-lg font-semibold tabular-nums text-foreground">{data.network.avgWater}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">Avg WQI</div>
+          </div>
+        </div>
+      )}
+
+      {hasCityData ? (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">AQI by city</p>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={aqiChartData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: "var(--color-card)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+                cursor={{ fill: "var(--color-muted)" }}
+              />
+              <Bar dataKey="aqi" fill="#10b981" radius={[3, 3, 0, 0]} name="AQI" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <EmptyState
+          icon={<Leaf className="size-4" />}
+          title="No environmental history available"
+          description="Monitoring begins after sensors are connected and data is ingested."
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Gemini AI Brief (on-demand only) ────────────────────────────────────────
+function GeminiBriefPanel() {
   const [result, setResult] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: (
-      type: "executive-summary" | "environmental-assessment" | "risk-analysis" | "city-performance",
-    ) => commandApi.getGeminiIntelligence({ type }),
+    mutationFn: (type: "executive-summary" | "environmental-assessment" | "risk-analysis") =>
+      commandApi.getGeminiIntelligence({ type }),
     onSuccess: (res, type) => {
       setResult(
         typeof res.data.result === "string"
@@ -75,110 +482,131 @@ function GeminiPanel({ data }: { data: ExecutiveDashboardData }) {
 
   const types = [
     { key: "executive-summary" as const, label: "Executive Summary" },
-    { key: "environmental-assessment" as const, label: "Env. Assessment" },
+    { key: "environmental-assessment" as const, label: "Environmental" },
     { key: "risk-analysis" as const, label: "Risk Analysis" },
-    { key: "city-performance" as const, label: "City Performance" },
   ];
 
-  const worstCity = data.cityRankings[0];
-  const bestCity = data.cityRankings[data.cityRankings.length - 1];
-
   return (
-    <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 via-background to-background p-5 shadow-lg space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
+    <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="size-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 grid place-items-center border border-emerald-500/20">
-            <Sparkles className="size-4" />
+          <div className="size-8 rounded-lg bg-emerald-500/10 grid place-items-center border border-emerald-500/20">
+            <Sparkles className="size-4 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
-            <h3 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-2">
-              Gemini AI Operational Brief
-              <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded uppercase">
-                Active AI
-              </span>
-            </h3>
-            <p className="text-[11px] text-muted-foreground">
-              Actionable environmental & operational intelligence
-            </p>
+            <h3 className="text-sm font-semibold text-foreground">AI Operational Brief</h3>
+            <p className="text-xs text-muted-foreground">Generate an on-demand analysis</p>
           </div>
-        </div>
-
-        <div className="flex flex-wrap gap-1.5">
-          {types.map((t) => (
-            <Button
-              key={t.key}
-              size="sm"
-              variant={activeType === t.key ? "default" : "outline"}
-              className={cn(
-                "h-7 text-xs px-2.5",
-                activeType === t.key && "bg-emerald-600 text-white hover:bg-emerald-700",
-              )}
-              onClick={() => mutation.mutate(t.key)}
-              disabled={mutation.isPending}
-            >
-              {mutation.isPending && activeType === t.key ? (
-                <Loader2 className="size-3 mr-1 animate-spin" />
-              ) : null}
-              {t.label}
-            </Button>
-          ))}
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {types.map((t) => (
+          <Button
+            key={t.key}
+            size="sm"
+            variant={activeType === t.key ? "default" : "outline"}
+            className="h-7 text-xs"
+            onClick={() => mutation.mutate(t.key)}
+            disabled={mutation.isPending}
+          >
+            {mutation.isPending && activeType === t.key && (
+              <Loader2 className="size-3 mr-1.5 animate-spin" />
+            )}
+            {t.label}
+          </Button>
+        ))}
+      </div>
+
       {mutation.isPending && (
-        <div className="flex items-center justify-center gap-2.5 py-8 text-xs text-muted-foreground">
-          <Loader2 className="size-4 animate-spin text-emerald-500" />
-          <span>Generating real-time Gemini AI operational report…</span>
+        <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">
+          <Loader2 className="size-3.5 animate-spin text-emerald-500" />
+          Generating AI analysis…
         </div>
       )}
 
       {result && !mutation.isPending && (
-        <div className="space-y-3">
-          <div className="rounded-xl bg-muted/40 p-4 text-xs leading-relaxed whitespace-pre-wrap border border-border/70 text-foreground font-mono">
-            {result}
-          </div>
+        <div className="rounded-lg bg-muted/40 p-4 text-xs leading-relaxed whitespace-pre-wrap border border-border/60 text-foreground font-mono max-h-64 overflow-y-auto">
+          {result}
         </div>
       )}
 
       {!result && !mutation.isPending && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
-          <div className="p-3.5 rounded-xl bg-card border border-border/60 space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-semibold text-foreground">
-              <span className="flex items-center gap-1.5 text-destructive">
-                <AlertTriangle className="size-3.5" /> High Risk Priority
-              </span>
-              <span className="text-[10px] text-muted-foreground">AQI {worstCity?.aqi ?? "—"}</span>
-            </div>
-            <p className="text-xs font-bold">{worstCity?.cityName ?? "Industrial Sector"}</p>
-            <p className="text-[11px] text-muted-foreground">
-              Recommend immediate field unit inspection & sensor recalibration.
-            </p>
-          </div>
+        <p className="text-xs text-muted-foreground">
+          Select an analysis type above to generate a real-time Gemini AI report.
+        </p>
+      )}
+    </div>
+  );
+}
 
-          <div className="p-3.5 rounded-xl bg-card border border-border/60 space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-semibold text-foreground">
-              <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                <CheckCircle2 className="size-3.5" /> Top Performer
-              </span>
-              <span className="text-[10px] text-muted-foreground">AQI {bestCity?.aqi ?? "—"}</span>
-            </div>
-            <p className="text-xs font-bold">{bestCity?.cityName ?? "Green District"}</p>
-            <p className="text-[11px] text-muted-foreground">
-              Optimal air quality & zero pending critical complaints.
-            </p>
-          </div>
+// ─── Authority Workload (real data from complaint intelligence) ───────────────
+function AuthorityWorkloadPanel({ complaintData }: { complaintData: ComplaintIntelligenceData | undefined }) {
+  if (!complaintData) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-5">
+        <h3 className="text-sm font-semibold text-foreground mb-4">Authority Workload</h3>
+        <EmptyState
+          icon={<Users className="size-4" />}
+          title="No workload data available"
+          description="Complaint assignment data will appear here once authorities are assigned cases."
+        />
+      </div>
+    );
+  }
 
-          <div className="p-3.5 rounded-xl bg-card border border-border/60 space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-semibold text-foreground">
-              <span className="flex items-center gap-1.5 text-amber-500">
-                <Zap className="size-3.5" /> Smart Recommendation
-              </span>
-              <span className="text-[10px] text-muted-foreground">AI Auto</span>
+  const openCount = complaintData.byStatus.find((s) => s.status === "open")?.count ?? 0;
+  const inProgressCount = complaintData.byStatus.find((s) => s.status === "in-progress")?.count ?? 0;
+  const pendingCount = complaintData.byStatus.find((s) => s.status === "pending")?.count ?? 0;
+  const resolvedCount = complaintData.byStatus.find((s) => s.status === "resolved")?.count ?? 0;
+  const total = complaintData.summary.total;
+
+  const resRate = complaintData.summary.resolutionRate;
+
+  const workloadItems = [
+    { label: "Open cases", value: openCount, icon: Inbox, color: "#f59e0b" },
+    { label: "Active investigations", value: inProgressCount, icon: Activity, color: "#3b82f6" },
+    { label: "Pending approvals", value: pendingCount, icon: ClipboardCheck, color: "#f97316" },
+    { label: "Resolved", value: resolvedCount, icon: CheckCircle2, color: "#10b981" },
+  ];
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-foreground">Authority Workload</h3>
+        {total > 0 && (
+          <span className="text-xs text-muted-foreground">{total} total cases</span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {workloadItems.map(({ label, value, icon: Icon, color }) => (
+          <div
+            key={label}
+            className="p-3 rounded-lg border border-border/60 bg-muted/30 space-y-1.5"
+          >
+            <div className="flex items-center gap-1.5">
+              <Icon className="size-3.5" style={{ color }} />
+              <span className="text-[10px] text-muted-foreground">{label}</span>
             </div>
-            <p className="text-xs font-bold">Duplicate Detection Active</p>
-            <p className="text-[11px] text-muted-foreground">
-              3 complaints merged for River Basin water quality monitoring.
-            </p>
+            <div className="text-xl font-semibold tabular-nums" style={{ color: value > 0 ? color : undefined }}>
+              {value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {resRate > 0 && (
+        <div className="pt-2 border-t border-border/60">
+          <div className="flex items-center justify-between text-xs mb-1.5">
+            <span className="text-muted-foreground">Resolution rate</span>
+            <span className="font-semibold text-foreground">{resRate}%</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full rounded-full bg-emerald-500 transition-all duration-700"
+              style={{ width: `${Math.min(100, resRate)}%` }}
+            />
           </div>
         </div>
       )}
@@ -186,645 +614,465 @@ function GeminiPanel({ data }: { data: ExecutiveDashboardData }) {
   );
 }
 
-// ─── Main Mission Control Dashboard ─────────────────────────────────────────
+// ─── Activity Timeline (real data: complaints + alerts) ───────────────────────
+interface ActivityItem {
+  id: string;
+  icon: React.ElementType;
+  label: string;
+  detail: string;
+  timestamp: number;
+  color: string;
+}
+
+function ActivityTimeline() {
+  const { data: recentComplaints, isLoading: complaintsLoading } = useQuery({
+    queryKey: ["executive-activity-complaints"],
+    queryFn: () => complaintApi.getAll({ limit: 5 }).then((r) => r.data.complaints as ComplaintRow[]),
+    staleTime: 30_000,
+    throwOnError: false,
+  });
+
+  const { data: activeAlerts, isLoading: alertsLoading } = useQuery({
+    queryKey: ["executive-activity-alerts"],
+    queryFn: () => alertApi.getActive().then((r) => r.data.alerts as AlertRow[]),
+    staleTime: 30_000,
+    throwOnError: false,
+  });
+
+  const isLoading = complaintsLoading || alertsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="flex items-start gap-3">
+            <div className="size-7 rounded-lg bg-muted/50 animate-pulse shrink-0" />
+            <div className="flex-1 space-y-1">
+              <div className="h-3 bg-muted/50 rounded animate-pulse w-1/2" />
+              <div className="h-2.5 bg-muted/40 rounded animate-pulse w-3/4" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const complaintItems: ActivityItem[] = (recentComplaints ?? []).map((c) => ({
+    id: `c-${c._id}`,
+    icon: c.status === "resolved" ? CheckCircle2 : MessageSquare,
+    label: c.status === "resolved" ? "Complaint resolved" : c.status === "in-progress" ? "Complaint in progress" : "Complaint submitted",
+    detail: c.title,
+    timestamp: new Date(c.createdAt).getTime(),
+    color: statusColor(c.status),
+  }));
+
+  const alertItems: ActivityItem[] = (activeAlerts ?? []).slice(0, 3).map((a) => ({
+    id: `a-${a._id}`,
+    icon: TriangleAlert,
+    label: "Environmental alert",
+    detail: a.title,
+    timestamp: new Date(a.createdAt).getTime(),
+    color: severityColor(a.severity),
+  }));
+
+  const items = [...complaintItems, ...alertItems]
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, 8);
+
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        icon={<Activity className="size-4" />}
+        title="No recent activity"
+        description="Complaint submissions, assignments, and environmental alerts will appear here."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <div key={item.id} className="flex items-start gap-3">
+            <div
+              className="size-7 rounded-lg grid place-items-center shrink-0 mt-0.5"
+              style={{ background: `color-mix(in oklab, ${item.color} 10%, transparent)` }}
+            >
+              <Icon className="size-3.5" style={{ color: item.color }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-foreground">{item.label}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{item.detail}</p>
+            </div>
+            <div className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
+              {formatDistanceToNow(item.timestamp, { addSuffix: true })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── High-risk cities summary ─────────────────────────────────────────────────
+function HighRiskCitiesPanel({ data }: { data: ExecutiveDashboardData }) {
+  const cities = data.highRiskCities.slice(0, 5);
+
+  if (cities.length === 0) {
+    return (
+      <EmptyState
+        icon={<Globe className="size-4" />}
+        title="No high-risk cities detected"
+        description="Cities with elevated AQI or risk scores will appear here."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {cities.map((city) => {
+        const aqiColor =
+          city.aqi > 150
+            ? "var(--color-destructive)"
+            : city.aqi > 100
+              ? "#f97316"
+              : city.aqi > 50
+                ? "#f59e0b"
+                : "#10b981";
+
+        return (
+          <div
+            key={city.cityId}
+            className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-border/60 bg-card"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className="size-2 rounded-full shrink-0"
+                style={{ background: aqiColor }}
+              />
+              <span className="text-sm font-medium text-foreground truncate">{city.cityName}</span>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="text-right">
+                <div className="text-[10px] text-muted-foreground">AQI</div>
+                <div className="text-xs font-semibold tabular-nums" style={{ color: aqiColor }}>
+                  {city.aqi}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-[10px] text-muted-foreground">Risk</div>
+                <div
+                  className="text-xs font-semibold tabular-nums"
+                  style={{
+                    color: city.risk > 65 ? "var(--color-destructive)" : city.risk > 40 ? "#f59e0b" : "#10b981",
+                  }}
+                >
+                  {city.risk}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Main Mission Control Dashboard ──────────────────────────────────────────
 export function ExecutiveOverview() {
   const [currentTimeStr, setCurrentTimeStr] = useState("");
 
   useEffect(() => {
-    const updateTime = () => {
+    const update = () => {
       const now = new Date();
       setCurrentTimeStr(
-        now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) +
+        now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
           " · " +
-          now.toLocaleDateString([], { month: "short", day: "numeric" }),
+          now.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" }),
       );
     };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
   }, []);
 
   const {
-    data: res,
-    isLoading,
+    data: execRes,
+    isLoading: execLoading,
     refetch,
+    dataUpdatedAt,
   } = useQuery({
     queryKey: ["command-executive-dashboard"],
     queryFn: () => commandApi.getExecutiveDashboard(),
     staleTime: 5 * 60 * 1000,
+    throwOnError: false,
   });
 
-  const { data: complaintRes } = useQuery({
+  const { data: complaintRes, isLoading: complaintLoading } = useQuery({
     queryKey: ["command-complaint-intelligence"],
     queryFn: () => commandApi.getComplaintIntelligence(),
     staleTime: 5 * 60 * 1000,
+    throwOnError: false,
   });
 
-  const d = res?.data as ExecutiveDashboardData | undefined;
+  const execData = execRes?.data as ExecutiveDashboardData | undefined;
   const complaintData = complaintRes?.data as ComplaintIntelligenceData | undefined;
-  const activeAssignments =
-    complaintData?.byStatus.find((s) => s.status === "in-progress")?.count ?? 12;
-  const resolvedToday = complaintData?.byStatus.find((s) => s.status === "resolved")?.count ?? 28;
+  const isLoading = execLoading || complaintLoading;
+
+  // Pull real counts from complaint intelligence, no invented fallbacks
+  const openCount = complaintData?.byStatus.find((s) => s.status === "open")?.count;
+  const inProgressCount = complaintData?.byStatus.find((s) => s.status === "in-progress")?.count;
+  const pendingCount = complaintData?.byStatus.find((s) => s.status === "pending")?.count;
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-80 space-y-3">
-        <Loader2 className="size-8 animate-spin text-emerald-500" />
-        <p className="text-xs font-medium text-muted-foreground">
-          Initializing Mission Control Dashboard…
-        </p>
+      <div className="flex flex-col items-center justify-center h-72 gap-3">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">Loading dashboard…</p>
       </div>
     );
   }
 
-  if (!d || ("empty" in d && Boolean((d as Record<string, unknown>).empty))) {
-    return (
-      <Panel>
-        <p className="text-sm text-muted-foreground text-center py-12">
-          No environmental operational data available. Run data ingestion scheduler or seed the
-          database.
-        </p>
-      </Panel>
-    );
-  }
-
-  const scoreData = [
-    {
-      label: "Environmental Health Index",
-      value: d.scores.environmentalHealthIndex,
-      target: 85,
-      color: "bg-emerald-500",
-      text: "text-emerald-500",
-    },
-    {
-      label: "Smart City Score",
-      value: d.scores.smartCityScore,
-      target: 90,
-      color: "bg-blue-500",
-      text: "text-blue-500",
-    },
-    {
-      label: "Sustainability Score",
-      value: d.scores.sustainabilityScore,
-      target: 80,
-      color: "bg-teal-500",
-      text: "text-teal-500",
-    },
-    {
-      label: "Environmental Risk Score",
-      value: d.scores.environmentalRiskScore,
-      target: 20,
-      color: "bg-amber-500",
-      text: "text-amber-500",
-    },
-  ];
-
-  const aqiChartData = d.cityRankings.slice(0, 8).map((c) => ({
-    name: c.cityName.length > 10 ? c.cityName.slice(0, 9) + "…" : c.cityName,
-    aqi: c.aqi,
-    risk: c.risk,
-    eco: c.eco,
-  }));
-
-  const worstCity = d.highRiskCities[0] ?? d.cityRankings[0];
+  const lastRefreshed = dataUpdatedAt
+    ? formatDistanceToNow(dataUpdatedAt, { addSuffix: true })
+    : null;
 
   return (
-    <div className="space-y-6 pb-8">
-      {/* ── HERO SECTION: Compact Operations Headquarters Header ──────────── */}
-      <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs relative overflow-hidden">
-        {/* Background glow accent */}
-        <div className="absolute -right-20 -top-20 size-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+    <div className="space-y-6 pb-10 max-w-screen-xl mx-auto">
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1 max-w-3xl">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
-                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Authority Operations Center
-              </span>
-              <span className="text-[11px] text-muted-foreground font-mono">{currentTimeStr}</span>
-            </div>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">
-              Mission Control
-            </h1>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Real-time operational awareness across complaints, environmental monitoring, AI
-              intelligence, and city infrastructure.
-            </p>
+      {/* ── PAGE HEADER ─────────────────────────────────────────────────────── */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2">
+            <div className="size-1.5 rounded-full bg-emerald-500" />
+            <span className="text-xs text-muted-foreground font-medium">{currentTimeStr}</span>
           </div>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">Mission Control</h1>
+          <p className="text-sm text-muted-foreground">
+            Operational dashboard · {execData?.network.cityCount ?? "—"} cities monitored
+          </p>
+        </div>
 
-          {/* Hero Metadata Control Bar */}
-          <div className="flex items-center flex-wrap gap-2.5 pt-1 lg:pt-0">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-muted/50 border border-border/60">
-              <Globe className="size-4 text-emerald-500 shrink-0" />
-              <div>
-                <div className="text-[10px] uppercase font-bold text-muted-foreground leading-none">
-                  Cities Monitored
-                </div>
-                <div className="text-xs font-extrabold text-foreground mt-0.5">
-                  {d.network.cityCount} Connected
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-muted/50 border border-border/60">
-              <Activity className="size-4 text-emerald-500 shrink-0" />
-              <div>
-                <div className="text-[10px] uppercase font-bold text-muted-foreground leading-none">
-                  System Status
-                </div>
-                <div className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1">
-                  <span className="size-1.5 rounded-full bg-emerald-500" /> Operational
-                </div>
-              </div>
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              className="h-9 px-3 text-xs border-border/70 hover:bg-muted/60"
-            >
-              <RefreshCw className="size-3.5 mr-1.5 text-emerald-500" />
-              Refresh
-            </Button>
-          </div>
+        <div className="flex items-center gap-2">
+          {lastRefreshed && (
+            <span className="text-xs text-muted-foreground hidden sm:inline">
+              Refreshed {lastRefreshed}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            className="h-8 text-xs"
+          >
+            <RefreshCw className="size-3.5 mr-1.5" />
+            Refresh
+          </Button>
+          <Button asChild variant="outline" size="sm" className="h-8 text-xs">
+            <Link to="/map">
+              <Globe className="size-3.5 mr-1.5" />
+              Open Smart Map
+              <ExternalLink className="size-3 ml-1.5" />
+            </Link>
+          </Button>
         </div>
       </div>
 
-      {/* ── 1. OPERATIONAL PRIORITIES ──────────────────────────────────────── */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs uppercase tracking-wider font-extrabold text-muted-foreground flex items-center gap-2">
-            <Shield className="size-3.5 text-emerald-500" />
-            1. Operational Priorities
+      {/* ── 1. WHAT NEEDS ATTENTION — top-level action stats ────────────────── */}
+      {execData ? (
+        <section className="space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            What needs attention
           </h2>
-          <span className="text-[11px] text-muted-foreground">High Attention Items</span>
-        </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <StatTile
+              label="Active alerts"
+              value={execData.alerts.active > 0 ? execData.alerts.active : "—"}
+              hint={execData.alerts.active > 0 ? "Require immediate response" : "No active alerts"}
+              icon={AlertTriangle}
+              accent={execData.alerts.active > 5 ? "var(--color-destructive)" : execData.alerts.active > 0 ? "#f97316" : undefined}
+            />
+            <StatTile
+              label="Open complaints"
+              value={openCount !== undefined ? openCount : "—"}
+              hint={openCount !== undefined && openCount > 0 ? "Awaiting assignment" : openCount === 0 ? "Queue is clear" : "No data"}
+              icon={Inbox}
+              accent={openCount !== undefined && openCount > 0 ? "#f59e0b" : undefined}
+            />
+            <StatTile
+              label="In progress"
+              value={inProgressCount !== undefined ? inProgressCount : "—"}
+              hint="Active investigations"
+              icon={Activity}
+              accent={inProgressCount !== undefined && inProgressCount > 0 ? "#3b82f6" : undefined}
+            />
+            <StatTile
+              label="Pending verification"
+              value={pendingCount !== undefined ? pendingCount : "—"}
+              hint="Awaiting authority sign-off"
+              icon={CalendarClock}
+              accent={pendingCount !== undefined && pendingCount > 0 ? "#f97316" : undefined}
+            />
+          </div>
+        </section>
+      ) : (
+        <section>
+          <div className="rounded-xl border border-border bg-card p-6">
+            <EmptyState
+              icon={<Shield className="size-4" />}
+              title="Operational data unavailable"
+              description="Could not reach the backend. Make sure the server is running and try refreshing."
+              action={
+                <Button size="sm" variant="outline" onClick={() => refetch()} className="mt-1">
+                  <RefreshCw className="size-3.5 mr-1.5" />
+                  Try again
+                </Button>
+              }
+            />
+          </div>
+        </section>
+      )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            label="Critical Alerts"
-            value={d.alerts.active}
-            accent={d.alerts.active > 5 ? "destructive" : "warning"}
-            icon={<AlertTriangle className="size-4 text-destructive" />}
-            hint="Active critical incidents requiring response"
-          />
-
-          <StatCard
-            label="Open Complaints"
-            value={d.complaints.open}
-            accent="warning"
-            icon={<MessageSquare className="size-4 text-amber-500" />}
-            hint="Awaiting investigation or assignment"
-          />
-
-          <StatCard
-            label="Active Assignments"
-            value={activeAssignments}
-            accent="info"
-            icon={<Activity className="size-4 text-blue-500" />}
-            hint="Complaints in progress with field units"
-          />
-
-          <StatCard
-            label="Resolved Today"
-            value={resolvedToday}
-            accent="success"
-            icon={<CheckCircle2 className="size-4 text-emerald-500" />}
-            hint="Verified & closed within last 24h"
-          />
-        </div>
-      </section>
-
-      {/* ── 2. MISSION CONTROL: Active Work Queue & Escalations ─────────────── */}
+      {/* ── 2. COMPLAINT MANAGEMENT ─────────────────────────────────────────── */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs uppercase tracking-wider font-extrabold text-muted-foreground flex items-center gap-2">
-            <Zap className="size-3.5 text-emerald-500" />
-            2. Mission Control Work Queue & Escalations
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Complaint management
           </h2>
           <Link
             to="/command-center"
-            className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+            className="text-xs font-medium text-foreground/70 hover:text-foreground flex items-center gap-1 transition-colors"
           >
-            Full Work Queue <ArrowUpRight className="size-3" />
+            Full work queue <ArrowUpRight className="size-3" />
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Active Work Queue Table Preview */}
-          <div className="lg:col-span-2 rounded-2xl border border-border/80 bg-card p-5 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-border/60">
-              <div>
-                <h3 className="text-sm font-bold text-foreground">High Priority Incident Queue</h3>
-                <p className="text-[11px] text-muted-foreground">
-                  Urgent complaints requiring immediate authority review
-                </p>
-              </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                Action Required
-              </span>
-            </div>
-
-            <div className="divide-y divide-border/50">
-              {[
-                {
-                  id: "GRN-9402",
-                  title: "Industrial Chemical Effluent Release",
-                  location: "Sector 4 Industrial Basin",
-                  severity: "Critical",
-                  time: "12m ago",
-                  status: "Escalated",
-                },
-                {
-                  id: "GRN-9398",
-                  title: "Uncontrolled Air Pollution Hazard",
-                  location: "North Ridge Highway Corridor",
-                  severity: "High",
-                  time: "34m ago",
-                  status: "In Progress",
-                },
-                {
-                  id: "GRN-9385",
-                  title: "Unauthorized Waste Dumping Site",
-                  location: "East Riverfront Wetlands",
-                  severity: "High",
-                  time: "1h ago",
-                  status: "Pending Unit",
-                },
-                {
-                  id: "GRN-9371",
-                  title: "Noise Pollution Violation Peak",
-                  location: "Downtown Commercial Hub",
-                  severity: "Medium",
-                  time: "2h ago",
-                  status: "Investigating",
-                },
-              ].map((item) => (
-                <div
-                  key={item.id}
-                  className="py-3 flex items-center justify-between gap-4 hover:bg-muted/30 transition-colors px-1 rounded-lg"
-                >
-                  <div className="min-w-0 flex-1 space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-[10px] font-bold text-muted-foreground">
-                        {item.id}
-                      </span>
-                      <span
-                        className={cn(
-                          "px-1.5 py-0.2 text-[9px] font-bold rounded",
-                          item.severity === "Critical"
-                            ? "bg-destructive/15 text-destructive"
-                            : item.severity === "High"
-                              ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                              : "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-                        )}
-                      >
-                        {item.severity}
-                      </span>
-                    </div>
-                    <p className="text-xs font-semibold text-foreground truncate">{item.title}</p>
-                    <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                      <MapPin className="size-2.5 text-muted-foreground" /> {item.location}
-                    </p>
-                  </div>
-
-                  <div className="text-right shrink-0 space-y-1">
-                    <span className="text-[10px] text-muted-foreground block">{item.time}</span>
-                    <span className="inline-block px-2 py-0.5 text-[10px] font-semibold bg-muted text-foreground rounded border border-border/60">
-                      {item.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+        <div className="grid lg:grid-cols-3 gap-4">
+          {/* Status breakdown */}
+          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">Status breakdown</h3>
+            {complaintData ? (
+              <ComplaintStatusBreakdown data={complaintData} />
+            ) : (
+              <EmptyState
+                icon={<MessageSquare className="size-4" />}
+                title="No complaint data"
+                description="Complaint status breakdown will load from the backend."
+              />
+            )}
           </div>
 
-          {/* Today's Workload Breakdown */}
-          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs space-y-4 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between pb-3 border-b border-border/60">
-                <h3 className="text-sm font-bold text-foreground">Operational Capacity</h3>
-                <span className="text-[10px] font-mono text-muted-foreground">Response Teams</span>
-              </div>
-
-              <div className="space-y-4 pt-3">
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <span className="font-medium text-foreground">Response Unit Allocation</span>
-                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                      82% Assigned
-                    </span>
-                  </div>
-                  <Progress value={82} className="h-2" />
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <span className="font-medium text-foreground">SLA Verification Pipeline</span>
-                    <span className="font-mono font-bold text-blue-500">94% On-Track</span>
-                  </div>
-                  <Progress value={94} className="h-2" />
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <span className="font-medium text-foreground">Field Inspection Fleet</span>
-                    <span className="font-mono font-bold text-amber-500">14 Active Units</span>
-                  </div>
-                  <Progress value={70} className="h-2" />
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-border/60">
-              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs space-y-1">
-                <div className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                  <CheckSquare className="size-3.5" /> Workload Optimal
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Zero bottleneck detected across field dispatch units.
-                </p>
-              </div>
-            </div>
+          {/* Recent complaints feed */}
+          <div className="lg:col-span-2 rounded-xl border border-border bg-card p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">Recent complaints</h3>
+            <RecentComplaintsFeed />
           </div>
         </div>
       </section>
 
-      {/* ── 3. NETWORK INTELLIGENCE ────────────────────────────────────────── */}
+      {/* ── 3. AUTHORITY WORKLOAD + ACTIVITY ────────────────────────────────── */}
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs uppercase tracking-wider font-extrabold text-muted-foreground flex items-center gap-2">
-            <Gauge className="size-3.5 text-emerald-500" />
-            3. Network Intelligence
-          </h2>
-          <span className="text-[11px] text-muted-foreground">Environmental Performance Index</span>
-        </div>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Authority workload & activity
+        </h2>
+        <div className="grid lg:grid-cols-2 gap-4">
+          <AuthorityWorkloadPanel complaintData={complaintData} />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {scoreData.map((item) => (
-            <div
-              key={item.label}
-              className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs space-y-3"
-            >
-              <div className="flex items-start justify-between">
-                <span className="text-xs font-semibold text-muted-foreground leading-tight">
-                  {item.label}
-                </span>
-                <span className={cn("text-xl font-extrabold font-mono", item.text)}>
-                  {item.value}
-                </span>
-              </div>
-              <Progress value={item.value} className="h-2" />
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                <span>Target: {item.target}/100</span>
-                <span className="font-bold text-foreground">
-                  {item.value >= item.target ? "Optimal" : "Requires Focus"}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── 4. ENVIRONMENTAL MONITORING ────────────────────────────────────── */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs uppercase tracking-wider font-extrabold text-muted-foreground flex items-center gap-2">
-            <Radio className="size-3.5 text-emerald-500" />
-            4. Environmental Monitoring Console
-          </h2>
-          <span className="text-[11px] text-muted-foreground">Sensors & Analytics</span>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* AQI City Bar Chart */}
-          <div className="lg:col-span-2 rounded-2xl border border-border/80 bg-card p-5 shadow-xs space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-border/60">
-              <div>
-                <h3 className="text-sm font-bold text-foreground">
-                  City AQI & Environmental Risk Comparison
-                </h3>
-                <p className="text-[11px] text-muted-foreground">
-                  Real-time sensor telemetry across network cities
-                </p>
-              </div>
-            </div>
-
-            <ResponsiveContainer width="100%" height={230}>
-              <BarChart data={aqiChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
-                />
-                <YAxis tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }} />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--color-card)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                />
-                <Bar
-                  dataKey="aqi"
-                  fill="var(--color-emerald-500, #10b981)"
-                  radius={[4, 4, 0, 0]}
-                  name="AQI Index"
-                />
-                <Bar
-                  dataKey="risk"
-                  fill="#ef4444"
-                  radius={[4, 4, 0, 0]}
-                  name="Risk Factor"
-                  opacity={0.7}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Sensor Summary Grid */}
-          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs space-y-4 flex flex-col justify-between">
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold text-foreground pb-2 border-b border-border/60">
-                Network Averages
-              </h3>
-
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-muted/40 border border-border/60">
-                  <div className="flex items-center gap-2">
-                    <Activity className="size-3.5 text-emerald-500" />
-                    <span className="text-xs font-semibold text-foreground">Avg. AQI</span>
-                  </div>
-                  <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                    {d.network.avgAqi} AQI
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-muted/40 border border-border/60">
-                  <div className="flex items-center gap-2">
-                    <Leaf className="size-3.5 text-blue-500" />
-                    <span className="text-xs font-semibold text-foreground">Water Quality</span>
-                  </div>
-                  <span className="text-xs font-mono font-bold text-blue-500">
-                    {d.network.avgWater} / 100
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-muted/40 border border-border/60">
-                  <div className="flex items-center gap-2">
-                    <Globe className="size-3.5 text-teal-500" />
-                    <span className="text-xs font-semibold text-foreground">Carbon Index</span>
-                  </div>
-                  <span className="text-xs font-mono font-bold text-teal-500">
-                    {d.network.avgCarbon} tCO₂e
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-xl bg-muted/50 border border-border/60 text-center">
-              <span className="text-[11px] font-medium text-muted-foreground">
-                98.4% Telemetry Uptime across 1,240 Sensors
-              </span>
-            </div>
+          {/* Activity timeline */}
+          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">Activity timeline</h3>
+            <ActivityTimeline />
           </div>
         </div>
       </section>
 
-      {/* ── 5. GEOGRAPHIC INTELLIGENCE: Responsive Live Map Console ────────── */}
+      {/* ── 4. ACTIVE ALERTS + HIGH-RISK CITIES ─────────────────────────────── */}
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs uppercase tracking-wider font-extrabold text-muted-foreground flex items-center gap-2">
-            <Layers className="size-3.5 text-emerald-500" />
-            5. Geographic Intelligence
-          </h2>
-          <Link
-            to="/map"
-            className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
-          >
-            Open Interactive Smart Map <ExternalLink className="size-3" />
-          </Link>
-        </div>
-
-        <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-md relative group">
-          {/* Map Preview Header Bar */}
-          <div className="p-4 bg-muted/40 border-b border-border/60 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MapPin className="size-4 text-emerald-500" />
-              <span className="text-xs font-bold text-foreground">
-                Live Spatial GIS Map Overlay
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-              <span className="size-2 rounded-full bg-emerald-500 animate-ping" />
-              <span>Active Hazard Nodes: {d.highRiskCities.length}</span>
-            </div>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Active alerts & risk areas
+        </h2>
+        <div className="grid lg:grid-cols-2 gap-4">
+          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">Active alerts</h3>
+            <ActiveAlertsFeed />
           </div>
 
-          {/* Map Console Background */}
-          <div className="h-64 sm:h-80 w-full relative bg-slate-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
-            {/* SVG Grid Overlay */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b15_1px,transparent_1px),linear-gradient(to_bottom,#1e293b15_1px,transparent_1px)] bg-[size:24px_24px]" />
-            <div className="absolute inset-0 bg-radial-at-c from-emerald-500/10 via-transparent to-transparent pointer-events-none" />
+          {execData ? (
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h3 className="text-sm font-semibold text-foreground">High-risk cities</h3>
+              <HighRiskCitiesPanel data={execData} />
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border bg-card p-5">
+              <EmptyState
+                icon={<Globe className="size-4" />}
+                title="City risk data unavailable"
+                description="City rankings will appear here once the backend is reachable."
+              />
+            </div>
+          )}
+        </div>
+      </section>
 
-            {/* Map Node Pin Markers */}
-            <div className="relative z-10 space-y-3 max-w-md">
-              <div className="size-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 grid place-items-center mx-auto shadow-xl">
-                <Globe className="size-6 animate-pulse" />
-              </div>
-              <h3 className="text-base font-bold text-white">
-                Geographic Command & Control Active
-              </h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Real-time GIS map displaying monitored nodes in{" "}
-                <span className="text-emerald-400 font-semibold">
-                  {worstCity?.cityName ?? "Monitored Zones"}
-                </span>{" "}
-                and satellite telemetry.
+      {/* ── 5. ENVIRONMENTAL MONITORING ─────────────────────────────────────── */}
+      {execData ? (
+        <section className="space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Environmental monitoring
+          </h2>
+          <EnvironmentalMonitoringPanel data={execData} />
+        </section>
+      ) : null}
+
+      {/* ── 6. GEOGRAPHIC INTELLIGENCE ──────────────────────────────────────── */}
+      <section className="space-y-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Geographic intelligence
+        </h2>
+        <div className="rounded-xl border border-border bg-card p-5">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <h3 className="text-sm font-semibold text-foreground">Smart Map</h3>
+              <p className="text-xs text-muted-foreground">
+                View monitored locations, sensor data, and complaint hotspots on the interactive map.
               </p>
-
-              <Link
-                to="/map"
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg transition-all"
-              >
-                Launch Smart Map Console <ArrowUpRight className="size-3.5" />
+            </div>
+            <Button asChild size="sm" className="shrink-0">
+              <Link to="/map">
+                Open Smart Map
+                <ArrowUpRight className="size-3.5 ml-1.5" />
               </Link>
-            </div>
+            </Button>
           </div>
+          {execData && execData.highRiskCities.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-border/60">
+              <p className="text-xs text-muted-foreground mb-2">
+                {execData.highRiskCities.length} high-risk location{execData.highRiskCities.length !== 1 ? "s" : ""} flagged on the network
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {execData.highRiskCities.slice(0, 6).map((c) => (
+                  <div
+                    key={c.cityId}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border/60 bg-muted/30 text-xs"
+                  >
+                    <MapPin className="size-2.5 text-muted-foreground" />
+                    <span className="font-medium text-foreground">{c.cityName}</span>
+                    <span className="text-muted-foreground">AQI {c.aqi}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* ── 6. AUTHORITY PERFORMANCE ────────────────────────────────────────── */}
+      {/* ── 7. AI OPERATIONAL BRIEF ─────────────────────────────────────────── */}
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs uppercase tracking-wider font-extrabold text-muted-foreground flex items-center gap-2">
-            <CheckSquare className="size-3.5 text-emerald-500" />
-            6. Authority Performance
-          </h2>
-          <span className="text-[11px] text-muted-foreground">
-            SLA Governance & Response Metrics
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <div className="p-3.5 rounded-2xl border border-border/80 bg-card shadow-xs space-y-1">
-            <span className="text-[10px] uppercase font-bold text-muted-foreground">
-              Response Time
-            </span>
-            <div className="text-lg font-extrabold font-mono text-emerald-600 dark:text-emerald-400">
-              18.4 min
-            </div>
-            <span className="text-[10px] text-muted-foreground">Avg. dispatch speed</span>
-          </div>
-
-          <div className="p-3.5 rounded-2xl border border-border/80 bg-card shadow-xs space-y-1">
-            <span className="text-[10px] uppercase font-bold text-muted-foreground">
-              Resolution Rate
-            </span>
-            <div className="text-lg font-extrabold font-mono text-blue-500">94.2%</div>
-            <span className="text-[10px] text-muted-foreground">30-day average</span>
-          </div>
-
-          <div className="p-3.5 rounded-2xl border border-border/80 bg-card shadow-xs space-y-1">
-            <span className="text-[10px] uppercase font-bold text-muted-foreground">
-              Pending Verification
-            </span>
-            <div className="text-lg font-extrabold font-mono text-amber-500">14 Items</div>
-            <span className="text-[10px] text-muted-foreground">Awaiting inspection</span>
-          </div>
-
-          <div className="p-3.5 rounded-2xl border border-border/80 bg-card shadow-xs space-y-1">
-            <span className="text-[10px] uppercase font-bold text-muted-foreground">
-              SLA Compliance
-            </span>
-            <div className="text-lg font-extrabold font-mono text-emerald-500">98.7%</div>
-            <span className="text-[10px] text-muted-foreground">Within target window</span>
-          </div>
-
-          <div className="col-span-2 sm:col-span-1 p-3.5 rounded-2xl border border-border/80 bg-card shadow-xs space-y-1">
-            <span className="text-[10px] uppercase font-bold text-muted-foreground">
-              Efficiency Score
-            </span>
-            <div className="text-lg font-extrabold font-mono text-teal-500">91.5 / 100</div>
-            <span className="text-[10px] text-muted-foreground">Operational index</span>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 7. AI OPERATIONAL BRIEF ────────────────────────────────────────── */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs uppercase tracking-wider font-extrabold text-muted-foreground flex items-center gap-2">
-            <Sparkles className="size-3.5 text-emerald-500" />
-            7. AI Operational Brief
-          </h2>
-          <span className="text-[11px] text-muted-foreground">Powered by Gemini AI</span>
-        </div>
-
-        <GeminiPanel data={d} />
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          AI operational brief
+        </h2>
+        <GeminiBriefPanel />
       </section>
     </div>
   );

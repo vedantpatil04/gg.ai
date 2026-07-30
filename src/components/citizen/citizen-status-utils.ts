@@ -1,0 +1,104 @@
+import { format, isValid } from "date-fns";
+import type { ComplaintStatus, ComplaintSeverity } from "./citizen-queries";
+
+// ─── Safe date formatting ─────────────────────────────────────────────────────
+
+export function safeFormatDate(
+  dateVal: string | Date | number | undefined | null,
+  formatStr: string,
+  fallback = "—",
+): string {
+  if (!dateVal) return fallback;
+  try {
+    const d = new Date(dateVal);
+    if (!isValid(d) || isNaN(d.getTime())) return fallback;
+    return format(d, formatStr);
+  } catch {
+    return fallback;
+  }
+}
+
+// ─── Status presentation ──────────────────────────────────────────────────────
+
+export const STATUS_META: Record<
+  ComplaintStatus,
+  { label: string; tone: "muted" | "warning" | "info" | "success" | "destructive" | "primary" }
+> = {
+  pending: { label: "Pending", tone: "warning" },
+  "in-progress": { label: "In Progress", tone: "info" },
+  resolved: { label: "Awaiting Verification", tone: "primary" },
+  rework: { label: "In Progress", tone: "info" }, // citizen sees rework as in-progress
+  rejected: { label: "Rejected", tone: "destructive" },
+  closed: { label: "Closed", tone: "success" },
+};
+
+export function getStatusMeta(status: string) {
+  return (
+    STATUS_META[status as ComplaintStatus] ?? { label: status ?? "", tone: "muted" as const }
+  );
+}
+
+// ─── Severity presentation ────────────────────────────────────────────────────
+
+export const SEVERITY_META: Record<
+  ComplaintSeverity,
+  { label: string; tone: "muted" | "warning" | "destructive" | "info" }
+> = {
+  low: { label: "Low", tone: "muted" },
+  medium: { label: "Medium", tone: "info" },
+  high: { label: "High", tone: "warning" },
+  critical: { label: "Critical", tone: "destructive" },
+};
+
+export function getSeverityMeta(severity: string) {
+  return (
+    SEVERITY_META[severity as ComplaintSeverity] ?? { label: severity ?? "", tone: "muted" as const }
+  );
+}
+
+// ─── Issue type labels ────────────────────────────────────────────────────────
+
+const ISSUE_TYPE_LABELS: Record<string, string> = {
+  air_pollution: "Air Pollution",
+  water_contamination: "Water Contamination",
+  open_burning: "Open Burning",
+  noise: "Noise",
+  waste_dumping: "Waste Dumping",
+  chemical_spill: "Chemical Spill",
+  other: "Other",
+};
+
+export function humanizeIssueType(issueType: string): string {
+  return ISSUE_TYPE_LABELS[issueType] ?? issueType ?? "";
+}
+
+// ─── Timeline event labels ────────────────────────────────────────────────────
+
+const EVENT_LABELS: Record<string, string> = {
+  created: "Complaint Submitted",
+  assigned: "Assigned to Authority",
+  reassigned: "Reassigned",
+  status_change: "Status Updated",
+  image_added: "Evidence Uploaded",
+  image_removed: "Evidence Removed",
+  note_updated: "Notes Updated",
+  resolved: "Resolution Submitted",
+  rejected: "Complaint Rejected",
+  verified: "Resolution Verified",
+  closed: "Complaint Closed",
+  rework_requested: "Returned for Review",
+  resubmitted: "Resolution Resubmitted",
+};
+
+export function humanizeEventType(eventType: string): string {
+  return EVENT_LABELS[eventType] ?? eventType ?? "";
+}
+
+// ─── Month labels ─────────────────────────────────────────────────────────────
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+export function monthLabel(month: number): string {
+  return MONTHS[month - 1] ?? String(month ?? "");
+}
+

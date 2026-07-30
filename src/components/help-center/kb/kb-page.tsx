@@ -45,10 +45,8 @@ export function KnowledgeBasePage() {
 
   const goHome = useCallback(() => setView({ type: "home" }), []);
 
-  const goList = useCallback(
-    (categoryId?: string, query?: string) => setView({ type: "list", categoryId, query }),
-    [],
-  );
+  const goList = useCallback((categoryId?: string, query?: string) =>
+    setView({ type: "list", categoryId, query }), []);
 
   const goCategory = useCallback((categoryId: string) => {
     if (categoryId === "all") {
@@ -58,7 +56,8 @@ export function KnowledgeBasePage() {
     }
   }, []);
 
-  const goArticle = useCallback((articleId: string) => setView({ type: "article", articleId }), []);
+  const goArticle = useCallback((articleId: string) =>
+    setView({ type: "article", articleId }), []);
 
   // ── Render current view ───────────────────────────────────────────────────
 
@@ -70,7 +69,7 @@ export function KnowledgeBasePage() {
       viewKey = "home";
       content = (
         <KbHome
-          onSearch={(q) => goList(undefined, q)}
+          onSearch={q => goList(undefined, q)}
           onArticleClick={goArticle}
           onCategoryClick={goCategory}
         />
@@ -92,10 +91,14 @@ export function KnowledgeBasePage() {
       const cat = KB_CATEGORIES_BY_ID[view.categoryId];
       viewKey = `cat-${view.categoryId}`;
       content = cat ? (
-        <KbCategoryPage category={cat} onBack={goHome} onArticleClick={goArticle} />
+        <KbCategoryPage
+          category={cat}
+          onBack={goHome}
+          onArticleClick={goArticle}
+        />
       ) : (
         <KbHome
-          onSearch={(q) => goList(undefined, q)}
+          onSearch={q => goList(undefined, q)}
           onArticleClick={goArticle}
           onCategoryClick={goCategory}
         />
@@ -107,10 +110,14 @@ export function KnowledgeBasePage() {
       const article = KB_ARTICLES_BY_ID[view.articleId];
       viewKey = `article-${view.articleId}`;
       content = article ? (
-        <KbArticlePage article={article} onBack={goHome} onArticleClick={goArticle} />
+        <KbArticlePage
+          article={article}
+          onBack={goHome}
+          onArticleClick={goArticle}
+        />
       ) : (
         <KbHome
-          onSearch={(q) => goList(undefined, q)}
+          onSearch={q => goList(undefined, q)}
           onArticleClick={goArticle}
           onCategoryClick={goCategory}
         />
@@ -123,7 +130,10 @@ export function KnowledgeBasePage() {
     <HelpCenterLayout onSearchClick={() => setGlobalSearchOpen(true)}>
       <PageTransition viewKey={viewKey}>{content}</PageTransition>
 
-      <HelpSearchBar open={globalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
+      <HelpSearchBar
+        open={globalSearchOpen}
+        onClose={() => setGlobalSearchOpen(false)}
+      />
     </HelpCenterLayout>
   );
 }

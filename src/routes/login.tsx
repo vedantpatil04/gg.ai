@@ -398,7 +398,16 @@ function LoginPage() {
     try {
       const loggedInUser = await login(email, password, role);
 
-      console.log("LOGIN USER", loggedInUser);
+      // ── Handle 2FA response
+      if ("requires2FA" in loggedInUser) {
+        navigate({
+          to: "/verify-2fa",
+          search: {
+            challengeToken: loggedInUser.challengeToken,
+          },
+        });
+        return; // stop here, don't redirect to dashboard yet
+      }
 
       navigate({
         to: getRoleLandingPage(loggedInUser.role),

@@ -54,8 +54,19 @@ interface AuthState {
   authMessage: string | null;
 }
 
+export type LoginResult =
+  | {
+      requires2FA: true;
+      challengeToken: string;
+    }
+  | AuthUser;
+
 interface AuthContextValue extends AuthState {
-  login: (email: string, password: string, portal: LoginPortal) => Promise<AuthUser>;
+  login: (
+    email: string,
+    password: string,
+    portal: LoginPortal,
+  ) => Promise<LoginResult>;
   signup: (data: {
     name: string;
     email: string;
@@ -154,13 +165,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshUser, navigate]);
 
   // ─── Login ─────────────────────────────────────────────────────────────────
-  const login = useCallback(async (email: string, password: string, portal: LoginPortal) => {
-    const res = await authApi.login({ email, password, portal });
-    const { user, accessToken, refreshToken } = res.data;
-    setTokens(accessToken, refreshToken);
-    setState({ user, isLoading: false, isAuthenticated: true, authMessage: null });
-    return user;
-  }, []);
+  const login = useCallback(
+    async (email: string, password: string, portal: LoginPortal): Promise<LoginResult> => {
+      const res = await authApi.login({ email, password, portal });
+
+      // Handle 2FA challenge response
+      if (res.requires2FA) {
+        return {
+          requires2FA: true,
+          challengeToken: res.challengeToken,
+        };
+      }
+
+      const { user, accessToken, refreshToken } = res.data;
+
+      setTokens(accessToken, refreshToken);
+      setState({
+        user,
+        isLoading: false,
+        isAuthenticated: true,
+        authMessage: null,
+      });
+
+      return user;
+    },
+    [],
+  );
 
   // ─── Signup ────────────────────────────────────────────────────────────────
   const signup = useCallback(

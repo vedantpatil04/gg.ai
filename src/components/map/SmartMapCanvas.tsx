@@ -18,6 +18,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import type { GeoPosition, GeolocationStatus } from "@/hooks/use-geolocation";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import Supercluster from "supercluster";
@@ -97,7 +98,7 @@ type MarkerHtmlOpts = Omit<Parameters<typeof buildMarkerHTML>[0], "selected">;
 // base-map-config.ts registers the OSM dark style at import time (above).
 // Future phases add Streets / Satellite / Terrain to that file; this line
 // is the only change needed in SmartMapCanvas to pick them up.
-export const OSM_STYLE =
+const OSM_STYLE =
   baseMapRegistry.active?.style ??
   ({
     version: 8 as const,
@@ -205,8 +206,6 @@ interface Props {
   city: City;
   hotspots: MapLocation[];
   mapData: CityMapData | null;
-  /** Water-body features (rivers/lakes/reservoirs) for the "water" layer. Resolved
-   *  with the same API-or-offline-fallback logic as `hotspots`, one level up. */
   waterBodies: WaterBody[];
   activeLayers: LayerId[];
   selectedId: string | null;
@@ -224,6 +223,17 @@ interface Props {
   onTimeRangeChange?: (v: TimeRange) => void;
   hasHistory?: boolean;
   historyData?: CityHistoryDay[];
+  // ── Phase 10: geolocation ────────────────────────────────────────────────
+  /** Current GPS position — null until granted */
+  userPosition?: GeoPosition | null;
+  /** Geolocation permission/status */
+  geoStatus?: GeolocationStatus;
+  /** True when live tracking (watchPosition) is active */
+  isTracking?: boolean;
+  /** Request a single position fix */
+  onLocate?: () => void;
+  /** Toggle between one-shot and continuous tracking */
+  onToggleTracking?: () => void;
 }
 
 const TIME_RANGE_OPTS: { id: TimeRange; label: string }[] = [
@@ -255,16 +265,20 @@ export function SmartMapCanvas({
   onTimeRangeChange,
   hasHistory = false,
   historyData = [],
+  userPosition = null,
+  geoStatus = "idle",
+  isTracking = false,
+  onLocate,
+  onToggleTracking,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
-  // Phase 3 (Stability & Performance): id → {element, html-build options}
-  // for every non-cluster sensor/AQI marker currently on the map. Lets the
-  // selection-highlight effect below patch just the previously-selected and
-  // newly-selected markers' innerHTML in place, instead of the old behavior
-  // of tearing down and recreating every marker on the map on every
-  // selection change (see the clustering effect's dependency array).
+  // Phase 10 (Section 2): Animated user location marker
+  // • A DOM-based maplibregl.Marker holds the blue dot + pulse ring
+  // • A MapLibre GeoJSON source + fill layer renders the accuracy circle
+  // • Both are managed together in the userPosition effect below
+  const userMarkerRef = useRef<maplibregl.Marker | null>(null);
   const markerElsRef = useRef<Map<string, { el: HTMLElement; opts: MarkerHtmlOpts }>>(new Map());
   const prevSelectedIdRef = useRef<string | null>(null);
   const compMarkersRef = useRef<maplibregl.Marker[]>([]);
@@ -497,6 +511,183 @@ export function SmartMapCanvas({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Phase 10: Animated user location marker ──────────────────────────────────
+  // Renders a blue dot + pulsing accuracy ring when `userPosition` is set.
+  // The dot is a DOM-based maplibregl.Marker (stays above tile layers and
+  // all sensor clusters); the accuracy circle is a filled GeoJSON polygon
+  // managed through a dedicated MapLibre source so it renders cheaply as a
+  // GPU-composited layer beneath the dot.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
+    const SOURCE_ID = "user-accuracy-circle";
+    const LAYER_ID = "user-accuracy-fill";
+
+    if (!userPosition) {
+      // Remove marker and accuracy circle when position is lost
+      userMarkerRef.current?.remove();
+      userMarkerRef.current = null;
+      if (map.getLayer(LAYER_ID)) map.removeLayer(LAYER_ID);
+      if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
+      return;
+    }
+
+    // ── Accuracy circle as GeoJSON polygon ────────────────────────────────
+    // Generates a 64-vertex circle in WGS-84 space approximating the GPS
+    // accuracy radius around the user's position.
+    const { lat, lng, accuracy } = userPosition;
+    const EARTH_R = 6_378_137;
+    const dLat = (accuracy / EARTH_R) * (180 / Math.PI);
+    const dLng = dLat / Math.cos((lat * Math.PI) / 180);
+    const N = 64;
+    const ring: [number, number][] = Array.from({ length: N + 1 }, (_, i) => {
+      const angle = (i / N) * 2 * Math.PI;
+      return [lng + dLng * Math.cos(angle), lat + dLat * Math.sin(angle)];
+    });
+    const circleGeoJSON: maplibregl.SourceSpecification = {
+      type: "geojson",
+      data: {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            geometry: { type: "Polygon", coordinates: [ring] },
+            properties: {},
+          },
+        ],
+      },
+    };
+    if (map.getSource(SOURCE_ID)) {
+      (map.getSource(SOURCE_ID) as maplibregl.GeoJSONSource).setData(
+        (circleGeoJSON as maplibregl.GeoJSONSourceSpecification).data as Parameters<
+          maplibregl.GeoJSONSource["setData"]
+        >[0],
+      );
+    } else {
+      map.addSource(SOURCE_ID, circleGeoJSON);
+      map.addLayer({
+        id: LAYER_ID,
+        type: "fill",
+        source: SOURCE_ID,
+        paint: {
+          "fill-color": "#3b82f6",
+          "fill-opacity": 0.12,
+        },
+      });
+      // Accuracy circle outline
+      map.addLayer({
+        id: `${LAYER_ID}-outline`,
+        type: "line",
+        source: SOURCE_ID,
+        paint: {
+          "line-color": "#3b82f6",
+          "line-opacity": 0.35,
+          "line-width": 1.5,
+        },
+      });
+    }
+
+    // ── Animated blue dot DOM marker ─────────────────────────────────────────
+    const existingMarker = userMarkerRef.current;
+    if (existingMarker) {
+      existingMarker.setLngLat([lng, lat]);
+    } else {
+      const el = document.createElement("div");
+      el.className = "user-location-marker";
+      el.style.cssText = `
+        position: relative;
+        width: 18px;
+        height: 18px;
+        cursor: default;
+      `;
+
+      // Outer pulse ring (CSS animation)
+      const pulse = document.createElement("div");
+      pulse.style.cssText = `
+        position: absolute;
+        inset: -6px;
+        border-radius: 50%;
+        border: 2px solid #3b82f6;
+        opacity: 0;
+        animation: user-loc-pulse 2s ease-out infinite;
+      `;
+
+      // Inner dot
+      const dot = document.createElement("div");
+      dot.style.cssText = `
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: #3b82f6;
+        border: 2.5px solid white;
+        box-shadow: 0 2px 8px rgba(59,130,246,0.6);
+      `;
+
+      // Heading indicator (arrow) — only if heading is available
+      if (userPosition.heading != null) {
+        const arrow = document.createElement("div");
+        arrow.style.cssText = `
+          position: absolute;
+          top: -8px;
+          left: 50%;
+          transform: translateX(-50%) rotate(${userPosition.heading}deg);
+          width: 0;
+          height: 0;
+          border-left: 4px solid transparent;
+          border-right: 4px solid transparent;
+          border-bottom: 7px solid #3b82f6;
+          transform-origin: bottom center;
+        `;
+        el.appendChild(arrow);
+      }
+
+      el.appendChild(pulse);
+      el.appendChild(dot);
+
+      // Inject the keyframe animation once if not already present
+      if (!document.getElementById("user-loc-keyframes")) {
+        const style = document.createElement("style");
+        style.id = "user-loc-keyframes";
+        style.textContent = `
+          @keyframes user-loc-pulse {
+            0%   { transform: scale(0.7); opacity: 0.8; }
+            70%  { transform: scale(2.0); opacity: 0; }
+            100% { transform: scale(2.0); opacity: 0; }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+        .setLngLat([lng, lat])
+        .addTo(map);
+      userMarkerRef.current = marker;
+    }
+  }, [userPosition, mapReady]);
+
+  // ── Phase 10: fly to user position ───────────────────────────────────────────
+  // Separate from the marker effect so a map.flyTo() doesn't re-trigger the
+  // (expensive) circle polygon rebuild on every position update.
+  const prevUserPositionRef = useRef<GeoPosition | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !userPosition) return;
+    // Only fly if this is the first fix (prev was null) or if the user
+    // explicitly triggered a one-shot locate (isTracking is false and
+    // position just changed from null).
+    const prev = prevUserPositionRef.current;
+    if (!prev) {
+      map.flyTo({
+        center: [userPosition.lng, userPosition.lat],
+        zoom: Math.max(map.getZoom(), 14),
+        duration: 1_200,
+        easing: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
+      });
+    }
+    prevUserPositionRef.current = userPosition;
+  }, [userPosition, mapReady]);
 
   // ── Fly to city ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -880,14 +1071,9 @@ export function SmartMapCanvas({
   const zoomIn = () => mapRef.current?.zoomIn({ duration: 280 });
   const zoomOut = () => mapRef.current?.zoomOut({ duration: 280 });
   const resetNorth = () => mapRef.current?.rotateTo(0, { duration: 480 });
-  const locateMe = () =>
-    navigator.geolocation?.getCurrentPosition((p) =>
-      mapRef.current?.flyTo({
-        center: [p.coords.longitude, p.coords.latitude],
-        zoom: 15,
-        duration: 900,
-      }),
-    );
+  // Phase 10: locateMe now delegates to the parent-provided callback (which
+  // drives useGeolocation); long-press → track toggle handled in the JSX.
+  const locateMe = onLocate ?? (() => {});
   const resetCamera = () => {
     const c = mapData?.center ?? { lat: city.lat, lng: city.lng };
     mapRef.current?.flyTo({
@@ -1784,14 +1970,52 @@ export function SmartMapCanvas({
           </button>
           <div className="h-px bg-border/40 mx-1" />
 
-          {/* Locate */}
+          {/* Locate / Track — Phase 10 ───────────────────────────────────
+              Click: one-shot locate. Long press (≥500 ms): toggle continuous
+              tracking. Button colour communicates permission state:
+                grey = idle/not requested, blue = granted/tracking,
+                red = denied/unavailable/timeout, spinner = requesting */}
           <button
-            onClick={locateMe}
-            title="Locate me"
-            aria-label="Locate me"
-            className="size-10 grid place-items-center hover:bg-white/5 rounded-lg transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            onClick={
+              geoStatus === "requesting" ? undefined : isTracking ? onToggleTracking : locateMe
+            }
+            onContextMenu={(e) => {
+              e.preventDefault();
+              onToggleTracking?.();
+            }}
+            title={
+              geoStatus === "denied"
+                ? "Location permission denied"
+                : geoStatus === "unavailable"
+                  ? "Location unavailable"
+                  : geoStatus === "timeout"
+                    ? "Location timed out — click to retry"
+                    : isTracking
+                      ? "Tracking your position (click to stop)"
+                      : "Locate me (right-click or long-press to track)"
+            }
+            aria-label={isTracking ? "Stop location tracking" : "Locate me"}
+            aria-pressed={isTracking}
+            className={cn(
+              "size-10 grid place-items-center rounded-lg transition-all active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+              geoStatus === "denied" || geoStatus === "unavailable" || geoStatus === "timeout"
+                ? "text-destructive hover:bg-destructive/10"
+                : geoStatus === "granted" || isTracking
+                  ? "bg-blue-500/15 text-blue-400 hover:bg-blue-500/25"
+                  : "hover:bg-white/5 text-muted-foreground",
+            )}
           >
-            <Locate className="size-3.5" />
+            {geoStatus === "requesting" ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : isTracking ? (
+              // Pulsing dot inside Locate icon to signal live tracking
+              <span className="relative">
+                <Locate className="size-3.5" />
+                <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-blue-400 animate-pulse" />
+              </span>
+            ) : (
+              <Locate className="size-3.5" />
+            )}
           </button>
 
           <div className="h-px bg-border/40 mx-1" />

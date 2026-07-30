@@ -1,6 +1,13 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutGrid, LayoutList, ChevronDown, Filter, X, SlidersHorizontal } from "lucide-react";
+import {
+  LayoutGrid,
+  LayoutList,
+  ChevronDown,
+  Filter,
+  X,
+  SlidersHorizontal,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DUR_MD, EASE_OUT } from "@/lib/motion";
 import { SectionHeader, EmptyState } from "../help-card";
@@ -70,7 +77,7 @@ function SelectDropdown<T extends string>({
     <div className={cn("relative", className)}>
       <select
         value={value ?? ""}
-        onChange={(e) => onChange((e.target.value as T) || null)}
+        onChange={e => onChange((e.target.value as T) || null)}
         className={cn(
           "appearance-none w-full pl-3 pr-8 py-2 text-xs rounded-lg border border-border bg-card text-foreground",
           "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50",
@@ -79,10 +86,8 @@ function SelectDropdown<T extends string>({
         )}
       >
         <option value="">{placeholder}</option>
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
       </select>
       <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
@@ -107,8 +112,8 @@ function ArticleListToolbar({
   onViewModeChange,
   resultCount,
 }: ToolbarProps) {
-  const categoryOptions = KB_CATEGORIES.map((c) => ({ value: c.id, label: c.title }));
-  const difficultyOptions = DIFFICULTY_OPTIONS.map((d) => ({ value: d, label: d }));
+  const categoryOptions = KB_CATEGORIES.map(c => ({ value: c.id, label: c.title }));
+  const difficultyOptions = DIFFICULTY_OPTIONS.map(d => ({ value: d, label: d }));
 
   const hasActiveFilters = !!filters.categoryId || !!filters.difficulty;
 
@@ -118,7 +123,7 @@ function ArticleListToolbar({
       <div className="flex gap-2">
         <KbSearchInput
           value={filters.query}
-          onChange={(q) => onFiltersChange({ query: q })}
+          onChange={q => onFiltersChange({ query: q })}
           placeholder="Filter articles…"
           className="flex-1"
         />
@@ -128,9 +133,7 @@ function ArticleListToolbar({
             aria-pressed={viewMode === "grid"}
             className={cn(
               "p-2.5 transition-colors duration-150",
-              viewMode === "grid"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted",
+              viewMode === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
             )}
             aria-label="Grid view"
           >
@@ -141,9 +144,7 @@ function ArticleListToolbar({
             aria-pressed={viewMode === "list"}
             className={cn(
               "p-2.5 transition-colors duration-150",
-              viewMode === "list"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted",
+              viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
             )}
             aria-label="List view"
           >
@@ -158,21 +159,21 @@ function ArticleListToolbar({
         <SelectDropdown
           value={filters.categoryId}
           options={categoryOptions}
-          onChange={(v) => onFiltersChange({ categoryId: v })}
+          onChange={v => onFiltersChange({ categoryId: v })}
           placeholder="All Categories"
           className="w-44"
         />
         <SelectDropdown
           value={filters.difficulty as Difficulty | null}
           options={difficultyOptions}
-          onChange={(v) => onFiltersChange({ difficulty: v as Difficulty })}
+          onChange={v => onFiltersChange({ difficulty: v as Difficulty })}
           placeholder="All Levels"
           className="w-36"
         />
         <SelectDropdown
           value={filters.sort}
           options={SORT_OPTIONS}
-          onChange={(v) => onFiltersChange({ sort: v ?? "popular" })}
+          onChange={v => onFiltersChange({ sort: v ?? "popular" })}
           placeholder="Sort by"
           className="w-44"
         />
@@ -189,10 +190,7 @@ function ArticleListToolbar({
             <Filter className="size-3 text-muted-foreground" />
             {filters.categoryId && (
               <FilterChip
-                label={
-                  KB_CATEGORIES.find((c) => c.id === filters.categoryId)?.title ??
-                  filters.categoryId
-                }
+                label={KB_CATEGORIES.find(c => c.id === filters.categoryId)?.title ?? filters.categoryId}
                 active
                 onRemove={() => onFiltersChange({ categoryId: null })}
               />
@@ -240,9 +238,9 @@ export function KbArticleList({
   const results = useMemo(() => filterArticles(filters), [filters]);
 
   const patchFilters = (patch: Partial<KbFilterState>) =>
-    setFilters((prev) => ({ ...prev, ...patch }));
+    setFilters(prev => ({ ...prev, ...patch }));
 
-  const currentCategoryTitle = KB_CATEGORIES.find((c) => c.id === filters.categoryId)?.title;
+  const currentCategoryTitle = KB_CATEGORIES.find(c => c.id === filters.categoryId)?.title;
 
   return (
     <div className="p-4 md:p-6 max-w-[1200px] mx-auto pb-16">

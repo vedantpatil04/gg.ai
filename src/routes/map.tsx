@@ -9,7 +9,7 @@ import {
   type MapComplaint,
 } from "@/lib/api/environmental.api";
 import { CITY_MAP_DATA } from "@/lib/map/city-map-data";
-import { aqiBand, trendSeries, forecastSeries } from "@/lib/mock-data";
+import { aqiBand, trendSeries, forecastSeries, CITIES } from "@/lib/mock-data";
 import {
   LAYERS,
   type LayerId,
@@ -32,6 +32,7 @@ import { AirQualityPanel } from "@/components/map/AirQualityPanel";
 import { HazardIntelligencePanel } from "@/components/map/HazardIntelligencePanel";
 import { AiCommandPanel } from "@/components/map/AiCommandPanel";
 import { DigitalTwinPanel } from "@/components/map/DigitalTwinPanel";
+import { useGeolocation } from "@/hooks/use-geolocation";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -244,7 +245,42 @@ function TrendBadge({ direction, value }: { direction: "up" | "down" | "stable";
 const EMPTY_HISTORY: never[] = [];
 
 function MapPage() {
-  const { city, isApiConnected } = useCity();
+  const { city, isApiConnected, setCityId } = useCity();
+
+  // ── Phase 10: Live geolocation ────────────────────────────────────────────
+  const geo = useGeolocation();
+
+  // Auto-switch city when the user shares their location (Section 5).
+  // Finds the nearest supported GreenGuard city by Haversine distance
+  // and switches to it — silently, with no prompt, once per position fix.
+  const lastAutoSwitchRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!geo.position || !setCityId) return;
+    const { lat, lng } = geo.position;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    let nearestId = CITIES[0].id;
+    let nearestDist = Infinity;
+    for (const c of CITIES) {
+      const dLat = toRad(c.lat - lat);
+      const dLng = toRad(c.lng - lng);
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat)) * Math.cos(toRad(c.lat)) * Math.sin(dLng / 2) ** 2;
+      const dist = 6_371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearestId = c.id;
+      }
+    }
+    // Only switch once per unique nearest city (avoids thrash on GPS drift)
+    if (nearestId !== lastAutoSwitchRef.current) {
+      lastAutoSwitchRef.current = nearestId;
+      setCityId(nearestId);
+    }
+  }, [geo.position, setCityId]);
+
+  // Nearest sensor/complaint computed after filteredHotspots and allComplaints
+  // are declared below — see "Nearby Environmental Intel" memos further down.
   const [active, setActive] = useState<LayerId[]>(["aqi", "heat"]);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
@@ -503,6 +539,41 @@ function MapPage() {
     if (!q) return hotspots;
     return hotspots.filter((h) => h.name.toLowerCase().includes(q));
   }, [hotspots, search]);
+
+  // Phase 10: Nearby Environmental Intelligence — nearest sensor and open
+  // complaint to the user's GPS position (Section bonus). Placed here because
+  // both filteredHotspots and allComplaints are now in scope.
+  const nearestSensor = useMemo(() => {
+    if (!geo.position || !filteredHotspots.length) return null;
+    const { lat, lng } = geo.position;
+    let nearest = filteredHotspots[0];
+    let nearestDist = Infinity;
+    for (const h of filteredHotspots) {
+      const d = Math.hypot(h.latitude - lat, h.longitude - lng);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearest = h;
+      }
+    }
+    return { sensor: nearest, distKm: nearestDist * 111 };
+  }, [geo.position, filteredHotspots]);
+
+  const nearestComplaint = useMemo(() => {
+    if (!geo.position || !allComplaints.length) return null;
+    const { lat, lng } = geo.position;
+    const open = allComplaints.filter((c) => c.status !== "resolved" && c.lat && c.lng);
+    if (!open.length) return null;
+    let nearest = open[0];
+    let nearestDist = Infinity;
+    for (const c of open) {
+      const d = Math.hypot((c.lat ?? 0) - lat, (c.lng ?? 0) - lng);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearest = c;
+      }
+    }
+    return { complaint: nearest, distKm: nearestDist * 111 };
+  }, [geo.position, allComplaints]);
 
   const band = aqiBand(city.aqi);
   const sensorsOnline = hotspots.filter((h) => h.sensor).length;
@@ -779,7 +850,149 @@ function MapPage() {
           onTimeRangeChange={setTimeRange}
           hasHistory={hasHistory}
           historyData={historyResp?.data?.history ?? EMPTY_HISTORY}
+          userPosition={geo.position}
+          geoStatus={geo.status}
+          isTracking={geo.isTracking}
+          onLocate={geo.locate}
+          onToggleTracking={geo.isTracking ? geo.stopTracking : geo.startTracking}
         />
+
+        {/* ══════════════════════════════════════════════════════════════════
+            NEARBY ENVIRONMENTAL INTELLIGENCE (Phase 10, Section bonus)
+            Appears as a compact floating card above the mobile sheet /
+            tablet bottom panel when a GPS position has been granted.
+            Shows the nearest sensor, AQI at that sensor, the nearest
+            open complaint, and the user's GPS accuracy tier — making
+            the map feel personally relevant rather than just centred.
+        ═════════════════════════════════════════════════════════════════════ */}
+        <AnimatePresence>
+          {geo.position && (nearestSensor || nearestComplaint) && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute left-3 right-3 sm:left-4 sm:right-auto sm:w-80 z-30"
+              style={{
+                bottom: `calc(${isMobile ? "var(--nb-bottom, 116px)" : "4rem"} + 0.75rem)`,
+              }}
+            >
+              <div
+                className="rounded-2xl p-3 flex flex-col gap-2"
+                style={{
+                  background: "var(--panel-bg)",
+                  border: "1px solid var(--panel-border)",
+                  boxShadow: "var(--panel-shadow)",
+                }}
+              >
+                {/* Header */}
+                <div className="flex items-center gap-2">
+                  <span
+                    className="size-6 rounded-lg grid place-items-center shrink-0"
+                    style={{ background: "oklch(0.55 0.18 240 / 0.18)" }}
+                  >
+                    <MapPin className="size-3.5 text-blue-400" />
+                  </span>
+                  <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground flex-1">
+                    Nearby Environmental Intelligence
+                  </span>
+                  <span
+                    className="text-[7.5px] font-medium px-1.5 py-0.5 rounded-full"
+                    style={{
+                      background:
+                        geo.position.accuracyTier === "excellent" ||
+                        geo.position.accuracyTier === "good"
+                          ? "color-mix(in oklab, var(--color-success) 14%, transparent)"
+                          : "color-mix(in oklab, var(--color-warning) 14%, transparent)",
+                      color:
+                        geo.position.accuracyTier === "excellent" ||
+                        geo.position.accuracyTier === "good"
+                          ? "var(--color-success)"
+                          : "var(--color-warning)",
+                    }}
+                  >
+                    GPS {geo.position.accuracyTier} ±{Math.round(geo.position.accuracy)}m
+                  </span>
+                </div>
+
+                {/* Nearest sensor */}
+                {nearestSensor && (
+                  <div
+                    className="flex items-center gap-2.5 rounded-xl px-3 py-2"
+                    style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}
+                  >
+                    <Activity className="size-3.5 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[9px] font-semibold truncate">
+                        {nearestSensor.sensor.name}
+                      </div>
+                      <div className="text-[8px] text-muted-foreground/70">
+                        Nearest sensor ·{" "}
+                        {nearestSensor.distKm < 1
+                          ? `${Math.round(nearestSensor.distKm * 1000)} m`
+                          : `${nearestSensor.distKm.toFixed(1)} km`}
+                      </div>
+                    </div>
+                    <div>
+                      <div
+                        className="text-[13px] font-bold tabular-nums"
+                        style={{ color: band.color }}
+                      >
+                        {nearestSensor.sensor.level ?? city.aqi}
+                      </div>
+                      <div className="text-[7px] text-muted-foreground/60 text-right">AQI</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Nearest open complaint */}
+                {nearestComplaint && (
+                  <div
+                    className="flex items-center gap-2.5 rounded-xl px-3 py-2"
+                    style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}
+                  >
+                    <AlertTriangle className="size-3.5 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[9px] font-semibold truncate">
+                        {nearestComplaint.complaint.title}
+                      </div>
+                      <div className="text-[8px] text-muted-foreground/70">
+                        Nearby complaint ·{" "}
+                        {nearestComplaint.distKm < 1
+                          ? `${Math.round(nearestComplaint.distKm * 1000)} m`
+                          : `${nearestComplaint.distKm.toFixed(1)} km`}
+                      </div>
+                    </div>
+                    <span
+                      className="text-[7.5px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                      style={{
+                        background:
+                          nearestComplaint.complaint.severity === "critical"
+                            ? "color-mix(in oklab, var(--color-destructive) 16%, transparent)"
+                            : "color-mix(in oklab, var(--color-warning) 16%, transparent)",
+                        color:
+                          nearestComplaint.complaint.severity === "critical"
+                            ? "var(--color-destructive)"
+                            : "var(--color-warning)",
+                      }}
+                    >
+                      {nearestComplaint.complaint.severity}
+                    </span>
+                  </div>
+                )}
+
+                {/* Geo error messages */}
+                {(geo.status === "denied" ||
+                  geo.status === "unavailable" ||
+                  geo.status === "timeout") && (
+                  <div className="text-[8.5px] text-muted-foreground/70 text-center py-0.5">
+                    {geo.statusMessage}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ════════════════════════════════════════════════════════════════════
             INTELLIGENCE PANEL — one element, responsive per breakpoint:

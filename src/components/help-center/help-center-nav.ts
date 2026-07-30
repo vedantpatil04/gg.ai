@@ -38,7 +38,6 @@ export const HELP_NAV_ITEMS: HelpNavItem[] = [
     label: "Tutorials & Guides",
     icon: GraduationCap,
     to: "/help/tutorials",
-    comingSoon: true,
   },
   {
     id: "support",

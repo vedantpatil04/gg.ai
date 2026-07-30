@@ -4,13 +4,10 @@ import bcrypt from "bcryptjs";
 export type UserRole = "citizen" | "authority" | "administrator";
 export type Gender = "male" | "female" | "other" | "prefer_not_to_say";
 
-// Approval status for role-gated login (currently enforced for the
-// "authority" role only — see Phase 1.1: Backend Authentication & Registration
-// Rules). Defaults to "approved" so pre-existing accounts created before this
-// field was introduced are never accidentally locked out; the signup
-// controller explicitly overrides this to "pending" for new Authority
-// registrations.
 export type ApprovalStatus = "approved" | "pending" | "rejected";
+
+// Phase 4 — Authority availability/status
+export type AuthorityAvailability = "available" | "busy" | "on_leave" | "inactive";
 
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
@@ -42,12 +39,8 @@ export interface IUser extends Document {
   profileUpdatedAt?: Date;
 
   // ─── Security Center Phase 1: data foundation ──────────────────────────
-  // isVerified (above) already represents "email verified"; these add the
-  // supporting timestamps rather than duplicating the boolean itself.
   emailVerifiedAt?: Date;
   verificationSentAt?: Date;
-  // `phone` (above) already represents the phone number; phoneVerified is
-  // the only new piece of state needed alongside it.
   phoneVerified: boolean;
   lastPasswordChangedAt?: Date;
   securityUpdatedAt?: Date;
@@ -56,10 +49,30 @@ export interface IUser extends Document {
 
   // ─── Security Center Phase 9: 2FA / TOTP ────────────────────────────────
   twoFactorEnabled: boolean;
-  twoFactorSecret?: string; // base32 TOTP secret; only set after successful setup
-  twoFactorPendingSecret?: string; // temporary secret during setup, cleared after verification
+  twoFactorSecret?: string;
+  twoFactorPendingSecret?: string;
   twoFactorBackupCodes: Array<{ hash: string; used: boolean }>;
   twoFactorBackupCodesGeneratedAt?: Date;
+
+  // ─── Phase 4: Authority Enterprise Fields ────────────────────────────────
+  // Employee / HR identity
+  employeeId?: string;
+  department?: string;
+  designation?: string;
+  // Multi-city assignment
+  assignedCities: string[];   // list of cityId strings
+  primaryCity?: string;       // single cityId
+  specializations: string[];  // e.g. ["air_pollution", "water_contamination"]
+  // Workforce state
+  availability: AuthorityAvailability;
+  // Lifecycle events log (immutable append-only)
+  lifecycleEvents: Array<{
+    event: string;
+    description: string;
+    performedBy?: string;
+    performedByName?: string;
+    at: Date;
+  }>;
 
   createdAt: Date;
   updatedAt: Date;
@@ -94,7 +107,6 @@ const UserSchema = new Schema<IUser>(
       enum: ["citizen", "authority", "administrator"],
       default: "citizen",
     },
-    // See ApprovalStatus type above for why this defaults to "approved".
     approvalStatus: {
       type: String,
       enum: ["approved", "pending", "rejected"],
@@ -120,7 +132,7 @@ const UserSchema = new Schema<IUser>(
     refreshTokens: { type: [String], select: false, default: [] },
     lastLogin: { type: Date },
 
-    // ─── Security Center Phase 1: data foundation ────────────────────────
+    // ─── Security Center Phase 1 ──────────────────────────────────────────
     emailVerifiedAt: { type: Date },
     verificationSentAt: { type: Date },
     phoneVerified: { type: Boolean, default: false },
@@ -139,6 +151,32 @@ const UserSchema = new Schema<IUser>(
       select: false,
     },
     twoFactorBackupCodesGeneratedAt: { type: Date, select: false },
+
+    // ─── Phase 4: Authority Enterprise Fields ────────────────────────────
+    employeeId: { type: String, trim: true, sparse: true },
+    department: { type: String, trim: true },
+    designation: { type: String, trim: true },
+    assignedCities: { type: [String], default: [] },
+    primaryCity: { type: String, trim: true },
+    specializations: { type: [String], default: [] },
+    availability: {
+      type: String,
+      enum: ["available", "busy", "on_leave", "inactive"],
+      default: "available",
+    },
+    lifecycleEvents: {
+      type: [
+        {
+          event: { type: String, required: true },
+          description: { type: String, required: true },
+          performedBy: { type: String },
+          performedByName: { type: String },
+          at: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+      select: false,
+    },
   },
   {
     timestamps: true,
@@ -168,44 +206,19 @@ UserSchema.methods.comparePassword = async function (candidatePassword: string):
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-/**
- * Whether this account is currently allowed to authenticate, under the
- * Authority approval gate introduced in Phase 1.1. Citizen and
- * Administrator accounts are always eligible; an Authority account is only
- * eligible once approvalStatus is "approved".
- *
- * Centralized here (Phase 1.4 hardening) so login(), refreshToken(), and
- * the authenticate() middleware share one source of truth instead of three
- * independent copies of the same condition that could silently drift out
- * of sync.
- */
 export function isEligibleToAuthenticate(user: Pick<IUser, "role" | "approvalStatus">): boolean {
   return user.role !== "authority" || user.approvalStatus === "approved";
 }
 
-/**
- * Human-readable reason a currently-ineligible Authority account can't log
- * in yet. Only meaningful when isEligibleToAuthenticate(user) is false.
- */
 export function authorityApprovalMessage(user: Pick<IUser, "approvalStatus">): string {
   return user.approvalStatus === "rejected"
     ? "Your Authority account registration was not approved. Contact an administrator for details."
     : "Your Authority account is pending administrator approval.";
 }
 
-/**
- * Failed-login lockout policy (Security Center Phase 1). Kept as named
- * constants, in one place, so login() and any future callers agree on the
- * same thresholds instead of hardcoding magic numbers per call site.
- */
 export const MAX_FAILED_LOGIN_ATTEMPTS = 5;
-export const ACCOUNT_LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+export const ACCOUNT_LOCK_DURATION_MS = 15 * 60 * 1000;
 
-/**
- * Whether this account is currently locked out due to failed login
- * attempts. Mirrors the isEligibleToAuthenticate pattern above — centralized
- * so it can be reused anywhere lockout needs checking, not just login().
- */
 export function isAccountLocked(user: Pick<IUser, "accountLockedUntil">): boolean {
   return !!user.accountLockedUntil && user.accountLockedUntil.getTime() > Date.now();
 }
@@ -214,5 +227,8 @@ UserSchema.index({ email: 1 });
 UserSchema.index({ role: 1 });
 UserSchema.index({ city: 1 });
 UserSchema.index({ role: 1, approvalStatus: 1 });
+UserSchema.index({ role: 1, isActive: 1 });
+UserSchema.index({ assignedCities: 1 });
+UserSchema.index({ employeeId: 1 }, { sparse: true });
 
 export const User = mongoose.model<IUser>("User", UserSchema);

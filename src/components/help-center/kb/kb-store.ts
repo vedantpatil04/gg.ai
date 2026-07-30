@@ -30,9 +30,9 @@ export function useBookmarks() {
   const [ids, setIds] = useState<string[]>(() => readLS<string[]>(BOOKMARK_KEY, []));
 
   const toggle = useCallback((articleId: string) => {
-    setIds((prev) => {
+    setIds(prev => {
       const next = prev.includes(articleId)
-        ? prev.filter((id) => id !== articleId)
+        ? prev.filter(id => id !== articleId)
         : [articleId, ...prev];
       writeLS(BOOKMARK_KEY, next);
       return next;
@@ -50,8 +50,8 @@ export function useRecentlyViewed() {
   const [ids, setIds] = useState<string[]>(() => readLS<string[]>(RECENT_KEY, []));
 
   const addRecent = useCallback((articleId: string) => {
-    setIds((prev) => {
-      const next = [articleId, ...prev.filter((id) => id !== articleId)].slice(0, MAX_RECENT);
+    setIds(prev => {
+      const next = [articleId, ...prev.filter(id => id !== articleId)].slice(0, MAX_RECENT);
       writeLS(RECENT_KEY, next);
       return next;
     });
@@ -69,12 +69,12 @@ export interface ProgressEntry {
 }
 
 export function useReadingProgress() {
-  const [progress, setProgress] = useState<Record<string, ProgressEntry>>(() =>
-    readLS<Record<string, ProgressEntry>>(PROGRESS_KEY, {}),
+  const [progress, setProgress] = useState<Record<string, ProgressEntry>>(
+    () => readLS<Record<string, ProgressEntry>>(PROGRESS_KEY, {}),
   );
 
   const setArticleProgress = useCallback((articleId: string, percent: number) => {
-    setProgress((prev) => {
+    setProgress(prev => {
       const next = {
         ...prev,
         [articleId]: { articleId, percent, updatedAt: Date.now() },
@@ -91,7 +91,7 @@ export function useReadingProgress() {
 
   /** Articles with some progress, sorted by most recently read */
   const inProgress = Object.values(progress)
-    .filter((p) => p.percent > 0 && p.percent < 100)
+    .filter(p => p.percent > 0 && p.percent < 100)
     .sort((a, b) => b.updatedAt - a.updatedAt);
 
   return { setArticleProgress, getProgress, inProgress };

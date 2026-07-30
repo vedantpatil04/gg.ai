@@ -23,7 +23,12 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { FADE_UP, STAGGER, DUR_MD, EASE_OUT } from "@/lib/motion";
+import {
+  FADE_UP,
+  STAGGER,
+  DUR_MD,
+  EASE_OUT,
+} from "@/lib/motion";
 import {
   SectionHeader,
   CategoryCard,
@@ -227,24 +232,21 @@ const RECENTLY_UPDATED = [
   {
     id: "u1",
     title: "New Smart Map Hazard Intelligence Layer added",
-    description:
-      "Documentation updated to cover the new wildfire risk, flood zone, and industrial hazard overlays in the Smart Map view.",
+    description: "Documentation updated to cover the new wildfire risk, flood zone, and industrial hazard overlays in the Smart Map view.",
     date: "Today",
     type: "feature" as const,
   },
   {
     id: "u2",
     title: "Enterprise Profile: Photo Cropper Guide",
-    description:
-      "Added guide for the new canvas-based profile photo cropper, including aspect ratio and file size recommendations.",
+    description: "Added guide for the new canvas-based profile photo cropper, including aspect ratio and file size recommendations.",
     date: "Yesterday",
     type: "update" as const,
   },
   {
     id: "u3",
     title: "Complaint Workflow: Assignment & Escalation",
-    description:
-      "Guide updated to reflect the new authority assignment dialog and complaint escalation workflow introduced in v2.4.",
+    description: "Guide updated to reflect the new authority assignment dialog and complaint escalation workflow introduced in v2.4.",
     date: "3 days ago",
     type: "update" as const,
   },
@@ -304,8 +306,7 @@ function WelcomeSection({ onSearchClick }: { onSearchClick: () => void }) {
               How can we help you?
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-md">
-              Browse our comprehensive knowledge base, watch guided tutorials, or reach our support
-              team — everything you need to get the most from GreenGuard AI.
+              Browse our comprehensive knowledge base, watch guided tutorials, or reach our support team — everything you need to get the most from GreenGuard AI.
             </p>
 
             {/* CTA row */}
@@ -317,10 +318,7 @@ function WelcomeSection({ onSearchClick }: { onSearchClick: () => void }) {
                 <Search className="size-4" />
                 Search Help
               </Link>
-              <button
-                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted transition-colors text-muted-foreground"
-                onClick={onSearchClick}
-              >
+              <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted transition-colors text-muted-foreground" onClick={onSearchClick}>
                 <HeadphonesIcon className="size-4" />
                 Contact Support
               </button>
@@ -333,7 +331,7 @@ function WelcomeSection({ onSearchClick }: { onSearchClick: () => void }) {
               { label: "Help Articles", value: "120+" },
               { label: "Video Guides", value: "40+" },
               { label: "Avg. Response", value: "< 2h" },
-            ].map((stat) => (
+            ].map(stat => (
               <div
                 key={stat.label}
                 className="flex flex-col px-4 py-2.5 rounded-xl border border-border bg-background/60 min-w-[100px]"
@@ -368,7 +366,7 @@ function QuickActionsSection() {
         animate="show"
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
       >
-        {QUICK_ACTIONS.map((action) => (
+        {QUICK_ACTIONS.map(action => (
           <motion.div key={action.id} variants={FADE_UP}>
             <QuickActionCard
               title={action.title}
@@ -406,7 +404,7 @@ function PopularArticlesSection() {
         animate="show"
         className="grid grid-cols-1 md:grid-cols-2 gap-3"
       >
-        {POPULAR_ARTICLES.map((article) => (
+        {POPULAR_ARTICLES.map(article => (
           <motion.div key={article.id} variants={FADE_UP}>
             <ArticleCard
               title={article.title}
@@ -442,7 +440,7 @@ function RecentlyUpdatedSection() {
         animate="show"
         className="rounded-xl border border-border bg-card p-4"
       >
-        {RECENTLY_UPDATED.map((item) => (
+        {RECENTLY_UPDATED.map(item => (
           <motion.div key={item.id} variants={FADE_UP}>
             <TimelineCard
               title={item.title}
@@ -470,9 +468,12 @@ function ContinueReadingSection() {
 
   return (
     <section>
-      <SectionHeader eyebrow="Pick Up Where You Left Off" title="Continue Reading" />
+      <SectionHeader
+        eyebrow="Pick Up Where You Left Off"
+        title="Continue Reading"
+      />
       <div className="space-y-3">
-        {CONTINUE_READING.map((item) => (
+        {CONTINUE_READING.map(item => (
           <motion.div
             key={item.id}
             initial={{ opacity: 0, y: 12 }}
@@ -480,7 +481,9 @@ function ContinueReadingSection() {
             transition={{ duration: DUR_MD, ease: EASE_OUT }}
             className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:border-primary/20 transition-all duration-200 group cursor-pointer"
           >
-            <div className="size-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
+            <div
+              className="size-9 rounded-lg bg-muted flex items-center justify-center shrink-0"
+            >
               <BookOpen className="size-4 text-muted-foreground" />
             </div>
             <div className="flex-1 min-w-0">
@@ -495,7 +498,9 @@ function ContinueReadingSection() {
                     style={{ width: `${item.progress}%` }}
                   />
                 </div>
-                <span className="text-[10px] text-muted-foreground shrink-0">{item.timeLeft}</span>
+                <span className="text-[10px] text-muted-foreground shrink-0">
+                  {item.timeLeft}
+                </span>
               </div>
             </div>
             <ChevronRight className="size-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0" />
@@ -531,7 +536,7 @@ function CategoriesSection() {
         animate="show"
         className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
       >
-        {HELP_CATEGORIES.map((cat) => (
+        {HELP_CATEGORIES.map(cat => (
           <motion.div key={cat.id} variants={FADE_UP}>
             <CategoryCard
               title={cat.title}

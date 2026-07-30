@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppLayout } from "@/components/app-layout";
-import { ProtectedRoute, AUTHORITY_ROLES } from "@/components/protected-route";
+import { ProtectedRoute } from "@/components/protected-route";
 import { Panel, Pill } from "@/components/ui-bits";
 import { RECOMMENDATIONS, INSIGHTS, ALERTS } from "@/lib/mock-data";
 import {
@@ -38,7 +38,6 @@ export const Route = createFileRoute("/copilot")({
   ),
 });
 
-// roles={AUTHORITY_ROLES}
 const SUGGESTIONS = [
   "Is it safe to exercise outside today?",
   "What precautions should children take?",

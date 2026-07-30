@@ -1,4 +1,10 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft,
@@ -31,7 +37,10 @@ import {
 import type { KbArticle, KbSection } from "./kb-data";
 import { KB_CATEGORIES_BY_ID, KB_ARTICLES } from "./kb-data";
 import { getRelatedArticles } from "./kb-search";
-import { useRecentlyViewed, useReadingProgress } from "./kb-store";
+import {
+  useRecentlyViewed,
+  useReadingProgress,
+} from "./kb-store";
 
 // ─── Article content renderer ─────────────────────────────────────────────────
 
@@ -75,7 +84,10 @@ function CalloutBox({
         background: `color-mix(in oklab, ${s.border} 7%, transparent)`,
       }}
     >
-      <Icon className="size-4 shrink-0 mt-0.5" style={{ color: s.border }} />
+      <Icon
+        className="size-4 shrink-0 mt-0.5"
+        style={{ color: s.border }}
+      />
       <div>
         <span
           className="text-[10px] font-semibold uppercase tracking-[0.15em] block mb-1"
@@ -94,7 +106,9 @@ function ArticleContentSection({ section, index }: { section: KbSection; index: 
     const Tag = `h${section.level ?? 2}` as "h1" | "h2" | "h3";
     const id = section.text.toLowerCase().replace(/[^a-z0-9]+/g, "-");
     const sizeClass =
-      section.level === 2 ? "text-xl font-bold mt-8 mb-3" : "text-base font-semibold mt-6 mb-2";
+      section.level === 2
+        ? "text-xl font-bold mt-8 mb-3"
+        : "text-base font-semibold mt-6 mb-2";
     return (
       <Tag id={id} className={sizeClass}>
         {section.text}
@@ -103,17 +117,18 @@ function ArticleContentSection({ section, index }: { section: KbSection; index: 
   }
 
   if (section.type === "paragraph" && section.text) {
-    return <p className="text-sm leading-[1.85] text-foreground/85 mb-4">{section.text}</p>;
+    return (
+      <p className="text-sm leading-[1.85] text-foreground/85 mb-4">
+        {section.text}
+      </p>
+    );
   }
 
   if (section.type === "list" && section.items) {
     return (
       <ul className="mb-4 space-y-2">
         {section.items.map((item, i) => (
-          <li
-            key={i}
-            className="flex items-start gap-2.5 text-sm text-foreground/85 leading-relaxed"
-          >
+          <li key={i} className="flex items-start gap-2.5 text-sm text-foreground/85 leading-relaxed">
             <div className="size-1.5 rounded-full bg-primary/60 shrink-0 mt-[0.45em]" />
             {item}
           </li>
@@ -123,12 +138,7 @@ function ArticleContentSection({ section, index }: { section: KbSection; index: 
   }
 
   if (section.type === "callout" && section.variant && section.text) {
-    return (
-      <CalloutBox
-        variant={section.variant as "info" | "warning" | "success" | "danger"}
-        text={section.text}
-      />
-    );
+    return <CalloutBox variant={section.variant as "info" | "warning" | "success" | "danger"} text={section.text} />;
   }
 
   if (section.type === "code" && section.text) {
@@ -153,8 +163,8 @@ function ArticleContentSection({ section, index }: { section: KbSection; index: 
 
 function buildTocItems(content: KbSection[]) {
   return content
-    .filter((s) => s.type === "heading" && s.text)
-    .map((s) => ({
+    .filter(s => s.type === "heading" && s.text)
+    .map(s => ({
       id: (s.text ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-"),
       text: s.text ?? "",
       level: s.level ?? 2,
@@ -252,9 +262,12 @@ function RelatedArticles({
         animate="show"
         className="grid grid-cols-1 sm:grid-cols-3 gap-3"
       >
-        {related.map((article) => (
+        {related.map(article => (
           <motion.div key={article.id} variants={FADE_UP}>
-            <KbArticleCard article={article} onClick={() => onArticleClick(article.id)} />
+            <KbArticleCard
+              article={article}
+              onClick={() => onArticleClick(article.id)}
+            />
           </motion.div>
         ))}
       </motion.div>
@@ -271,7 +284,7 @@ function ArticleNavigation({
   currentId: string;
   onNavigate: (id: string) => void;
 }) {
-  const idx = KB_ARTICLES.findIndex((a) => a.id === currentId);
+  const idx = KB_ARTICLES.findIndex(a => a.id === currentId);
   const prev = KB_ARTICLES[idx - 1];
   const next = KB_ARTICLES[idx + 1];
 
@@ -284,12 +297,8 @@ function ArticleNavigation({
         >
           <ChevronLeft className="size-4 text-muted-foreground mt-0.5 shrink-0 group-hover:text-primary transition-colors" />
           <div>
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">
-              Previous
-            </div>
-            <div className="text-xs font-medium line-clamp-2 group-hover:text-primary transition-colors">
-              {prev.title}
-            </div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Previous</div>
+            <div className="text-xs font-medium line-clamp-2 group-hover:text-primary transition-colors">{prev.title}</div>
           </div>
         </button>
       ) : (
@@ -301,12 +310,8 @@ function ArticleNavigation({
           className="flex items-start gap-3 p-3 rounded-xl border border-border hover:border-primary/30 hover:bg-muted/40 transition-all duration-200 text-right justify-end group col-start-2"
         >
           <div>
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">
-              Next
-            </div>
-            <div className="text-xs font-medium line-clamp-2 group-hover:text-primary transition-colors">
-              {next.title}
-            </div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Next</div>
+            <div className="text-xs font-medium line-clamp-2 group-hover:text-primary transition-colors">{next.title}</div>
           </div>
           <ChevronRight className="size-4 text-muted-foreground mt-0.5 shrink-0 group-hover:text-primary transition-colors" />
         </button>
@@ -352,7 +357,7 @@ export function KbArticlePage({ article, onBack, onArticleClick }: KbArticlePage
   // Scroll spy
   useEffect(() => {
     const observer = new IntersectionObserver(
-      (entries) => {
+      entries => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
             setActiveSection(entry.target.id);
@@ -362,7 +367,7 @@ export function KbArticlePage({ article, onBack, onArticleClick }: KbArticlePage
       { rootMargin: "-20% 0px -70% 0px" },
     );
     const nodes = contentRef.current?.querySelectorAll("h2, h3");
-    nodes?.forEach((n) => observer.observe(n));
+    nodes?.forEach(n => observer.observe(n));
     return () => observer.disconnect();
   }, [article.content]);
 
@@ -370,10 +375,7 @@ export function KbArticlePage({ article, onBack, onArticleClick }: KbArticlePage
   useEffect(() => {
     const handler = () => {
       const total = document.body.scrollHeight - window.innerHeight;
-      if (total <= 0) {
-        handleProgress(100);
-        return;
-      }
+      if (total <= 0) { handleProgress(100); return; }
       handleProgress(Math.round((window.scrollY / total) * 100));
     };
     window.addEventListener("scroll", handler, { passive: true });
@@ -494,7 +496,7 @@ export function KbArticlePage({ article, onBack, onArticleClick }: KbArticlePage
 
             {/* Tags */}
             <div className="flex flex-wrap gap-1.5 mb-6">
-              {article.tags.map((tag) => (
+              {article.tags.map(tag => (
                 <span
                   key={tag}
                   className="text-[10px] px-2 py-0.5 rounded-full border border-border text-muted-foreground bg-muted/40"

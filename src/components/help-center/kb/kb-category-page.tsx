@@ -18,7 +18,7 @@ export function KbCategoryPage({ category, onBack, onArticleClick }: KbCategoryP
   const Icon = category.icon;
 
   const allArticles = KB_ARTICLES_BY_CATEGORY[category.id] ?? [];
-  const featuredArticles = allArticles.filter((a) => a.featured);
+  const featuredArticles = allArticles.filter(a => a.featured);
   const latestArticles = [...allArticles].slice(0, 4);
   const popularArticles = [...allArticles].sort((a, b) => b.views - a.views).slice(0, 4);
 
@@ -26,10 +26,10 @@ export function KbCategoryPage({ category, onBack, onArticleClick }: KbCategoryP
     if (!query.trim()) return allArticles;
     const q = query.toLowerCase();
     return allArticles.filter(
-      (a) =>
+      a =>
         a.title.toLowerCase().includes(q) ||
         a.excerpt.toLowerCase().includes(q) ||
-        a.tags.some((t) => t.toLowerCase().includes(q)),
+        a.tags.some(t => t.toLowerCase().includes(q)),
     );
   }, [query, allArticles]);
 
@@ -75,9 +75,7 @@ export function KbCategoryPage({ category, onBack, onArticleClick }: KbCategoryP
               Category
             </div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2">{category.title}</h1>
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-lg">
-              {category.description}
-            </p>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-lg">{category.description}</p>
             <div className="flex items-center gap-4 mt-4 text-[11px] text-muted-foreground">
               <span>{category.articleCount} articles</span>
               <span>Updated {category.lastUpdated}</span>
@@ -141,13 +139,11 @@ export function KbCategoryPage({ category, onBack, onArticleClick }: KbCategoryP
               eyebrow="Newest"
               title="Latest Articles"
               action={
-                <span className="text-[10px] text-muted-foreground">
-                  {allArticles.length} total
-                </span>
+                <span className="text-[10px] text-muted-foreground">{allArticles.length} total</span>
               }
             />
             <div className="space-y-3">
-              {latestArticles.map((article) => (
+              {latestArticles.map(article => (
                 <KbArticleCard
                   key={article.id}
                   article={article}

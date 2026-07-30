@@ -9,124 +9,50 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TermsRouteImport } from './routes/terms'
-import { Route as SustainabilityRouteImport } from './routes/sustainability'
-import { Route as SimulatorRouteImport } from './routes/simulator'
-import { Route as SignupRouteImport } from './routes/signup'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as ReportsRouteImport } from './routes/reports'
-import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as MapRouteImport } from './routes/map'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as ForecastRouteImport } from './routes/forecast'
-import { Route as DocsRouteImport } from './routes/docs'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as CopilotRouteImport } from './routes/copilot'
-import { Route as ContactRouteImport } from './routes/contact'
-import { Route as CommandCenterRouteImport } from './routes/command-center'
-import { Route as CitizenRouteImport } from './routes/citizen'
-import { Route as AdminRouteImport } from './routes/admin'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as CitizenRouteImport } from './routes/citizen'
+import { Route as CommandCenterRouteImport } from './routes/command-center'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as CopilotRouteImport } from './routes/copilot'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DocsRouteImport } from './routes/docs'
+import { Route as ForecastRouteImport } from './routes/forecast'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as HelpRouteImport } from './routes/help'
+import { Route as HelpAboutRouteImport } from './routes/help.about'
+import { Route as HelpCommunityRouteImport } from './routes/help.community'
+import { Route as HelpFeedbackRouteImport } from './routes/help.feedback'
+import { Route as HelpKnowledgeBaseRouteImport } from './routes/help.knowledge-base'
+import { Route as HelpStatusRouteImport } from './routes/help.status'
+import { Route as HelpSupportRouteImport } from './routes/help.support'
+import { Route as HelpTutorialsRouteImport } from './routes/help.tutorials'
+import { Route as HelpWhatsNewRouteImport } from './routes/help.whats-new'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as MapRouteImport } from './routes/map'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SecurityRouteImport } from './routes/security'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SimulatorRouteImport } from './routes/simulator'
+import { Route as SustainabilityRouteImport } from './routes/sustainability'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
-import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminAuthoritiesRouteImport } from './routes/admin.authorities'
 import { Route as AdminAuthorityRequestsRouteImport } from './routes/admin.authority-requests'
+import { Route as AdminCitiesRouteImport } from './routes/admin.cities'
+import { Route as AdminComplaintsRouteImport } from './routes/admin.complaints'
+import { Route as AdminPlatformHealthRouteImport } from './routes/admin.platform-health'
+import { Route as AdminProfileRouteImport } from './routes/admin.profile'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
 
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SustainabilityRoute = SustainabilityRouteImport.update({
-  id: '/sustainability',
-  path: '/sustainability',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SimulatorRoute = SimulatorRouteImport.update({
-  id: '/simulator',
-  path: '/simulator',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SignupRoute = SignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReportsRoute = ReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfileRoute = ProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MapRoute = MapRouteImport.update({
-  id: '/map',
-  path: '/map',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForecastRoute = ForecastRouteImport.update({
-  id: '/forecast',
-  path: '/forecast',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocsRoute = DocsRouteImport.update({
-  id: '/docs',
-  path: '/docs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CopilotRoute = CopilotRouteImport.update({
-  id: '/copilot',
-  path: '/copilot',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContactRoute = ContactRouteImport.update({
-  id: '/contact',
-  path: '/contact',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CommandCenterRoute = CommandCenterRouteImport.update({
-  id: '/command-center',
-  path: '/command-center',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CitizenRoute = CitizenRouteImport.update({
-  id: '/citizen',
-  path: '/citizen',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -134,9 +60,154 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CitizenRoute = CitizenRouteImport.update({
+  id: '/citizen',
+  path: '/citizen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CommandCenterRoute = CommandCenterRouteImport.update({
+  id: '/command-center',
+  path: '/command-center',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CopilotRoute = CopilotRouteImport.update({
+  id: '/copilot',
+  path: '/copilot',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForecastRoute = ForecastRouteImport.update({
+  id: '/forecast',
+  path: '/forecast',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpRoute = HelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpAboutRoute = HelpAboutRouteImport.update({
+  id: '/help/about',
+  path: '/help/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpCommunityRoute = HelpCommunityRouteImport.update({
+  id: '/help/community',
+  path: '/help/community',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpFeedbackRoute = HelpFeedbackRouteImport.update({
+  id: '/help/feedback',
+  path: '/help/feedback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpKnowledgeBaseRoute = HelpKnowledgeBaseRouteImport.update({
+  id: '/help/knowledge-base',
+  path: '/help/knowledge-base',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpStatusRoute = HelpStatusRouteImport.update({
+  id: '/help/status',
+  path: '/help/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpSupportRoute = HelpSupportRouteImport.update({
+  id: '/help/support',
+  path: '/help/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpTutorialsRoute = HelpTutorialsRouteImport.update({
+  id: '/help/tutorials',
+  path: '/help/tutorials',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpWhatsNewRoute = HelpWhatsNewRouteImport.update({
+  id: '/help/whats-new',
+  path: '/help/whats-new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MapRoute = MapRouteImport.update({
+  id: '/map',
+  path: '/map',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecurityRoute = SecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SimulatorRoute = SimulatorRouteImport.update({
+  id: '/simulator',
+  path: '/simulator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SustainabilityRoute = SustainabilityRouteImport.update({
+  id: '/sustainability',
+  path: '/sustainability',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -144,14 +215,39 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminUsersRoute = AdminUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
+const AdminAuthoritiesRoute = AdminAuthoritiesRouteImport.update({
+  id: '/authorities',
+  path: '/authorities',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminAuthorityRequestsRoute = AdminAuthorityRequestsRouteImport.update({
   id: '/authority-requests',
   path: '/authority-requests',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCitiesRoute = AdminCitiesRouteImport.update({
+  id: '/cities',
+  path: '/cities',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminComplaintsRoute = AdminComplaintsRouteImport.update({
+  id: '/complaints',
+  path: '/complaints',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPlatformHealthRoute = AdminPlatformHealthRouteImport.update({
+  id: '/platform-health',
+  path: '/platform-health',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminProfileRoute = AdminProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
   getParentRoute: () => AdminRoute,
 } as any)
 
@@ -167,17 +263,33 @@ export interface FileRoutesByFullPath {
   '/docs': typeof DocsRoute
   '/forecast': typeof ForecastRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/help': typeof HelpRoute
+  '/help/about': typeof HelpAboutRoute
+  '/help/community': typeof HelpCommunityRoute
+  '/help/feedback': typeof HelpFeedbackRoute
+  '/help/knowledge-base': typeof HelpKnowledgeBaseRoute
+  '/help/status': typeof HelpStatusRoute
+  '/help/support': typeof HelpSupportRoute
+  '/help/tutorials': typeof HelpTutorialsRoute
+  '/help/whats-new': typeof HelpWhatsNewRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/security': typeof SecurityRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/simulator': typeof SimulatorRoute
   '/sustainability': typeof SustainabilityRoute
   '/terms': typeof TermsRoute
+  '/admin/authorities': typeof AdminAuthoritiesRoute
   '/admin/authority-requests': typeof AdminAuthorityRequestsRoute
+  '/admin/cities': typeof AdminCitiesRoute
+  '/admin/complaints': typeof AdminComplaintsRoute
+  '/admin/platform-health': typeof AdminPlatformHealthRoute
+  '/admin/profile': typeof AdminProfileRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -192,17 +304,33 @@ export interface FileRoutesByTo {
   '/docs': typeof DocsRoute
   '/forecast': typeof ForecastRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/help': typeof HelpRoute
+  '/help/about': typeof HelpAboutRoute
+  '/help/community': typeof HelpCommunityRoute
+  '/help/feedback': typeof HelpFeedbackRoute
+  '/help/knowledge-base': typeof HelpKnowledgeBaseRoute
+  '/help/status': typeof HelpStatusRoute
+  '/help/support': typeof HelpSupportRoute
+  '/help/tutorials': typeof HelpTutorialsRoute
+  '/help/whats-new': typeof HelpWhatsNewRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/security': typeof SecurityRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/simulator': typeof SimulatorRoute
   '/sustainability': typeof SustainabilityRoute
   '/terms': typeof TermsRoute
+  '/admin/authorities': typeof AdminAuthoritiesRoute
   '/admin/authority-requests': typeof AdminAuthorityRequestsRoute
+  '/admin/cities': typeof AdminCitiesRoute
+  '/admin/complaints': typeof AdminComplaintsRoute
+  '/admin/platform-health': typeof AdminPlatformHealthRoute
+  '/admin/profile': typeof AdminProfileRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin': typeof AdminIndexRoute
 }
@@ -219,17 +347,33 @@ export interface FileRoutesById {
   '/docs': typeof DocsRoute
   '/forecast': typeof ForecastRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/help': typeof HelpRoute
+  '/help/about': typeof HelpAboutRoute
+  '/help/community': typeof HelpCommunityRoute
+  '/help/feedback': typeof HelpFeedbackRoute
+  '/help/knowledge-base': typeof HelpKnowledgeBaseRoute
+  '/help/status': typeof HelpStatusRoute
+  '/help/support': typeof HelpSupportRoute
+  '/help/tutorials': typeof HelpTutorialsRoute
+  '/help/whats-new': typeof HelpWhatsNewRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/security': typeof SecurityRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/simulator': typeof SimulatorRoute
   '/sustainability': typeof SustainabilityRoute
   '/terms': typeof TermsRoute
+  '/admin/authorities': typeof AdminAuthoritiesRoute
   '/admin/authority-requests': typeof AdminAuthorityRequestsRoute
+  '/admin/cities': typeof AdminCitiesRoute
+  '/admin/complaints': typeof AdminComplaintsRoute
+  '/admin/platform-health': typeof AdminPlatformHealthRoute
+  '/admin/profile': typeof AdminProfileRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -247,17 +391,33 @@ export interface FileRouteTypes {
     | '/docs'
     | '/forecast'
     | '/forgot-password'
+    | '/help'
+    | '/help/about'
+    | '/help/community'
+    | '/help/feedback'
+    | '/help/knowledge-base'
+    | '/help/status'
+    | '/help/support'
+    | '/help/tutorials'
+    | '/help/whats-new'
     | '/login'
     | '/map'
     | '/privacy'
     | '/profile'
     | '/reports'
+    | '/reset-password'
+    | '/security'
     | '/settings'
     | '/signup'
     | '/simulator'
     | '/sustainability'
     | '/terms'
+    | '/admin/authorities'
     | '/admin/authority-requests'
+    | '/admin/cities'
+    | '/admin/complaints'
+    | '/admin/platform-health'
+    | '/admin/profile'
     | '/admin/users'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -272,17 +432,33 @@ export interface FileRouteTypes {
     | '/docs'
     | '/forecast'
     | '/forgot-password'
+    | '/help'
+    | '/help/about'
+    | '/help/community'
+    | '/help/feedback'
+    | '/help/knowledge-base'
+    | '/help/status'
+    | '/help/support'
+    | '/help/tutorials'
+    | '/help/whats-new'
     | '/login'
     | '/map'
     | '/privacy'
     | '/profile'
     | '/reports'
+    | '/reset-password'
+    | '/security'
     | '/settings'
     | '/signup'
     | '/simulator'
     | '/sustainability'
     | '/terms'
+    | '/admin/authorities'
     | '/admin/authority-requests'
+    | '/admin/cities'
+    | '/admin/complaints'
+    | '/admin/platform-health'
+    | '/admin/profile'
     | '/admin/users'
     | '/admin'
   id:
@@ -298,17 +474,33 @@ export interface FileRouteTypes {
     | '/docs'
     | '/forecast'
     | '/forgot-password'
+    | '/help'
+    | '/help/about'
+    | '/help/community'
+    | '/help/feedback'
+    | '/help/knowledge-base'
+    | '/help/status'
+    | '/help/support'
+    | '/help/tutorials'
+    | '/help/whats-new'
     | '/login'
     | '/map'
     | '/privacy'
     | '/profile'
     | '/reports'
+    | '/reset-password'
+    | '/security'
     | '/settings'
     | '/signup'
     | '/simulator'
     | '/sustainability'
     | '/terms'
+    | '/admin/authorities'
     | '/admin/authority-requests'
+    | '/admin/cities'
+    | '/admin/complaints'
+    | '/admin/platform-health'
+    | '/admin/profile'
     | '/admin/users'
     | '/admin/'
   fileRoutesById: FileRoutesById
@@ -325,11 +517,22 @@ export interface RootRouteChildren {
   DocsRoute: typeof DocsRoute
   ForecastRoute: typeof ForecastRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  HelpRoute: typeof HelpRoute
+  HelpAboutRoute: typeof HelpAboutRoute
+  HelpCommunityRoute: typeof HelpCommunityRoute
+  HelpFeedbackRoute: typeof HelpFeedbackRoute
+  HelpKnowledgeBaseRoute: typeof HelpKnowledgeBaseRoute
+  HelpStatusRoute: typeof HelpStatusRoute
+  HelpSupportRoute: typeof HelpSupportRoute
+  HelpTutorialsRoute: typeof HelpTutorialsRoute
+  HelpWhatsNewRoute: typeof HelpWhatsNewRoute
   LoginRoute: typeof LoginRoute
   MapRoute: typeof MapRoute
   PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
   ReportsRoute: typeof ReportsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  SecurityRoute: typeof SecurityRoute
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   SimulatorRoute: typeof SimulatorRoute
@@ -339,137 +542,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sustainability': {
-      id: '/sustainability'
-      path: '/sustainability'
-      fullPath: '/sustainability'
-      preLoaderRoute: typeof SustainabilityRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/simulator': {
-      id: '/simulator'
-      path: '/simulator'
-      fullPath: '/simulator'
-      preLoaderRoute: typeof SimulatorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reports': {
-      id: '/reports'
-      path: '/reports'
-      fullPath: '/reports'
-      preLoaderRoute: typeof ReportsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/map': {
-      id: '/map'
-      path: '/map'
-      fullPath: '/map'
-      preLoaderRoute: typeof MapRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgot-password': {
-      id: '/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forecast': {
-      id: '/forecast'
-      path: '/forecast'
-      fullPath: '/forecast'
-      preLoaderRoute: typeof ForecastRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/docs': {
-      id: '/docs'
-      path: '/docs'
-      fullPath: '/docs'
-      preLoaderRoute: typeof DocsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/copilot': {
-      id: '/copilot'
-      path: '/copilot'
-      fullPath: '/copilot'
-      preLoaderRoute: typeof CopilotRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contact': {
-      id: '/contact'
-      path: '/contact'
-      fullPath: '/contact'
-      preLoaderRoute: typeof ContactRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/command-center': {
-      id: '/command-center'
-      path: '/command-center'
-      fullPath: '/command-center'
-      preLoaderRoute: typeof CommandCenterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/citizen': {
-      id: '/citizen'
-      path: '/citizen'
-      fullPath: '/citizen'
-      preLoaderRoute: typeof CitizenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -479,11 +556,214 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/citizen': {
+      id: '/citizen'
+      path: '/citizen'
+      fullPath: '/citizen'
+      preLoaderRoute: typeof CitizenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/command-center': {
+      id: '/command-center'
+      path: '/command-center'
+      fullPath: '/command-center'
+      preLoaderRoute: typeof CommandCenterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/copilot': {
+      id: '/copilot'
+      path: '/copilot'
+      fullPath: '/copilot'
+      preLoaderRoute: typeof CopilotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forecast': {
+      id: '/forecast'
+      path: '/forecast'
+      fullPath: '/forecast'
+      preLoaderRoute: typeof ForecastRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help': {
+      id: '/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof HelpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help/about': {
+      id: '/help/about'
+      path: '/help/about'
+      fullPath: '/help/about'
+      preLoaderRoute: typeof HelpAboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help/community': {
+      id: '/help/community'
+      path: '/help/community'
+      fullPath: '/help/community'
+      preLoaderRoute: typeof HelpCommunityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help/feedback': {
+      id: '/help/feedback'
+      path: '/help/feedback'
+      fullPath: '/help/feedback'
+      preLoaderRoute: typeof HelpFeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help/knowledge-base': {
+      id: '/help/knowledge-base'
+      path: '/help/knowledge-base'
+      fullPath: '/help/knowledge-base'
+      preLoaderRoute: typeof HelpKnowledgeBaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help/status': {
+      id: '/help/status'
+      path: '/help/status'
+      fullPath: '/help/status'
+      preLoaderRoute: typeof HelpStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help/support': {
+      id: '/help/support'
+      path: '/help/support'
+      fullPath: '/help/support'
+      preLoaderRoute: typeof HelpSupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help/tutorials': {
+      id: '/help/tutorials'
+      path: '/help/tutorials'
+      fullPath: '/help/tutorials'
+      preLoaderRoute: typeof HelpTutorialsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help/whats-new': {
+      id: '/help/whats-new'
+      path: '/help/whats-new'
+      fullPath: '/help/whats-new'
+      preLoaderRoute: typeof HelpWhatsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/map': {
+      id: '/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof MapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/security': {
+      id: '/security'
+      path: '/security'
+      fullPath: '/security'
+      preLoaderRoute: typeof SecurityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/simulator': {
+      id: '/simulator'
+      path: '/simulator'
+      fullPath: '/simulator'
+      preLoaderRoute: typeof SimulatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sustainability': {
+      id: '/sustainability'
+      path: '/sustainability'
+      fullPath: '/sustainability'
+      preLoaderRoute: typeof SustainabilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -493,11 +773,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/users': {
-      id: '/admin/users'
-      path: '/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AdminUsersRouteImport
+    '/admin/authorities': {
+      id: '/admin/authorities'
+      path: '/authorities'
+      fullPath: '/admin/authorities'
+      preLoaderRoute: typeof AdminAuthoritiesRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/authority-requests': {
@@ -507,17 +787,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthorityRequestsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/cities': {
+      id: '/admin/cities'
+      path: '/cities'
+      fullPath: '/admin/cities'
+      preLoaderRoute: typeof AdminCitiesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/complaints': {
+      id: '/admin/complaints'
+      path: '/complaints'
+      fullPath: '/admin/complaints'
+      preLoaderRoute: typeof AdminComplaintsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/platform-health': {
+      id: '/admin/platform-health'
+      path: '/platform-health'
+      fullPath: '/admin/platform-health'
+      preLoaderRoute: typeof AdminPlatformHealthRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/profile': {
+      id: '/admin/profile'
+      path: '/profile'
+      fullPath: '/admin/profile'
+      preLoaderRoute: typeof AdminProfileRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminAuthoritiesRoute: typeof AdminAuthoritiesRoute
   AdminAuthorityRequestsRoute: typeof AdminAuthorityRequestsRoute
+  AdminCitiesRoute: typeof AdminCitiesRoute
+  AdminComplaintsRoute: typeof AdminComplaintsRoute
+  AdminPlatformHealthRoute: typeof AdminPlatformHealthRoute
+  AdminProfileRoute: typeof AdminProfileRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAuthoritiesRoute: AdminAuthoritiesRoute,
   AdminAuthorityRequestsRoute: AdminAuthorityRequestsRoute,
+  AdminCitiesRoute: AdminCitiesRoute,
+  AdminComplaintsRoute: AdminComplaintsRoute,
+  AdminPlatformHealthRoute: AdminPlatformHealthRoute,
+  AdminProfileRoute: AdminProfileRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
@@ -536,11 +861,22 @@ const rootRouteChildren: RootRouteChildren = {
   DocsRoute: DocsRoute,
   ForecastRoute: ForecastRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  HelpRoute: HelpRoute,
+  HelpAboutRoute: HelpAboutRoute,
+  HelpCommunityRoute: HelpCommunityRoute,
+  HelpFeedbackRoute: HelpFeedbackRoute,
+  HelpKnowledgeBaseRoute: HelpKnowledgeBaseRoute,
+  HelpStatusRoute: HelpStatusRoute,
+  HelpSupportRoute: HelpSupportRoute,
+  HelpTutorialsRoute: HelpTutorialsRoute,
+  HelpWhatsNewRoute: HelpWhatsNewRoute,
   LoginRoute: LoginRoute,
   MapRoute: MapRoute,
   PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
   ReportsRoute: ReportsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  SecurityRoute: SecurityRoute,
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   SimulatorRoute: SimulatorRoute,

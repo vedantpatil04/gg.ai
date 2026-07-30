@@ -12,14 +12,24 @@ import { authenticate, authorize, AUTHORITY_ROLES } from "../middleware/auth";
 
 const router = Router();
 
-// Chat/analysis endpoints back the Copilot page only (authority-tier, per
-// Phase 1.3 route protection).
-router.post("/chat", authenticate, authorize(...AUTHORITY_ROLES), chat);
-router.post("/health-advice", authenticate, authorize(...AUTHORITY_ROLES), healthAdvice);
+// Chat/analysis endpoints back the Copilot page and Sustainability Copilot panel
+// (accessible to citizen, authority, and administrator roles).
+router.post(
+  "/chat",
+  authenticate,
+  authorize("citizen", ...AUTHORITY_ROLES),
+  chat,
+);
+router.post(
+  "/health-advice",
+  authenticate,
+  authorize("citizen", ...AUTHORITY_ROLES),
+  healthAdvice,
+);
 router.get(
   "/conversation/:sessionId",
   authenticate,
-  authorize(...AUTHORITY_ROLES),
+  authorize("citizen", ...AUTHORITY_ROLES),
   getConversation,
 );
 
@@ -28,11 +38,21 @@ router.get("/cities/:city/ai-insights", getCityAIInsights);
 
 // Existing endpoints (backward-compat) — same access as their modern
 // equivalents above.
-router.post("/ask", authenticate, authorize(...AUTHORITY_ROLES), askCopilot);
-router.get("/recommendations", authenticate, authorize(...AUTHORITY_ROLES), getRecommendations);
+router.post(
+  "/ask",
+  authenticate,
+  authorize("citizen", ...AUTHORITY_ROLES),
+  askCopilot,
+);
+router.get(
+  "/recommendations",
+  authenticate,
+  authorize("citizen", ...AUTHORITY_ROLES),
+  getRecommendations,
+);
 
 // Any authenticated role: also embedded on the shared Dashboard, not just
-// the authority-only Copilot page.
+// the Copilot page.
 router.get("/insights", authenticate, getInsights);
 
 export default router;

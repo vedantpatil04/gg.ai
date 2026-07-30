@@ -1,18 +1,48 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useCity } from "@/lib/city-context";
-import { adminApi } from "@/lib/api/services.api";
+import { adminApi, authorityMgmtApi } from "@/lib/api/services.api";
 import type { AuthorityRequest } from "@/components/admin/authority-requests/authority-request-queries";
 
-// Reuses the exact same shape Phase 2.3 already defined for an authority
-// user document — /admin/users and /admin/authority-requests both return
-// the same underlying User documents, just through different endpoints.
-export type DirectoryAuthority = AuthorityRequest;
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-interface AuthorityDirectoryPage {
-  users: DirectoryAuthority[];
-  pagination: { page: number; limit: number; total: number; pages: number };
+export type AuthorityAvailability = "available" | "busy" | "on_leave" | "inactive";
+export type CapacityLabel = "free" | "moderate" | "busy" | "overloaded";
+
+export interface AuthorityWorkload {
+  active: number;
+  pending: number;
+  rework: number;
+  resolved: number;
+  closed: number;
+  total: number;
+  capacity: CapacityLabel;
+  resolutionRate: number;
+  reworkRate?: number;
+  verificationWaiting?: number;
 }
+
+export interface EnterpriseAuthority extends AuthorityRequest {
+  employeeId?: string;
+  department?: string;
+  designation?: string;
+  assignedCities: string[];
+  primaryCity?: string;
+  specializations: string[];
+  availability: AuthorityAvailability;
+  workload: AuthorityWorkload;
+  avatar?: string;
+}
+
+export interface LifecycleEvent {
+  event: string;
+  description: string;
+  performedBy?: string;
+  performedByName?: string;
+  at: string;
+}
+
+export type DirectoryAuthority = EnterpriseAuthority;
 
 export interface AuthorityDirectoryParams {
   isActive?: boolean;
@@ -20,17 +50,7 @@ export interface AuthorityDirectoryParams {
   limit: number;
 }
 
-/**
- * Own query key ("admin-authority-directory") distinct from Phase 2.3's
- * "admin-authority-requests" — this calls a different endpoint
- * (/admin/users?role=authority, which supports isActive filtering that
- * /admin/authority-requests doesn't) with a different params shape, so it
- * can't share a cache entry. The two pages' mutations cross-invalidate each
- * other's keys instead (see useActivateAuthority/useDeactivateAuthority
- * below, and the page component's handling of the reused approve/reject
- * mutations) so both stay in sync regardless of which page an action was
- * taken from.
- */
+// ─── Legacy alias (backward compat with Phase 3 components) ──────────────────
 export function useAuthorityDirectory(params: AuthorityDirectoryParams) {
   const { isApiConnected } = useCity();
   return useQuery({
@@ -43,17 +63,131 @@ export function useAuthorityDirectory(params: AuthorityDirectoryParams) {
           page: params.page,
           limit: params.limit,
         })
-        .then((r) => r.data as AuthorityDirectoryPage),
+        .then((r) => r.data as { users: DirectoryAuthority[]; pagination: { page: number; limit: number; total: number; pages: number } }),
     staleTime: 30_000,
     enabled: isApiConnected,
     throwOnError: false,
   });
 }
 
-function invalidateAuthorityQueries(qc: ReturnType<typeof useQueryClient>) {
+// ─── Phase 4 Queries ──────────────────────────────────────────────────────────
+
+export interface AuthorityListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+  approvalStatus?: string;
+  isActive?: boolean;
+  city?: string;
+  availability?: string;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+}
+
+export function useEnterpriseAuthorityList(params: AuthorityListParams) {
+  const { isApiConnected } = useCity();
+  return useQuery({
+    queryKey: ["p4-authority-list", params],
+    queryFn: () =>
+      authorityMgmtApi.list(params).then(
+        (r) =>
+          r.data as {
+            authorities: EnterpriseAuthority[];
+            pagination: { page: number; limit: number; total: number; pages: number };
+          },
+      ),
+    staleTime: 20_000,
+    enabled: isApiConnected,
+    throwOnError: false,
+  });
+}
+
+export function useAuthorityDetail(id: string | null) {
+  const { isApiConnected } = useCity();
+  return useQuery({
+    queryKey: ["p4-authority-detail", id],
+    queryFn: () =>
+      authorityMgmtApi.getOne(id!).then(
+        (r) =>
+          r.data as {
+            authority: EnterpriseAuthority;
+            workload: AuthorityWorkload & { reworkRate: number; verificationWaiting: number };
+            cityVolumes: Record<string, number>;
+          },
+      ),
+    staleTime: 15_000,
+    enabled: isApiConnected && !!id,
+    throwOnError: false,
+  });
+}
+
+export function useAuthorityDashboard() {
+  const { isApiConnected } = useCity();
+  return useQuery({
+    queryKey: ["p4-authority-dashboard"],
+    queryFn: () =>
+      authorityMgmtApi.getDashboard().then(
+        (r) =>
+          r.data as {
+            metrics: {
+              total: number;
+              active: number;
+              available: number;
+              busy: number;
+              overloaded: number;
+              onLeave: number;
+              inactive: number;
+              activeInvestigations: number;
+              waitingVerification: number;
+              reworkCases: number;
+              pendingComplaints: number;
+            };
+            coverage: {
+              totalCities: number;
+              coveredCities: number;
+              uncoveredCities: number;
+              uncoveredCityIds: string[];
+              authoritiesPerCity: Record<string, number>;
+            };
+            leaderboard: Array<{
+              _id: string;
+              name: string;
+              email: string;
+              resolutionRate: number;
+              total: number;
+              active: number;
+              capacity: CapacityLabel;
+            }>;
+            insights: Array<{ type: "warning" | "info" | "critical"; message: string }>;
+          },
+      ),
+    staleTime: 30_000,
+    enabled: isApiConnected,
+    throwOnError: false,
+  });
+}
+
+export function useAuthorityLifecycleHistory(id: string | null) {
+  const { isApiConnected } = useCity();
+  return useQuery({
+    queryKey: ["p4-authority-lifecycle", id],
+    queryFn: () =>
+      authorityMgmtApi.getLifecycleHistory(id!).then((r) => r.data as { lifecycleEvents: LifecycleEvent[] }),
+    staleTime: 15_000,
+    enabled: isApiConnected && !!id,
+    throwOnError: false,
+  });
+}
+
+// ─── Mutations ────────────────────────────────────────────────────────────────
+
+function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["p4-authority-list"] });
+  qc.invalidateQueries({ queryKey: ["p4-authority-dashboard"] });
   qc.invalidateQueries({ queryKey: ["admin-authority-directory"] });
-  qc.invalidateQueries({ queryKey: ["admin-authority-requests"] }); // Phase 2.3 page + dashboard's Pending Assignments
-  qc.invalidateQueries({ queryKey: ["admin-active-authorities"] }); // dashboard's Active Authorities count
+  qc.invalidateQueries({ queryKey: ["admin-authority-requests"] });
+  qc.invalidateQueries({ queryKey: ["admin-active-authorities"] });
   qc.invalidateQueries({ queryKey: ["admin-stats"] });
 }
 
@@ -61,18 +195,12 @@ function mutationErrorMessage(err: unknown): string | undefined {
   return (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
 }
 
-/** Reuses the existing /admin/users/:id endpoint's isActive field — already
- *  fully supported, no backend change needed for Activate/Deactivate. */
 export function useActivateAuthority() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => adminApi.updateUser(id, { isActive: true }),
-    onSuccess: () => {
-      invalidateAuthorityQueries(qc);
-      toast("Authority account activated.");
-    },
-    onError: (err) =>
-      toast(mutationErrorMessage(err) ?? "Couldn't activate this account. Try again."),
+    onSuccess: () => { invalidateAll(qc); toast("Authority account activated."); },
+    onError: (err) => toast(mutationErrorMessage(err) ?? "Couldn't activate this account. Try again."),
   });
 }
 
@@ -80,11 +208,112 @@ export function useDeactivateAuthority() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => adminApi.updateUser(id, { isActive: false }),
-    onSuccess: () => {
-      invalidateAuthorityQueries(qc);
-      toast("Authority account deactivated.");
+    onSuccess: () => { invalidateAll(qc); toast("Authority account deactivated."); },
+    onError: (err) => toast(mutationErrorMessage(err) ?? "Couldn't deactivate this account. Try again."),
+  });
+}
+
+export function usePerformLifecycleAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      action,
+    }: {
+      id: string;
+      action: "activate" | "deactivate" | "suspend" | "reinstate" | "lock" | "unlock";
+    }) => authorityMgmtApi.performLifecycleAction(id, action),
+    onSuccess: (res: { message?: string } | undefined, vars) => {
+      invalidateAll(qc);
+      qc.invalidateQueries({ queryKey: ["p4-authority-detail", vars.id] });
+      qc.invalidateQueries({ queryKey: ["p4-authority-lifecycle", vars.id] });
+      toast((res as { message?: string })?.message ?? "Lifecycle action completed.");
     },
-    onError: (err) =>
-      toast(mutationErrorMessage(err) ?? "Couldn't deactivate this account. Try again."),
+    onError: (err) => toast(mutationErrorMessage(err) ?? "Action failed. Try again."),
+  });
+}
+
+export function useAssignCities() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, cities, primaryCity }: { id: string; cities: string[]; primaryCity?: string }) =>
+      authorityMgmtApi.assignCities(id, cities, primaryCity),
+    onSuccess: (_res, vars) => {
+      invalidateAll(qc);
+      qc.invalidateQueries({ queryKey: ["p4-authority-detail", vars.id] });
+      toast("Cities assigned successfully.");
+    },
+    onError: (err) => toast(mutationErrorMessage(err) ?? "Failed to assign cities."),
+  });
+}
+
+export function useRemoveCities() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, cities }: { id: string; cities: string[] }) =>
+      authorityMgmtApi.removeCities(id, cities),
+    onSuccess: (_res, vars) => {
+      invalidateAll(qc);
+      qc.invalidateQueries({ queryKey: ["p4-authority-detail", vars.id] });
+      toast("Cities removed successfully.");
+    },
+    onError: (err) => toast(mutationErrorMessage(err) ?? "Failed to remove cities."),
+  });
+}
+
+export function useSetPrimaryCity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, primaryCity }: { id: string; primaryCity: string }) =>
+      authorityMgmtApi.setPrimaryCity(id, primaryCity),
+    onSuccess: (_res, vars) => {
+      invalidateAll(qc);
+      qc.invalidateQueries({ queryKey: ["p4-authority-detail", vars.id] });
+      toast("Primary city updated.");
+    },
+    onError: (err) => toast(mutationErrorMessage(err) ?? "Failed to set primary city."),
+  });
+}
+
+export function useUpdateAuthorityProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: {
+        department?: string;
+        designation?: string;
+        employeeId?: string;
+        specializations?: string[];
+        availability?: string;
+        organization?: string;
+        phone?: string;
+      };
+    }) => authorityMgmtApi.updateProfile(id, data),
+    onSuccess: (_res, vars) => {
+      invalidateAll(qc);
+      qc.invalidateQueries({ queryKey: ["p4-authority-detail", vars.id] });
+      toast("Profile updated.");
+    },
+    onError: (err) => toast(mutationErrorMessage(err) ?? "Failed to update profile."),
+  });
+}
+
+export function useBulkOperation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      action: "activate" | "deactivate" | "assign_cities" | "remove_cities";
+      ids: string[];
+      cities?: string[];
+    }) => authorityMgmtApi.bulk(data),
+    onSuccess: (res: { message?: string } | undefined) => {
+      invalidateAll(qc);
+      toast((res as { message?: string })?.message ?? "Bulk operation completed.");
+    },
+    onError: (err) => toast(mutationErrorMessage(err) ?? "Bulk operation failed."),
   });
 }

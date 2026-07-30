@@ -47,10 +47,8 @@ export const complaintApi = {
   updateNotes: (id: string, notes: string) =>
     client.patch(`/complaints/${id}/notes`, { notes }).then((r) => r.data),
 
-  /** Phase 3C — admin approves resolution → complaint becomes closed. */
   verifyResolution: (id: string) => client.post(`/complaints/${id}/verify`).then((r) => r.data),
 
-  /** Phase 3C — admin rejects resolution → complaint returns to authority as rework. */
   requestRework: (id: string, data: { reason: string; comments?: string }) =>
     client.post(`/complaints/${id}/rework`, data).then((r) => r.data),
 };
@@ -163,6 +161,67 @@ export const adminApi = {
   rejectAuthorityRequest: (id: string) =>
     client.patch(`/admin/authority-requests/${id}/reject`).then((r) => r.data),
   getWorkload: () => client.get("/admin/workload").then((r) => r.data),
+};
+
+// ─── Phase 4 — Enterprise Authority Management API ────────────────────────────
+export const authorityMgmtApi = {
+  // Intelligence dashboard
+  getDashboard: () =>
+    client.get("/admin/authorities/dashboard").then((r) => r.data),
+
+  // Directory
+  list: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    approvalStatus?: string;
+    isActive?: boolean;
+    city?: string;
+    availability?: string;
+    sortBy?: string;
+    sortDir?: "asc" | "desc";
+  }) => client.get("/admin/authorities", { params }).then((r) => r.data),
+
+  // Single authority
+  getOne: (id: string) => client.get(`/admin/authorities/${id}`).then((r) => r.data),
+
+  // Update profile fields
+  updateProfile: (
+    id: string,
+    data: {
+      department?: string;
+      designation?: string;
+      employeeId?: string;
+      specializations?: string[];
+      availability?: string;
+      organization?: string;
+      phone?: string;
+    },
+  ) => client.patch(`/admin/authorities/${id}`, data).then((r) => r.data),
+
+  // City assignment
+  assignCities: (id: string, cities: string[], primaryCity?: string) =>
+    client.post(`/admin/authorities/${id}/cities`, { cities, primaryCity }).then((r) => r.data),
+  removeCities: (id: string, cities: string[]) =>
+    client.delete(`/admin/authorities/${id}/cities`, { data: { cities } }).then((r) => r.data),
+  setPrimaryCity: (id: string, primaryCity: string) =>
+    client.patch(`/admin/authorities/${id}/primary-city`, { primaryCity }).then((r) => r.data),
+
+  // Lifecycle
+  performLifecycleAction: (
+    id: string,
+    action: "activate" | "deactivate" | "suspend" | "reinstate" | "lock" | "unlock",
+  ) => client.post(`/admin/authorities/${id}/lifecycle`, { action }).then((r) => r.data),
+  getLifecycleHistory: (id: string) =>
+    client.get(`/admin/authorities/${id}/lifecycle`).then((r) => r.data),
+
+  // Bulk
+  bulk: (data: {
+    action: "activate" | "deactivate" | "assign_cities" | "remove_cities";
+    ids: string[];
+    cities?: string[];
+  }) => client.post("/admin/authorities/bulk", data).then((r) => r.data),
 };
 
 export const healthApi = {

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { Bookmark, BookmarkCheck, Clock, Eye, ChevronRight, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -47,7 +47,7 @@ export function BookmarkButton({
   return (
     <motion.button
       whileTap={TAP_PRESS_SM}
-      onClick={(e) => {
+      onClick={e => {
         e.stopPropagation();
         toggleBookmark(articleId);
       }}
@@ -83,9 +83,7 @@ export function KbArticleCard({ article, onClick, variant = "default" }: KbArtic
         onClick={onClick}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") onClick();
-        }}
+        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onClick(); }}
         className="flex items-start gap-4 p-4 rounded-xl border border-border bg-card cursor-pointer hover:border-primary/20 transition-all duration-200 group"
       >
         <div className="flex-1 min-w-0">
@@ -98,18 +96,10 @@ export function KbArticleCard({ article, onClick, variant = "default" }: KbArtic
           <h3 className="text-sm font-semibold leading-snug group-hover:text-primary transition-colors duration-200 mb-1">
             {article.title}
           </h3>
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-            {article.excerpt}
-          </p>
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{article.excerpt}</p>
           <div className="mt-2.5 flex items-center gap-3 text-[10px] text-muted-foreground/70">
-            <span className="flex items-center gap-1">
-              <Clock className="size-3" />
-              {article.readTime}
-            </span>
-            <span className="flex items-center gap-1">
-              <Eye className="size-3" />
-              {article.views.toLocaleString()}
-            </span>
+            <span className="flex items-center gap-1"><Clock className="size-3" />{article.readTime}</span>
+            <span className="flex items-center gap-1"><Eye className="size-3" />{article.views.toLocaleString()}</span>
             <span>Updated {article.updatedAt}</span>
           </div>
         </div>
@@ -129,9 +119,7 @@ export function KbArticleCard({ article, onClick, variant = "default" }: KbArtic
         onClick={onClick}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") onClick();
-        }}
+        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onClick(); }}
         className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/60 cursor-pointer group transition-colors duration-150"
       >
         <div className="size-1.5 rounded-full bg-primary/40 shrink-0 mt-0.5" />
@@ -151,9 +139,7 @@ export function KbArticleCard({ article, onClick, variant = "default" }: KbArtic
       onClick={onClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") onClick();
-      }}
+      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onClick(); }}
       className="rounded-xl border border-border bg-card p-4 cursor-pointer hover:border-primary/20 transition-all duration-200 group relative overflow-hidden"
     >
       <div className="absolute -bottom-8 -right-8 size-28 rounded-full bg-primary/5 opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-300 pointer-events-none" />
@@ -169,18 +155,10 @@ export function KbArticleCard({ article, onClick, variant = "default" }: KbArtic
       <h3 className="text-sm font-semibold leading-snug group-hover:text-primary transition-colors duration-200 mb-1.5">
         {article.title}
       </h3>
-      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mb-3">
-        {article.excerpt}
-      </p>
+      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mb-3">{article.excerpt}</p>
       <div className="flex items-center gap-3 text-[10px] text-muted-foreground/70">
-        <span className="flex items-center gap-1">
-          <Clock className="size-3" />
-          {article.readTime}
-        </span>
-        <span className="flex items-center gap-1">
-          <Eye className="size-3" />
-          {article.views.toLocaleString()} views
-        </span>
+        <span className="flex items-center gap-1"><Clock className="size-3" />{article.readTime}</span>
+        <span className="flex items-center gap-1"><Eye className="size-3" />{article.views.toLocaleString()} views</span>
         <span className="ml-auto">Updated {article.updatedAt}</span>
       </div>
     </motion.div>
@@ -203,9 +181,7 @@ export function KbCategoryCard({ category, onClick }: KbCategoryCardProps) {
       onClick={onClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") onClick();
-      }}
+      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onClick(); }}
       className="rounded-xl border border-border bg-card p-4 cursor-pointer hover:border-primary/30 transition-all duration-200 overflow-hidden group relative"
     >
       <div
@@ -219,9 +195,7 @@ export function KbCategoryCard({ category, onClick }: KbCategoryCardProps) {
         <Icon className="size-5" style={{ color: category.accentColor }} />
       </div>
       <h3 className="text-sm font-semibold leading-tight mb-1">{category.title}</h3>
-      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mb-3">
-        {category.description}
-      </p>
+      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mb-3">{category.description}</p>
       <div className="flex items-center justify-between text-[10px] text-muted-foreground/70">
         <span>{category.articleCount} articles</span>
         <span>Updated {category.lastUpdated}</span>
@@ -246,7 +220,7 @@ export function SearchChips({
       animate="show"
       className="flex flex-wrap gap-2"
     >
-      {chips.map((chip) => (
+      {chips.map(chip => (
         <motion.button
           key={chip}
           variants={FADE_UP}
@@ -285,9 +259,13 @@ export function ArticleGrid({
       variants={STAGGER(0.05, 0.05)}
       initial="hidden"
       animate="show"
-      className={cn(isHorizontal ? "space-y-3" : "grid grid-cols-1 sm:grid-cols-2 gap-4")}
+      className={cn(
+        isHorizontal
+          ? "space-y-3"
+          : "grid grid-cols-1 sm:grid-cols-2 gap-4",
+      )}
     >
-      {articles.map((article) => (
+      {articles.map(article => (
         <motion.div key={article.id} variants={FADE_UP}>
           <KbArticleCard
             article={article}
@@ -324,13 +302,7 @@ export function ReadingProgressBar({ percent }: { percent: number }) {
 
 // ─── Section loading skeleton ─────────────────────────────────────────────────
 
-export function KbSkeleton({
-  variant = "card",
-  rows = 3,
-}: {
-  variant?: "card" | "article";
-  rows?: number;
-}) {
+export function KbSkeleton({ variant = "card", rows = 3 }: { variant?: "card" | "article"; rows?: number }) {
   if (variant === "article") {
     return (
       <div className="animate-pulse space-y-4 max-w-3xl mx-auto p-6">
@@ -387,7 +359,7 @@ export function TableOfContents({
       <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium mb-3">
         On this page
       </div>
-      {items.map((item) => (
+      {items.map(item => (
         <button
           key={item.id}
           onClick={() => onItemClick(item.id)}
@@ -434,7 +406,7 @@ export function KbSearchInput({
       <input
         type="text"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         autoFocus={autoFocus}
         className="flex-1 text-sm bg-transparent outline-none placeholder:text-muted-foreground/60"
