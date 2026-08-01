@@ -508,3 +508,286 @@
 @utility glow-pulse {
   animation: glow-pulse 2s ease-in-out infinite;
 }
+
+/* ─── Phase 1: Enterprise Application Shell — Design Tokens ──────────────────
+   All shell-level tokens live here so every phase that follows can read from
+   the same source of truth without touching component files.
+
+   Naming convention:
+     --shell-*      Shell layout geometry (widths, padding, heights)
+     --float-*      Floating / elevation aesthetics
+     --transition-* Duration + easing for motion primitives
+─────────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Workspace max-width tiers (consumed by WorkspaceContainer) */
+  --shell-workspace-narrow: 1280px;
+  --shell-workspace-default: 1600px;
+  --shell-workspace-wide: 1920px;
+
+  /* Sidebar geometry — Phase 2 will move these into the floating sidebar */
+  --shell-sidebar-width: 256px;
+  --shell-sidebar-collapsed-width: 80px;
+  --shell-topbar-height: 64px;
+
+  /* Spacing scale used by the shell (supplements Tailwind's scale) */
+  --shell-gap-xs: 0.5rem;   /* 8px  */
+  --shell-gap-sm: 0.75rem;  /* 12px */
+  --shell-gap-md: 1rem;     /* 16px */
+  --shell-gap-lg: 1.5rem;   /* 24px */
+  --shell-gap-xl: 2rem;     /* 32px */
+  --shell-gap-2xl: 3rem;    /* 48px */
+
+  /* Floating elevation scale — light theme */
+  --float-shadow-sm:
+    0 1px 2px oklch(0.2 0.04 230 / 0.06),
+    0 0 0 1px oklch(1 0 0 / 0.7) inset;
+  --float-shadow-md:
+    0 4px 12px -2px oklch(0.2 0.04 230 / 0.12),
+    0 1px 3px oklch(0.2 0.04 230 / 0.08),
+    0 0 0 1px oklch(1 0 0 / 0.6) inset;
+  --float-shadow-lg:
+    0 8px 24px -4px oklch(0.2 0.04 230 / 0.16),
+    0 2px 8px oklch(0.2 0.04 230 / 0.08),
+    0 0 0 1px oklch(1 0 0 / 0.55) inset;
+  --float-shadow-xl:
+    0 16px 48px -8px oklch(0.2 0.04 230 / 0.22),
+    0 4px 16px oklch(0.2 0.04 230 / 0.1),
+    0 0 0 1px oklch(1 0 0 / 0.5) inset;
+
+  /* Border radius scale */
+  --shell-radius-panel: 1rem;     /* 16px — sidebar, topbar */
+  --shell-radius-card: 0.875rem;  /* 14px — cards */
+  --shell-radius-chip: 0.5rem;    /* 8px  — badges, chips */
+
+  /* Transition system */
+  --transition-fast: 120ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-base: 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-slow: 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-layout: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Shell background — very slightly off-white for depth vs pure white cards */
+  --shell-bg: oklch(0.965 0.006 220);
+}
+
+.dark {
+  /* Floating elevation scale — dark theme */
+  --float-shadow-sm:
+    0 1px 2px oklch(0 0 0 / 0.3),
+    0 0 0 1px oklch(1 0 0 / 0.04) inset;
+  --float-shadow-md:
+    0 4px 12px -2px oklch(0 0 0 / 0.45),
+    0 1px 3px oklch(0 0 0 / 0.3),
+    0 0 0 1px oklch(1 0 0 / 0.05) inset;
+  --float-shadow-lg:
+    0 8px 24px -4px oklch(0 0 0 / 0.55),
+    0 2px 8px oklch(0 0 0 / 0.35),
+    0 0 0 1px oklch(1 0 0 / 0.06) inset;
+  --float-shadow-xl:
+    0 16px 48px -8px oklch(0 0 0 / 0.65),
+    0 4px 16px oklch(0 0 0 / 0.4),
+    0 0 0 1px oklch(1 0 0 / 0.05) inset;
+
+  /* Shell background — deeper than card for proper layering */
+  --shell-bg: oklch(0.13 0.018 240);
+}
+
+/* ─── Phase 1: Shell utility classes ─────────────────────────────────────────
+   These are composable utilities consumed by the shell components.
+   They do not replace existing utilities — they extend the system.
+─────────────────────────────────────────────────────────────────────────────── */
+
+/* Floating card — primary surface for workspace content */
+@utility float-card {
+  background: var(--color-card);
+  border-radius: var(--shell-radius-card);
+  box-shadow: var(--float-shadow-md);
+  border: 1px solid var(--color-border);
+}
+
+/* Floating panel — larger surface (sidebar, drawers) */
+@utility float-panel {
+  background: var(--color-sidebar);
+  border-radius: var(--shell-radius-panel);
+  box-shadow: var(--float-shadow-lg);
+  border: 1px solid var(--color-sidebar-border);
+}
+
+/* Elevated topbar */
+@utility float-topbar {
+  background: oklch(from var(--color-background) l c h / 0.85);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: var(--float-shadow-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Page-enter animation — applied to the main content area on route change */
+@keyframes shell-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility page-enter {
+  animation: shell-page-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none !important;
+  }
+}
+
+/* Shell background utility — use on the outermost wrapper */
+@utility shell-bg {
+  background-color: var(--shell-bg);
+}
+
+/* ─── Phase 2: Floating Sidebar — supplemental tokens ───────────────────────
+   These extend the Phase 1 shell tokens. Nothing from Phase 1 is altered.
+─────────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Floating sidebar geometry */
+  --sidebar-float-inset: 0.75rem;       /* 12px gap from viewport edge (the m-3) */
+  --sidebar-float-gap: 0.75rem;         /* 12px gap between sidebar and content */
+  --sidebar-expanded-width: 248px;
+  --sidebar-collapsed-width: 64px;
+
+  /* Content left offset = collapsed width + inset + gap */
+  --content-left-offset: 88px; /* 64 + 12 + 12 */
+
+  /* Sidebar floating shadow — light */
+  --sidebar-shadow:
+    0 8px 32px -4px oklch(0.2 0.04 230 / 0.18),
+    0 2px 8px oklch(0.2 0.04 230 / 0.1),
+    0 0 0 1px oklch(1 0 0 / 0.06) inset;
+}
+
+.dark {
+  /* Sidebar floating shadow — dark */
+  --sidebar-shadow:
+    0 8px 32px -4px oklch(0 0 0 / 0.55),
+    0 2px 8px oklch(0 0 0 / 0.35),
+    0 0 0 1px oklch(1 0 0 / 0.05) inset;
+}
+
+/* Thin scrollbar for sidebar nav overflow */
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+}
+@utility scrollbar-track-transparent {
+  scrollbar-color: transparent transparent;
+}
+@utility scrollbar-thumb-sidebar-border\/60 {
+  scrollbar-color: oklch(from var(--color-sidebar-border) l c h / 0.6) transparent;
+}
+
+/* ─── Phase 3: Enterprise Navbar — supplemental tokens ──────────────────────
+   Extends Phase 1 & 2 tokens. Nothing from earlier phases is altered.
+─────────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --navbar-height: 64px;
+
+  /* Search bar focus ring — matches sidebar-ring but scoped to navbar */
+  --navbar-search-ring: oklch(from var(--color-primary) l c h / 0.12);
+
+  /* Profile dropdown shadow */
+  --navbar-dropdown-shadow:
+    0 8px 24px -4px oklch(0.2 0.04 230 / 0.16),
+    0 2px 8px oklch(0.2 0.04 230 / 0.08),
+    0 0 0 1px oklch(0 0 0 / 0.04);
+}
+
+.dark {
+  --navbar-dropdown-shadow:
+    0 8px 24px -4px oklch(0 0 0 / 0.55),
+    0 2px 8px oklch(0 0 0 / 0.35),
+    0 0 0 1px oklch(1 0 0 / 0.05);
+}
+
+/* Scrolled navbar — elevated shadow transition class */
+@utility navbar-scrolled {
+  box-shadow:
+    0 4px 24px -2px oklch(0.15 0.03 230 / 0.18),
+    0 1px 4px oklch(0.15 0.03 230 / 0.08);
+}
+
+@utility navbar-scrolled-dark {
+  box-shadow:
+    0 4px 24px -2px oklch(0 0 0 / 0.5),
+    0 1px 4px oklch(0 0 0 / 0.3);
+}
+
+/* ─── V3 Environmental Overview: Dark-context overrides ──────────────────────
+   When .dark is forced on the EnvironmentOverview wrapper, ensure all
+   child components (glass cards, section headers, metric chips, maps,
+   chart labels, skeleton loaders) render correctly against the cinematic
+   dark background without requiring individual component changes.
+
+   We intentionally scope every rule to `.dark .env-v3-*` or use the
+   existing dark-variant CSS variables — no global side-effects.
+───────────────────────────────────────────────────────────────────────────── */
+
+/* V3 Glass card — enhanced dark-mode surface for the forced dark wrapper */
+@utility glass-v3 {
+  background: linear-gradient(135deg, oklch(1 0 0 / 0.07) 0%, oklch(1 0 0 / 0.03) 100%);
+  backdrop-filter: blur(22px) saturate(145%);
+  -webkit-backdrop-filter: blur(22px) saturate(145%);
+  border: 1px solid oklch(1 0 0 / 0.10);
+  box-shadow: 0 0 0 1px oklch(1 0 0 / 0.05) inset, 0 16px 48px -12px oklch(0 0 0 / 0.55);
+}
+
+/* V3 Hover float — GPU-accelerated lift for interactive cards */
+@utility float-hover {
+  transition:
+    transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.28s ease;
+}
+
+.float-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 60px oklch(0 0 0 / 0.45);
+}
+
+/* V3 Glow accent border animation */
+@keyframes v3-border-glow {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1.0; }
+}
+@utility glow-border {
+  animation: v3-border-glow 3s ease-in-out infinite;
+}
+
+/* V3 Score ring shimmer — used on the radial health score arc cap */
+@keyframes v3-score-shimmer {
+  0%   { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -60; }
+}
+
+/* Fade-up stagger utility for Framer Motion fallback in SSR */
+@keyframes v3-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@utility env-fade-up {
+  animation: v3-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Pulsing live indicator dot */
+@keyframes v3-live-ping {
+  0%    { transform: scale(1);    opacity: 0.65; }
+  70%   { transform: scale(2.2);  opacity: 0; }
+  100%  { transform: scale(2.2);  opacity: 0; }
+}
+@utility live-ping {
+  animation: v3-live-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+

@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   Outlet,
   Link,
@@ -117,13 +118,16 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
           <CityProvider>
-            <Outlet />
-            <Toaster />
+            <TooltipProvider delayDuration={150}>
+              <Outlet />
+              <Toaster />
+            </TooltipProvider>
           </CityProvider>
         </AuthProvider>
       </ThemeProvider>

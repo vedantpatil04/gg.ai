@@ -11,6 +11,11 @@ import { generateAdminSummary } from "../services/gemini.service";
 import { triggerManualIngestion, getSchedulerStatus } from "../jobs/scheduler";
 import { AuthRequest } from "../middleware/auth";
 import { logger } from "../utils/logger";
+import {
+  notifyAuthorityApproved,
+  notifyAuthorityRejected,
+  notifyAuthorityRegistrationRequest,
+} from "../services/notification.service";
 
 export async function getPlatformStats(
   _req: Request,
@@ -469,6 +474,9 @@ export async function approveAuthorityRequest(
       message: "Authority account approved successfully.",
       data: { request },
     });
+
+    // Phase 7 — notify the authority their account is approved
+    await notifyAuthorityApproved(request._id).catch(() => {});
   } catch (err) {
     next(err);
   }
@@ -507,6 +515,9 @@ export async function rejectAuthorityRequest(
       message: "Authority request rejected.",
       data: { request },
     });
+
+    // Phase 7 — notify the authority their request was rejected
+    await notifyAuthorityRejected(request._id).catch(() => {});
   } catch (err) {
     next(err);
   }

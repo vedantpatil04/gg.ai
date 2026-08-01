@@ -3,9 +3,19 @@ import fs from "fs/promises";
 import path from "path";
 import mongoose from "mongoose";
 import { Complaint, type ComplaintEventType } from "../models/Complaint";
+import { User } from "../models/User";
 import { AppError } from "../middleware/errorHandler";
 import { AuthRequest } from "../middleware/auth";
 import { isValidImageBuffer } from "../middleware/uploadPhoto";
+import {
+  notifyComplaintSubmitted,
+  notifyComplaintAssigned,
+  notifyInvestigationStarted,
+  notifyEvidenceAdded,
+  notifyResolutionSubmitted,
+  notifyComplaintClosed,
+  notifyReworkRequested,
+} from "../services/notification.service";
 
 // ─── Evidence storage ─────────────────────────────────────────────────────────
 const EVIDENCE_DIR = path.join(__dirname, "../../../uploads/evidence");
@@ -52,7 +62,6 @@ function appendEvent(
 }
 
 // ─── Ownership guard ──────────────────────────────────────────────────────────
-// Handles both raw ObjectId and Mongoose-populated User document on assignedTo.
 function authorityOwns(
   complaint: InstanceType<typeof Complaint>,
   user: AuthRequest["user"],
@@ -66,10 +75,17 @@ function authorityOwns(
   return assignedId === String(user._id);
 }
 
-// Extracts a canonical id string from a field that may be raw ObjectId or populated doc.
 function extractId(field: unknown): string {
   const f = field as Record<string, unknown>;
   return f._id != null ? String(f._id) : String(field);
+}
+
+/** Fetch all administrator IDs for fan-out notifications */
+async function getAdminIds(): Promise<mongoose.Types.ObjectId[]> {
+  const admins = await User.find({ role: "administrator", isActive: true })
+    .select("_id")
+    .lean();
+  return admins.map((a) => a._id as mongoose.Types.ObjectId);
 }
 
 // ─── Create ───────────────────────────────────────────────────────────────────
@@ -82,6 +98,15 @@ export async function createComplaint(
     if (!req.user) return next(new AppError("Not authenticated", 401));
     const complaint = await Complaint.create({ ...req.body, submittedBy: req.user._id });
     res.status(201).json({ success: true, data: { complaint } });
+
+    // Phase 7 — Notify citizen (confirmation) and all administrators (new complaint)
+    const adminIds = await getAdminIds();
+    await notifyComplaintSubmitted(
+      req.user._id as mongoose.Types.ObjectId,
+      complaint._id.toString(),
+      complaint.title,
+      adminIds,
+    );
   } catch (err) {
     next(err);
   }
@@ -102,7 +127,6 @@ export async function getComplaints(
     if (req.user?.role === "citizen") {
       filter.submittedBy = req.user._id;
     } else if (req.user?.role === "authority") {
-      // Phase 3B/3C: hard-scoped to their assigned complaints regardless of query params.
       filter.assignedTo = req.user._id;
     } else {
       if (req.query.assignedTo) {
@@ -158,8 +182,6 @@ export async function getComplaint(
       if (extractId(complaint.submittedBy) !== String(req.user._id)) {
         return next(new AppError("Access denied", 403));
       }
-      // Phase 3C: mask rework status from citizens — show as "in-progress"
-      // and strip internal admin feedback fields.
       if (complaint.status === "rework") {
         const obj = complaint.toObject() as unknown as Record<string, unknown>;
         obj.status = "in-progress";
@@ -218,11 +240,13 @@ export async function updateComplaint(
 
     const { status, resolution, assignedTo } = req.body;
 
+    // Capture pre-save state for notification triggers
+    const prevStatus = complaint.status;
+    const prevAssignedTo = complaint.assignedTo;
+    const citizenId = complaint.submittedBy as mongoose.Types.ObjectId;
+
     // ── Status transition ─────────────────────────────────────────────────────
     if (status && status !== complaint.status) {
-      const prevStatus = complaint.status;
-
-      // rework and closed are set only via dedicated endpoints
       if (status === "rework" || status === "closed") {
         return next(
           new AppError(
@@ -234,7 +258,6 @@ export async function updateComplaint(
         );
       }
 
-      // Authority can only move in-progress → resolved  OR  rework → resolved (resubmit)
       if (req.user.role === "authority") {
         if (status !== "resolved") {
           return next(new AppError("Authorities can only change status to resolved", 403));
@@ -249,19 +272,9 @@ export async function updateComplaint(
       if (status === "resolved") {
         complaint.resolvedAt = new Date();
         if (prevStatus === "rework") {
-          appendEvent(
-            complaint,
-            "resubmitted",
-            "Resolution resubmitted after rework request",
-            actor,
-          );
+          appendEvent(complaint, "resubmitted", "Resolution resubmitted after rework request", actor);
         } else {
-          appendEvent(
-            complaint,
-            "resolved",
-            "Resolution submitted — awaiting administrator verification",
-            actor,
-          );
+          appendEvent(complaint, "resolved", "Resolution submitted — awaiting administrator verification", actor);
         }
       } else if (status === "in-progress") {
         appendEvent(complaint, "status_change", "Investigation started", actor);
@@ -275,8 +288,11 @@ export async function updateComplaint(
     if (resolution !== undefined) complaint.resolution = resolution;
 
     // ── Assignment (admin only) ───────────────────────────────────────────────
-    if (assignedTo !== undefined && String(assignedTo) !== String(complaint.assignedTo ?? "")) {
-      const isReassign = !!complaint.assignedTo;
+    let isNewAssignment = false;
+    let isReassign = false;
+    if (assignedTo !== undefined && String(assignedTo) !== String(prevAssignedTo ?? "")) {
+      isReassign = !!prevAssignedTo;
+      isNewAssignment = true;
       (complaint.assignedTo as unknown) = new mongoose.Types.ObjectId(String(assignedTo));
       complaint.assignedBy = actor._id;
       complaint.assignedAt = new Date();
@@ -299,6 +315,44 @@ export async function updateComplaint(
       { path: "verifiedBy", select: "name email" },
     ]);
     res.json({ success: true, data: { complaint } });
+
+    // ── Phase 7 notifications (fire after response) ───────────────────────────
+    try {
+      if (isNewAssignment && complaint.assignedTo) {
+        const newAuthorityId = new mongoose.Types.ObjectId(String(assignedTo));
+        const authorityUser = await User.findById(newAuthorityId).select("name").lean();
+        await notifyComplaintAssigned(
+          citizenId,
+          newAuthorityId,
+          complaint._id.toString(),
+          complaint.title,
+          authorityUser?.name ?? "an authority",
+          isReassign,
+        );
+      }
+
+      if (status === "in-progress" && prevStatus !== "in-progress") {
+        await notifyInvestigationStarted(citizenId, complaint._id.toString(), complaint.title);
+      }
+
+      if (status === "resolved" && prevStatus !== "resolved") {
+        const adminIds = await getAdminIds();
+        const authorityId = complaint.assignedTo
+          ? new mongoose.Types.ObjectId(extractId(complaint.assignedTo))
+          : undefined;
+        if (authorityId) {
+          await notifyResolutionSubmitted(
+            citizenId,
+            authorityId,
+            adminIds,
+            complaint._id.toString(),
+            complaint.title,
+          );
+        }
+      }
+    } catch {
+      // Notifications never break the workflow
+    }
   } catch (err) {
     next(err);
   }
@@ -363,10 +417,11 @@ export async function addComplaintImages(
     if (req.user.role === "authority" && !authorityOwns(complaint, req.user)) {
       return next(new AppError("Access denied — this complaint is not assigned to you", 403));
     }
-    // Phase 3C: block uploads on closed or resolved (submitted) complaints
     if (complaint.status === "closed") {
       return next(new AppError("Cannot add evidence to a closed complaint", 400));
     }
+
+    const citizenId = complaint.submittedBy as mongoose.Types.ObjectId;
 
     const saved: string[] = [];
     const invalid: string[] = [];
@@ -397,6 +452,9 @@ export async function addComplaintImages(
       success: true,
       data: { complaint, invalidFiles: invalid.length ? invalid : undefined },
     });
+
+    // Phase 7 — notify citizen of new evidence
+    await notifyEvidenceAdded(citizenId, complaint._id.toString(), complaint.title);
   } catch (err) {
     next(err);
   }
@@ -480,8 +538,6 @@ export async function updateComplaintNotes(
 }
 
 // ─── Phase 3C: Verify resolution (admin → closed) ────────────────────────────
-// POST /api/complaints/:id/verify  —  administrator only
-// Approves the authority's submitted resolution and closes the complaint.
 export async function verifyResolution(
   req: AuthRequest,
   res: Response,
@@ -503,18 +559,17 @@ export async function verifyResolution(
     }
 
     const actor = { _id: req.user._id as mongoose.Types.ObjectId, name: req.user.name };
+    const citizenId = complaint.submittedBy as mongoose.Types.ObjectId;
+    const authorityId = complaint.assignedTo
+      ? new mongoose.Types.ObjectId(complaint.assignedTo.toString())
+      : undefined;
 
     complaint.status = "closed";
     complaint.verifiedBy = actor._id;
     complaint.verifiedAt = new Date();
     complaint.verifiedByName = actor.name;
 
-    appendEvent(
-      complaint,
-      "verified",
-      `Resolution approved by ${actor.name} — investigation verified`,
-      actor,
-    );
+    appendEvent(complaint, "verified", `Resolution approved by ${actor.name} — investigation verified`, actor);
     appendEvent(complaint, "closed", "Complaint closed", actor);
 
     await complaint.save();
@@ -524,14 +579,15 @@ export async function verifyResolution(
       { path: "verifiedBy", select: "name email" },
     ]);
     res.json({ success: true, data: { complaint } });
+
+    // Phase 7 — notify citizen and authority
+    await notifyComplaintClosed(citizenId, authorityId, complaint._id.toString(), complaint.title);
   } catch (err) {
     next(err);
   }
 }
 
 // ─── Phase 3C: Request rework (admin → rework) ───────────────────────────────
-// POST /api/complaints/:id/rework  —  administrator only
-// Rejects the resolution and returns the complaint to the assigned authority.
 export async function requestRework(
   req: AuthRequest,
   res: Response,
@@ -554,6 +610,9 @@ export async function requestRework(
 
     const { reason, comments } = req.body as { reason: string; comments?: string };
     const actor = { _id: req.user._id as mongoose.Types.ObjectId, name: req.user.name };
+    const authorityId = complaint.assignedTo
+      ? new mongoose.Types.ObjectId(complaint.assignedTo.toString())
+      : undefined;
 
     complaint.status = "rework";
     complaint.reworkReason = reason.trim();
@@ -574,6 +633,11 @@ export async function requestRework(
       { path: "assignedBy", select: "name email" },
     ]);
     res.json({ success: true, data: { complaint } });
+
+    // Phase 7 — notify authority of rework
+    if (authorityId) {
+      await notifyReworkRequested(authorityId, complaint._id.toString(), complaint.title, reason.trim());
+    }
   } catch (err) {
     next(err);
   }

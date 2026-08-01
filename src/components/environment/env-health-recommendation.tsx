@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 function CategoryBadge({ label, color }: { label: string; color: string }) {
   return (
     <span
-      className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1 rounded-full border w-fit"
+      className="inline-flex items-center gap-2 text-base font-semibold px-3.5 py-1.5 rounded-full border w-fit"
       style={{
         color,
         borderColor: `color-mix(in oklab, ${color} 35%, transparent)`,
@@ -28,7 +28,7 @@ function CategoryBadge({ label, color }: { label: string; color: string }) {
       }}
       aria-label={`Air quality status: ${label}`}
     >
-      <span className="size-1.5 rounded-full" style={{ background: color }} aria-hidden="true" />
+      <span className="size-2 rounded-full" style={{ background: color }} aria-hidden="true" />
       AQI: {label}
     </span>
   );
@@ -36,14 +36,14 @@ function CategoryBadge({ label, color }: { label: string; color: string }) {
 
 function SupportingFactor({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col items-center gap-0.5" aria-label={`${label}: ${value}`}>
+    <div className="flex flex-col items-center gap-1" aria-label={`${label}: ${value}`}>
       <span
-        className="text-[10px] uppercase tracking-wider text-muted-foreground"
+        className="text-xs uppercase tracking-wider text-muted-foreground font-semibold"
         aria-hidden="true"
       >
         {label}
       </span>
-      <span className="text-sm font-medium tabular-nums" aria-hidden="true">
+      <span className="text-base font-bold tabular-nums" aria-hidden="true">
         {value}
       </span>
     </div>
@@ -97,11 +97,11 @@ export function HealthRecommendation({ className }: { className?: string }) {
     >
       <CategoryBadge label={band.label} color={band.color} />
 
-      <p className="text-sm leading-relaxed">{recommendation}</p>
+      <p className="text-base md:text-lg leading-relaxed font-medium">{recommendation}</p>
 
       {factors.length > 0 && (
-        <div className="pt-1 border-t border-border">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-3 mb-2">
+        <div className="pt-2 border-t border-border">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mt-3 mb-2">
             Supporting factors
           </p>
           <div
@@ -118,7 +118,7 @@ export function HealthRecommendation({ className }: { className?: string }) {
         </div>
       )}
 
-      <p className="text-[10px] text-muted-foreground">Informational only — not medical advice.</p>
+      <p className="text-xs text-muted-foreground">Informational only — not medical advice.</p>
     </div>
   );
 }

@@ -389,3 +389,188 @@
   background-size: 200% 100%;
   animation: shimmer 2.4s linear infinite;
 }
+
+/* ─── Phase 2: Forecast hero ambience ─────────────────────────────────────── */
+@keyframes drift-blob {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(3%, -4%) scale(1.08);
+  }
+  66% {
+    transform: translate(-3%, 3%) scale(0.96);
+  }
+}
+@utility drift-blob {
+  animation: drift-blob 25s ease-in-out infinite;
+}
+
+@keyframes cloud-drift {
+  0% {
+    transform: translateX(-8%);
+  }
+  100% {
+    transform: translateX(8%);
+  }
+}
+@utility cloud-drift {
+  animation: cloud-drift 40s ease-in-out infinite alternate;
+}
+
+@keyframes particle-drift {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--particle-x, 12px), -120px);
+    opacity: 0;
+  }
+}
+@utility particle-drift {
+  animation: particle-drift 18s linear infinite;
+}
+
+@keyframes orbit-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@utility orbit-spin {
+  animation: orbit-spin 14s linear infinite;
+}
+
+@keyframes wind-flow {
+  0% {
+    transform: translateX(-40%);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(40%);
+    opacity: 0;
+  }
+}
+@utility wind-flow {
+  animation: wind-flow 2.6s ease-in-out infinite;
+}
+
+@keyframes wave-rise {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6%);
+  }
+}
+@utility wave-rise {
+  animation: wave-rise 4s ease-in-out infinite;
+}
+
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@utility marquee-scroll {
+  animation: marquee-scroll 22s linear infinite;
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@utility glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* ─── V3 Environmental Overview: Dark-context overrides ──────────────────────
+   When .dark is forced on the EnvironmentOverview wrapper, ensure all
+   child components (glass cards, section headers, metric chips, maps,
+   chart labels, skeleton loaders) render correctly against the cinematic
+   dark background without requiring individual component changes.
+
+   We intentionally scope every rule to `.dark .env-v3-*` or use the
+   existing dark-variant CSS variables — no global side-effects.
+───────────────────────────────────────────────────────────────────────────── */
+
+/* V3 Glass card — enhanced dark-mode surface for the forced dark wrapper */
+@utility glass-v3 {
+  background: linear-gradient(135deg, oklch(1 0 0 / 0.07) 0%, oklch(1 0 0 / 0.03) 100%);
+  backdrop-filter: blur(22px) saturate(145%);
+  -webkit-backdrop-filter: blur(22px) saturate(145%);
+  border: 1px solid oklch(1 0 0 / 0.10);
+  box-shadow: 0 0 0 1px oklch(1 0 0 / 0.05) inset, 0 16px 48px -12px oklch(0 0 0 / 0.55);
+}
+
+/* V3 Hover float — GPU-accelerated lift for interactive cards */
+@utility float-hover {
+  transition:
+    transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.28s ease;
+}
+
+.float-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 60px oklch(0 0 0 / 0.45);
+}
+
+/* V3 Glow accent border animation */
+@keyframes v3-border-glow {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1.0; }
+}
+@utility glow-border {
+  animation: v3-border-glow 3s ease-in-out infinite;
+}
+
+/* V3 Score ring shimmer — used on the radial health score arc cap */
+@keyframes v3-score-shimmer {
+  0%   { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -60; }
+}
+
+/* Fade-up stagger utility for Framer Motion fallback in SSR */
+@keyframes v3-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@utility env-fade-up {
+  animation: v3-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Pulsing live indicator dot */
+@keyframes v3-live-ping {
+  0%    { transform: scale(1);    opacity: 0.65; }
+  70%   { transform: scale(2.2);  opacity: 0; }
+  100%  { transform: scale(2.2);  opacity: 0; }
+}
+@utility live-ping {
+  animation: v3-live-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+

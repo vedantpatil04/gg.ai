@@ -33,6 +33,12 @@ import {
   normalisePhone,
 } from "../services/security.service";
 import jwt from "jsonwebtoken";
+import {
+  notifyAuthorityRegistrationRequest,
+  notifyPasswordChanged,
+  notifyAccountLocked,
+  notifyAccountUnlocked,
+} from "../services/notification.service";
 
 // Maps a login portal (as selected on the frontend) to the User.role values
 // stored in the database. Kept separate because the "Administrator" portal
@@ -92,6 +98,13 @@ export async function signup(req: Request, res: Response, next: NextFunction): P
           "Registration received. Your Authority account is pending administrator approval before you can log in.",
         data: { user },
       });
+      // Phase 7 — notify all administrators of the new authority registration
+      const admins = await User.find({ role: "administrator", isActive: true }).select("_id").lean();
+      await notifyAuthorityRegistrationRequest(
+        admins.map((a) => a._id as import("mongoose").Types.ObjectId),
+        user.name,
+        user._id.toString(),
+      ).catch(() => {});
       return;
     }
 

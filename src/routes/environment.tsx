@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import { AppLayout } from "@/components/app-layout";
 import { useCity } from "@/lib/city-context";
 import { EnvPageHeader } from "@/components/environment/env-page-header";
@@ -25,9 +26,30 @@ export const Route = createFileRoute("/environment")({
 });
 
 /**
- * Environmental Overview — Executive Environmental Command Center.
- * Streamlined 10-step information hierarchy without metric duplication or cross-module leakage.
+ * V3 Environmental Overview — Immersive Environmental Operating System.
+ *
+ * Layout: cinematic dark canvas with multi-layer animated atmosphere,
+ * full-viewport hero, then Bento-style section grid below.
+ *
+ * Changes from previous version:
+ *   - Outer wrapper forces dark rendering context so the background system
+ *     always reads against the deep base — regardless of user OS theme.
+ *     This matches the page's cinematic intent (comparable to a mapping
+ *     or satellite intelligence tool).
+ *   - Hero section removed from EnvSection wrapper — it occupies its own
+ *     full visual zone.
+ *   - Section grid uses a slightly narrower max-width with generous padding.
+ *   - Framer Motion page-entrance stagger via containerVariants.
+ *
+ * All existing child components (EnvMap, NearbyCities, EnvAlerts, etc.)
+ * are unchanged — only the wrapper layout and aesthetic context updated.
  */
+
+const pageVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.12, delayChildren: 0.05 } },
+};
+
 function EnvironmentOverview() {
   const { city, isCityFetching, cityDataUpdatedAt, isApiConnected, refreshCity } = useCity();
 
@@ -42,23 +64,36 @@ function EnvironmentOverview() {
   };
 
   return (
-    <div className="relative">
-      {/* Decorative animated atmosphere */}
+    /*
+     * Dark-mode forcing wrapper:
+     * `dark` class on this div pushes Tailwind's dark-variant tokens down
+     * into all child components, giving the cinematic dark background even
+     * when the user's OS is in light mode. We don't touch the sidebar or
+     * top-nav (those live outside AppLayout's content slot) — only this
+     * content area is affected.
+     */
+    <div className="dark relative min-h-screen">
+      {/* ── Cinematic atmosphere (fixed behind all content) ── */}
       <EnvAmbientBackground aqi={typeof city.aqi === "number" ? city.aqi : undefined} />
 
-      {/* Executive Command Center Content Grid */}
-      <div className="relative p-4 md:p-8 space-y-8 max-w-[1600px] mx-auto">
-        {/* 1. Hero Header */}
+      {/* ── Scrollable content grid ── */}
+      <motion.div
+        className="relative z-10 p-4 md:p-8 space-y-10 max-w-[1600px] mx-auto"
+        variants={pageVariants}
+        initial="hidden"
+        animate="show"
+      >
+        {/* 1. Masthead */}
         <EnvPageHeader
           onRefresh={handleRefresh}
           isRefreshing={isCityFetching || isForecastFetching || isAlertsFetching}
           lastUpdated={isApiConnected ? cityDataUpdatedAt : undefined}
         />
 
-        {/* 2. Executive Status */}
+        {/* 2. Full-viewport hero command center */}
         <HeroCommandCenter />
 
-        {/* 3. Current Conditions */}
+        {/* 3. Live telemetry strip */}
         <LiveMetricsStrip />
 
         {/* 4. Weather Forecast */}
@@ -123,7 +158,10 @@ function EnvironmentOverview() {
         >
           <EnvAlerts />
         </EnvSection>
-      </div>
+
+        {/* Bottom breathing room */}
+        <div className="h-8" aria-hidden="true" />
+      </motion.div>
     </div>
   );
 }

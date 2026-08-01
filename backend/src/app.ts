@@ -29,6 +29,7 @@ import intelligenceRoutes from "./routes/intelligence.routes";
 import commandRoutes from "./routes/command.routes";
 import securityRoutes from "./routes/security.routes";
 import platformAdminRoutes from "./routes/platform-admin.routes";
+import notificationRoutes from "./routes/notification.routes";
 
 import { getCityAIInsights } from "./controllers/copilot.controller";
 import { startScheduler, getSchedulerStatus } from "./jobs/scheduler";
@@ -87,6 +88,7 @@ app.use("/api/intelligence", aiLimiter, intelligenceRoutes);
 app.use("/api/command", aiLimiter, commandRoutes);
 app.use("/api/security", securityRoutes);
 app.use("/api/platform-admin", platformAdminRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Direct City AI Insights route
 app.get("/api/cities/:city/ai-insights", aiLimiter, getCityAIInsights);

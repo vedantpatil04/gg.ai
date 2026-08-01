@@ -51,17 +51,17 @@ export function ForecastOverview({ className }: { className?: string }) {
 
         <div className="space-y-1.5 min-w-0">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h3 className="text-lg font-semibold tracking-tight">Weather Forecast</h3>
+            <h3 className="text-xl font-bold tracking-tight">Weather Forecast</h3>
             <span
               className={cn(
-                "inline-flex items-center gap-1.5 text-[10px] font-medium px-2.5 py-0.5 rounded-full border",
+                "inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full border",
                 isAvailable
                   ? "border-success/30 text-success bg-success/10"
                   : "border-warning/30 text-warning bg-warning/10",
               )}
             >
               <span
-                className="size-1.5 rounded-full"
+                className="size-2 rounded-full"
                 style={{
                   background: isAvailable ? "var(--color-success)" : "var(--color-warning)",
                 }}
@@ -71,12 +71,12 @@ export function ForecastOverview({ className }: { className?: string }) {
             </span>
           </div>
 
-          <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
+          <p className="text-sm md:text-base text-muted-foreground leading-relaxed max-w-xl">
             View hourly, daily, and long-range weather forecasts for {city.name} with AI-powered predictive intelligence.
           </p>
 
           {!isAvailable && !isLoading && (
-            <p className="text-[11px] text-muted-foreground/70 pt-0.5">
+            <p className="text-xs text-muted-foreground/70 pt-0.5">
               Forecast data is temporarily unavailable. You can still open the Forecast Center to retry or view cached data.
             </p>
           )}
@@ -88,7 +88,7 @@ export function ForecastOverview({ className }: { className?: string }) {
         <Link to="/forecast">
           <Button
             size="lg"
-            className="w-full md:w-auto h-11 px-6 text-sm font-semibold gap-2 rounded-xl shadow-sm hover:shadow transition-all group"
+            className="w-full md:w-auto h-11 px-6 text-base font-semibold gap-2 rounded-xl shadow-sm hover:shadow transition-all group"
           >
             <span>Open Forecast Center</span>
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />

@@ -73,6 +73,8 @@ export interface IUser extends Document {
     performedByName?: string;
     at: Date;
   }>;
+  // Phase 7
+  notificationPreferences?: Map<string, boolean>;
 
   createdAt: Date;
   updatedAt: Date;
@@ -176,6 +178,12 @@ const UserSchema = new Schema<IUser>(
       ],
       default: [],
       select: false,
+    },
+    // Phase 7 — per-user notification category preferences
+    notificationPreferences: {
+      type: Map,
+      of: Boolean,
+      default: undefined,
     },
   },
   {

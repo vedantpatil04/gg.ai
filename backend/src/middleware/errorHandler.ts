@@ -52,6 +52,13 @@ export function errorHandler(
         : code === "LIMIT_UNEXPECTED_FILE"
           ? "Upload one image at a time"
           : "Couldn't process the uploaded file";
+  } else if ((err as NodeJS.ErrnoException & { type?: string }).type === "entity.too.large") {
+    // Phase 8 — express.json() payload size exceeded
+    statusCode = 413;
+    message = "Request payload is too large";
+  } else if ((err as AppError & { statusCode?: number }).statusCode === 429) {
+    statusCode = 429;
+    message = "Too many requests — please slow down and try again later";
   }
 
   if (process.env.NODE_ENV !== "production") {

@@ -1,26 +1,26 @@
-import { RefreshCw, MapPinned, Clock } from "lucide-react";
+import { RefreshCw, MapPinned, Satellite, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 /**
- * Environmental Overview — page header.
+ * V3 Environmental Overview — Page header.
  *
- * Phase 2: Refresh is now functional when a handler is supplied — it
- * refetches the same live-city reading that powers the AQI Hero, and
- * shows a spinner + real "Updated x ago" timestamp. Called with no props
- * (Phase 1 usage), it falls back to its original fully-disabled state, so
- * this stays backward compatible. Change City remains disabled — city
- * selection belongs to a later phase.
+ * Redesigned as a premium command-center masthead:
+ *   - Eyebrow label with animated accent mark
+ *   - Large display heading with gradient text
+ *   - Subtitle
+ *   - Right side: live status + last updated + refresh + change city
+ *
+ * API surface unchanged — same props as before.
  */
 export function EnvPageHeader({
   lastUpdated,
   onRefresh,
   isRefreshing = false,
 }: {
-  /** Timestamp (ms) of the last successful data fetch, if any. */
   lastUpdated?: number;
-  /** Called when the user clicks Refresh. Omit to keep the button disabled. */
   onRefresh?: () => void;
   isRefreshing?: boolean;
 } = {}) {
@@ -29,32 +29,70 @@ export function EnvPageHeader({
     : "--";
 
   return (
-    <header className="flex flex-wrap items-end justify-between gap-4">
+    <motion.header
+      className="flex flex-wrap items-end justify-between gap-6"
+      initial={{ opacity: 0, y: -16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 240, damping: 24 }}
+    >
+      {/* Left — title block */}
       <div>
-        <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          Environmental intelligence
+        {/* Eyebrow */}
+        <div className="flex items-center gap-2 mb-2">
+          <span
+            className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.22em] px-2.5 py-1 rounded-full border"
+            style={{
+              color: "var(--color-primary)",
+              borderColor: "color-mix(in oklab, var(--color-primary) 30%, transparent)",
+              background: "color-mix(in oklab, var(--color-primary) 10%, transparent)",
+            }}
+          >
+            <Satellite className="size-2.5" aria-hidden="true" />
+            Environmental Intelligence
+          </span>
         </div>
-        <h1 className="text-3xl font-semibold tracking-tight mt-1">Environmental Overview</h1>
-        <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-          Monitor your city&apos;s environmental conditions, air quality and weather intelligence.
+
+        {/* Main title */}
+        <h1
+          className="text-4xl md:text-5xl font-bold tracking-tight leading-none"
+          style={{
+            background: "linear-gradient(135deg, var(--color-foreground) 0%, color-mix(in oklab, var(--color-foreground) 55%, var(--color-primary)) 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+          }}
+        >
+          Environmental Overview
+        </h1>
+
+        <p className="text-sm text-muted-foreground mt-2 max-w-lg leading-relaxed">
+          Monitor your city&apos;s environmental conditions, air quality and weather intelligence — updated in real time.
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground pr-1">
-          <Clock className="size-3.5" aria-hidden="true" />
-          <span>Last updated: {lastUpdatedLabel}</span>
-        </div>
+      {/* Right — controls */}
+      <div className="flex flex-wrap items-center gap-2.5">
+        {lastUpdated && (
+          <div
+            className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground px-3 py-1.5 rounded-lg border border-border/60"
+            style={{ background: "var(--color-muted)" }}
+          >
+            <Clock className="size-3" aria-hidden="true" />
+            <span>Updated {lastUpdatedLabel}</span>
+          </div>
+        )}
+
         <Button
           type="button"
           variant="outline"
           size="sm"
           onClick={onRefresh}
           disabled={!onRefresh || isRefreshing}
+          className="gap-1.5"
           aria-label={
             onRefresh
               ? "Refresh environmental data"
-              : "Refresh environmental data (available in a later phase)"
+              : "Refresh environmental data (not available)"
           }
         >
           <RefreshCw
@@ -63,17 +101,19 @@ export function EnvPageHeader({
           />
           {isRefreshing ? "Refreshing…" : "Refresh"}
         </Button>
+
         <Button
           type="button"
           variant="outline"
           size="sm"
           disabled
+          className="gap-1.5"
           aria-label="Change city (available in a later phase)"
         >
           <MapPinned className="size-3.5" aria-hidden="true" />
           Change City
         </Button>
       </div>
-    </header>
+    </motion.header>
   );
 }

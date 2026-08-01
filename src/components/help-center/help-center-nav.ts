@@ -44,7 +44,6 @@ export const HELP_NAV_ITEMS: HelpNavItem[] = [
     label: "Support Center",
     icon: HeadphonesIcon,
     to: "/help/support",
-    comingSoon: true,
   },
   {
     id: "feedback",

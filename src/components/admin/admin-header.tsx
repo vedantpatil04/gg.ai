@@ -1,6 +1,7 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Menu, X, Search, Bell, User, LogOut, ChevronDown } from "lucide-react";
+import { NotificationBell } from "@/components/notifications/notification-center";
 import { useAuth } from "@/lib/auth-context";
 import { AdminBreadcrumb } from "./admin-breadcrumb";
 import { ADMIN_LABEL_MAP } from "./admin-nav";
@@ -39,7 +40,6 @@ export function AdminHeader({ onMenuClick, mobileOpen }: AdminHeaderProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const title = usePageTitle();
-  const [notifOpen, setNotifOpen] = useState(false);
 
   const initials =
     user?.name
@@ -78,30 +78,8 @@ export function AdminHeader({ onMenuClick, mobileOpen }: AdminHeaderProps) {
           <span>Search platform...</span>
         </div>
 
-        {/* Notification placeholder */}
-        <div className="relative shrink-0">
-          <button
-            onClick={() => setNotifOpen((o) => !o)}
-            className="relative size-9 grid place-items-center rounded-md hover:bg-muted"
-            aria-label="Notifications"
-          >
-            <Bell className="size-4" />
-          </button>
-
-          {notifOpen && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
-              <div className="absolute right-0 mt-2 w-72 rounded-xl border border-border bg-background shadow-xl z-50">
-                <div className="p-4 border-b border-border">
-                  <h3 className="font-semibold text-sm">Notifications</h3>
-                </div>
-                <div className="p-6 text-center text-xs text-muted-foreground">
-                  No notifications yet — the Notification Center is coming in a future phase.
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+        {/* Notification Center */}
+        <NotificationBell className="shrink-0" />
 
         {/* Administrator profile menu */}
         <DropdownMenu>

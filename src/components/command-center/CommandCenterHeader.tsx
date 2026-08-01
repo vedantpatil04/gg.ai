@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
+import { NotificationBell } from "@/components/notifications/notification-center";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,7 +30,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export interface NavTab {
@@ -77,30 +77,6 @@ export function CommandCenterHeader({
       window.location.href = "/login";
     }
   };
-
-  const sampleNotifications = [
-    {
-      id: "1",
-      title: "Critical AQI Spike in Industrial Zone",
-      desc: "AQI crossed 240 in Sector 4. Incident report generated.",
-      time: "5m ago",
-      type: "critical",
-    },
-    {
-      id: "2",
-      title: "Water Contamination Alert",
-      desc: "Turbidity levels above 12 NTU at River Intake #3.",
-      time: "18m ago",
-      type: "warning",
-    },
-    {
-      id: "3",
-      title: "Complaint Resolution Verified",
-      desc: "Complaint #GRN-4891 closed by Field Officer.",
-      time: "1h ago",
-      type: "success",
-    },
-  ];
 
   return (
     <>
@@ -184,64 +160,8 @@ export function CommandCenterHeader({
             <Search className="size-4" />
           </Button>
 
-          {/* Notifications Popover */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative size-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground"
-                aria-label="View notifications"
-              >
-                <Bell className="size-4" />
-                <span className="absolute top-1 right-1 size-2 rounded-full bg-emerald-500 ring-2 ring-background" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-80 p-0 shadow-xl border-border/80">
-              <div className="p-3 border-b border-border/60 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Bell className="size-4 text-emerald-500" />
-                  <span className="text-xs font-semibold">Operational Alerts</span>
-                </div>
-                <span className="text-[10px] font-medium px-1.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded">
-                  3 Unread
-                </span>
-              </div>
-              <div className="divide-y divide-border/40 max-h-72 overflow-y-auto">
-                {sampleNotifications.map((n) => (
-                  <div
-                    key={n.id}
-                    className="p-3 hover:bg-muted/40 transition-colors text-left space-y-1"
-                  >
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-foreground flex items-center gap-1.5">
-                        {n.type === "critical" && (
-                          <AlertTriangle className="size-3 text-destructive" />
-                        )}
-                        {n.type === "warning" && (
-                          <AlertTriangle className="size-3 text-amber-500" />
-                        )}
-                        {n.type === "success" && (
-                          <CheckCircle2 className="size-3 text-emerald-500" />
-                        )}
-                        {n.title}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">{n.desc}</p>
-                    <span className="text-[10px] text-muted-foreground/70">{n.time}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="p-2 border-t border-border/60 text-center">
-                <Link
-                  to="/command-center"
-                  className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
-                >
-                  View all system logs →
-                </Link>
-              </div>
-            </PopoverContent>
-          </Popover>
+          {/* Notification Center */}
+          <NotificationBell className="text-muted-foreground hover:text-foreground" />
 
           {/* Profile Dropdown (Enterprise Grade) */}
           <DropdownMenu>
