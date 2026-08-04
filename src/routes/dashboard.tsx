@@ -63,6 +63,10 @@ import { MiniTrendCard } from "@/components/dashboard/mini-trend-card";
 import { MapPreviewCard } from "@/components/dashboard/map-preview-card";
 import { CommunityActivityCard } from "@/components/dashboard/community-activity-card";
 import { EcoTipCard } from "@/components/dashboard/eco-tip-card";
+import { PollutantBreakdownCard } from "@/components/dashboard/pollutant-breakdown-card";
+import { WeatherInsightsCard } from "@/components/dashboard/weather-insights-card";
+import { NearbyCitiesCard } from "@/components/dashboard/nearby-cities-card";
+import { LiveActivityFeed } from "@/components/dashboard/live-activity-feed";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Citizen Dashboard — GreenGuard AI" }] }),
@@ -1127,6 +1131,7 @@ function Dashboard() {
 
         <motion.div variants={PAGE_SECTION}>
           <WelcomeHero
+            cityId={city.id}
             userName={user?.name}
             cityName={city.name}
             country={city.country}
@@ -1303,6 +1308,42 @@ function Dashboard() {
         functionality they stay here, below the new foundation, ready to
         be folded into a later phase.
       */}
+        {/* ── Phase 2: Pollutant Breakdown ── */}
+        <motion.div variants={PAGE_SECTION}>
+          <PollutantBreakdownCard
+            pm25={city.pm25}
+            pm10={city.pm10}
+            no2={city.no2}
+            o3={city.o3}
+            aqi={city.aqi}
+          />
+        </motion.div>
+
+        {/* ── Phase 2: Weather Insights ── */}
+        <motion.div variants={PAGE_SECTION}>
+          <WeatherInsightsCard
+            temp={city.temp}
+            humidity={city.humidity}
+            windSpeed={city.windSpeed}
+            aqi={city.aqi}
+            lat={city.lat}
+          />
+        </motion.div>
+
+        {/* ── Phase 2: Nearby Cities ── */}
+        <motion.div variants={PAGE_SECTION}>
+          <NearbyCitiesCard
+            currentCityId={city.id}
+            currentLat={city.lat}
+            currentLng={city.lng}
+          />
+        </motion.div>
+
+        {/* ── Phase 2: Live Activity Feed ── */}
+        <motion.div variants={PAGE_SECTION}>
+          <LiveActivityFeed />
+        </motion.div>
+
         <div id="detailed-analytics" className="space-y-6">
           <SectionTitle eyebrow="Deep dive" title="Detailed environmental analytics" />
 

@@ -26,55 +26,19 @@ interface QuickAction {
 }
 
 const ACTIONS: QuickAction[] = [
-  {
-    label: "Environmental",
-    icon: Activity,
-    href: "#environmental-health",
-    anchor: true,
-    accent: "var(--color-success)",
-    description: "Health score & metrics",
-  },
-  {
-    label: "Smart Map",
-    icon: Map,
-    href: "/map",
-    accent: "var(--color-info)",
-    description: "Interactive AQI map",
-  },
-  {
-    label: "Forecast",
-    icon: CloudSun,
-    href: "/forecast",
-    accent: "var(--color-warning)",
-    description: "7-day outlook",
-  },
-  {
-    label: "Report Issue",
-    icon: Megaphone,
-    href: "/citizen",
-    accent: "var(--color-destructive)",
-    description: "Flag a problem",
-  },
-  {
-    label: "AI Copilot",
-    icon: Sparkles,
-    href: "/copilot",
-    accent: "var(--color-primary)",
-    description: "AI environmental advisor",
-  },
+  { label: "Environmental", icon: Activity, href: "#environmental-health", anchor: true, accent: "var(--color-success)",     description: "Health score & metrics" },
+  { label: "Smart Map",     icon: Map,      href: "/map",                  accent: "var(--color-info)",        description: "Interactive AQI map" },
+  { label: "Forecast",      icon: CloudSun, href: "/forecast",             accent: "var(--color-warning)",     description: "7-day outlook" },
+  { label: "Report Issue",  icon: Megaphone,href: "/citizen",              accent: "var(--color-destructive)", description: "Flag a problem" },
+  { label: "Intelligence Center", icon: Sparkles, href: "/intelligence",          accent: "var(--color-primary)",     description: "AI environmental advisor" },
 ];
 
-const REPORTS_ACTION: QuickAction = {
-  label: "Reports",
-  icon: FileText,
-  href: "/reports",
-  accent: "var(--color-primary)",
-  description: "Analytics & exports",
-};
+const REPORTS_ACTION: QuickAction =
+  { label: "Reports", icon: FileText, href: "/reports", accent: "var(--color-primary)", description: "Analytics & exports" };
 
 const tileVariant = {
   hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0 },
+  show:   { opacity: 1, y: 0 },
 };
 
 function ActionTile({ action }: { action: QuickAction }) {
@@ -122,21 +86,15 @@ function ActionTile({ action }: { action: QuickAction }) {
 
       <div className="relative">
         <div className="text-xs font-semibold leading-tight">{action.label}</div>
-        <div className="text-[10px] text-muted-foreground mt-0.5 leading-snug hidden sm:block">
-          {action.description}
-        </div>
+        <div className="text-[10px] text-muted-foreground mt-0.5 leading-snug hidden sm:block">{action.description}</div>
       </div>
     </motion.div>
   );
 
   return action.anchor ? (
-    <a key={action.label} href={action.href} tabIndex={0}>
-      {tile}
-    </a>
+    <a key={action.label} href={action.href} tabIndex={0}>{tile}</a>
   ) : (
-    <Link key={action.label} to={action.href}>
-      {tile}
-    </Link>
+    <Link key={action.label} to={action.href}>{tile}</Link>
   );
 }
 
@@ -151,9 +109,7 @@ export function QuickActions({ showReports }: { showReports: boolean }) {
       initial={prefersReduced ? false : "hidden"}
       animate="show"
     >
-      {actions.map((a) => (
-        <ActionTile key={a.label} action={a} />
-      ))}
+      {actions.map((a) => <ActionTile key={a.label} action={a} />)}
     </motion.div>
   );
 }

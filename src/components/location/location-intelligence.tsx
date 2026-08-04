@@ -350,7 +350,7 @@ interface LocationDrawerProps {
   onClose: () => void;
 }
 
-function LocationDrawer({ open, onClose }: LocationDrawerProps) {
+export function LocationDrawer({ open, onClose }: LocationDrawerProps) {
   const {
     city: activeCity,
     cities,
@@ -611,17 +611,13 @@ export function LocationIntelligenceButton({ className }: LocationIntelligenceBu
         {/* City name */}
         <span className="font-medium hidden lg:inline">{city.name}</span>
 
-        {/* AQI */}
+        {/* AQI with bullet separator */}
+        <span className="text-muted-foreground/50 hidden xl:inline">·</span>
         <span
           className="text-xs font-semibold hidden xl:inline tabular-nums"
           style={{ color: band.color }}
         >
-          {city.aqi}
-        </span>
-
-        {/* Band label */}
-        <span className="text-xs text-muted-foreground hidden xl:inline">
-          · {band.shortLabel}
+          AQI {city.aqi}
         </span>
 
         <ChevronDown

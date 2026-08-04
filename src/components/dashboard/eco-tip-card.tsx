@@ -44,14 +44,9 @@ export function EcoTipCard() {
           <Leaf className="size-20" style={{ color: "var(--color-success)" }} />
         </div>
 
-        <p
-          className="relative text-sm leading-relaxed"
-          style={{
-            color: "color-mix(in oklab, var(--color-success) 75%, var(--color-foreground))",
-          }}
-        >
-          Swapping short car trips for walking or cycling meaningfully cuts neighbourhood-level
-          PM2.5 and CO₂. Personalised, data-driven tips are coming in a future update.
+        <p className="relative text-sm leading-relaxed" style={{ color: "color-mix(in oklab, var(--color-success) 75%, var(--color-foreground))" }}>
+          Swapping short car trips for walking or cycling meaningfully cuts neighbourhood-level PM2.5 and CO₂.
+          Personalised, data-driven tips are coming in a future update.
         </p>
 
         <div

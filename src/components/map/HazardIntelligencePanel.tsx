@@ -90,7 +90,7 @@ function OverallScoreCard({ data }: { data: HazardData }) {
               cy={38}
               r={32}
               fill="none"
-              stroke="oklch(1 0 0 / 0.08)"
+              stroke="color-mix(in oklab, var(--color-foreground) 8%, transparent)"
               strokeWidth={7}
             />
             <motion.circle
@@ -124,7 +124,7 @@ function OverallScoreCard({ data }: { data: HazardData }) {
               y={46}
               textAnchor="middle"
               fontSize={7}
-              fill="oklch(1 0 0 / 0.45)"
+              fill="color-mix(in oklab, var(--color-foreground) 45%, transparent)"
               fontFamily="inherit"
               letterSpacing="0.1em"
             >
@@ -174,7 +174,7 @@ function OverallScoreCard({ data }: { data: HazardData }) {
       </div>
 
       {/* Summary */}
-      <p className="relative text-[9px] text-muted-foreground/80 mt-3 leading-snug border-t border-white/10 pt-2.5">
+      <p className="relative text-[9px] text-muted-foreground/80 mt-3 leading-snug border-t border-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)] pt-2.5">
         {data.analytics.environmentalSummary}
       </p>
     </motion.div>
@@ -222,7 +222,7 @@ function HazardCard({
       {/* Colour pip track */}
       <span
         className="shrink-0 w-[3px] h-8 rounded-full"
-        style={{ background: reading.level !== "low" ? color : "oklch(1 0 0 / 0.12)" }}
+        style={{ background: reading.level !== "low" ? color : "color-mix(in oklab, var(--color-foreground) 12%, transparent)" }}
       />
 
       {/* Icon badge */}
@@ -232,8 +232,8 @@ function HazardCard({
           background:
             reading.level !== "low"
               ? `color-mix(in oklab, ${color} 16%, transparent)`
-              : "oklch(1 0 0 / 0.05)",
-          border: `1px solid ${reading.level !== "low" ? `color-mix(in oklab, ${color} 28%, transparent)` : "oklch(1 0 0 / 0.08)"}`,
+              : "color-mix(in oklab, var(--color-foreground) 5%, transparent)",
+          border: `1px solid ${reading.level !== "low" ? `color-mix(in oklab, ${color} 28%, transparent)` : "color-mix(in oklab, var(--color-foreground) 8%, transparent)"}`,
         }}
       >
         <HazardIcon
@@ -299,7 +299,7 @@ function IncidentDetail({ reading }: { reading: HazardReading }) {
             </div>
             <div
               className="h-1.5 rounded-full overflow-hidden"
-              style={{ background: "oklch(1 0 0 / 0.08)" }}
+              style={{ background: "color-mix(in oklab, var(--color-foreground) 8%, transparent)" }}
             >
               <motion.div
                 className="h-full rounded-full"
@@ -338,7 +338,7 @@ function IncidentDetail({ reading }: { reading: HazardReading }) {
           {reading.bounds && (
             <div
               className="flex items-center gap-1.5 rounded-lg px-2 py-1.5"
-              style={{ background: "oklch(1 0 0 / 0.04)", border: "1px solid oklch(1 0 0 / 0.07)" }}
+              style={{ background: "color-mix(in oklab, var(--color-foreground) 4%, transparent)", border: "1px solid color-mix(in oklab, var(--color-foreground) 7%, transparent)" }}
             >
               <MapPin className="size-2.5 text-muted-foreground/60 shrink-0" />
               <span className="text-[7.5px] text-muted-foreground/60">
@@ -366,7 +366,7 @@ function AlertCard({ alert, index }: { alert: HazardAlert; index: number }) {
       style={{ border: `1px solid color-mix(in oklab, ${color} 25%, transparent)` }}
     >
       <button
-        className="w-full flex items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset"
+        className="w-full flex items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset"
         style={{ background: `color-mix(in oklab, ${color} 10%, transparent)` }}
         onClick={() => setExpanded((e) => !e)}
         aria-expanded={expanded}
@@ -497,7 +497,7 @@ function HazardAnalytics({ data }: { data: HazardData }) {
           <div className="text-[7.5px] text-muted-foreground/70">at elevated risk</div>
           <div
             className="h-1 rounded-full overflow-hidden mt-1.5"
-            style={{ background: "oklch(1 0 0 / 0.08)" }}
+            style={{ background: "color-mix(in oklab, var(--color-foreground) 8%, transparent)" }}
           >
             <motion.div
               className="h-full rounded-full"
@@ -537,7 +537,7 @@ function HazardAnalytics({ data }: { data: HazardData }) {
           <div className="text-[7.5px] text-muted-foreground/70">under stress</div>
           <div
             className="h-1 rounded-full overflow-hidden mt-1.5"
-            style={{ background: "oklch(1 0 0 / 0.08)" }}
+            style={{ background: "color-mix(in oklab, var(--color-foreground) 8%, transparent)" }}
           >
             <motion.div
               className="h-full rounded-full"
@@ -572,14 +572,14 @@ function Recommendations({ recs }: { recs: string[] }) {
             transition={{ delay: i * 0.07 }}
             className="flex items-start gap-2 rounded-xl px-2.5 py-2"
             style={{
-              background: isAi ? "oklch(1 0 0 / 0.02)" : "var(--card-bg)",
-              border: `1px solid ${isAi ? "oklch(1 0 0 / 0.07)" : "var(--card-border)"}`,
+              background: isAi ? "color-mix(in oklab, var(--color-foreground) 2%, transparent)" : "var(--card-bg)",
+              border: `1px solid ${isAi ? "color-mix(in oklab, var(--color-foreground) 7%, transparent)" : "var(--card-border)"}`,
               borderStyle: isAi ? "dashed" : "solid",
             }}
           >
             <Info
               className="size-3 mt-0.5 shrink-0"
-              style={{ color: isAi ? "oklch(1 0 0 / 0.25)" : "var(--color-info)" }}
+              style={{ color: isAi ? "color-mix(in oklab, var(--color-foreground) 25%, transparent)" : "var(--color-info)" }}
             />
             <span
               className={cn(

@@ -256,6 +256,16 @@ class BaseMapRegistry {
     if (this.configs.has(id)) this._activeId = id;
   }
 
+  /**
+   * Phase 11: look up a registered base-map config by id without mutating
+   * the shared `_activeId`. SmartMapCanvas uses this to resolve the
+   * theme-appropriate style ("osm-dark" / "osm-light") directly, since the
+   * active theme is per-render React state, not a singleton concern.
+   */
+  get(id: string): BaseMapConfig | undefined {
+    return this.configs.get(id);
+  }
+
   getAll(): BaseMapConfig[] {
     return Array.from(this.configs.values());
   }

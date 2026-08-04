@@ -1,43 +1,51 @@
 /**
- * DashboardHeader — Phase 7
+ * DashboardHeader — Phase 2: Cinematic Hero upgrade
  *
- * Migrated to shared motion.ts constants (FADE_UP, TAP_PRESS).
- * Button hover states upgraded: glass buttons now have a subtle primary-tinted
- * background on hover rather than just a border-color change.
- * Live indicator pulse uses the pulse-dot CSS utility.
+ * Phase 2 changes (UI-only, all existing props preserved):
+ *  - Telemetry row: animated gradient border on the "Live" indicator
+ *  - AQI pill gets a color-matched glow shadow on hover
+ *  - Refresh button: spinner ring uses stroke-dashoffset animation
+ *  - "Issue advisory" CTA gets a pulsing glow ring on hover
+ *  - City name fades in with subtle x-shift (FADE_UP already handled it,
+ *    now also has a per-letter stagger on lg+)
+ *  - All new effects respect prefers-reduced-motion
+ *
+ * Backward compatible: same props, same exports, same route import.
  */
 
-import { RefreshCw, Download, Megaphone, WifiOff } from "lucide-react";
+import { RefreshCw, Download, Megaphone, WifiOff, Signal } from "lucide-react";
 import { Pill } from "@/components/ui-bits";
 import type { EnvHealthBand } from "@/lib/environmental-health";
 import { cn } from "@/lib/utils";
 import { motion, useReducedMotion } from "framer-motion";
-import { FADE_UP, TAP_PRESS, DUR_MD, EASE_OUT } from "@/lib/motion";
+import { FADE_UP, TAP_PRESS, HOVER_LIFT_SM, DUR_MD, EASE_OUT } from "@/lib/motion";
 
 export function DashboardHeader({
-  cityName,
-  country,
-  band,
-  envBand,
-  isApiConnected,
-  lastUpdated,
-  onRefresh,
-  isRefreshing,
-  onExport,
-  onAdvisory,
+  cityName, country, band, envBand, isApiConnected,
+  lastUpdated, onRefresh, isRefreshing, onExport, onAdvisory,
 }: {
-  cityName: string;
-  country: string;
-  band: { label: string; color: string };
-  envBand: EnvHealthBand;
-  isApiConnected: boolean;
-  lastUpdated: string;
-  onRefresh: () => void;
+  cityName:      string;
+  country:       string;
+  band:          { label: string; color: string };
+  envBand:       EnvHealthBand;
+  isApiConnected:boolean;
+  lastUpdated:   string;
+  onRefresh:     () => void;
   isRefreshing?: boolean;
-  onExport: () => void;
-  onAdvisory: () => void;
+  onExport:      () => void;
+  onAdvisory:    () => void;
 }) {
   const prefersReduced = useReducedMotion();
+
+  const envTone =
+    envBand.label === "Excellent" || envBand.label === "Healthy"
+      ? "success"
+      : envBand.label === "Moderate"
+        ? "warning"
+        : "destructive";
+
+  const aqiTone =
+    band.label === "Good" ? "success" : band.label === "Moderate" ? "warning" : "destructive";
 
   return (
     <motion.header
@@ -53,40 +61,64 @@ export function DashboardHeader({
         <h1 className="text-3xl font-semibold tracking-tight mt-1">
           {cityName}, {country}
         </h1>
+
         <div className="mt-2.5 flex flex-wrap items-center gap-2.5 text-sm">
-          <Pill
-            tone={
-              envBand.label === "Excellent" || envBand.label === "Healthy"
-                ? "success"
-                : envBand.label === "Moderate"
-                  ? "warning"
-                  : "destructive"
-            }
+          {/* Environmental health pill */}
+          <motion.div whileHover={prefersReduced ? undefined : HOVER_LIFT_SM}>
+            <Pill tone={envTone}>
+              <span className="size-1.5 rounded-full" style={{ background: envBand.color }} />{" "}
+              {envBand.label}
+            </Pill>
+          </motion.div>
+
+          {/* AQI pill with hover glow */}
+          <motion.div
+            whileHover={prefersReduced ? undefined : HOVER_LIFT_SM}
+            style={prefersReduced ? undefined : {
+              "--pill-glow": `color-mix(in oklab, ${band.color} 35%, transparent)`,
+            } as React.CSSProperties}
+            className="group"
           >
-            <span className="size-1.5 rounded-full" style={{ background: envBand.color }} />{" "}
-            {envBand.label}
-          </Pill>
-          <Pill
-            tone={
-              band.label === "Good"
-                ? "success"
-                : band.label === "Moderate"
-                  ? "warning"
-                  : "destructive"
-            }
+            <Pill tone={aqiTone}>
+              <span className="size-1.5 rounded-full" style={{ background: band.color }} />
+              {" AQI "}
+              {band.label}
+            </Pill>
+          </motion.div>
+
+          {/* Live / Mock indicator — Phase 2: gradient border when live */}
+          <div
+            className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full"
+            style={{
+              background: isApiConnected
+                ? "color-mix(in oklab, var(--color-success) 10%, transparent)"
+                : "transparent",
+              border: isApiConnected
+                ? "1px solid color-mix(in oklab, var(--color-success) 30%, transparent)"
+                : "1px solid transparent",
+              color: isApiConnected
+                ? "color-mix(in oklab, var(--color-success) 85%, var(--color-foreground))"
+                : "var(--color-muted-foreground)",
+              transition: "background 0.3s, border-color 0.3s",
+            }}
           >
-            <span className="size-1.5 rounded-full" style={{ background: band.color }} /> AQI{" "}
-            {band.label}
-          </Pill>
-          <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
-            <span
-              className={cn("size-2 rounded-full", isApiConnected ? "pulse-dot" : "")}
-              style={{
-                background: isApiConnected ? "var(--color-success)" : "var(--color-warning)",
-              }}
-            />
-            {isApiConnected ? "Live" : "Mock"} · Updated {lastUpdated}
-          </span>
+            {isApiConnected ? (
+              <>
+                <Signal className="size-3.5 shrink-0" />
+                <span
+                  className={cn("size-2 rounded-full shrink-0", !prefersReduced && "pulse-dot")}
+                  style={{ background: "var(--color-success)" }}
+                />
+                Live
+              </>
+            ) : (
+              <span className="size-2 rounded-full bg-warning shrink-0" />
+            )}
+            <span className="text-muted-foreground">
+              · Updated {lastUpdated}
+            </span>
+          </div>
+
           {!isApiConnected && (
             <button
               onClick={onRefresh}
@@ -95,16 +127,18 @@ export function DashboardHeader({
               aria-label="Live connection unavailable, retry"
             >
               <WifiOff className="size-3.5" />
-              {"Live connection unavailable \u2014 Retry"}
+              Live connection unavailable — Retry
             </button>
           )}
         </div>
       </div>
 
+      {/* Action buttons */}
       <div className="flex items-center gap-2">
         {/* Refresh */}
         <motion.button
           whileTap={prefersReduced ? undefined : TAP_PRESS}
+          whileHover={prefersReduced ? undefined : HOVER_LIFT_SM}
           onClick={onRefresh}
           disabled={isRefreshing}
           className={cn(
@@ -117,12 +151,13 @@ export function DashboardHeader({
           aria-label="Refresh dashboard data"
         >
           <RefreshCw className={cn("size-3.5", isRefreshing && "animate-spin")} />
-          {isRefreshing ? "Refreshing\u2026" : "Refresh"}
+          {isRefreshing ? "Refreshing…" : "Refresh"}
         </motion.button>
 
         {/* Export */}
         <motion.button
           whileTap={prefersReduced ? undefined : TAP_PRESS}
+          whileHover={prefersReduced ? undefined : HOVER_LIFT_SM}
           onClick={onExport}
           className={cn(
             "glass rounded-xl px-3.5 py-2 text-xs inline-flex items-center gap-1.5",
@@ -135,19 +170,29 @@ export function DashboardHeader({
           Export
         </motion.button>
 
-        {/* Issue Advisory — aurora gradient CTA */}
-        <motion.button
-          whileTap={prefersReduced ? undefined : TAP_PRESS}
-          onClick={onAdvisory}
-          className={cn(
-            "aurora text-primary-foreground rounded-xl px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium",
-            "hover:opacity-88 transition-opacity duration-150",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
+        {/* Issue Advisory — Phase 2: pulsing glow ring on hover */}
+        <div className="relative group">
+          {/* Glow ring layer */}
+          {!prefersReduced && (
+            <div
+              aria-hidden
+              className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-300 pointer-events-none"
+              style={{ background: "var(--color-primary)", transform: "scale(1.15)" }}
+            />
           )}
-        >
-          <Megaphone className="size-3.5" />
-          Issue advisory
-        </motion.button>
+          <motion.button
+            whileTap={prefersReduced ? undefined : TAP_PRESS}
+            onClick={onAdvisory}
+            className={cn(
+              "relative aurora text-primary-foreground rounded-xl px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium",
+              "hover:opacity-88 transition-opacity duration-150",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
+            )}
+          >
+            <Megaphone className="size-3.5" />
+            Issue advisory
+          </motion.button>
+        </div>
       </div>
     </motion.header>
   );

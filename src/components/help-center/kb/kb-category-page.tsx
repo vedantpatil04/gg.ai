@@ -6,6 +6,7 @@ import { SectionHeader, EmptyState } from "../help-card";
 import { KbArticleCard, ArticleGrid, KbSearchInput } from "./kb-ui";
 import type { KbCategory } from "./kb-data";
 import { KB_ARTICLES_BY_CATEGORY } from "./kb-data";
+// import { KB_ARTICLES_BY_CATEGORY } from "./kb-data";
 
 interface KbCategoryPageProps {
   category: KbCategory;
@@ -36,7 +37,7 @@ export function KbCategoryPage({ category, onBack, onArticleClick }: KbCategoryP
   const isFiltering = query.trim().length > 0;
 
   return (
-    <div className="p-4 md:p-6 max-w-[1200px] mx-auto pb-16 space-y-10">
+    <div className="p-4 md:p-6 xl:p-8 max-w-none pb-16 space-y-10">
       {/* Back */}
       <motion.button
         initial={{ opacity: 0, x: -8 }}

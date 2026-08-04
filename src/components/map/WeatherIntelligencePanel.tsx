@@ -319,8 +319,8 @@ function HourlyTimeline({ hourly, theme }: { hourly: HourlyForecast[]; theme: We
               style={{
                 background: isActive
                   ? `color-mix(in oklab, ${theme.accent} 20%, transparent)`
-                  : "oklch(1 0 0 / 0.04)",
-                border: `1px solid ${isActive ? `color-mix(in oklab, ${theme.accent} 40%, transparent)` : "oklch(1 0 0 / 0.07)"}`,
+                  : "color-mix(in oklab, var(--color-foreground) 4%, transparent)",
+                border: `1px solid ${isActive ? `color-mix(in oklab, ${theme.accent} 40%, transparent)` : "color-mix(in oklab, var(--color-foreground) 7%, transparent)"}`,
                 minWidth: 60,
               }}
             >
@@ -369,7 +369,7 @@ function HourlyTimeline({ hourly, theme }: { hourly: HourlyForecast[]; theme: We
           exit={{ opacity: 0, y: -4 }}
           transition={{ duration: 0.18 }}
           className="mt-2 rounded-xl px-3 py-2 flex items-center gap-4"
-          style={{ background: "oklch(1 0 0 / 0.04)", border: "1px solid oklch(1 0 0 / 0.07)" }}
+          style={{ background: "color-mix(in oklab, var(--color-foreground) 4%, transparent)", border: "1px solid color-mix(in oklab, var(--color-foreground) 7%, transparent)" }}
         >
           <div className="flex items-center gap-1.5">
             <Wind className="size-3 text-muted-foreground" />
@@ -406,7 +406,7 @@ function DailyForecastRow({ daily, theme }: { daily: DailyForecast[]; theme: Wea
       </div>
       <div
         className="rounded-xl overflow-hidden"
-        style={{ border: "1px solid oklch(1 0 0 / 0.08)" }}
+        style={{ border: "1px solid color-mix(in oklab, var(--color-foreground) 8%, transparent)" }}
       >
         {daily.map((d, i) => (
           <motion.div
@@ -416,7 +416,7 @@ function DailyForecastRow({ daily, theme }: { daily: DailyForecast[]; theme: Wea
             transition={{ delay: i * 0.05, duration: 0.25 }}
             className="flex items-center gap-2 px-3 py-2"
             style={{
-              borderBottom: i < daily.length - 1 ? "1px solid oklch(1 0 0 / 0.06)" : undefined,
+              borderBottom: i < daily.length - 1 ? "1px solid color-mix(in oklab, var(--color-foreground) 6%, transparent)" : undefined,
               background:
                 i === 0 ? `color-mix(in oklab, ${theme.accent} 6%, transparent)` : undefined,
             }}
@@ -458,7 +458,7 @@ function DailyForecastRow({ daily, theme }: { daily: DailyForecast[]; theme: Wea
             {/* Temperature range bar */}
             <div
               className="flex-1 relative h-1.5 rounded-full mx-1"
-              style={{ background: "oklch(1 0 0 / 0.08)" }}
+              style={{ background: "color-mix(in oklab, var(--color-foreground) 8%, transparent)" }}
             >
               <div
                 className="absolute h-full rounded-full"
@@ -468,7 +468,7 @@ function DailyForecastRow({ daily, theme }: { daily: DailyForecast[]; theme: Wea
                   background:
                     i === 0
                       ? `linear-gradient(to right, ${theme.secondary}, ${theme.accent})`
-                      : "oklch(1 0 0 / 0.25)",
+                      : "color-mix(in oklab, var(--color-foreground) 25%, transparent)",
                 }}
               />
             </div>
@@ -533,7 +533,7 @@ function WeatherMetrics({ wd }: { wd: WeatherData }) {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: i * 0.04, duration: 0.2 }}
             className="rounded-xl px-3 py-2 flex flex-col gap-0.5"
-            style={{ background: "oklch(1 0 0 / 0.04)", border: "1px solid oklch(1 0 0 / 0.07)" }}
+            style={{ background: "color-mix(in oklab, var(--color-foreground) 4%, transparent)", border: "1px solid color-mix(in oklab, var(--color-foreground) 7%, transparent)" }}
           >
             <div className="flex items-center gap-1.5">
               <m.icon className="size-2.5 shrink-0" style={{ color: m.color }} />
@@ -576,14 +576,14 @@ function SunBar({
   return (
     <div
       className="rounded-xl px-3 py-2.5"
-      style={{ background: "oklch(1 0 0 / 0.04)", border: "1px solid oklch(1 0 0 / 0.07)" }}
+      style={{ background: "color-mix(in oklab, var(--color-foreground) 4%, transparent)", border: "1px solid color-mix(in oklab, var(--color-foreground) 7%, transparent)" }}
     >
       <div className="text-[9px] uppercase tracking-[0.14em] text-muted-foreground mb-2">
         Daylight
       </div>
       <div
         className="relative h-1.5 rounded-full mb-2"
-        style={{ background: "oklch(1 0 0 / 0.10)" }}
+        style={{ background: "color-mix(in oklab, var(--color-foreground) 10%, transparent)" }}
       >
         <div
           className="absolute h-full rounded-full"
@@ -670,7 +670,7 @@ function WeatherInsights({ wd }: { wd: WeatherData }) {
         {/* AI-ready placeholder (Phase 5 spec: "AI-ready insight placeholders") */}
         <div
           className="flex items-center gap-2 rounded-xl px-2.5 py-2"
-          style={{ background: "oklch(1 0 0 / 0.03)", border: "1px dashed oklch(1 0 0 / 0.12)" }}
+          style={{ background: "color-mix(in oklab, var(--color-foreground) 3%, transparent)", border: "1px dashed color-mix(in oklab, var(--color-foreground) 12%, transparent)" }}
         >
           <Zap className="size-3 text-muted-foreground/40 shrink-0" />
           <span className="text-[9px] text-muted-foreground/40 italic">
@@ -695,7 +695,7 @@ function WindCompass({
   return (
     <div
       className="rounded-xl px-3 py-2.5 flex items-center gap-3"
-      style={{ background: "oklch(1 0 0 / 0.04)", border: "1px solid oklch(1 0 0 / 0.07)" }}
+      style={{ background: "color-mix(in oklab, var(--color-foreground) 4%, transparent)", border: "1px solid color-mix(in oklab, var(--color-foreground) 7%, transparent)" }}
     >
       {/* SVG compass */}
       <div className="relative size-14 shrink-0">
@@ -704,7 +704,7 @@ function WindCompass({
             cx="24"
             cy="24"
             r="22"
-            stroke="oklch(1 0 0 / 0.12)"
+            stroke="color-mix(in oklab, var(--color-foreground) 12%, transparent)"
             strokeWidth="1.5"
             fill="none"
           />
@@ -721,7 +721,7 @@ function WindCompass({
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fontSize="5"
-                fill="oklch(1 0 0 / 0.35)"
+                fill="color-mix(in oklab, var(--color-foreground) 35%, transparent)"
                 fontWeight="600"
               >
                 {dir}
@@ -735,7 +735,7 @@ function WindCompass({
             style={{ originX: "24px", originY: "24px" }}
           >
             <polygon points="24,8 22,22 24,20 26,22" fill={theme.accent} />
-            <polygon points="24,40 22,26 24,28 26,26" fill="oklch(1 0 0 / 0.25)" />
+            <polygon points="24,40 22,26 24,28 26,26" fill="color-mix(in oklab, var(--color-foreground) 25%, transparent)" />
           </motion.g>
           <circle cx="24" cy="24" r="2" fill={theme.accent} />
         </svg>
@@ -799,7 +799,7 @@ function TempCurve({ hourly, theme }: { hourly: HourlyForecast[]; theme: Weather
       </div>
       <div
         className="rounded-xl px-3 py-2.5"
-        style={{ background: "oklch(1 0 0 / 0.04)", border: "1px solid oklch(1 0 0 / 0.07)" }}
+        style={{ background: "color-mix(in oklab, var(--color-foreground) 4%, transparent)", border: "1px solid color-mix(in oklab, var(--color-foreground) 7%, transparent)" }}
       >
         <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} className="overflow-visible">
           <defs>
@@ -873,7 +873,7 @@ export function WeatherIntelligencePanel({ city }: { city: City }) {
       {/* Radar-ready placeholder (Section 3/Phase 5 architecture note) */}
       <div
         className="rounded-xl px-3 py-2 flex items-center gap-2"
-        style={{ background: "oklch(1 0 0 / 0.03)", border: "1px dashed oklch(1 0 0 / 0.10)" }}
+        style={{ background: "color-mix(in oklab, var(--color-foreground) 3%, transparent)", border: "1px dashed color-mix(in oklab, var(--color-foreground) 10%, transparent)" }}
       >
         <ChevronRight className="size-3 text-muted-foreground/30" />
         <span className="text-[8.5px] text-muted-foreground/35 italic">

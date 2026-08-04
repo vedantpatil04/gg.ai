@@ -1,5 +1,37 @@
 import mongoose, { Document, Schema } from "mongoose";
 import bcrypt from "bcryptjs";
+import { NOTIFICATION_CATEGORIES, type NotificationPreferences } from "../constants/notifications";
+
+import {
+  SUPPORTED_LANGUAGES,
+  DATE_FORMATS,
+  TIME_FORMATS,
+  NUMBER_FORMATS,
+  MEASUREMENT_UNITS,
+  AUTO_TIMEZONE,
+  isValidTimezone,
+  type LanguageRegionPreferences,
+} from "../constants/languageRegion";
+
+import {
+  LANDING_PAGE_IDS,
+  WIDGET_IDS,
+  PINNABLE_CARD_IDS,
+  DEFAULT_CITY_ID,
+  type DashboardPreferences,
+} from "../constants/dashboard";
+
+import {
+  MAP_TYPES,
+  MEASUREMENT_UNITS as MAP_MEASUREMENT_UNITS,
+  ANIMATION_SPEEDS,
+  MIN_ZOOM,
+  MAX_ZOOM,
+  type MapPreferences,
+} from "../constants/maps";
+
+import { type AccessibilityPreferences } from "../constants/accessibility";
+import { type PrivacyPreferences } from "../constants/privacy";
 
 export type UserRole = "citizen" | "authority" | "administrator";
 export type Gender = "male" | "female" | "other" | "prefer_not_to_say";
@@ -75,8 +107,18 @@ export interface IUser extends Document {
   }>;
   // Phase 7
   notificationPreferences?: Map<string, boolean>;
-
-  createdAt: Date;
+    preferences?: {
+  appearance?: {
+    theme: "light" | "dark" | "system";
+  };
+  notifications?: NotificationPreferences;
+  languageRegion?: LanguageRegionPreferences;
+  dashboard?: DashboardPreferences;
+  maps?: MapPreferences;
+  accessibility?: AccessibilityPreferences;
+  privacy?: PrivacyPreferences;
+};
+    createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
@@ -185,6 +227,166 @@ const UserSchema = new Schema<IUser>(
       of: Boolean,
       default: undefined,
     },
+    preferences: {
+  appearance: {
+    theme: {
+      type: String,
+      enum: ["light", "dark", "system"],
+      default: "system",
+    },
+  },
+
+  notifications: NOTIFICATION_CATEGORIES.reduce((acc, category) => {
+    acc[category] = {
+      inApp: { type: Boolean, default: true },
+      email: { type: Boolean, default: true },
+      push: { type: Boolean, default: false },
+    };
+    return acc;
+  }, {} as Record<string, unknown>),
+
+  languageRegion: {
+    language: {
+      type: String,
+      enum: SUPPORTED_LANGUAGES,
+      default: "en",
+    },
+    timezone: {
+      type: String,
+      default: AUTO_TIMEZONE,
+      validate: {
+        validator: isValidTimezone,
+        message: (props: { value: string }) =>
+          `${props.value} is not a supported timezone.`,
+      },
+    },
+    dateFormat: {
+      type: String,
+      enum: DATE_FORMATS,
+      default: "DD/MM/YYYY",
+    },
+    timeFormat: {
+      type: String,
+      enum: TIME_FORMATS,
+      default: "24h",
+    },
+    numberFormat: {
+      type: String,
+      enum: NUMBER_FORMATS,
+      default: "1,234.56",
+    },
+    measurementUnit: {
+      type: String,
+      enum: MEASUREMENT_UNITS,
+      default: "metric",
+    },
+  },
+
+  dashboard: {
+    defaultLandingPage: {
+      type: String,
+      enum: LANDING_PAGE_IDS,
+      default: "dashboard",
+    },
+    visibleWidgets: {
+      type: [String],
+      enum: WIDGET_IDS,
+      default: () => [...WIDGET_IDS],
+    },
+    widgetOrder: {
+      type: [String],
+      enum: WIDGET_IDS,
+      default: () => [...WIDGET_IDS],
+    },
+    defaultCity: {
+      type: String,
+      default: DEFAULT_CITY_ID,
+    },
+    pinnedCards: {
+      type: [String],
+      enum: PINNABLE_CARD_IDS,
+      default: () => ["aqi", "forecast"],
+    },
+  },
+
+  maps: {
+    mapType: {
+      type: String,
+      enum: MAP_TYPES,
+      default: "street",
+    },
+    zoom: {
+      type: Number,
+      min: MIN_ZOOM,
+      max: MAX_ZOOM,
+      default: 10,
+    },
+    trafficLayer: {
+      type: Boolean,
+      default: false,
+    },
+    pollutionLayer: {
+      type: Boolean,
+      default: true,
+    },
+    weatherLayer: {
+      type: Boolean,
+      default: true,
+    },
+    measurementUnit: {
+      type: String,
+      enum: MAP_MEASUREMENT_UNITS,
+      default: "metric",
+    },
+    animationSpeed: {
+      type: String,
+      enum: ANIMATION_SPEEDS,
+      default: "normal",
+    },
+    rememberLastLocation: {
+      type: Boolean,
+      default: true,
+    },
+  },
+
+  accessibility: {
+    highContrast: {
+      type: Boolean,
+      default: false,
+    },
+    reduceMotion: {
+      type: Boolean,
+      default: false,
+    },
+    largeText: {
+      type: Boolean,
+      default: false,
+    },
+    keyboardNavigation: {
+      type: Boolean,
+      default: true,
+    },
+    focusHighlight: {
+      type: Boolean,
+      default: true,
+    },
+    screenReader: {
+      type: Boolean,
+      default: false,
+    },
+  },
+
+  privacy: {
+    anonymousAnalytics: {
+      type: Boolean,
+      default: true,
+    },
+    personalizedRecommendations: {
+      type: Boolean,
+      default: true,
+    },
+  },
+},
   },
   {
     timestamps: true,

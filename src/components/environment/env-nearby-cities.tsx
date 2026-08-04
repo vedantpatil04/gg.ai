@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { ArrowUp, ArrowDown, Minus, MapPin } from "lucide-react";
+import { ArrowUp, ArrowDown, Minus, MapPin, ArrowUpDown } from "lucide-react";
 import { useCity } from "@/lib/city-context";
 import { findAqiBand, type City } from "@/lib/mock-data";
 import { measureDistanceMeters, formatDistance } from "@/lib/map/map-visuals";
@@ -9,73 +9,83 @@ import { EnvEmptyState, EnvErrorState } from "@/components/environment/env-state
 import { cn } from "@/lib/utils";
 
 /**
- * Environmental Overview — Nearby Cities & Regional Comparison (Phase 8).
+ * Phase 1 — Nearby Cities & Regional Comparison.
  *
- * Upgrades the flat 4-card grid into a premium regional analytics experience:
- *   • Sort controls — by AQI (best→worst), AQI (worst→best), Distance.
- *   • Current city highlight row at the top.
- *   • City cards — AQI-reactive accent, comparison bar showing relative AQI
- *     vs the regional max, ↑/↓ indicator vs current city, temp + distance.
- *   • Insights panel — derived from real data only, no fabrication.
- *
- * All data from `useCity()` — no new API calls, no duplicate fetches.
- * All animations via `motion-safe:` Tailwind variant — reduced-motion safe.
+ * All business logic is preserved exactly.
+ * UI improvements:
+ *  - Current city "anchor row" has stronger visual identity
+ *  - City cards are ranked with cleaner hierarchy (AQI is the dominant value)
+ *  - Sort controls use compact pill design, not text buttons
+ *  - Comparison bars are thinner, more refined
+ *  - AQI delta chips are cleaner
+ *  - Regional insights panel is typographically cleaner
  */
 
 const MAX_NEARBY = 8;
 
 type SortKey = "aqi-asc" | "aqi-desc" | "distance";
 const SORT_LABELS: Record<SortKey, string> = {
-  "aqi-asc": "Best AQI",
+  "aqi-asc":  "Best AQI",
   "aqi-desc": "Worst AQI",
-  distance: "Nearest",
+  distance:   "Nearest",
 };
 
-// ─── Trend arrow vs current city ─────────────────────────────────────────────
+// ─── AQI Delta chip ───────────────────────────────────────────────────────────
 
 function AqiDelta({ cityAqi, currentAqi }: { cityAqi: number; currentAqi: number }) {
   const diff = cityAqi - currentAqi;
   if (Math.abs(diff) < 5) {
     return (
       <span
-        className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground"
-        aria-label="Similar AQI"
+        className="inline-flex items-center gap-0.5 text-[9px] font-medium"
+        style={{ color: "oklch(0.50 0.012 230)" }}
+        aria-label="Similar AQI to your city"
       >
-        <Minus className="size-3" aria-hidden="true" /> Similar
+        <Minus className="size-2.5" aria-hidden="true" />
+        Similar
       </span>
     );
   }
   if (diff < 0) {
     return (
       <span
-        className="inline-flex items-center gap-0.5 text-[10px] font-medium"
+        className="inline-flex items-center gap-0.5 text-[9px] font-semibold"
         style={{ color: "var(--color-success)" }}
         aria-label={`AQI ${Math.abs(diff)} better than your city`}
       >
-        <ArrowDown className="size-3" aria-hidden="true" /> {Math.abs(diff)} better
+        <ArrowDown className="size-2.5" aria-hidden="true" />
+        {Math.abs(diff)} better
       </span>
     );
   }
   return (
     <span
-      className="inline-flex items-center gap-0.5 text-[10px] font-medium"
+      className="inline-flex items-center gap-0.5 text-[9px] font-semibold"
       style={{ color: "hsl(28 90% 55%)" }}
       aria-label={`AQI ${diff} worse than your city`}
     >
-      <ArrowUp className="size-3" aria-hidden="true" /> {diff} worse
+      <ArrowUp className="size-2.5" aria-hidden="true" />
+      {diff} worse
     </span>
   );
 }
 
-// ─── AQI comparison bar ───────────────────────────────────────────────────────
+// ─── Comparison bar ───────────────────────────────────────────────────────────
 
 function ComparisonBar({ aqi, maxAqi, color }: { aqi: number; maxAqi: number; color: string }) {
   const pct = maxAqi > 0 ? Math.min(100, Math.round((aqi / maxAqi) * 100)) : 0;
   return (
-    <div className="h-1 w-full rounded-full bg-border overflow-hidden">
+    <div
+      className="h-px w-full rounded-full overflow-hidden"
+      style={{ background: "oklch(1 0 0 / 0.08)" }}
+    >
       <div
         className="h-full rounded-full transition-all duration-700"
-        style={{ width: `${pct}%`, background: color }}
+        style={{
+          width: `${pct}%`,
+          background: color,
+          boxShadow: `0 0 6px ${color}50`,
+        }}
         role="progressbar"
         aria-valuenow={aqi}
         aria-valuemin={0}
@@ -86,7 +96,7 @@ function ComparisonBar({ aqi, maxAqi, color }: { aqi: number; maxAqi: number; co
   );
 }
 
-// ─── Individual city card ─────────────────────────────────────────────────────
+// ─── City card ────────────────────────────────────────────────────────────────
 
 function CityCard({
   city,
@@ -106,41 +116,57 @@ function CityCard({
   return (
     <div
       className={cn(
-        "relative flex flex-col gap-3 rounded-xl border p-4 glass",
-        "transition-shadow duration-300 hover:shadow-lg",
+        "relative flex flex-col gap-3.5 rounded-xl p-4 overflow-hidden",
+        "transition-all duration-200 hover:scale-[1.02]",
         "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500",
       )}
       style={{
-        borderColor: `color-mix(in oklab, ${band.color} 22%, var(--color-border))`,
-        animationDelay: `${rank * 60}ms`,
+        background: `color-mix(in oklab, ${band.color} 4%, oklch(1 0 0 / 0.05))`,
+        border: `1px solid color-mix(in oklab, ${band.color} 18%, oklch(1 0 0 / 0.07))`,
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        animationDelay: `${rank * 55}ms`,
       }}
       aria-label={`${city.name}, AQI ${city.aqi} ${band.label}, ${formatDistance(distanceMeters)} away`}
     >
       {/* Rank badge */}
       <span
-        className="absolute top-3 right-3 text-[10px] font-semibold tabular-nums text-muted-foreground"
+        className="absolute top-3 right-3 text-[9px] font-bold tabular-nums"
+        style={{ color: "oklch(0.42 0.012 230)" }}
         aria-hidden="true"
       >
         #{rank + 1}
       </span>
 
-      {/* City name */}
-      <div className="min-w-0 pr-6">
-        <div className="text-sm font-semibold truncate">{city.name}</div>
-        <div className="text-[10px] text-muted-foreground truncate">{city.country}</div>
+      {/* City name + country */}
+      <div className="min-w-0 pr-7">
+        <div
+          className="text-[0.85rem] font-semibold truncate"
+          style={{ color: "oklch(0.90 0.010 220)" }}
+        >
+          {city.name}
+        </div>
+        <div
+          className="text-[9.5px] truncate mt-0.5"
+          style={{ color: "oklch(0.50 0.012 230)" }}
+        >
+          {city.country}
+        </div>
       </div>
 
-      {/* AQI value + band */}
+      {/* AQI value + band badge */}
       <div className="flex items-baseline gap-2">
-        <span className="text-2xl font-bold tabular-nums" style={{ color: band.color }}>
+        <span
+          className="text-[1.9rem] font-bold tabular-nums leading-none tracking-tighter"
+          style={{ color: band.color }}
+        >
           {city.aqi}
         </span>
         <span
-          className="text-[10px] font-medium px-1.5 py-0.5 rounded-full border"
+          className="text-[9px] font-bold uppercase tracking-[0.14em] px-1.5 py-0.5 rounded-full"
           style={{
             color: band.color,
-            borderColor: `color-mix(in oklab, ${band.color} 35%, transparent)`,
-            background: `color-mix(in oklab, ${band.color} 12%, transparent)`,
+            background: `color-mix(in oklab, ${band.color} 13%, transparent)`,
           }}
         >
           {band.shortLabel}
@@ -150,17 +176,24 @@ function CityCard({
       {/* Comparison bar */}
       <ComparisonBar aqi={city.aqi} maxAqi={maxAqi} color={band.color} />
 
-      {/* Delta + secondary metrics */}
+      {/* Delta + metadata row */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <AqiDelta cityAqi={city.aqi} currentAqi={currentAqi} />
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+        <div
+          className="flex items-center gap-2 text-[9px]"
+          style={{ color: "oklch(0.48 0.012 230)" }}
+        >
           {typeof city.temp === "number" && <span>{city.temp}°C</span>}
           <span>{formatDistance(distanceMeters)}</span>
         </div>
       </div>
 
+      {/* Timestamp */}
       {city.updatedAt && (
-        <div className="text-[10px] text-muted-foreground">
+        <div
+          className="text-[9px]"
+          style={{ color: "oklch(0.42 0.010 230)" }}
+        >
           {formatDistanceToNow(new Date(city.updatedAt), { addSuffix: true })}
         </div>
       )}
@@ -168,46 +201,77 @@ function CityCard({
   );
 }
 
-// ─── Current city highlight ───────────────────────────────────────────────────
+// ─── Current city anchor row ──────────────────────────────────────────────────
 
 function CurrentCityRow({ city }: { city: City }) {
   const band = findAqiBand(city.aqi);
   return (
     <div
-      className="flex items-center gap-4 rounded-xl border p-4 glass"
+      className="flex items-center gap-4 rounded-xl p-4 overflow-hidden"
       style={{
-        borderColor: `color-mix(in oklab, ${band.color} 40%, var(--color-border))`,
-        background: `color-mix(in oklab, ${band.color} 6%, var(--color-card))`,
+        background: `color-mix(in oklab, ${band.color} 7%, oklch(1 0 0 / 0.06))`,
+        border: `1px solid color-mix(in oklab, ${band.color} 32%, oklch(1 0 0 / 0.08))`,
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        boxShadow: `0 0 24px -8px color-mix(in oklab, ${band.color} 20%, transparent)`,
       }}
       aria-label={`Your city: ${city.name}, AQI ${city.aqi} ${band.label}`}
     >
+      {/* Pin icon */}
       <div
-        className="size-8 rounded-lg grid place-items-center shrink-0"
+        className="size-9 rounded-xl grid place-items-center shrink-0"
         style={{
           background: `color-mix(in oklab, ${band.color} 16%, transparent)`,
           color: band.color,
+          border: `1px solid color-mix(in oklab, ${band.color} 24%, transparent)`,
         }}
         aria-hidden="true"
       >
-        <MapPin className="size-4" />
+        <MapPin className="size-4.5" />
       </div>
+
+      {/* City info */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold truncate">{city.name}</span>
-          <span className="text-[10px] text-muted-foreground shrink-0">Your city</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span
+            className="text-[0.9rem] font-semibold truncate"
+            style={{ color: "oklch(0.92 0.010 220)" }}
+          >
+            {city.name}
+          </span>
+          <span
+            className="text-[9px] font-bold uppercase tracking-[0.16em] px-2 py-0.5 rounded-full shrink-0"
+            style={{
+              color: "oklch(0.65 0.012 210)",
+              background: "oklch(1 0 0 / 0.07)",
+              border: "1px solid oklch(1 0 0 / 0.09)",
+            }}
+          >
+            Your city
+          </span>
         </div>
-        <div className="text-[10px] text-muted-foreground">{city.country}</div>
+        <div
+          className="text-[9.5px] mt-0.5"
+          style={{ color: "oklch(0.50 0.012 230)" }}
+        >
+          {city.country}
+        </div>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="text-xl font-bold tabular-nums" style={{ color: band.color }}>
+
+      {/* AQI + band */}
+      <div className="flex items-center gap-2.5 shrink-0">
+        <span
+          className="text-[1.6rem] font-bold tabular-nums leading-none tracking-tighter"
+          style={{ color: band.color }}
+        >
           {city.aqi}
         </span>
         <span
-          className="text-[10px] font-medium px-1.5 py-0.5 rounded-full border"
+          className="text-[9px] font-bold uppercase tracking-[0.14em] px-2 py-1 rounded-full"
           style={{
             color: band.color,
-            borderColor: `color-mix(in oklab, ${band.color} 35%, transparent)`,
-            background: `color-mix(in oklab, ${band.color} 12%, transparent)`,
+            background: `color-mix(in oklab, ${band.color} 13%, transparent)`,
+            border: `1px solid color-mix(in oklab, ${band.color} 24%, transparent)`,
           }}
         >
           {band.label}
@@ -217,7 +281,7 @@ function CurrentCityRow({ city }: { city: City }) {
   );
 }
 
-// ─── Insights panel ───────────────────────────────────────────────────────────
+// ─── Regional insights ────────────────────────────────────────────────────────
 
 function RegionalInsights({
   current,
@@ -228,7 +292,10 @@ function RegionalInsights({
 }) {
   if (nearby.length < 2) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p
+        className="text-sm"
+        style={{ color: "oklch(0.52 0.012 230)" }}
+      >
         More nearby city data is needed for a regional comparison.
       </p>
     );
@@ -245,7 +312,7 @@ function RegionalInsights({
   if (betterCount > nearby.length / 2) {
     insights.push(`${current.name} has better air quality than most nearby cities right now.`);
   } else if (worseCount > nearby.length / 2) {
-    insights.push(`${current.name}'s air quality is currently higher than most nearby cities.`);
+    insights.push(`${current.name}'s AQI is currently higher than most nearby cities.`);
   } else {
     insights.push(
       `Regional air quality is broadly similar across nearby cities (avg AQI ${avgAqi}).`,
@@ -260,13 +327,18 @@ function RegionalInsights({
   }
 
   return (
-    <ul className="space-y-2">
+    <ul className="space-y-3" role="list">
       {insights.map((text, i) => (
         <li
           key={i}
-          className="flex items-start gap-2 text-sm text-muted-foreground leading-relaxed"
+          className="flex items-start gap-3 text-[0.82rem] leading-relaxed"
+          style={{ color: "oklch(0.55 0.012 230)" }}
         >
-          <span className="mt-2 size-1.5 rounded-full bg-primary/60 shrink-0" aria-hidden="true" />
+          <span
+            className="mt-[7px] size-1.5 rounded-full shrink-0"
+            style={{ background: "oklch(0.55 0.14 210 / 0.7)" }}
+            aria-hidden="true"
+          />
           {text}
         </li>
       ))}
@@ -313,7 +385,7 @@ export function NearbyCities({ className }: { className?: string }) {
   }
 
   const sorted = [...base].sort((a, b) => {
-    if (sortKey === "aqi-asc") return a.city.aqi - b.city.aqi;
+    if (sortKey === "aqi-asc")  return a.city.aqi - b.city.aqi;
     if (sortKey === "aqi-desc") return b.city.aqi - a.city.aqi;
     return a.distanceMeters - b.distanceMeters;
   });
@@ -322,7 +394,7 @@ export function NearbyCities({ className }: { className?: string }) {
 
   return (
     <div className={cn("space-y-4", className)}>
-      {/* Current city */}
+      {/* Current city anchor */}
       <CurrentCityRow city={city} />
 
       {/* Sort controls */}
@@ -331,26 +403,43 @@ export function NearbyCities({ className }: { className?: string }) {
         role="group"
         aria-label="Sort nearby cities by"
       >
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground mr-1">
-          Sort by
+        <span
+          className="inline-flex items-center gap-1.5 text-[9.5px] font-bold uppercase tracking-[0.18em] mr-1"
+          style={{ color: "oklch(0.46 0.012 230)" }}
+        >
+          <ArrowUpDown className="size-2.5" aria-hidden="true" />
+          Sort
         </span>
-        {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setSortKey(key)}
-            aria-pressed={sortKey === key}
-            className={cn(
-              "text-[11px] font-medium px-3 py-1 rounded-full border transition-colors duration-150",
-              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-              sortKey === key
-                ? "border-primary/50 bg-primary/10 text-foreground"
-                : "border-border text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {SORT_LABELS[key]}
-          </button>
-        ))}
+        {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => {
+          const active = sortKey === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSortKey(key)}
+              aria-pressed={active}
+              className={cn(
+                "text-[11px] font-semibold h-7 px-3 rounded-full border transition-all duration-150",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+              )}
+              style={
+                active
+                  ? {
+                      color: "var(--color-primary)",
+                      borderColor: "color-mix(in oklab, var(--color-primary) 40%, transparent)",
+                      background: "color-mix(in oklab, var(--color-primary) 11%, transparent)",
+                    }
+                  : {
+                      color: "oklch(0.52 0.012 230)",
+                      borderColor: "oklch(1 0 0 / 0.10)",
+                      background: "oklch(1 0 0 / 0.03)",
+                    }
+              }
+            >
+              {SORT_LABELS[key]}
+            </button>
+          );
+        })}
       </div>
 
       {/* City cards grid */}
@@ -370,13 +459,30 @@ export function NearbyCities({ className }: { className?: string }) {
       {/* Regional insights */}
       <div
         className={cn(
-          "glass rounded-2xl p-5 md:p-6 space-y-3",
+          "rounded-2xl p-5 md:p-6 space-y-3.5",
           "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500",
         )}
+        style={{
+          background: "oklch(1 0 0 / 0.05)",
+          backdropFilter: "blur(20px) saturate(140%)",
+          WebkitBackdropFilter: "blur(20px) saturate(140%)",
+          border: "1px solid oklch(1 0 0 / 0.08)",
+        }}
       >
-        <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          Regional Insights
-        </span>
+        <div>
+          <span
+            className="block text-[9.5px] font-bold uppercase tracking-[0.22em] mb-1.5"
+            style={{ color: "oklch(0.46 0.012 230)" }}
+          >
+            Regional Insights
+          </span>
+          <h4
+            className="text-[0.9rem] font-semibold"
+            style={{ color: "oklch(0.86 0.010 220)", fontFamily: "var(--font-display)" }}
+          >
+            How does {city.name} compare?
+          </h4>
+        </div>
         <RegionalInsights current={city} nearby={base} />
       </div>
     </div>

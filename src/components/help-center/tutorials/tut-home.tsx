@@ -109,7 +109,7 @@ function TutHero({
         </div>
 
         {/* Stats */}
-        <div className="mt-8 pt-6 border-t border-border grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="mt-8 pt-6 border-t border-border grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-4 gap-4">
           {STATS.map(({ value, label, icon: Icon }) => (
             <div key={label} className="flex items-center gap-3">
               <div className="size-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
@@ -137,7 +137,7 @@ function LearningPathsGrid({ onPathClick }: { onPathClick: (id: string) => void 
       variants={STAGGER(0.06, 0.05)}
       initial="hidden"
       animate="show"
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4"
     >
       {featured.map(path => {
         const completedCount = path.tutorialIds.filter(id => isTutorialComplete(id)).length;
@@ -178,7 +178,7 @@ function BrowseCategories({ onCategoryClick }: { onCategoryClick: (id: string) =
         variants={STAGGER(0.04, 0.05)}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
+        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 gap-3"
       >
         {TUT_CATEGORIES.map(cat => {
           const Icon = cat.icon;
@@ -198,9 +198,7 @@ function BrowseCategories({ onCategoryClick }: { onCategoryClick: (id: string) =
                   className="size-9 rounded-lg flex items-center justify-center mb-3"
                   style={{ background: `color-mix(in oklab, ${cat.accentColor} 12%, transparent)` }}
                 >
-                  <div style={{ color: cat.accentColor }}>
-                    <Icon className="size-4" />
-                  </div>
+                  <Icon className="size-4" style={{ color: cat.accentColor }} />
                 </div>
                 <h3 className="text-xs font-semibold leading-tight mb-1">{cat.title}</h3>
                 <div className="flex items-center justify-between text-[10px] text-muted-foreground/70">
@@ -471,7 +469,7 @@ interface TutHomeProps {
 
 export function TutHome({ onSearch, onTutorialClick, onCategoryClick, onPathClick }: TutHomeProps) {
   return (
-    <div className="p-4 md:p-6 max-w-[1200px] mx-auto space-y-10 pb-16">
+    <div className="p-4 md:p-6 xl:p-8 max-w-none space-y-10 pb-16">
       <TutHero onSearch={onSearch} onChipSelect={onSearch} />
 
       {/* Learning paths */}
@@ -497,7 +495,7 @@ export function TutHome({ onSearch, onTutorialClick, onCategoryClick, onPathClic
       <FeaturedTutorials onTutorialClick={onTutorialClick} />
       <ByDifficulty onTutorialClick={onTutorialClick} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 xl:gap-10">
         <ContinueLearning onTutorialClick={onTutorialClick} />
         <BookmarkedTutorials onTutorialClick={onTutorialClick} />
       </div>

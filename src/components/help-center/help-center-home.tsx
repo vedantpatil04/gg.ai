@@ -364,7 +364,7 @@ function QuickActionsSection() {
         variants={STAGGER(0.05, 0.1)}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-4 gap-3 xl:gap-4"
       >
         {QUICK_ACTIONS.map(action => (
           <motion.div key={action.id} variants={FADE_UP}>
@@ -402,7 +402,7 @@ function PopularArticlesSection() {
         variants={STAGGER(0.06, 0.1)}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-1 md:grid-cols-2 gap-3"
+        className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"
       >
         {POPULAR_ARTICLES.map(article => (
           <motion.div key={article.id} variants={FADE_UP}>
@@ -534,7 +534,7 @@ function CategoriesSection() {
         variants={STAGGER(0.04, 0.1)}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
+        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 gap-3"
       >
         {HELP_CATEGORIES.map(cat => (
           <motion.div key={cat.id} variants={FADE_UP}>
@@ -557,7 +557,7 @@ function CategoriesSection() {
 
 export function HelpCenterHome({ onSearchClick }: { onSearchClick: () => void }) {
   return (
-    <div className="p-4 md:p-6 max-w-[1200px] mx-auto space-y-8 pb-16">
+    <div className="p-4 md:p-6 xl:p-8 max-w-none space-y-8 pb-16">
       {/* Welcome + search hero */}
       <WelcomeSection onSearchClick={onSearchClick} />
 
@@ -565,7 +565,7 @@ export function HelpCenterHome({ onSearchClick }: { onSearchClick: () => void })
       <QuickActionsSection />
 
       {/* Two-column layout for mid sections */}
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 xl:gap-8">
         {/* Popular articles — wider */}
         <div className="xl:col-span-3">
           <PopularArticlesSection />

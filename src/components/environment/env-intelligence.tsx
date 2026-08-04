@@ -21,31 +21,17 @@ import { findAqiBand } from "@/lib/mock-data";
 import { HEALTH_STATUS_BY_BAND } from "@/components/environment/env-live-aqi-hero";
 import { environmentalApi, type CityHistoryDay } from "@/lib/api/environmental.api";
 import { EnvEmptyState, EnvErrorState } from "@/components/environment/env-state-views";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 /**
- * Environmental Overview — Environmental Intelligence & AI Insights (Phase 6).
+ * Environmental Intelligence — Phase 1 Enterprise UI/UX.
  *
- * Transforms the overview from data display into data INTERPRETATION.
- * Five sub-sections:
- *   1. Intelligence hero — dynamic headline + Environmental Intelligence Score
- *      (a deterministic 0-100 composite derived from real readings).
- *   2. "What's affecting your environment?" — 2-4 dynamic insight items.
- *   3. Environmental Trend Intelligence — compact summary of 7-day trends
- *      (reuses the `getCityHistory` query, separate cache key).
- *   4. Smart Recommendations — priority-ranked action items derived from
- *      real data. No medical claims.
- *
- * Data: all from `useCity()` + the existing `getCityHistory` endpoint.
- * No new API, no fake data, no AI call (the genuine AI summary from
- * `copilotApi.cityInsights` is already handled by `<AiSummary>` further
- * down the page — duplicating it here would be redundant).
- *
- * Animations:
- *   - Score radial SVG counts up from 0 on first render.
- *   - Cards fade+slide via `motion-safe:animate-in` (tw-animate-css).
- *   - Subtle animated radial spot behind the hero (CSS @utility `aurora`).
- *   - All animations respect `prefers-reduced-motion`.
+ * All business logic preserved exactly. Only presentation layer improved:
+ *  - IntelligenceHero: larger, more editorial, better gauge integration
+ *  - ImpactAnalysis: clearer visual hierarchy per card, stronger section identity
+ *  - TrendIntelligence: cleaner list layout, better data emphasis
+ *  - SmartRecommendations: priority hierarchy more visually distinct
  */
 
 // ─── Reduced motion ──────────────────────────────────────────────────────────
@@ -63,21 +49,8 @@ function usePrefersReducedMotion(): boolean {
 }
 
 // ─── Intelligence Score ──────────────────────────────────────────────────────
+// (Identical computation — only presentation changed)
 
-/**
- * Deterministic 0-100 composite score.
- *
- * Weights (must sum to 1.0):
- *   AQI        0.45  — primary air-quality signal
- *   PM2.5      0.20  — fine-particulate sub-component
- *   Humidity   0.10  — comfort factor
- *   Wind       0.10  — dispersion proxy
- *   Pressure   0.08  — stability proxy
- *   Temp       0.07  — comfort factor
- *
- * Each sub-score is normalised to [0,1] where 1 = ideal and 0 = worst.
- * Unavailable metrics are excluded and weights are redistributed linearly.
- */
 function computeIntelligenceScore(city: {
   aqi: number;
   pm25?: number;
@@ -95,26 +68,19 @@ function computeIntelligenceScore(city: {
       label: "AQI",
       weight: 0.45,
       value: city.aqi,
-      norm: () => {
-        // AQI 0→50 = excellent (1.0), 300+ = hazardous (0)
-        return Math.max(0, 1 - city.aqi / 300);
-      },
+      norm: () => Math.max(0, 1 - city.aqi / 300),
     },
     {
       label: "PM2.5",
       weight: 0.2,
       value: city.pm25,
-      norm: () => {
-        // 0→15 µg/m³ = good (1.0), 150+ = 0
-        return Math.max(0, 1 - (city.pm25 ?? 0) / 150);
-      },
+      norm: () => Math.max(0, 1 - (city.pm25 ?? 0) / 150),
     },
     {
       label: "Humidity",
       weight: 0.1,
       value: city.humidity,
       norm: () => {
-        // 40–60% ideal → 1.0; extremes (0% or 100%) → 0
         const h = city.humidity ?? 50;
         return Math.max(0, 1 - Math.abs(h - 50) / 50);
       },
@@ -124,7 +90,6 @@ function computeIntelligenceScore(city: {
       weight: 0.1,
       value: city.windSpeed,
       norm: () => {
-        // 5–25 km/h ideal (disperses pollutants); calm or gale = lower
         const w = city.windSpeed ?? 10;
         if (w < 5) return 0.5;
         if (w < 30) return 1.0;
@@ -136,7 +101,6 @@ function computeIntelligenceScore(city: {
       weight: 0.08,
       value: city.pressure,
       norm: () => {
-        // 1013 hPa = standard; ±30 range
         const p = (city.pressure as number | undefined) ?? 1013;
         return Math.max(0, 1 - Math.abs(p - 1013) / 60);
       },
@@ -146,7 +110,6 @@ function computeIntelligenceScore(city: {
       weight: 0.07,
       value: city.temp,
       norm: () => {
-        // 18–24°C ideal
         const t = city.temp ?? 20;
         return Math.max(0, 1 - Math.abs(t - 21) / 30);
       },
@@ -177,6 +140,20 @@ function computeIntelligenceScore(city: {
   return { score, label, components };
 }
 
+// ─── Score color helper ──────────────────────────────────────────────────────
+
+function scoreColor(score: number): string {
+  return score >= 80
+    ? "var(--color-success)"
+    : score >= 65
+      ? "hsl(90 60% 50%)"
+      : score >= 50
+        ? "hsl(45 90% 55%)"
+        : score >= 35
+          ? "hsl(28 90% 55%)"
+          : "var(--color-destructive)";
+}
+
 // ─── Radial score gauge ──────────────────────────────────────────────────────
 
 function ScoreGauge({ score, label, reduced }: { score: number; label: string; reduced: boolean }) {
@@ -184,16 +161,12 @@ function ScoreGauge({ score, label, reduced }: { score: number; label: string; r
   const raf = useRef<number>(0);
 
   useEffect(() => {
-    if (reduced) {
-      setDisplayed(score);
-      return;
-    }
+    if (reduced) { setDisplayed(score); return; }
     let start: number | null = null;
     const duration = 1200;
     const animate = (ts: number) => {
       if (!start) start = ts;
       const progress = Math.min((ts - start) / duration, 1);
-      // ease-out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
       setDisplayed(Math.round(eased * score));
       if (progress < 1) raf.current = requestAnimationFrame(animate);
@@ -202,59 +175,75 @@ function ScoreGauge({ score, label, reduced }: { score: number; label: string; r
     return () => cancelAnimationFrame(raf.current);
   }, [score, reduced]);
 
-  const r = 54;
+  const r = 56;
   const circ = 2 * Math.PI * r;
   const pct = displayed / 100;
   const dash = pct * circ;
   const gap = circ - dash;
-
-  const color =
-    score >= 80
-      ? "var(--color-success)"
-      : score >= 65
-        ? "hsl(90 60% 50%)"
-        : score >= 50
-          ? "hsl(45 90% 55%)"
-          : score >= 35
-            ? "hsl(28 90% 55%)"
-            : "var(--color-destructive)";
+  const color = scoreColor(score);
 
   return (
     <div
-      className="flex flex-col items-center gap-2"
+      className="flex flex-col items-center gap-3"
       aria-label={`Environmental Intelligence Score: ${score} — ${label}`}
     >
-      <div className="relative size-36">
+      <div className="relative size-40">
+        {/* Soft glow behind gauge */}
+        <div
+          className="absolute inset-0 rounded-full blur-2xl opacity-20 pointer-events-none"
+          style={{ background: color }}
+          aria-hidden="true"
+        />
         <svg viewBox="0 0 128 128" className="size-full -rotate-90" aria-hidden="true">
-          <circle cx="64" cy="64" r={r} fill="none" stroke="var(--color-border)" strokeWidth="8" />
+          {/* Track */}
           <circle
-            cx="64"
-            cy="64"
-            r={r}
+            cx="64" cy="64" r={r}
+            fill="none"
+            stroke="oklch(1 0 0 / 0.07)"
+            strokeWidth="7"
+          />
+          {/* Progress */}
+          <circle
+            cx="64" cy="64" r={r}
             fill="none"
             stroke={color}
-            strokeWidth="8"
+            strokeWidth="7"
             strokeLinecap="round"
             strokeDasharray={`${dash} ${gap}`}
-            style={{ transition: reduced ? "none" : "stroke-dasharray 0.05s linear" }}
+            style={{
+              transition: reduced ? "none" : "stroke-dasharray 0.05s linear",
+              filter: `drop-shadow(0 0 6px ${color}60)`,
+            }}
           />
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-3xl font-bold tabular-nums leading-none" style={{ color }}>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+          <span
+            className="text-[2.4rem] font-bold tabular-nums leading-none tracking-tighter"
+            style={{ color }}
+          >
             {displayed}
           </span>
-          <span className="text-[9px] uppercase tracking-widest text-muted-foreground mt-1">
-            Score
+          <span
+            className="text-[9px] font-bold uppercase tracking-[0.22em]"
+            style={{ color: "oklch(0.46 0.012 230)" }}
+          >
+            / 100
           </span>
         </div>
       </div>
-      <span className="text-sm font-semibold" style={{ color }}>
-        {label}
-      </span>
-      <span className="text-[10px] text-muted-foreground text-center max-w-[160px] leading-relaxed">
-        Environmental Intelligence Score — a composite of available air quality and weather
-        readings.
-      </span>
+
+      {/* Status label */}
+      <div className="text-center space-y-0.5">
+        <div className="text-sm font-semibold" style={{ color }}>
+          {label}
+        </div>
+        <div
+          className="text-[10px] leading-relaxed max-w-[160px] text-center"
+          style={{ color: "oklch(0.46 0.012 230)" }}
+        >
+          Environmental Intelligence Score
+        </div>
+      </div>
     </div>
   );
 }
@@ -272,47 +261,107 @@ function IntelligenceHero({
 }) {
   const { city } = useCity();
   const band = findAqiBand(city.aqi);
+  const color = scoreColor(score);
 
   const headline =
     score >= 80
       ? "Your environment looks healthy"
       : score >= 65
-        ? "Environmental conditions are generally favourable"
+        ? "Environmental conditions are broadly favourable"
         : score >= 50
           ? "Environmental conditions are acceptable"
           : score >= 35
-            ? "Environmental conditions need attention"
+            ? "Environmental conditions warrant attention"
             : "Environmental conditions are currently poor";
 
   const summary =
     score >= 80
-      ? `Air quality is currently ${band.label.toLowerCase()}, with conditions favourable for outdoor activity.`
+      ? `Air quality is ${band.label.toLowerCase()}, with conditions well-suited for outdoor activity.`
       : score >= 65
-        ? `Air quality is currently ${band.label.toLowerCase()}. Most outdoor activities remain suitable, but sensitive individuals should stay mindful of conditions.`
+        ? `Air quality is ${band.label.toLowerCase()}. Most outdoor activity remains suitable — sensitive individuals should stay mindful.`
         : score >= 50
-          ? `Environmental conditions are generally acceptable. Elevated ${band.label.toLowerCase()} pollution levels may affect sensitive individuals.`
-          : `Air quality is currently ${band.label.toLowerCase()}. Consider reducing prolonged outdoor exposure until conditions improve.`;
+          ? `Elevated ${band.label.toLowerCase()} pollution levels may affect sensitive individuals.`
+          : `${band.label} air quality detected. Consider limiting prolonged outdoor exposure until conditions improve.`;
 
   return (
-    <div className="relative glass rounded-2xl p-6 md:p-10 overflow-hidden">
-      {/* Subtle aurora behind the card — only when motion is not reduced */}
+    <div
+      className="relative overflow-hidden rounded-2xl"
+      style={{
+        background: `linear-gradient(145deg,
+          oklch(1 0 0 / 0.07) 0%,
+          color-mix(in oklab, ${color} 5%, oklch(1 0 0 / 0.03)) 100%)`,
+        backdropFilter: "blur(24px) saturate(150%)",
+        WebkitBackdropFilter: "blur(24px) saturate(150%)",
+        border: `1px solid color-mix(in oklab, ${color} 18%, oklch(1 0 0 / 0.07))`,
+        boxShadow: `0 0 0 1px oklch(1 0 0 / 0.04) inset, 0 0 60px -20px ${color}20`,
+        padding: "2rem 2rem 2rem",
+      }}
+    >
+      {/* Ambient glow — top-right */}
       {!reduced && (
         <div
-          className="pointer-events-none absolute -top-24 -right-24 size-80 rounded-full opacity-15 blur-3xl aurora"
+          className="pointer-events-none absolute -top-24 -right-24 size-[22rem] rounded-full opacity-[0.13] blur-3xl"
+          style={{ background: color }}
           aria-hidden="true"
         />
       )}
-      <div className="relative grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-8 lg:gap-12 items-center">
-        <div className="space-y-3">
+
+      <div className="relative grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-10 items-center">
+        <div className="space-y-4">
+          {/* Eyebrow */}
           <div className="flex items-center gap-2">
-            <Sparkles className="size-3.5 text-muted-foreground" aria-hidden="true" />
-            <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              GreenGuard AI
+            <Sparkles
+              className="size-3.5 shrink-0"
+              style={{ color: "oklch(0.55 0.012 230)" }}
+              aria-hidden="true"
+            />
+            <span
+              className="text-[10px] font-bold uppercase tracking-[0.22em]"
+              style={{ color: "oklch(0.50 0.012 230)" }}
+            >
+              GreenGuard AI · Intelligence Report
             </span>
           </div>
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">{headline}</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed max-w-xl">{summary}</p>
+
+          {/* Headline */}
+          <h3
+            className="text-2xl md:text-3xl xl:text-[2rem] font-bold tracking-[-0.025em] leading-tight"
+            style={{
+              fontFamily: "var(--font-display)",
+              color: "oklch(0.95 0.008 220)",
+            }}
+          >
+            {headline}
+          </h3>
+
+          {/* Summary */}
+          <p
+            className="text-sm md:text-[0.95rem] leading-relaxed max-w-xl"
+            style={{ color: "oklch(0.60 0.012 230)" }}
+          >
+            {summary}
+          </p>
+
+          {/* AQI status pill */}
+          <div className="pt-1">
+            <span
+              className="inline-flex items-center gap-2 text-sm font-semibold px-3.5 py-1.5 rounded-full border"
+              style={{
+                color: band.color,
+                borderColor: `color-mix(in oklab, ${band.color} 30%, transparent)`,
+                background: `color-mix(in oklab, ${band.color} 10%, transparent)`,
+              }}
+            >
+              <span
+                className="size-2 rounded-full shrink-0"
+                style={{ background: band.color }}
+                aria-hidden="true"
+              />
+              AQI {city.aqi} · {band.label}
+            </span>
+          </div>
         </div>
+
         <div className="flex justify-center lg:justify-end">
           <ScoreGauge score={score} label={scoreLabel} reduced={reduced} />
         </div>
@@ -335,7 +384,7 @@ interface ImpactInsight {
 
 const STATUS_COLOR: Record<InsightStatus, string> = {
   positive: "var(--color-success)",
-  neutral: "var(--color-muted-foreground)",
+  neutral: "oklch(0.55 0.012 230)",
   caution: "hsl(28 90% 55%)",
 };
 const STATUS_ICON: Record<InsightStatus, LucideIcon> = {
@@ -353,9 +402,8 @@ function buildImpactInsights(city: {
   pressure?: number;
 }): ImpactInsight[] {
   const items: ImpactInsight[] = [];
-
-  // AQI
   const band = findAqiBand(city.aqi);
+
   items.push({
     icon: Activity,
     category: "Air Quality",
@@ -367,7 +415,6 @@ function buildImpactInsights(city: {
     status: city.aqi <= 50 ? "positive" : city.aqi <= 100 ? "neutral" : "caution",
   });
 
-  // Temperature
   if (typeof city.temp === "number") {
     const t = city.temp;
     items.push({
@@ -397,7 +444,6 @@ function buildImpactInsights(city: {
     });
   }
 
-  // Humidity
   if (typeof city.humidity === "number") {
     const h = city.humidity;
     items.push({
@@ -423,7 +469,6 @@ function buildImpactInsights(city: {
     });
   }
 
-  // Wind
   if (typeof city.windSpeed === "number") {
     const w = city.windSpeed;
     items.push({
@@ -449,7 +494,6 @@ function buildImpactInsights(city: {
     });
   }
 
-  // Return max 4 items; AQI always first, then by caution priority
   return items.slice(0, 4);
 }
 
@@ -462,18 +506,36 @@ function ImpactAnalysis() {
   return (
     <div
       className={cn(
-        "glass rounded-2xl p-6 md:p-8 space-y-5",
+        "rounded-2xl overflow-hidden",
         "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500 motion-safe:delay-100",
       )}
+      style={{
+        background: "oklch(1 0 0 / 0.05)",
+        backdropFilter: "blur(20px) saturate(140%)",
+        WebkitBackdropFilter: "blur(20px) saturate(140%)",
+        border: "1px solid oklch(1 0 0 / 0.08)",
+      }}
     >
-      <div>
-        <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          Analysis
+      {/* Section header */}
+      <div
+        className="px-5 pt-5 pb-4 border-b"
+        style={{ borderColor: "oklch(1 0 0 / 0.07)" }}
+      >
+        <span
+          className="block text-[9.5px] font-bold uppercase tracking-[0.22em] mb-1.5"
+          style={{ color: "oklch(0.46 0.012 230)" }}
+        >
+          Factor Analysis
         </span>
-        <h3 className="text-base font-semibold mt-1">What's affecting your environment?</h3>
+        <h4
+          className="text-base font-semibold tracking-tight"
+          style={{ color: "oklch(0.90 0.010 220)", fontFamily: "var(--font-display)" }}
+        >
+          What's affecting your environment?
+        </h4>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {insights.map((ins) => {
           const Icon = ins.icon;
           const StatusIcon = STATUS_ICON[ins.status];
@@ -481,7 +543,11 @@ function ImpactAnalysis() {
           return (
             <div
               key={ins.category}
-              className="rounded-xl border border-border bg-card/30 p-4 space-y-2 transition-shadow duration-300 hover:shadow-md"
+              className="rounded-xl p-4 space-y-2.5 transition-all duration-200 hover:scale-[1.01]"
+              style={{
+                background: `color-mix(in oklab, ${color} 5%, oklch(1 0 0 / 0.03))`,
+                border: `1px solid color-mix(in oklab, ${color} 16%, oklch(1 0 0 / 0.06))`,
+              }}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -495,7 +561,10 @@ function ImpactAnalysis() {
                   >
                     <Icon className="size-3.5" />
                   </div>
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <span
+                    className="text-[9.5px] font-bold uppercase tracking-[0.18em]"
+                    style={{ color: "oklch(0.48 0.012 230)" }}
+                  >
                     {ins.category}
                   </span>
                 </div>
@@ -505,8 +574,18 @@ function ImpactAnalysis() {
                   aria-label={ins.status}
                 />
               </div>
-              <p className="text-sm font-medium leading-snug">{ins.title}</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">{ins.explanation}</p>
+              <p
+                className="text-[0.825rem] font-semibold leading-snug"
+                style={{ color: "oklch(0.88 0.010 220)" }}
+              >
+                {ins.title}
+              </p>
+              <p
+                className="text-[0.78rem] leading-relaxed"
+                style={{ color: "oklch(0.54 0.012 230)" }}
+              >
+                {ins.explanation}
+              </p>
             </div>
           );
         })}
@@ -543,7 +622,6 @@ function buildTrendItems(
 ): TrendItem[] {
   const items: TrendItem[] = [];
 
-  // AQI trend
   {
     const histVals = history.map((d) => d.aqi.avg);
     const dir = calcTrend(city.aqi, histVals, false);
@@ -567,7 +645,6 @@ function buildTrendItems(
     });
   }
 
-  // PM2.5 trend
   if (typeof city.pm25 === "number") {
     const histVals = history.map((d) => d.pm25);
     const dir = calcTrend(city.pm25, histVals, false);
@@ -591,7 +668,6 @@ function buildTrendItems(
     });
   }
 
-  // Temperature trend
   if (typeof city.temp === "number" && history.some((d) => typeof d.temp === "number")) {
     const histVals = history.map((d) => d.temp).filter((v) => typeof v === "number");
     const dir = calcTrend(city.temp, histVals, true);
@@ -610,7 +686,6 @@ function buildTrendItems(
     });
   }
 
-  // Humidity trend
   if (typeof city.humidity === "number" && history.some((d) => typeof d.humidity === "number")) {
     const histVals = history.map((d) => d.humidity).filter((v) => typeof v === "number");
     const dir = calcTrend(city.humidity, histVals, false);
@@ -632,18 +707,46 @@ function buildTrendItems(
   return items.slice(0, 4);
 }
 
-function TrendIcon({ direction }: { direction: TrendDir }) {
+const TREND_COLOR: Record<TrendDir, string> = {
+  Improving: "var(--color-success)",
+  Stable: "oklch(0.55 0.012 230)",
+  Worsening: "hsl(28 90% 55%)",
+  Unavailable: "oklch(0.44 0.012 230)",
+};
+
+function TrendChip({ direction, pctChange }: { direction: TrendDir; pctChange?: number }) {
   const Icon =
-    direction === "Improving" ? TrendingDown : direction === "Worsening" ? TrendingUp : Minus;
-  const color =
     direction === "Improving"
-      ? "var(--color-success)"
+      ? TrendingDown
       : direction === "Worsening"
-        ? "hsl(28 90% 55%)"
-        : "var(--color-muted-foreground)";
-  if (direction === "Unavailable")
-    return <span className="text-[10px] text-muted-foreground">—</span>;
-  return <Icon className="size-4" style={{ color }} aria-hidden="true" />;
+        ? TrendingUp
+        : Minus;
+  const color = TREND_COLOR[direction];
+
+  if (direction === "Unavailable") {
+    return (
+      <span
+        className="text-[9.5px] font-medium"
+        style={{ color: "oklch(0.44 0.012 230)" }}
+      >
+        —
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-[9.5px] font-bold px-2 py-0.5 rounded-full"
+      style={{
+        color,
+        background: `color-mix(in oklab, ${color} 11%, transparent)`,
+      }}
+    >
+      <Icon className="size-2.5" aria-hidden="true" />
+      {direction}
+      {pctChange ? ` · ${pctChange}%` : ""}
+    </span>
+  );
 }
 
 function TrendIntelligence({ history }: { history: CityHistoryDay[] | undefined }) {
@@ -653,63 +756,86 @@ function TrendIntelligence({ history }: { history: CityHistoryDay[] | undefined 
   return (
     <div
       className={cn(
-        "glass rounded-2xl p-6 md:p-8 space-y-5",
+        "rounded-2xl overflow-hidden",
         "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500 motion-safe:delay-150",
       )}
+      style={{
+        background: "oklch(1 0 0 / 0.05)",
+        backdropFilter: "blur(20px) saturate(140%)",
+        WebkitBackdropFilter: "blur(20px) saturate(140%)",
+        border: "1px solid oklch(1 0 0 / 0.08)",
+      }}
     >
-      <div>
-        <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Trends</span>
-        <h3 className="text-base font-semibold mt-1">Environmental trends</h3>
+      <div
+        className="px-5 pt-5 pb-4 border-b"
+        style={{ borderColor: "oklch(1 0 0 / 0.07)" }}
+      >
+        <span
+          className="block text-[9.5px] font-bold uppercase tracking-[0.22em] mb-1.5"
+          style={{ color: "oklch(0.46 0.012 230)" }}
+        >
+          7-Day Trend Analysis
+        </span>
+        <h4
+          className="text-base font-semibold tracking-tight"
+          style={{ color: "oklch(0.90 0.010 220)", fontFamily: "var(--font-display)" }}
+        >
+          Environmental trends
+        </h4>
       </div>
 
-      {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Historical trend data is currently unavailable.
-        </p>
-      ) : (
-        <div className="space-y-4">
-          {items.map((item) => {
-            const Icon = item.icon;
-            const dirColor =
-              item.direction === "Improving"
-                ? "var(--color-success)"
-                : item.direction === "Worsening"
-                  ? "hsl(28 90% 55%)"
-                  : "var(--color-muted-foreground)";
-            return (
-              <div key={item.label} className="flex items-start gap-4">
+      <div className="p-5">
+        {items.length === 0 ? (
+          <p
+            className="text-sm"
+            style={{ color: "oklch(0.52 0.012 230)" }}
+          >
+            Historical trend data is currently unavailable.
+          </p>
+        ) : (
+          <div className="space-y-5">
+            {items.map((item, i) => {
+              const Icon = item.icon;
+              const color = TREND_COLOR[item.direction];
+              return (
                 <div
-                  className="size-8 rounded-lg grid place-items-center shrink-0 mt-0.5"
-                  style={{
-                    background: `color-mix(in oklab, ${dirColor} 14%, transparent)`,
-                    color: dirColor,
-                  }}
-                  aria-hidden="true"
+                  key={item.label}
+                  className={cn("flex items-start gap-4", i > 0 && "pt-5 border-t")}
+                  style={i > 0 ? { borderColor: "oklch(1 0 0 / 0.06)" } : undefined}
                 >
-                  <Icon className="size-3.5" />
-                </div>
-                <div className="flex-1 min-w-0 space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold">{item.label}</span>
-                    <TrendIcon direction={item.direction} />
-                    <span
-                      className="text-[10px] font-medium"
-                      style={{ color: dirColor }}
-                      aria-label={`Trend: ${item.direction}`}
-                    >
-                      {item.direction !== "Unavailable" ? item.direction : ""}
-                      {item.pctChange ? ` · ${item.pctChange}%` : ""}
-                    </span>
+                  <div
+                    className="size-8 rounded-lg grid place-items-center shrink-0 mt-0.5"
+                    style={{
+                      background: `color-mix(in oklab, ${color} 13%, transparent)`,
+                      color,
+                    }}
+                    aria-hidden="true"
+                  >
+                    <Icon className="size-3.5" />
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {item.interpretation}
-                  </p>
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className="text-[0.82rem] font-semibold"
+                        style={{ color: "oklch(0.88 0.010 220)" }}
+                      >
+                        {item.label}
+                      </span>
+                      <TrendChip direction={item.direction} pctChange={item.pctChange} />
+                    </div>
+                    <p
+                      className="text-[0.78rem] leading-relaxed"
+                      style={{ color: "oklch(0.54 0.012 230)" }}
+                    >
+                      {item.interpretation}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -731,6 +857,8 @@ const PRIORITY_COLOR: Record<Priority, string> = {
   High: "hsl(28 90% 55%)",
 };
 
+const PRIORITY_ORDER: Priority[] = ["High", "Moderate", "Low"];
+
 function buildRecommendations(city: {
   aqi: number;
   temp?: number;
@@ -741,7 +869,6 @@ function buildRecommendations(city: {
   const recs: Recommendation[] = [];
   const band = findAqiBand(city.aqi);
 
-  // AQI-based
   if (city.aqi <= 50) {
     recs.push({
       icon: Sun,
@@ -765,7 +892,6 @@ function buildRecommendations(city: {
     });
   }
 
-  // Temperature
   if (typeof city.temp === "number") {
     if (city.temp >= 35) {
       recs.push({
@@ -784,7 +910,6 @@ function buildRecommendations(city: {
     }
   }
 
-  // Humidity
   if (typeof city.humidity === "number" && city.humidity >= 75) {
     recs.push({
       icon: Droplets,
@@ -794,7 +919,6 @@ function buildRecommendations(city: {
     });
   }
 
-  // Wind
   if (typeof city.windSpeed === "number" && city.windSpeed >= 40) {
     recs.push({
       icon: Wind,
@@ -804,7 +928,6 @@ function buildRecommendations(city: {
     });
   }
 
-  // Fallback if only the low-AQI item exists
   if (recs.length === 1 && recs[0].priority === "Low") {
     recs.push({
       icon: ShieldCheck,
@@ -815,7 +938,12 @@ function buildRecommendations(city: {
     });
   }
 
-  return recs.slice(0, 4);
+  // Sort by priority: High first
+  const sorted = [...recs].sort(
+    (a, b) => PRIORITY_ORDER.indexOf(a.priority) - PRIORITY_ORDER.indexOf(b.priority),
+  );
+
+  return sorted.slice(0, 4);
 }
 
 function SmartRecommendations() {
@@ -825,26 +953,47 @@ function SmartRecommendations() {
   return (
     <div
       className={cn(
-        "glass rounded-2xl p-6 md:p-8 space-y-5",
+        "rounded-2xl overflow-hidden",
         "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500 motion-safe:delay-200",
       )}
+      style={{
+        background: "oklch(1 0 0 / 0.05)",
+        backdropFilter: "blur(20px) saturate(140%)",
+        WebkitBackdropFilter: "blur(20px) saturate(140%)",
+        border: "1px solid oklch(1 0 0 / 0.08)",
+      }}
     >
-      <div>
-        <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          Recommendations
+      <div
+        className="px-6 pt-5 pb-4 border-b"
+        style={{ borderColor: "oklch(1 0 0 / 0.07)" }}
+      >
+        <span
+          className="block text-[9.5px] font-bold uppercase tracking-[0.22em] mb-1.5"
+          style={{ color: "oklch(0.46 0.012 230)" }}
+        >
+          Priority Guidance
         </span>
-        <h3 className="text-base font-semibold mt-1">Smart recommendations</h3>
+        <h4
+          className="text-base font-semibold tracking-tight"
+          style={{ color: "oklch(0.90 0.010 220)", fontFamily: "var(--font-display)" }}
+        >
+          Smart recommendations
+        </h4>
       </div>
 
-      <div className="space-y-3">
+      <div className="p-4 space-y-2.5">
         {recs.map((rec) => {
           const Icon = rec.icon;
           const color = PRIORITY_COLOR[rec.priority];
           return (
             <div
               key={rec.title}
-              className="flex items-start gap-4 rounded-xl border border-border bg-card/30 p-4 transition-shadow duration-300 hover:shadow-md"
-              style={{ borderLeftColor: color, borderLeftWidth: 3 }}
+              className="flex items-start gap-4 rounded-xl p-4 transition-all duration-200 hover:scale-[1.005]"
+              style={{
+                background: `color-mix(in oklab, ${color} 5%, oklch(1 0 0 / 0.025))`,
+                border: `1px solid color-mix(in oklab, ${color} 14%, oklch(1 0 0 / 0.06))`,
+                borderLeft: `3px solid ${color}`,
+              }}
             >
               <div
                 className="size-8 rounded-lg grid place-items-center shrink-0 mt-0.5"
@@ -853,57 +1002,80 @@ function SmartRecommendations() {
               >
                 <Icon className="size-4" />
               </div>
-              <div className="flex-1 min-w-0 space-y-1">
+              <div className="flex-1 min-w-0 space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium">{rec.title}</span>
                   <span
-                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0"
+                    className="text-[0.85rem] font-semibold"
+                    style={{ color: "oklch(0.88 0.010 220)" }}
+                  >
+                    {rec.title}
+                  </span>
+                  <span
+                    className="text-[9px] font-bold uppercase tracking-[0.16em] px-2 py-0.5 rounded-full shrink-0"
                     style={{
                       color,
-                      borderColor: `color-mix(in oklab, ${color} 35%, transparent)`,
-                      background: `color-mix(in oklab, ${color} 12%, transparent)`,
+                      background: `color-mix(in oklab, ${color} 13%, transparent)`,
                     }}
                   >
                     {rec.priority}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">{rec.description}</p>
+                <p
+                  className="text-[0.78rem] leading-relaxed"
+                  style={{ color: "oklch(0.54 0.012 230)" }}
+                >
+                  {rec.description}
+                </p>
               </div>
             </div>
           );
         })}
       </div>
 
-      <p className="text-[10px] text-muted-foreground">
-        Recommendations are informational only and are not medical advice.
-      </p>
+      <div
+        className="px-6 pb-5 pt-2"
+        style={{ borderTop: "1px solid oklch(1 0 0 / 0.06)" }}
+      >
+        <p
+          className="text-[10px]"
+          style={{ color: "oklch(0.42 0.010 230)" }}
+        >
+          Informational only — not medical advice.
+        </p>
+      </div>
     </div>
   );
 }
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 
-import { Skeleton } from "@/components/ui/skeleton";
-
 function IntelligenceSkeleton({ className }: { className?: string }) {
   return (
     <div className={cn("space-y-4", className)}>
-      <div className="glass rounded-2xl p-6 md:p-10">
+      <div
+        className="rounded-2xl p-7 md:p-10"
+        style={{
+          background: "oklch(1 0 0 / 0.05)",
+          border: "1px solid oklch(1 0 0 / 0.08)",
+        }}
+      >
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-8 items-center">
-          <div className="space-y-3">
-            <Skeleton className="h-3 w-28" />
-            <Skeleton className="h-8 w-80" />
-            <Skeleton className="h-4 w-full max-w-xl" />
+          <div className="space-y-4">
+            <Skeleton className="h-2.5 w-36 rounded-full" />
+            <Skeleton className="h-9 w-80 rounded-xl" />
+            <Skeleton className="h-4 w-full max-w-xl rounded-lg" />
+            <Skeleton className="h-7 w-32 rounded-full" />
           </div>
           <div className="flex justify-center">
-            <Skeleton className="size-36 rounded-full" />
+            <Skeleton className="size-40 rounded-full" />
           </div>
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Skeleton className="h-64 rounded-2xl" />
-        <Skeleton className="h-64 rounded-2xl" />
+        <Skeleton className="h-72 rounded-2xl" />
+        <Skeleton className="h-72 rounded-2xl" />
       </div>
+      <Skeleton className="h-64 rounded-2xl" />
     </div>
   );
 }

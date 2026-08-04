@@ -73,7 +73,7 @@ function WorkspacePanel({
     >
       <button
         onClick={() => onToggle(panel.id)}
-        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset"
+        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset"
         aria-expanded={!panel.collapsed}
       >
         <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/80 flex-1 text-left">
@@ -189,7 +189,7 @@ function ExecDashboard({
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: i * 0.04 }}
             className="rounded-xl px-2 py-2 relative overflow-hidden"
-            style={{ background: "oklch(1 0 0 / 0.03)", border: "1px solid var(--card-border)" }}
+            style={{ background: "color-mix(in oklab, var(--color-foreground) 3%, transparent)", border: "1px solid var(--card-border)" }}
           >
             <span
               className="absolute inset-x-2.5 top-0 h-px rounded-full opacity-60"
@@ -214,7 +214,7 @@ function ExecDashboard({
             </div>
             <div
               className="h-0.5 rounded-full overflow-hidden mt-1.5"
-              style={{ background: "oklch(1 0 0 / 0.08)" }}
+              style={{ background: "color-mix(in oklab, var(--color-foreground) 8%, transparent)" }}
             >
               <motion.div
                 className="h-full rounded-full"
@@ -375,7 +375,7 @@ function ZonePanel({
             </div>
             <div
               className="h-1 rounded-full overflow-hidden mb-1.5"
-              style={{ background: "oklch(1 0 0 / 0.08)" }}
+              style={{ background: "color-mix(in oklab, var(--color-foreground) 8%, transparent)" }}
             >
               <div
                 className="h-full rounded-full"
@@ -425,7 +425,7 @@ function ZonePanel({
                   <div
                     key={l}
                     className="rounded-lg px-2 py-1"
-                    style={{ background: "oklch(1 0 0 / 0.05)" }}
+                    style={{ background: "color-mix(in oklab, var(--color-foreground) 5%, transparent)" }}
                   >
                     <div className="text-[7.5px] text-muted-foreground/60 uppercase">{l}</div>
                     <div className="text-[9px] font-bold capitalize">{v}</div>
@@ -602,7 +602,7 @@ function CitizenPanel({ complaints }: { complaints: MapComplaint[] }) {
           <div
             key={l}
             className="rounded-lg px-1.5 py-1.5 text-center"
-            style={{ background: "oklch(1 0 0 / 0.03)", border: "1px solid var(--card-border)" }}
+            style={{ background: "color-mix(in oklab, var(--color-foreground) 3%, transparent)", border: "1px solid var(--card-border)" }}
           >
             <div className="text-[13px] font-bold tabular-nums" style={{ color: c }}>
               {v}
@@ -688,7 +688,7 @@ function CorrelationPanel({ data }: { data: DigitalTwinData }) {
           <div
             key={l}
             className="rounded-lg px-2 py-1.5"
-            style={{ background: "oklch(1 0 0 / 0.03)", border: "1px solid var(--card-border)" }}
+            style={{ background: "color-mix(in oklab, var(--color-foreground) 3%, transparent)", border: "1px solid var(--card-border)" }}
           >
             <div className="text-[7.5px] text-muted-foreground/60 uppercase tracking-wide">{l}</div>
             <div className="text-[10px] font-bold" style={{ color: c }}>
@@ -804,7 +804,7 @@ export function DigitalTwinPanel({
         <button
           onClick={resetWorkspace}
           title="Reset workspace layout"
-          className="size-5 grid place-items-center rounded hover:bg-white/8 text-muted-foreground/60 hover:text-muted-foreground transition-colors focus-visible:outline-none"
+          className="size-5 grid place-items-center rounded hover:bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)] text-muted-foreground/60 hover:text-muted-foreground transition-colors focus-visible:outline-none"
         >
           <RefreshCw className="size-3" />
         </button>

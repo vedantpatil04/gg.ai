@@ -78,7 +78,7 @@ export function TutListPage({ initialCategoryId, initialQuery, onTutorialClick }
   const currentCat = TUT_CATEGORIES.find(c => c.id === filters.categoryId);
 
   return (
-    <div className="p-4 md:p-6 max-w-[1200px] mx-auto pb-16">
+    <div className="p-4 md:p-6 xl:p-8 max-w-none pb-16">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}

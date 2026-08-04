@@ -62,3 +62,54 @@ baseMapRegistry.register({
   rasterBrightness: 0.44,
   rasterSaturation: -0.1,
 });
+
+// ─── Phase 11: light enterprise raster style (free, no API key) ─────────────
+// Same OSM raster source as the dark style, graded toward a pale,
+// desaturated "enterprise GIS" look (in the spirit of Mapbox Light / CARTO
+// Positron) instead of simply inverting the dark tint. The background color
+// matches the app's light `--background` token so tile gaps/edges blend in.
+export const OSM_LIGHT_STYLE: BaseMapConfig["style"] = {
+  version: 8 as const,
+  glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+  sources: {
+    "osm-raster": {
+      type: "raster" as const,
+      tiles: [
+        "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      ],
+      tileSize: 256,
+      attribution:
+        "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors",
+      maxzoom: 19,
+    },
+  },
+  layers: [
+    { id: "background", type: "background" as const, paint: { "background-color": "#eef1f4" } },
+    {
+      id: "osm-raster-layer",
+      type: "raster" as const,
+      source: "osm-raster",
+      paint: {
+        "raster-opacity": 0.92,
+        // Lift the black point so dark tile ink fades toward light gray
+        // instead of the deep near-black used by the dark style.
+        "raster-brightness-min": 0.55,
+        "raster-brightness-max": 1,
+        "raster-saturation": -0.35,
+        "raster-contrast": -0.08,
+        "raster-hue-rotate": 4,
+      },
+    },
+  ],
+};
+
+baseMapRegistry.register({
+  id: "osm-light",
+  label: "Standard",
+  style: OSM_LIGHT_STYLE,
+  rasterOpacity: 0.92,
+  rasterBrightness: 1,
+  rasterSaturation: -0.35,
+});

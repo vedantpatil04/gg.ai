@@ -24,7 +24,10 @@ function MiniStat({
   numericValue?: number;
 }) {
   return (
-    <MotionCard lift="sm" className="rounded-xl bg-muted/40 p-4 group">
+    <MotionCard
+      lift="sm"
+      className="rounded-xl bg-muted/40 p-4 group"
+    >
       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground uppercase tracking-wider">
         <Icon className="size-3.5 transition-colors group-hover:text-primary" /> {label}
       </div>
@@ -82,7 +85,7 @@ export function EnvironmentalHealthHero({
             {/* Animated score ring */}
             <div className="flex flex-col items-center gap-3 shrink-0">
               <div className="relative size-32 group">
-                {/* Breathing glow halo — outermost, CSS animation, GPU-only */}
+              {/* Breathing glow halo — outermost, CSS animation, GPU-only */}
                 <div
                   aria-hidden
                   className={cn(
@@ -120,7 +123,11 @@ export function EnvironmentalHealthHero({
                   <div className="absolute inset-3 rounded-full bg-background grid place-items-center">
                     <div className="text-center">
                       <div className="text-2xl font-semibold tabular-nums">
-                        {inView && !prefersReduced ? <AnimatedNumber target={score} /> : score}
+                        {inView && !prefersReduced ? (
+                          <AnimatedNumber target={score} />
+                        ) : (
+                          score
+                        )}
                       </div>
                       <div className="text-[10px] text-muted-foreground">/100</div>
                     </div>
@@ -152,44 +159,12 @@ export function EnvironmentalHealthHero({
               animate={inView ? { opacity: 1 } : {}}
               transition={{ delay: 0.28, duration: 0.5 }}
             >
-              <MiniStat
-                icon={Gauge}
-                label="AQI"
-                value={String(aqi)}
-                unit={aqiBand.label}
-                animate={inView && !prefersReduced}
-                numericValue={aqi}
-              />
-              <MiniStat
-                icon={Flame}
-                label="Main Pollutant"
-                value={mainPollutant ? mainPollutant.label : "Not Available"}
-              />
-              <MiniStat
-                icon={ThermometerSun}
-                label="Temperature"
-                value={temp != null ? String(temp) : "Not Available"}
-                unit={temp != null ? "°C" : undefined}
-                animate={inView && !!temp && !prefersReduced}
-                numericValue={temp}
-              />
-              <MiniStat
-                icon={Droplets}
-                label="Humidity"
-                value={humidity != null ? String(humidity) : "Not Available"}
-                unit={humidity != null ? "%" : undefined}
-                animate={inView && !!humidity && !prefersReduced}
-                numericValue={humidity}
-              />
-              <MiniStat
-                icon={Wind}
-                label="Wind"
-                value={windSpeed != null ? String(windSpeed) : "Not Available"}
-                unit={windSpeed != null ? "km/h" : undefined}
-                animate={inView && !!windSpeed && !prefersReduced}
-                numericValue={windSpeed}
-              />
-              <MiniStat icon={Clock} label="Last Updated" value={lastUpdated} />
+              <MiniStat icon={Gauge}         label="AQI"            value={String(aqi)} unit={aqiBand.label} animate={inView && !prefersReduced} numericValue={aqi} />
+              <MiniStat icon={Flame}         label="Main Pollutant" value={mainPollutant ? mainPollutant.label : "Not Available"} />
+              <MiniStat icon={ThermometerSun} label="Temperature"   value={temp != null ? String(temp) : "Not Available"} unit={temp != null ? "°C" : undefined} animate={inView && !!temp && !prefersReduced} numericValue={temp} />
+              <MiniStat icon={Droplets}      label="Humidity"       value={humidity != null ? String(humidity) : "Not Available"} unit={humidity != null ? "%" : undefined} animate={inView && !!humidity && !prefersReduced} numericValue={humidity} />
+              <MiniStat icon={Wind}          label="Wind"           value={windSpeed != null ? String(windSpeed) : "Not Available"} unit={windSpeed != null ? "km/h" : undefined} animate={inView && !!windSpeed && !prefersReduced} numericValue={windSpeed} />
+              <MiniStat icon={Clock}         label="Last Updated"   value={lastUpdated} />
             </motion.div>
           </div>
         )}

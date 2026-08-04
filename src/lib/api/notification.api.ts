@@ -1,14 +1,33 @@
 import client from "./client";
 
+export const NOTIFICATION_CATEGORIES = [
+  "system",
+  "complaints",
+  "reports",
+  "authority",
+  "environment",
+  "forecast",
+  "admin",
+  "security",
+] as const;
+
+export const NOTIFICATION_CHANNELS = [
+  "inApp",
+  "email",
+  "push",
+] as const;
+
+export interface NotificationChannels {
+  inApp: boolean;
+  email: boolean;
+  push: boolean;
+}
+
+export type NotificationPreferences =
+  Record<(typeof NOTIFICATION_CATEGORIES)[number], NotificationChannels>;
+
 export type NotificationCategory =
-  | "complaints"
-  | "assignments"
-  | "authorities"
-  | "platform"
-  | "environmental"
-  | "security"
-  | "ai"
-  | "system";
+  (typeof NOTIFICATION_CATEGORIES)[number];
 
 export type NotificationPriority = "low" | "medium" | "high" | "critical";
 export type NotificationStatus = "unread" | "read" | "archived";
@@ -101,4 +120,21 @@ export const notificationApi = {
     const res = await client.patch("/notifications/preferences", { preferences });
     return res.data.data.preferences as Record<string, boolean>;
   },
+
+  getSettingsPreferences: async (): Promise<NotificationPreferences> => {
+  const res = await client.get("/settings/notifications");
+  return res.data.data.notifications;
+},
+
+updateSettingsPreferences: async (
+  patch: Partial<
+    Record<
+      (typeof NOTIFICATION_CATEGORIES)[number],
+      Partial<NotificationChannels>
+    >
+  >
+): Promise<NotificationPreferences> => {
+  const res = await client.patch("/settings/notifications", patch);
+  return res.data.data.notifications;
+},
 };

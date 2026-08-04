@@ -38,9 +38,7 @@ function LocationPulse({ color }: { color: string }) {
 }
 
 export function MapPreviewCard({
-  cityName,
-  aqi,
-  aqiBand,
+  cityName, aqi, aqiBand,
 }: {
   cityName?: string;
   aqi?: number;
@@ -50,7 +48,7 @@ export function MapPreviewCard({
   const inView = useInView(ref, { once: true, margin: "-40px" });
   const prefersReduced = useReducedMotion();
 
-  const band = aqi != null ? findAqiBand(aqi) : null;
+  const band     = aqi != null ? findAqiBand(aqi) : null;
   const aqiColor = band?.color ?? "var(--color-muted-foreground)";
 
   return (
@@ -58,9 +56,7 @@ export function MapPreviewCard({
       <div className="p-5 pb-0">
         <div className="flex items-start justify-between mb-4 gap-3">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Explore
-            </div>
+            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Explore</div>
             <div className="text-base font-semibold tracking-tight mt-0.5">Smart Map Preview</div>
           </div>
         </div>
@@ -102,7 +98,9 @@ export function MapPreviewCard({
           <div className="absolute inset-0 radial-spot opacity-35 pointer-events-none" />
 
           {/* Scan line — Phase 8 */}
-          {!prefersReduced && <div className="scan-line" aria-hidden />}
+          {!prefersReduced && (
+            <div className="scan-line" aria-hidden />
+          )}
 
           {/* Corner AQI badge */}
           {band && aqi != null && (
@@ -123,17 +121,13 @@ export function MapPreviewCard({
           <div className="relative z-10 flex flex-col items-center gap-4 text-center px-6">
             <div
               className="size-14 rounded-2xl aurora grid place-items-center text-white shadow-xl transition-transform duration-200 group-hover:scale-105"
-              style={{
-                boxShadow: `0 8px 28px color-mix(in oklab, var(--color-primary) 32%, transparent)`,
-              }}
+              style={{ boxShadow: `0 8px 28px color-mix(in oklab, var(--color-primary) 32%, transparent)` }}
             >
               <LocationPulse color={aqiColor} />
             </div>
             <div>
               {cityName && <div className="text-sm font-semibold">{cityName}</div>}
-              <p className="text-xs text-muted-foreground mt-1">
-                Interactive map coming in a later phase.
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Interactive map coming in a later phase.</p>
             </div>
           </div>
         </motion.div>

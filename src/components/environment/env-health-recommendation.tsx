@@ -1,3 +1,4 @@
+import { ShieldCheck } from "lucide-react";
 import { useCity } from "@/lib/city-context";
 import { findAqiBand } from "@/lib/mock-data";
 import { HEALTH_STATUS_BY_BAND } from "@/components/environment/env-live-aqi-hero";
@@ -6,44 +7,65 @@ import { EnvEmptyState, EnvErrorState } from "@/components/environment/env-state
 import { cn } from "@/lib/utils";
 
 /**
- * Environmental Overview — Health Recommendation (Phase 11 polish).
+ * Phase 1 — Health Advisory Card.
  *
- * No logic changes — same AQI band + HEALTH_STATUS_BY_BAND approach.
- * Polish additions:
- *   - `glass-hover` on the outer card for hover elevation consistency.
- *   - Entrance animation via `motion-safe:animate-in`.
- *   - Supporting factors row gets an accessible `aria-label` on its
- *     container so screen readers understand the grouped metrics.
- *   - Category badge `aria-label` now reads the full status (not just label).
+ * Design principles:
+ *  - The AQI band color is the single accent — it carries meaning
+ *  - Typography-first: the recommendation text is the hero
+ *  - Supporting factors are secondary, visually subordinate
+ *  - Glass surface with subtle hover elevation
+ *  - No busy decorations — calm and trustworthy
  */
 
-function CategoryBadge({ label, color }: { label: string; color: string }) {
+function AQIBadge({ label, color }: { label: string; color: string }) {
   return (
     <span
-      className="inline-flex items-center gap-2 text-base font-semibold px-3.5 py-1.5 rounded-full border w-fit"
+      className="inline-flex items-center gap-2 text-sm font-semibold px-3.5 py-1.5 rounded-full border w-fit"
       style={{
         color,
-        borderColor: `color-mix(in oklab, ${color} 35%, transparent)`,
-        background: `color-mix(in oklab, ${color} 12%, transparent)`,
+        borderColor: `color-mix(in oklab, ${color} 32%, transparent)`,
+        background: `color-mix(in oklab, ${color} 10%, transparent)`,
       }}
-      aria-label={`Air quality status: ${label}`}
+      aria-label={`Current air quality status: ${label}`}
     >
-      <span className="size-2 rounded-full" style={{ background: color }} aria-hidden="true" />
-      AQI: {label}
+      <span
+        className="size-2 rounded-full shrink-0"
+        style={{ background: color }}
+        aria-hidden="true"
+      />
+      {label}
     </span>
   );
 }
 
-function SupportingFactor({ label, value }: { label: string; value: string }) {
+function MetricPill({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
-    <div className="flex flex-col items-center gap-1" aria-label={`${label}: ${value}`}>
+    <div
+      className="flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl"
+      style={{
+        background: "oklch(1 0 0 / 0.04)",
+        border: "1px solid oklch(1 0 0 / 0.07)",
+      }}
+      aria-label={`${label}: ${value}`}
+    >
       <span
-        className="text-xs uppercase tracking-wider text-muted-foreground font-semibold"
+        className="text-[9px] font-bold uppercase tracking-[0.18em] leading-none"
+        style={{ color: "oklch(0.48 0.012 230)" }}
         aria-hidden="true"
       >
         {label}
       </span>
-      <span className="text-base font-bold tabular-nums" aria-hidden="true">
+      <span
+        className="text-sm font-bold tabular-nums leading-none"
+        style={{ color: "oklch(0.88 0.010 220)" }}
+        aria-hidden="true"
+      >
         {value}
       </span>
     </div>
@@ -63,7 +85,7 @@ export function HealthRecommendation({ className }: { className?: string }) {
         className={className}
         onRetry={refreshCity}
         retryDisabled={false}
-        message="Unable to load health recommendation data."
+        message="Unable to load health advisory data."
       />
     );
   }
@@ -72,7 +94,7 @@ export function HealthRecommendation({ className }: { className?: string }) {
     return (
       <EnvEmptyState
         className={className}
-        title="Health recommendations are unavailable because current environmental data is incomplete."
+        title="Health guidance is unavailable until environmental data is loaded."
       />
     );
   }
@@ -81,7 +103,8 @@ export function HealthRecommendation({ className }: { className?: string }) {
   const recommendation = HEALTH_STATUS_BY_BAND[band.label] ?? HEALTH_STATUS_BY_BAND["Moderate"];
 
   const factors: { label: string; value: string }[] = [];
-  if (typeof city.pm25 === "number") factors.push({ label: "PM2.5", value: `${city.pm25} µg/m³` });
+  if (typeof city.pm25 === "number")
+    factors.push({ label: "PM2.5", value: `${city.pm25} µg/m³` });
   if (typeof city.humidity === "number")
     factors.push({ label: "Humidity", value: `${city.humidity}%` });
   if (typeof city.temp === "number")
@@ -90,35 +113,70 @@ export function HealthRecommendation({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "glass rounded-2xl p-6 md:p-8 space-y-4 glass-hover",
+        "glass rounded-2xl p-6 md:p-7 space-y-5 transition-shadow duration-300 hover:shadow-xl",
         "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500",
         className,
       )}
     >
-      <CategoryBadge label={band.label} color={band.color} />
+      {/* Header: shield icon + badge */}
+      <div className="flex items-start justify-between gap-3">
+        <div
+          className="size-9 rounded-xl grid place-items-center shrink-0"
+          style={{
+            background: `color-mix(in oklab, ${band.color} 12%, transparent)`,
+            color: band.color,
+          }}
+          aria-hidden="true"
+        >
+          <ShieldCheck className="size-4.5" />
+        </div>
+        <AQIBadge label={band.label} color={band.color} />
+      </div>
 
-      <p className="text-base md:text-lg leading-relaxed font-medium">{recommendation}</p>
+      {/* Recommendation text — the hero */}
+      <p
+        className="text-[0.95rem] md:text-base leading-relaxed font-medium"
+        style={{ color: "oklch(0.88 0.010 220)" }}
+      >
+        {recommendation}
+      </p>
 
+      {/* Supporting metrics */}
       {factors.length > 0 && (
-        <div className="pt-2 border-t border-border">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mt-3 mb-2">
-            Supporting factors
+        <div
+          className="pt-1 border-t"
+          style={{ borderColor: "oklch(1 0 0 / 0.07)" }}
+        >
+          <p
+            className="text-[9.5px] font-bold uppercase tracking-[0.20em] mb-3"
+            style={{ color: "oklch(0.46 0.012 230)" }}
+          >
+            Supporting readings
           </p>
           <div
-            className="grid grid-cols-3 gap-3"
+            className="grid gap-2"
+            style={{
+              gridTemplateColumns: `repeat(${Math.min(factors.length, 3)}, minmax(0, 1fr))`,
+            }}
             role="list"
-            aria-label="Supporting environmental factors"
+            aria-label="Supporting environmental readings"
           >
             {factors.map((f) => (
               <div key={f.label} role="listitem">
-                <SupportingFactor label={f.label} value={f.value} />
+                <MetricPill label={f.label} value={f.value} />
               </div>
             ))}
           </div>
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground">Informational only — not medical advice.</p>
+      {/* Disclaimer */}
+      <p
+        className="text-[10px]"
+        style={{ color: "oklch(0.42 0.010 230)" }}
+      >
+        Informational only — not medical advice.
+      </p>
     </div>
   );
 }

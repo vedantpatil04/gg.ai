@@ -15,40 +15,21 @@ import { GlowCard } from "@/components/dashboard/motion-primitives";
 import { CardSkeleton } from "@/components/dashboard/dashboard-skeletons";
 import { TrendingUp, ChevronRight } from "lucide-react";
 import {
-  Area,
-  AreaChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  ReferenceLine,
+  Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, ReferenceLine,
 } from "recharts";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useRef } from "react";
 import { FADE, DUR_LG, EASE_OUT } from "@/lib/motion";
 
-export interface TrendPoint {
-  label: string;
-  aqi: number;
-}
+export interface TrendPoint { label: string; aqi: number; }
 
-function CustomTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: Array<{ value: number }>;
-  label?: string;
-}) {
+function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
   if (!active || !payload?.length) return null;
   const val = payload[0].value;
   const color =
-    val > 150
-      ? "var(--color-destructive)"
-      : val > 100
-        ? "var(--color-warning)"
-        : "var(--color-success)";
+    val > 150 ? "var(--color-destructive)" :
+    val > 100 ? "var(--color-warning)" :
+    "var(--color-success)";
   return (
     <div
       className="rounded-xl border px-3 py-2 text-xs"
@@ -67,35 +48,23 @@ function CustomTooltip({
   );
 }
 
-export function MiniTrendCard({
-  series,
-  isLoading,
-}: {
-  series: TrendPoint[];
-  isLoading?: boolean;
-}) {
+export function MiniTrendCard({ series, isLoading }: { series: TrendPoint[]; isLoading?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-40px" });
   const prefersReduced = useReducedMotion();
 
   const lastVal = series.length > 0 ? series[series.length - 1].aqi : null;
-  const lastColor =
-    lastVal == null
-      ? "var(--color-primary)"
-      : lastVal > 150
-        ? "var(--color-destructive)"
-        : lastVal > 100
-          ? "var(--color-warning)"
-          : "var(--color-success)";
+  const lastColor = lastVal == null ? "var(--color-primary)" :
+    lastVal > 150 ? "var(--color-destructive)" :
+    lastVal > 100 ? "var(--color-warning)" :
+    "var(--color-success)";
 
   return (
     <GlowCard glowVar="--glow-chart" lift={false} className="p-0">
       <div className="p-5 pb-0">
         <div className="flex items-start justify-between mb-4 gap-3">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Telemetry
-            </div>
+            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Telemetry</div>
             <div className="text-base font-semibold tracking-tight mt-0.5">AQI Trend</div>
           </div>
           <a
@@ -125,25 +94,20 @@ export function MiniTrendCard({
                 <AreaChart data={series} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
                   <defs>
                     <linearGradient id="phase8AqiGradTop" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.55} />
-                      <stop offset="55%" stopColor="oklch(0.68 0.16 190)" stopOpacity={0.2} />
+                      <stop offset="0%"   stopColor="var(--color-primary)" stopOpacity={0.55} />
+                      <stop offset="55%"  stopColor="oklch(0.68 0.16 190)" stopOpacity={0.2} />
                       <stop offset="100%" stopColor="oklch(0.68 0.16 190)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <XAxis
                     dataKey="label"
                     tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }}
-                    axisLine={false}
-                    tickLine={false}
+                    axisLine={false} tickLine={false}
                   />
                   <YAxis hide domain={["auto", "auto"]} />
                   <Tooltip
                     content={<CustomTooltip />}
-                    cursor={{
-                      stroke: "var(--color-border)",
-                      strokeWidth: 1,
-                      strokeDasharray: "4 4",
-                    }}
+                    cursor={{ stroke: "var(--color-border)", strokeWidth: 1, strokeDasharray: "4 4" }}
                   />
                   <Area
                     type="monotone"
@@ -155,12 +119,7 @@ export function MiniTrendCard({
                     animationDuration={1100}
                     animationEasing="ease-out"
                     dot={false}
-                    activeDot={{
-                      r: 4,
-                      fill: lastColor,
-                      stroke: "var(--color-background)",
-                      strokeWidth: 2,
-                    }}
+                    activeDot={{ r: 4, fill: lastColor, stroke: "var(--color-background)", strokeWidth: 2 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>

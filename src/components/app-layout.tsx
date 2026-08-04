@@ -38,6 +38,8 @@ import {
 } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/notification-center";
 import { LocationIntelligenceButton, ensureDefaultCity } from "@/components/location/location-intelligence";
+import { CommandPaletteProvider, useCommandPalette } from "@/components/command-palette/command-palette";
+import { PlatformStatusBar } from "@/components/status-bar/platform-status-bar";
 import { useTheme } from "@/lib/theme";
 import { useAuth, type UserRole } from "@/lib/auth-context";
 import { AUTHORITY_ROLES } from "@/components/protected-route";
@@ -48,7 +50,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const SIDEBAR_PIN_KEY = "gg-sidebar-pinned";
-const SIDEBAR_EXPANDED_W = 248; // px — expanded width
+const SIDEBAR_EXPANDED_W = 284; // px — expanded width (Phase 8: +15% for better spacing)
 const SIDEBAR_COLLAPSED_W = 64; // px — icon-only width
 const HOVER_DELAY_MS = 0;       // expand immediately on enter
 const COLLAPSE_DELAY_MS = 180;  // small grace period before collapse
@@ -61,7 +63,7 @@ const COLLAPSE_DELAY_MS = 180;  // small grace period before collapse
 // Each group is rendered as a labelled section when expanded,
 // or as an icon block when collapsed (group dividers become thin separators).
 
-interface NavItem {
+export interface NavItem {
   to: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
@@ -69,7 +71,7 @@ interface NavItem {
   roles?: UserRole[];
 }
 
-interface NavGroup {
+export interface NavGroup {
   id: string;
   label: string;
   items: NavItem[];
@@ -134,6 +136,15 @@ const ACCOUNT_GROUP: NavGroup = {
     { to: "/help", label: "Help Center", icon: HelpCircle, public: true },
   ],
 };
+
+// ALL_NAV_GROUPS — exported for the Command Palette (Phase 6).
+// Single source of truth: sidebar and palette consume the same data.
+export const ALL_NAV_GROUPS: NavGroup[] = [
+  ...NAV_GROUPS,
+  AUTHORITY_GROUP,
+  ADMIN_GROUP,
+  ACCOUNT_GROUP,
+];
 
 function isNavItemVisible(
   item: NavItem,
@@ -311,6 +322,7 @@ function NavGroupSection({
     </div>
   );
 }
+
 
 // ─── FloatingSidebar ─────────────────────────────────────────────────────────
 //
@@ -594,7 +606,7 @@ function FloatingSidebar({ mobileOpen, onMobileClose }: FloatingSidebarProps) {
                   <span className="text-muted-foreground">All systems nominal</span>
                 </div>
                 <div className="mt-1.5 text-[10px] text-muted-foreground/70">
-                  Live · v2.4.1 · 14 sensors online
+                  Live · v2.4.1 · Environmental APIs connected
                 </div>
               </div>
             </div>
@@ -710,7 +722,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen flex w-full shell-bg text-foreground">
+    <CommandPaletteProvider>
+      <div className="min-h-screen flex w-full shell-bg text-foreground">
       {/* Floating sidebar */}
       <FloatingSidebar
         mobileOpen={mobileOpen}
@@ -719,11 +732,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
       {/*
         Main content column.
-        Left padding = collapsed width (64px) + gap from edge (12px) + sidebar-to-content gap (12px) = 88px.
+        Left padding = collapsed width (64px) + gap from edge (12px) + sidebar-to-content gap (24px) = 100px.
         This keeps the content stable — the sidebar floats over it when expanded.
       */}
       <div
-        className="flex-1 flex flex-col min-w-0 lg:pl-[88px]"
+        className="flex-1 flex flex-col min-w-0 lg:pl-[100px]"
         style={{ minHeight: "100dvh" }}
       >
         <TopBar
@@ -737,8 +750,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
         >
           {children}
         </main>
+
+        {/* Phase 7 — Enterprise Platform Status Bar */}
+        <PlatformStatusBar />
       </div>
     </div>
+    </CommandPaletteProvider>
   );
 }
 
@@ -873,8 +890,10 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
   // Ensure Belagavi is the default fallback city on first launch
   useEffect(() => { ensureDefaultCity(); }, []);
 
+  // Command Palette — opened by search pill click or Ctrl+K (global listener)
+  const { openPalette } = useCommandPalette();
+
   const [profileOpen, setProfileOpen] = useState(false);
-  const [searchFocused, setSearchFocused] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -949,7 +968,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
         scrolled && "shadow-[0_4px_24px_-2px_oklch(0.15_0.03_230/0.18)] dark:shadow-[0_4px_24px_-2px_oklch(0_0_0/0.5)]",
       )}
     >
-      <div className="h-full flex items-center gap-2 px-3 md:px-4">
+      <div className="h-full flex items-center justify-between gap-2 px-3 md:px-4">
 
         {/* ── Mobile hamburger ──────────────────────────────────────────── */}
         <button
@@ -960,110 +979,103 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
           {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>
 
-        {/* ══ LEFT — Breadcrumbs ════════════════════════════════════════════ */}
-        <nav
-          aria-label="Breadcrumb"
-          className="hidden lg:flex items-center gap-1 min-w-0 shrink-0 max-w-[280px] xl:max-w-[360px]"
-        >
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.ol
-              key={pathname}
-              initial={prefersReduced ? false : { opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 6 }}
-              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-              className="flex items-center gap-1 min-w-0"
-            >
-              {breadcrumbs.map((crumb, i) => {
-                const isLast = i === breadcrumbs.length - 1;
-                return (
-                  <li key={crumb.href} className="flex items-center gap-1 min-w-0">
-                    {i > 0 && (
-                      <ChevronRight className="size-3.5 text-muted-foreground/40 shrink-0" />
-                    )}
-                    {isLast ? (
-                      <span className="text-sm font-semibold text-foreground truncate">
-                        {crumb.label}
-                      </span>
-                    ) : (
-                      <Link
-                        to={crumb.href}
-                        className="text-sm text-muted-foreground hover:text-foreground transition-colors truncate"
-                      >
-                        {crumb.label}
-                      </Link>
-                    )}
-                  </li>
-                );
-              })}
-            </motion.ol>
-          </AnimatePresence>
-        </nav>
+        {/* ══ LEFT GROUP — Breadcrumbs · Search · Platform Status ══════════ */}
+        <div className="hidden lg:flex items-center gap-2 min-w-0 flex-1">
 
-        {/* Mobile: current page label (replaces breadcrumbs) */}
+          {/* Breadcrumbs */}
+          <nav
+            aria-label="Breadcrumb"
+            className="flex items-center gap-1 min-w-0 shrink-0 max-w-[220px] xl:max-w-[280px]"
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.ol
+                key={pathname}
+                initial={prefersReduced ? false : { opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 6 }}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                className="flex items-center gap-1 min-w-0"
+              >
+                {breadcrumbs.map((crumb, i) => {
+                  const isLast = i === breadcrumbs.length - 1;
+                  return (
+                    <li key={crumb.href} className="flex items-center gap-1 min-w-0">
+                      {i > 0 && (
+                        <ChevronRight className="size-3.5 text-muted-foreground/40 shrink-0" />
+                      )}
+                      {isLast ? (
+                        <span className="text-sm font-semibold text-foreground truncate">
+                          {crumb.label}
+                        </span>
+                      ) : (
+                        <Link
+                          to={crumb.href}
+                          className="text-sm text-muted-foreground hover:text-foreground transition-colors truncate"
+                        >
+                          {crumb.label}
+                        </Link>
+                      )}
+                    </li>
+                  );
+                })}
+              </motion.ol>
+            </AnimatePresence>
+          </nav>
+
+          {/* Vertical divider */}
+          <div className="h-4 w-px bg-border/50 shrink-0 mx-1" />
+
+          {/* Global Search */}
+          <div className="flex flex-1 max-w-xs xl:max-w-sm">
+            <div
+              className={cn(
+                "relative w-full flex items-center gap-2 rounded-xl border px-3 h-9",
+                "bg-muted/50 border-border/60 cursor-pointer",
+                "transition-all duration-200",
+                "hover:bg-muted hover:border-border",
+              )}
+              data-command-palette-trigger
+              onClick={openPalette}
+              role="button"
+              tabIndex={0}
+              aria-label={`Search — press ${kbdHint} to open command palette`}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openPalette();
+                }
+              }}
+            >
+              <Search className="size-3.5 text-muted-foreground/60 shrink-0" />
+              <span className="flex-1 text-sm text-muted-foreground/50 select-none truncate">
+                {searchPlaceholder}
+              </span>
+              <kbd className="hidden xl:flex items-center gap-0.5 shrink-0 rounded-md border border-border/60 bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground/60">
+                {kbdHint}
+              </kbd>
+            </div>
+          </div>
+
+          {/* Platform status chip */}
+          <div className="hidden xl:flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/40 px-2.5 py-1 shrink-0 ml-2">
+            <span className="size-1.5 rounded-full bg-[var(--color-success)] pulse-dot shrink-0" />
+            <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">
+              Platform Online
+            </span>
+          </div>
+        </div>
+
+        {/* Mobile: current page label */}
         <div className="lg:hidden flex-1 min-w-0">
           <span className="text-sm font-semibold text-foreground truncate block">
             {breadcrumbs[breadcrumbs.length - 1]?.label ?? "GreenGuard AI"}
           </span>
         </div>
 
-        {/* ══ CENTER — Global Search ════════════════════════════════════════ */}
-        {/*
-          Phase 4 note: onClick will open the Command Palette.
-          For now the input is purely visual / placeholder.
-          The `data-command-palette-trigger` attribute reserves the hook point.
-        */}
-        <div className="hidden md:flex flex-1 max-w-xs lg:max-w-sm xl:max-w-md mx-2 lg:mx-4">
-          <div
-            className={cn(
-              "relative w-full flex items-center gap-2 rounded-xl border px-3 h-9",
-              "bg-muted/50 border-border/60 cursor-text",
-              "transition-all duration-200",
-              searchFocused
-                ? "bg-background border-primary/40 shadow-[0_0_0_3px_oklch(from_var(--color-primary)_l_c_h/0.12)]"
-                : "hover:bg-muted hover:border-border",
-            )}
-            data-command-palette-trigger
-            onClick={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-            role="button"
-            tabIndex={0}
-            aria-label={`Search — press ${kbdHint} for quick access`}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") setSearchFocused(true);
-            }}
-          >
-            <Search className="size-3.5 text-muted-foreground/60 shrink-0" />
-            <span className="flex-1 text-sm text-muted-foreground/50 select-none truncate">
-              {searchPlaceholder}
-            </span>
-            <kbd className="hidden xl:flex items-center gap-0.5 shrink-0 rounded-md border border-border/60 bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground/60">
-              {kbdHint}
-            </kbd>
-          </div>
-        </div>
+        {/* ══ RIGHT GROUP — Location · Theme · Fullscreen · Notifications · Profile ══ */}
+        <div className="flex items-center gap-1 shrink-0">
 
-        <div className="flex-1 lg:hidden" />
-
-        {/* ══ RIGHT — Quick Actions ════════════════════════════════════════ */}
-        <div className="flex items-center gap-1">
-
-          {/* Platform status chip — desktop only */}
-          <div className="hidden xl:flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/40 px-2.5 py-1 mr-1">
-            <span className="size-1.5 rounded-full bg-[var(--color-success)] pulse-dot shrink-0" />
-            <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">
-              Platform Online
-            </span>
-          </div>
-
-          {/*
-            Phase 4 — Global Location Intelligence System.
-            LocationIntelligenceButton renders a rich trigger pill that opens
-            a Sheet drawer with: current-location detection (useGeolocation),
-            fuzzy search, favorites, recents, and rich city cards.
-            All global state flows through the existing CityContext.
-            Rendered via Radix Portal so it always floats above Smart Map.
-          */}
+          {/* Location selector */}
           <LocationIntelligenceButton />
 
           {/* Separator */}
@@ -1105,15 +1117,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
             </TooltipContent>
           </Tooltip>
 
-          {/*
-            Real Notification Center — restored from notification-center.tsx.
-            NotificationBell manages its own open/close state, unread count
-            (polled every 30 s via useNotificationUnreadCount), and the full
-            enterprise drawer (Sheet) with tabs, search, filter, mark-read,
-            archive, delete, and preferences.
-            className overrides the base rounded-md to match the Phase 3
-            quick-action button style (rounded-xl + scale micro-interaction).
-          */}
+          {/* Notifications */}
           <NotificationBell
             className="rounded-xl text-muted-foreground hover:text-foreground transition-all duration-150 hover:scale-105"
           />
@@ -1121,7 +1125,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
           {/* Separator */}
           <div className="w-px h-5 bg-border/60 mx-1" />
 
-          {/* ── User profile menu / sign-in ──────────────────────────────── */}
+          {/* User profile menu / sign-in */}
           {isAuthenticated ? (
             <div className="relative" ref={profileRef}>
               <button
@@ -1235,7 +1239,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
             </Link>
           )}
 
-        </div>{/* end RIGHT quick-actions */}
+        </div>{/* end RIGHT group */}
       </div>
     </header>
   );

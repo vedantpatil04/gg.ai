@@ -1,22 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppLayout } from "@/components/app-layout";
 import { ProtectedRoute } from "@/components/protected-route";
-import { Panel } from "@/components/ui-bits";
-import { useTheme } from "@/lib/theme";
-import { useAuth } from "@/lib/auth-context";
+import { useTheme, type Theme } from "@/lib/theme";
+import { appearanceApi } from "@/lib/api/appearance.api";
+import { NotificationPreferencesPanel } from "@/components/settings/notification-preferences";
+import { LanguageRegionPanel } from "@/components/settings/language-region-preferences";
+import { DashboardPreferencesPanel } from "@/components/settings/dashboard-preferences";
+import { MapPreferencesPanel } from "@/components/settings/map-preferences";
+import { AccessibilityPreferencesPanel } from "@/components/settings/accessibility-preferences";
+import { PrivacyPreferencesPanel } from "@/components/settings/privacy-preferences";
 import {
   Sun,
   Moon,
   Monitor,
-  Bell,
-  User,
-  Globe,
   Loader2,
   CheckCircle,
-  SlidersHorizontal,
+  Bell,
+  Globe,
+  LayoutDashboard,
+  Map as MapIcon,
+  Accessibility as AccessibilityIcon,
+  Lock,
+  Info,
+  Palette,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "Settings — GreenGuard AI" }] }),
@@ -29,269 +40,332 @@ export const Route = createFileRoute("/settings")({
   ),
 });
 
-function SettingsPage() {
-  const { theme, setTheme } = useTheme();
-  const { user, updateProfile } = useAuth();
-  const [tab, setTab] = useState<"preferences">("preferences");
-  const [profileForm, setProfileForm] = useState({
-    name: user?.name ?? "",
-    organization: user?.organization ?? "",
-    phone: user?.phone ?? "",
-  });
-  const [profileSaving, setProfileSaving] = useState(false);
-  const [profileSaved, setProfileSaved] = useState(false);
+// ─── Section identifiers ──────────────────────────────────────────────────────
+type Section =
+  | "appearance"
+  | "notifications"
+  | "language"
+  | "dashboard"
+  | "maps"
+  | "accessibility"
+  | "privacy"
+  | "about";
 
-  const saveProfile = async () => {
-    setProfileSaving(true);
+const NAV_ITEMS: {
+  id: Section;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "language", label: "Language & Region", icon: Globe },
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "maps", label: "Maps", icon: MapIcon },
+  { id: "accessibility", label: "Accessibility", icon: AccessibilityIcon },
+  { id: "privacy", label: "Privacy", icon: Lock },
+  { id: "about", label: "About", icon: Info },
+];
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+function SettingsPage() {
+  const [section, setSection] = useState<Section>("appearance");
+  const { theme, setTheme } = useTheme();
+  const [appearanceSaving, setAppearanceSaving] = useState(false);
+
+  // Reconcile with the server-persisted preference once on mount — covers
+  // the case where this is a new device/browser whose localStorage doesn't
+  // yet know this user's saved theme.
+  useEffect(() => {
+    let cancelled = false;
+    appearanceApi
+      .get()
+      .then(({ data }) => {
+        if (!cancelled && data.appearance.theme) setTheme(data.appearance.theme);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const selectTheme = async (t: Theme) => {
+    setTheme(t); // live preview
+    setAppearanceSaving(true);
     try {
-      await updateProfile(profileForm);
-      setProfileSaved(true);
-      setTimeout(() => setProfileSaved(false), 3000);
+      await appearanceApi.update(t);
+      toast.success("Appearance updated");
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response
+          ?.data?.message ?? "Couldn't save your appearance preference.";
+      toast.error("Couldn't save", { description: message });
     } finally {
-      setProfileSaving(false);
+      setAppearanceSaving(false);
     }
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-6 max-w-[1100px] mx-auto">
-      {tab === "preferences" && (
-        <header>
+    <div className="min-h-full w-full">
+      {/* ── Page header ── */}
+      <div className="border-b border-border px-4 sm:px-6 md:px-8 pt-6 pb-4">
+        <div className="max-w-[1400px] mx-auto">
           <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            Settings
+            GreenGuard AI
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight mt-1">Preferences</h1>
-        </header>
-      )}
-
-      {/* Settings navigation */}
-      <div className="flex gap-2 border-b border-border pb-px overflow-x-auto">
-        <div className="inline-flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 border-primary text-foreground font-medium">
-          <SlidersHorizontal className="size-4" />
-          Preferences
+          <h1 className="text-2xl font-semibold tracking-tight mt-0.5">
+            Settings
+          </h1>
         </div>
       </div>
 
-      {tab === "preferences" && (
-        <PreferencesTab
-          theme={theme}
-          setTheme={setTheme}
-          user={user}
-          profileForm={profileForm}
-          setProfileForm={setProfileForm}
-          profileSaving={profileSaving}
-          profileSaved={profileSaved}
-          saveProfile={saveProfile}
-        />
-      )}
-    </div>
-  );
-}
-
-function PreferencesTab({
-  theme,
-  setTheme,
-  user,
-  profileForm,
-  setProfileForm,
-  profileSaving,
-  profileSaved,
-  saveProfile,
-}: {
-  theme: "dark" | "light";
-  setTheme: (t: "dark" | "light") => void;
-  user: ReturnType<typeof useAuth>["user"];
-  profileForm: { name: string; organization: string; phone: string };
-  setProfileForm: React.Dispatch<
-    React.SetStateAction<{ name: string; organization: string; phone: string }>
-  >;
-  profileSaving: boolean;
-  profileSaved: boolean;
-  saveProfile: () => void;
-}) {
-  return (
-    <div className="space-y-6">
-      {/* Appearance */}
-      <Panel
-        eyebrow="Appearance"
-        title={
-          <span className="inline-flex items-center gap-2">
-            <Monitor className="size-4 text-primary" />
-            Theme
-          </span>
-        }
-      >
-        <div className="grid sm:grid-cols-2 gap-3">
-          {[
-            { id: "dark", label: "Dark", icon: Moon, desc: "Mission control · default" },
-            { id: "light", label: "Light", icon: Sun, desc: "Daylight console" },
-          ].map((t) => (
+      {/* ── Mobile tab strip ── */}
+      <div className="md:hidden border-b border-border overflow-x-auto">
+        <div
+          className="flex gap-0.5 px-4 py-2 min-w-max"
+          role="tablist"
+          aria-label="Settings sections"
+        >
+          {NAV_ITEMS.map((item) => (
             <button
-              key={t.id}
-              onClick={() => setTheme(t.id as "dark" | "light")}
+              key={item.id}
+              role="tab"
+              aria-selected={section === item.id}
+              onClick={() => setSection(item.id)}
               className={cn(
-                "text-left rounded-xl border p-4 transition-all",
-                theme === t.id
-                  ? "border-primary bg-primary/5 shadow-[var(--shadow-glow)]"
-                  : "border-border hover:border-primary/40",
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+                section === item.id
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
               )}
             >
-              <div className="size-9 rounded-lg glass grid place-items-center">
-                <t.icon className="size-4 text-primary" />
-              </div>
-              <div className="font-medium mt-3">{t.label}</div>
-              <div className="text-xs text-muted-foreground mt-1">{t.desc}</div>
+              <item.icon className="size-3.5 shrink-0" />
+              {item.label}
             </button>
           ))}
         </div>
-      </Panel>
+      </div>
 
-      {/* Notifications */}
-      <Panel
-        eyebrow="Notifications"
-        title={
-          <span className="inline-flex items-center gap-2">
-            <Bell className="size-4 text-primary" />
-            Alert channels
-          </span>
-        }
-      >
-        <div className="space-y-3">
-          {[
-            { l: "Critical air quality alerts", d: "Push + SMS · always-on", on: true },
-            { l: "Water non-compliance", d: "Email · daily digest", on: true },
-            { l: "Weekly sustainability digest", d: "Every Monday 09:00", on: true },
-            { l: "Forecast advisories", d: "When AQI > 150 expected", on: false },
-            { l: "Citizen report updates", d: "When status changes", on: true },
-          ].map((n, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between rounded-xl border border-border p-3"
+      {/* ── Two-column layout ── */}
+      <div className="max-w-[1400px] mx-auto flex items-start gap-8 px-4 sm:px-6 md:px-8 py-6 md:py-8">
+        {/* Sidebar — desktop only */}
+        <nav
+          className="hidden md:flex flex-col gap-0.5 w-52 shrink-0 sticky top-8"
+          aria-label="Settings navigation"
+        >
+          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2 px-3">
+            Settings
+          </div>
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setSection(item.id)}
+              aria-current={section === item.id ? "page" : undefined}
+              className={cn(
+                "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+                section === item.id
+                  ? "bg-primary/10 text-primary font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
+              )}
             >
-              <div>
-                <div className="text-sm font-medium">{n.l}</div>
-                <div className="text-xs text-muted-foreground">{n.d}</div>
-              </div>
-              <Toggle defaultOn={n.on} />
-            </div>
+              <item.icon
+                className={cn(
+                  "size-4 shrink-0",
+                  section === item.id
+                    ? "text-primary"
+                    : "text-muted-foreground",
+                )}
+              />
+              {item.label}
+            </button>
           ))}
-        </div>
-      </Panel>
+        </nav>
 
-      {/* Profile */}
-      <Panel
-        eyebrow="Account"
-        title={
-          <span className="inline-flex items-center gap-2">
-            <User className="size-4 text-primary" />
-            Profile
-          </span>
-        }
-      >
-        <div className="grid sm:grid-cols-2 gap-4">
-          <Field
-            label="Display name"
-            value={profileForm.name}
-            onChange={(e) => setProfileForm((v) => ({ ...v, name: e.target.value }))}
-          />
-          <Field
-            label="Email"
-            value={user?.email ?? ""}
-            readOnly
-            className="opacity-60 cursor-not-allowed"
-          />
-          <Field
-            label="Organization"
-            value={profileForm.organization}
-            onChange={(e) => setProfileForm((v) => ({ ...v, organization: e.target.value }))}
-          />
-          <Field
-            label="Phone"
-            value={profileForm.phone}
-            onChange={(e) => setProfileForm((v) => ({ ...v, phone: e.target.value }))}
-          />
-        </div>
-        <div className="flex justify-end items-center gap-2 mt-4">
-          {profileSaved && (
-            <span className="text-sm text-[var(--color-success)] inline-flex items-center gap-1.5">
-              <CheckCircle className="size-4" /> Saved!
-            </span>
+        {/* Content panel */}
+        <main
+          className="flex-1 min-w-0"
+          role="tabpanel"
+          aria-label={
+            NAV_ITEMS.find((n) => n.id === section)?.label ?? "Settings"
+          }
+        >
+          {section === "appearance" && (
+            <AppearanceSection
+              theme={theme}
+              selectTheme={selectTheme}
+              appearanceSaving={appearanceSaving}
+            />
           )}
-          <button
-            className="glass rounded-lg px-4 py-2 text-sm"
-            onClick={() =>
-              setProfileForm({
-                name: user?.name ?? "",
-                organization: user?.organization ?? "",
-                phone: user?.phone ?? "",
-              })
-            }
-          >
-            Cancel
-          </button>
-          <button
-            onClick={saveProfile}
-            disabled={profileSaving}
-            className="aurora text-primary-foreground rounded-lg px-4 py-2 text-sm inline-flex items-center gap-2 disabled:opacity-60"
-          >
-            {profileSaving && <Loader2 className="size-3.5 animate-spin" />} Save changes
-          </button>
-        </div>
-      </Panel>
-
-      {/* Localization */}
-      <Panel
-        eyebrow="Localization"
-        title={
-          <span className="inline-flex items-center gap-2">
-            <Globe className="size-4 text-primary" />
-            Region & units
-          </span>
-        }
-      >
-        <div className="grid sm:grid-cols-2 gap-4">
-          <Field label="Language" defaultValue="English (India)" />
-          <Field label="Units" defaultValue="Metric (°C, µg/m³)" />
-        </div>
-      </Panel>
+          {section === "notifications" && <NotificationPreferencesPanel />}
+          {section === "language" && <LanguageRegionPanel />}
+          {section === "dashboard" && <DashboardPreferencesPanel />}
+          {section === "maps" && <MapPreferencesPanel />}
+          {section === "accessibility" && <AccessibilityPreferencesPanel />}
+          {section === "privacy" && <PrivacyPreferencesPanel />}
+          {section === "about" && <AboutSection />}
+        </main>
+      </div>
     </div>
   );
 }
 
-function Toggle({ defaultOn = false }: { defaultOn?: boolean }) {
-  const [on, setOn] = useState(defaultOn);
+// ─── Appearance section (inline — no sub-component file needed) ───────────────
+function AppearanceSection({
+  theme,
+  selectTheme,
+  appearanceSaving,
+}: {
+  theme: Theme;
+  selectTheme: (t: Theme) => void;
+  appearanceSaving: boolean;
+}) {
   return (
-    <button
-      onClick={() => setOn((v) => !v)}
-      className={cn(
-        "relative w-10 h-5 rounded-full transition-colors",
-        on ? "bg-primary" : "bg-muted",
-      )}
-    >
-      <span
-        className={cn(
-          "absolute top-0.5 left-0.5 size-4 bg-background rounded-full transition-transform",
-          on && "translate-x-5",
+    <div className="glass rounded-2xl p-5 md:p-6">
+      <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+        Appearance
+      </div>
+      <div className="text-base font-semibold tracking-tight mt-0.5 inline-flex items-center gap-2 mb-1">
+        <Monitor className="size-4 text-primary" />
+        Theme
+      </div>
+      <p className="text-sm text-muted-foreground mb-5">
+        Choose how GreenGuard AI looks on your device.
+      </p>
+
+      <div className="grid sm:grid-cols-3 gap-3" role="radiogroup" aria-label="Theme">
+        {(
+          [
+            {
+              id: "light",
+              label: "Light",
+              icon: Sun,
+              desc: "Bright interface for daytime use.",
+            },
+            {
+              id: "dark",
+              label: "Dark",
+              icon: Moon,
+              desc: "Comfortable viewing in low-light environments.",
+            },
+            {
+              id: "system",
+              label: "System",
+              icon: Monitor,
+              desc: "Automatically follow your device theme.",
+            },
+          ] as const
+        ).map((t) => (
+          <button
+            key={t.id}
+            role="radio"
+            aria-checked={theme === t.id}
+            onClick={() => selectTheme(t.id)}
+            className={cn(
+              "text-left rounded-xl border p-4 transition-all hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+              theme === t.id
+                ? "border-primary bg-primary/5 shadow-[var(--shadow-glow)]"
+                : "border-border hover:border-primary/40",
+            )}
+          >
+            <div className="flex items-start justify-between">
+              <div className="size-9 rounded-lg glass grid place-items-center">
+                <t.icon className="size-4 text-primary" />
+              </div>
+              {theme === t.id && (
+                <CheckCircle
+                  className="size-4 text-primary"
+                  aria-hidden="true"
+                />
+              )}
+            </div>
+            <div className="font-medium mt-3">{t.label}</div>
+            <div className="text-xs text-muted-foreground mt-1">{t.desc}</div>
+          </button>
+        ))}
+      </div>
+
+      <div className="h-5 mt-3 text-xs text-muted-foreground inline-flex items-center gap-1.5">
+        {appearanceSaving && (
+          <>
+            <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+            Saving…
+          </>
         )}
-      />
-    </button>
+      </div>
+    </div>
   );
 }
 
-function Field({
-  label,
-  className,
-  ...rest
-}: { label: string; className?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+// ─── About section ────────────────────────────────────────────────────────────
+function AboutSection() {
   return (
-    <label className="block">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <input
-        {...rest}
-        className={cn(
-          "mt-1.5 w-full rounded-lg border border-input bg-background/40 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20",
-          className,
-        )}
-      />
-    </label>
+    <div className="space-y-4">
+      {/* App identity */}
+      <div className="glass rounded-2xl p-5 md:p-6">
+        <div className="flex items-center gap-4 mb-6">
+          <div
+            className="size-14 rounded-2xl aurora grid place-items-center text-2xl shrink-0"
+            aria-hidden="true"
+          >
+            🌿
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold">GreenGuard AI</h2>
+            <p className="text-sm text-muted-foreground">
+              Environmental Intelligence Platform
+            </p>
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-3">
+          {(
+            [
+              { label: "Version", value: "1.0.0" },
+              { label: "Build Number", value: "build-20260803" },
+              { label: "Environment", value: "Production" },
+              { label: "API Version", value: "v1" },
+            ] as const
+          ).map((item) => (
+            <div
+              key={item.label}
+              className="rounded-xl border border-border p-3"
+            >
+              <div className="text-xs text-muted-foreground">{item.label}</div>
+              <div className="text-sm font-medium font-mono mt-0.5">
+                {item.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Legal & support */}
+      <div className="glass rounded-2xl p-5">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+          Legal & Support
+        </div>
+        <div className="space-y-0.5">
+          {(
+            [
+              { label: "Terms of Service", href: "/terms" },
+              { label: "Privacy Policy", href: "/privacy-policy" },
+              {
+                label: "Support",
+                href: "mailto:support@greenguard.ai",
+              },
+            ] as const
+          ).map((link) => (
+            <a
+              key={link.label}
+              href={link.href}
+              className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-accent/50 transition-colors text-sm group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            >
+              <span>{link.label}</span>
+              <ExternalLink className="size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

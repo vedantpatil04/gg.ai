@@ -5,7 +5,7 @@ import {
   AlertTriangle, TicketIcon, Bug, Lightbulb, MessageSquarePlus,
   Users, BarChart3, ThumbsUp, Phone, Mail, X, ChevronRight,
   Shield, Activity, TrendingUp, ArrowRight, Check,
-  ChevronLeft, Filter, Circle,
+  ChevronLeft, Filter, Circle, ExternalLink, MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -131,7 +131,7 @@ function SupportHero({ onSearch, onCreateTicket }: {
           </div>
 
           {/* SLA stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-border">
+          <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-4 gap-4 pt-6 border-t border-border">
             {[
               { value: SUPPORT_ANALYTICS.avgResponseTime, label: "Avg Response",        icon: Clock    },
               { value: `${SUPPORT_ANALYTICS.satisfactionScore}/5`, label: "Satisfaction", icon: Star     },
@@ -169,7 +169,7 @@ function ContactSupport({ onCreateTicket }: { onCreateTicket: () => void }) {
         variants={STAGGER(0.05, 0.05)}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 xl:gap-4"
       >
         {CONTACT_METHODS.map(method => (
           <motion.div key={method.id} variants={FADE_UP}>
@@ -271,7 +271,7 @@ function CreateTicketForm({
               </FormField>
 
               {/* Category + Priority */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                 <FormField label="Category" required>
                   <FormSelect
                     value={category}
@@ -291,7 +291,7 @@ function CreateTicketForm({
               </div>
 
               {/* Department + Environment */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                 <FormField label="Department">
                   <FormSelect
                     value={department}
@@ -311,7 +311,7 @@ function CreateTicketForm({
               </div>
 
               {/* Browser + Device */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                 <FormField label="Browser">
                   <FormSelect
                     value={browser}
@@ -455,7 +455,7 @@ function TicketDashboard({ onCreateTicket }: { onCreateTicket: () => void }) {
   return (
     <div className="p-5 space-y-4">
       {/* Stat strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3">
         {[
           { label: "Open",        value: counts.open,        color: "var(--color-info)"            },
           { label: "In Progress", value: counts.in_progress, color: "var(--color-warning)"         },
@@ -582,7 +582,7 @@ function EmergencyAssistance() {
       </div>
 
       {/* Emergency cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
         {EMERGENCY_TYPES.map(em => {
           const Icon = em.icon;
           const levelColor = LEVEL_COLOR[em.level];
@@ -671,83 +671,154 @@ function EmergencyAssistance() {
 
 function AuthorityDirectory() {
   const [search, setSearch] = useState("");
-  const filtered = AUTHORITY_DIRECTORY.filter(a =>
-    !search ||
-    a.name.toLowerCase().includes(search.toLowerCase()) ||
-    a.department.toLowerCase().includes(search.toLowerCase()) ||
-    a.serviceArea.toLowerCase().includes(search.toLowerCase()),
-  );
+  const [levelFilter, setLevelFilter] = useState<"all" | "national" | "state" | "district">("all");
+
+  const filtered = AUTHORITY_DIRECTORY.filter(a => {
+    const matchesLevel = levelFilter === "all" || a.level === levelFilter;
+    if (!matchesLevel) return false;
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      a.name.toLowerCase().includes(q) ||
+      a.department.toLowerCase().includes(q) ||
+      a.serviceArea.toLowerCase().includes(q) ||
+      (a.category?.toLowerCase().includes(q) ?? false) ||
+      (a.jurisdiction?.toLowerCase().includes(q) ?? false) ||
+      (a.address?.toLowerCase().includes(q) ?? false)
+    );
+  });
+
+  const LEVEL_STYLE = {
+    national: { label: "National", color: "var(--color-destructive)" },
+    state:    { label: "State",    color: "var(--color-warning)"     },
+    district: { label: "District", color: "var(--color-info)"        },
+  };
 
   return (
     <div className="p-5 space-y-4">
-      <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2.5 focus-within:border-primary/50 transition-all group">
-        <Search className="size-4 text-muted-foreground shrink-0 group-focus-within:text-primary transition-colors" />
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search by name, department, or service area…"
-          className="flex-1 text-sm bg-transparent outline-none placeholder:text-muted-foreground/60"
-        />
+      {/* Search + level filter */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1 flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2.5 focus-within:border-primary/50 transition-all group">
+          <Search className="size-4 text-muted-foreground shrink-0 group-focus-within:text-primary transition-colors" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name, department, category, city, or state…"
+            className="flex-1 text-sm bg-transparent outline-none placeholder:text-muted-foreground/60"
+          />
+        </div>
+        <div className="flex gap-1 p-1 rounded-xl border border-border bg-muted/30 shrink-0">
+          {(["all", "national", "state", "district"] as const).map(l => (
+            <button
+              key={l}
+              onClick={() => setLevelFilter(l)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200",
+                levelFilter === l ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {l === "all" ? "All" : l.charAt(0).toUpperCase() + l.slice(1)}
+            </button>
+          ))}
+        </div>
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState icon={Users} title="No officers found" description={`No results for "${search}"`} />
+        <EmptyState icon={Users} title="No authorities found" description={`No results for "${search}"`} />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
           {filtered.map(auth => (
             <motion.div
               key={auth.id}
               whileHover={HOVER_LIFT_SM}
-              className="rounded-xl border border-border bg-background p-4 group"
+              className="rounded-xl border border-border bg-background p-4 group flex flex-col"
             >
               {/* Header */}
               <div className="flex items-start gap-3 mb-4">
                 <div className="size-10 rounded-xl bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground shrink-0">
-                  {auth.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                  {auth.name.split(" ").filter(Boolean).map(n => n[0]).join("").slice(0, 2).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 mb-0.5">
+                  <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
                     <AvailabilityDot status={auth.availability} />
-                    <span className="text-[10px] text-muted-foreground capitalize">{auth.availability}</span>
+                    <span
+                      className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{
+                        color: LEVEL_STYLE[auth.level].color,
+                        background: `color-mix(in oklab, ${LEVEL_STYLE[auth.level].color} 10%, transparent)`,
+                      }}
+                    >
+                      {LEVEL_STYLE[auth.level].label}
+                    </span>
                   </div>
                   <h4 className="text-sm font-bold leading-tight">{auth.name}</h4>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{auth.role}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{auth.role}</p>
                 </div>
               </div>
 
               {/* Department */}
               <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                {auth.department}
+                {auth.category} · {auth.department}
               </div>
 
               {/* Contact details */}
-              <div className="space-y-2 text-xs text-muted-foreground">
+              <div className="space-y-2 text-xs text-muted-foreground flex-1">
                 <div className="flex items-center gap-2">
                   <Mail className="size-3 shrink-0" />
-                  <span className="truncate">{auth.email}</span>
+                  <a href={`mailto:${auth.email}`} className="truncate hover:text-foreground transition-colors">{auth.email}</a>
                 </div>
                 <div className="flex items-center gap-2">
                   <Phone className="size-3 shrink-0" />
-                  <span>{auth.phone}</span>
+                  <a href={`tel:${auth.phone.replace(/[^0-9+]/g, "")}`} className="hover:text-foreground transition-colors font-medium">{auth.phone}</a>
+                  {auth.altPhone && (
+                    <span className="text-muted-foreground/60">/ <a href={`tel:${auth.altPhone.replace(/[^0-9+]/g, "")}`} className="hover:text-foreground transition-colors">{auth.altPhone}</a></span>
+                  )}
                 </div>
+                {auth.website && (
+                  <div className="flex items-center gap-2">
+                    <ExternalLink className="size-3 shrink-0" />
+                    <a href={auth.website} target="_blank" rel="noopener noreferrer" className="truncate hover:text-foreground transition-colors">{auth.website.replace("https://", "")}</a>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <Clock className="size-3 shrink-0" />
                   <span>{auth.officeHours}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Shield className="size-3 shrink-0" />
-                  <span>{auth.serviceArea}</span>
+                  <span className="line-clamp-1">{auth.jurisdiction ?? auth.serviceArea}</span>
                 </div>
+                {auth.address && (
+                  <div className="flex items-start gap-2">
+                    <MapPin className="size-3 shrink-0 mt-0.5" />
+                    <span className="line-clamp-2 text-[10px]">{auth.address}</span>
+                  </div>
+                )}
               </div>
 
+              {/* Services */}
+              {auth.services && auth.services.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-border">
+                  <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold mb-1.5">Services</div>
+                  <div className="flex flex-wrap gap-1">
+                    {auth.services.slice(0, 3).map(s => (
+                      <span key={s} className="text-[9px] px-1.5 py-0.5 rounded-full border border-border text-muted-foreground line-clamp-1 max-w-full">{s}</span>
+                    ))}
+                    {auth.services.length > 3 && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-border text-muted-foreground">+{auth.services.length - 3} more</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Footer */}
-              <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
+              <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
                 <span className="text-[10px] text-muted-foreground">
                   Response: <span className="font-semibold text-foreground">{auth.responseTime}</span>
                 </span>
-                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full border border-border text-muted-foreground">
-                  Live Chat · Soon
-                </span>
+                {auth.lastVerified && (
+                  <span className="text-[9px] text-muted-foreground/60">Verified {auth.lastVerified}</span>
+                )}
               </div>
             </motion.div>
           ))}
@@ -959,7 +1030,7 @@ function BugReportForm() {
 
   return (
     <div className="p-5 space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
         <FormField label="Bug Title" required className="sm:col-span-2">
           <FormInput value={title} onChange={setTitle} placeholder="One-line description of the bug" />
         </FormField>
@@ -1026,7 +1097,7 @@ function SupportAnalytics() {
   return (
     <div className="p-5 space-y-5">
       {/* KPI grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 xl:grid-cols-6 gap-3">
         {[
           { label: "Total Tickets",    value: total,                                 color: "var(--color-primary)"         },
           { label: "Open",             value: open,                                  color: "var(--color-info)"            },
@@ -1109,7 +1180,7 @@ export function SupportCenterPage() {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-8 pb-16">
+    <div className="p-4 md:p-6 xl:p-8 max-w-none space-y-8 pb-16">
       {/* Hero */}
       <SupportHero
         onSearch={() => {}}

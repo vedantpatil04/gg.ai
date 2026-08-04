@@ -51,6 +51,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/lib/theme";
 import { SectionHeader, StatusChip, MetricTile } from "@/components/map/intelligence-ui";
 import {
   environmentalApi,
@@ -97,19 +98,33 @@ import { trendSeries, forecastSeries, type City } from "@/lib/mock-data";
 type MarkerHtmlOpts = Omit<Parameters<typeof buildMarkerHTML>[0], "selected">;
 
 // Phase 4 (Section 9): read the active base-map style from the registry.
-// base-map-config.ts registers the OSM dark style at import time (above).
-// Future phases add Streets / Satellite / Terrain to that file; this line
-// is the only change needed in SmartMapCanvas to pick them up.
-const OSM_STYLE =
-  baseMapRegistry.active?.style ??
-  ({
-    version: 8 as const,
-    glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-    sources: {},
-    layers: [
-      { id: "background", type: "background" as const, paint: { "background-color": "#0c1118" } },
-    ],
-  } satisfies maplibregl.StyleSpecification);
+// base-map-config.ts registers the OSM dark + (Phase 11) OSM light styles
+// at import time (above). Future phases add Streets / Satellite / Terrain
+// to that file; only `BASE_MAP_ID_BY_THEME` below needs to change to pick
+// new entries up.
+const FALLBACK_STYLE: maplibregl.StyleSpecification = {
+  version: 8 as const,
+  glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+  sources: {},
+  layers: [
+    { id: "background", type: "background" as const, paint: { "background-color": "#0c1118" } },
+  ],
+};
+
+// Phase 11: one base-map id per theme. SmartMapCanvas resolves this at mount
+// and again whenever the theme flips, so Dark Theme keeps the exact
+// production-ready "osm-dark" style while Light Theme gets its own
+// dedicated "osm-light" style instead of the dark tiles simply shown as-is.
+const BASE_MAP_ID_BY_THEME: Record<"light" | "dark", string> = {
+  dark: "osm-dark",
+  light: "osm-light",
+};
+
+function getBaseMapStyle(theme: "light" | "dark"): maplibregl.StyleSpecification {
+  const cfg = baseMapRegistry.get(BASE_MAP_ID_BY_THEME[theme]) ?? baseMapRegistry.active;
+  const style = cfg?.style ?? FALLBACK_STYLE;
+  return typeof style === "string" ? FALLBACK_STYLE : style;
+}
 
 // ─── Severity / complaint colours now shared via map-visuals.ts (SEV_COLOR) ──
 
@@ -288,6 +303,8 @@ export function SmartMapCanvas({
   const measureMarkersRef = useRef<maplibregl.Marker[]>([]);
   const heatReadyRef = useRef(false);
 
+  // Phase 11: current app theme drives which basemap style is active.
+  const { theme } = useTheme();
   const [zoom, setZoom] = useState(12);
   const [bearing, setBearing] = useState(0);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -296,6 +313,12 @@ export function SmartMapCanvas({
   const [measuring, setMeasuring] = useState(false);
   const [measurePoints, setMeasurePoints] = useState<{ lat: number; lng: number }[]>([]);
   const [mapReady, setMapReady] = useState(false);
+  // Phase 11: bumped each time a theme change finishes swapping the basemap
+  // style (map.setStyle drops any sources/layers not declared in the new
+  // style, so effects that own style-level sources — the AQI heatmap, the
+  // measure-tool line, the geolocation accuracy circle — re-run off this to
+  // restore themselves once the new style has loaded).
+  const [styleVersion, setStyleVersion] = useState(0);
   // Phase 2: bumped on zoomend/moveend to force the marker-clustering effect
   // to recompute against the map's current bounds/zoom — see that effect
   // for the bug this fixes.
@@ -398,9 +421,9 @@ export function SmartMapCanvas({
       .gis-cluster:hover { transform: scale(1.12) !important; }
       .maplibregl-ctrl-attrib { font-size: 9px !important; opacity: 0.5; }
       .maplibregl-ctrl-scale {
-        background: rgba(12,17,24,0.55) !important;
-        border-color: rgba(255,255,255,0.35) !important;
-        color: rgba(255,255,255,0.75) !important;
+        background: var(--control-bg) !important;
+        border-color: var(--control-border) !important;
+        color: var(--color-foreground) !important;
         font-size: 9px !important;
         backdrop-filter: blur(6px);
       }
@@ -409,12 +432,67 @@ export function SmartMapCanvas({
   }, []);
 
   // ── Init MapLibre ────────────────────────────────────────────────────────────
+  // Phase 11: sources/layers declared directly on the style spec (AQI
+  // heatmap, measure-tool line) are wiped by map.setStyle() on a theme
+  // change, since they aren't part of the new style JSON. This is the same
+  // setup logic used both on first "load" and again after each style swap.
+  const attachStyleOwnedLayers = useCallback((map: maplibregl.Map) => {
+    // AQI heatmap source
+    map.addSource("aqi-heat", {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
+    });
+    map.addLayer({
+      id: "aqi-heat-layer",
+      type: "heatmap",
+      source: "aqi-heat",
+      maxzoom: 15,
+      paint: {
+        "heatmap-weight": ["interpolate", ["linear"], ["get", "level"], 0, 0, 100, 1],
+        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 8, 0.5, 14, 1.5],
+        "heatmap-color": [
+          "interpolate",
+          ["linear"],
+          ["heatmap-density"],
+          0,
+          "rgba(0,200,80,0)",
+          0.2,
+          "rgba(80,220,0,0.5)",
+          0.4,
+          "rgba(220,200,0,0.65)",
+          0.65,
+          "rgba(240,100,0,0.8)",
+          0.85,
+          "rgba(200,20,20,0.9)",
+          1,
+          "rgba(100,0,180,0.95)",
+        ],
+        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 7, 16, 14, 50],
+        "heatmap-opacity": 0.55,
+      },
+      layout: { visibility: "none" },
+    });
+
+    // Measure-tool line source (Phase 1) — follows the same pattern as aqi-heat above
+    map.addSource("measure-line", {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
+    });
+    map.addLayer({
+      id: "measure-line-layer",
+      type: "line",
+      source: "measure-line",
+      layout: { "line-cap": "round" },
+      paint: { "line-color": "#22d3ee", "line-width": 2, "line-dasharray": [2, 1.5] },
+    });
+  }, []);
+
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     const c = mapData?.center ?? { lat: city.lat, lng: city.lng };
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: OSM_STYLE,
+      style: getBaseMapStyle(theme),
       center: [c.lng, c.lat],
       zoom: mapData?.zoom ?? 12,
       bearing: mapData?.bearing ?? 0,
@@ -425,55 +503,7 @@ export function SmartMapCanvas({
     map.addControl(new maplibregl.ScaleControl({ maxWidth: 110, unit: "metric" }), "bottom-left");
 
     map.on("load", () => {
-      // AQI heatmap source
-      map.addSource("aqi-heat", {
-        type: "geojson",
-        data: { type: "FeatureCollection", features: [] },
-      });
-      map.addLayer({
-        id: "aqi-heat-layer",
-        type: "heatmap",
-        source: "aqi-heat",
-        maxzoom: 15,
-        paint: {
-          "heatmap-weight": ["interpolate", ["linear"], ["get", "level"], 0, 0, 100, 1],
-          "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 8, 0.5, 14, 1.5],
-          "heatmap-color": [
-            "interpolate",
-            ["linear"],
-            ["heatmap-density"],
-            0,
-            "rgba(0,200,80,0)",
-            0.2,
-            "rgba(80,220,0,0.5)",
-            0.4,
-            "rgba(220,200,0,0.65)",
-            0.65,
-            "rgba(240,100,0,0.8)",
-            0.85,
-            "rgba(200,20,20,0.9)",
-            1,
-            "rgba(100,0,180,0.95)",
-          ],
-          "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 7, 16, 14, 50],
-          "heatmap-opacity": heatOpacity,
-        },
-        layout: { visibility: activeLayers.includes("heat") ? "visible" : "none" },
-      });
-
-      // Measure-tool line source (Phase 1) — follows the same pattern as aqi-heat above
-      map.addSource("measure-line", {
-        type: "geojson",
-        data: { type: "FeatureCollection", features: [] },
-      });
-      map.addLayer({
-        id: "measure-line-layer",
-        type: "line",
-        source: "measure-line",
-        layout: { "line-cap": "round" },
-        paint: { "line-color": "#22d3ee", "line-width": 2, "line-dasharray": [2, 1.5] },
-      });
-
+      attachStyleOwnedLayers(map);
       heatReadyRef.current = true;
       setMapReady(true);
     });
@@ -513,6 +543,31 @@ export function SmartMapCanvas({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Phase 11: theme-driven basemap swap ──────────────────────────────────────
+  // Skips the very first render (the map already mounts with the correct
+  // theme's style above) and calls map.setStyle() on every theme flip after
+  // that. MapLibre preserves camera position (center/zoom/bearing/pitch)
+  // across setStyle automatically; what it does NOT preserve is anything
+  // added imperatively via addSource/addLayer, so those get reattached once
+  // the new style finishes loading, and styleVersion bumps to let the
+  // AQI heatmap / measure line / accuracy-circle effects resync their data.
+  const themeMountedRef = useRef(false);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!themeMountedRef.current) {
+      themeMountedRef.current = true;
+      return;
+    }
+    if (!map) return;
+    heatReadyRef.current = false;
+    map.once("style.load", () => {
+      attachStyleOwnedLayers(map);
+      heatReadyRef.current = true;
+      setStyleVersion((v) => v + 1);
+    });
+    map.setStyle(getBaseMapStyle(theme));
+  }, [theme, attachStyleOwnedLayers]);
 
   // ── Phase 10: Animated user location marker ──────────────────────────────────
   // Renders a blue dot + pulsing accuracy ring when `userPosition` is set.
@@ -667,7 +722,7 @@ export function SmartMapCanvas({
         .addTo(map);
       userMarkerRef.current = marker;
     }
-  }, [userPosition, mapReady]);
+  }, [userPosition, mapReady, styleVersion]);
 
   // ── Phase 10: fly to user position ───────────────────────────────────────────
   // Separate from the marker effect so a map.flyTo() doesn't re-trigger the
@@ -730,7 +785,7 @@ export function SmartMapCanvas({
       );
       map.setPaintProperty("aqi-heat-layer", "heatmap-opacity", heatOpacity);
     }
-  }, [hotspots, activeLayers, heatOpacity, mapReady]);
+  }, [hotspots, activeLayers, heatOpacity, mapReady, styleVersion]);
 
   // ── Sensor / AQI markers with clustering ─────────────────────────────────────
   useEffect(() => {
@@ -886,7 +941,7 @@ export function SmartMapCanvas({
       el.innerHTML = `
         <div style="
           width:11px;height:11px;border-radius:50%;
-          background:${col};border:1.5px solid rgba(255,255,255,0.3);
+          background:${col};border:1.5px solid var(--color-background);
           box-shadow:0 0 7px ${col}99;cursor:pointer;
           transition:transform 0.15s ease;
         " class="gis-marker"></div>`;
@@ -969,7 +1024,7 @@ export function SmartMapCanvas({
       const el = document.createElement("div");
       el.style.cssText =
         "width:9px;height:9px;border-radius:50%;background:#22d3ee;" +
-        "border:2px solid rgba(255,255,255,0.75);box-shadow:0 0 6px #22d3ee99;";
+        "border:2px solid var(--color-background);box-shadow:0 0 6px #22d3ee99;";
       const m = new maplibregl.Marker({ element: el, anchor: "center" })
         .setLngLat([pt.lng, pt.lat])
         .addTo(map);
@@ -994,7 +1049,7 @@ export function SmartMapCanvas({
           }
         : { type: "FeatureCollection", features: [] },
     );
-  }, [measurePoints, mapReady]);
+  }, [measurePoints, mapReady, styleVersion]);
 
   // ── Recent searches: load per-city list, and a helper to append to it ────────
   useEffect(() => {
@@ -1122,7 +1177,7 @@ export function SmartMapCanvas({
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-0 bg-[#0c1118] flex flex-col items-center justify-center z-50 gap-4"
+            className="absolute inset-0 bg-background flex flex-col items-center justify-center z-50 gap-4"
           >
             <div className="relative size-12 grid place-items-center">
               <span className="absolute inset-0 rounded-2xl bg-primary/15 animate-ping" />
@@ -1134,7 +1189,7 @@ export function SmartMapCanvas({
               <span className="text-[11px] text-muted-foreground tracking-wider uppercase">
                 Initialising GIS Engine…
               </span>
-              <div className="w-40 h-0.5 rounded-full bg-white/10 overflow-hidden">
+              <div className="w-40 h-0.5 rounded-full bg-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)] overflow-hidden">
                 <motion.div
                   className="h-full w-1/3 rounded-full bg-primary"
                   animate={{ x: ["-100%", "220%"] }}
@@ -1158,8 +1213,8 @@ export function SmartMapCanvas({
         <div className="relative flex-1 min-w-0 max-w-md">
           <div
             className={cn(
-              "flex items-center gap-2 px-3 h-9 rounded-lg bg-white/5 border border-white/10 transition-colors focus-within:ring-2 focus-within:ring-primary/40",
-              searchOpen && "border-primary/40 bg-white/8",
+              "flex items-center gap-2 px-3 h-9 rounded-lg bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] border border-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)] transition-colors focus-within:ring-2 focus-within:ring-primary/40",
+              searchOpen && "border-primary/40 bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)]",
             )}
           >
             <Search className="size-3.5 text-muted-foreground shrink-0" />
@@ -1207,14 +1262,14 @@ export function SmartMapCanvas({
                     {/* Recent searches — only while the box is empty, Google-Maps style */}
                     {!search && recentSearches.length > 0 && (
                       <>
-                        <div className="px-3 py-1.5 text-[8px] uppercase tracking-[0.16em] text-muted-foreground bg-white/2 flex items-center gap-1.5">
+                        <div className="px-3 py-1.5 text-[8px] uppercase tracking-[0.16em] text-muted-foreground bg-[color-mix(in_oklab,var(--color-foreground)_2%,transparent)] flex items-center gap-1.5">
                           <History className="size-2.5" /> Recent
                         </div>
                         {recentSearches.map((r) => (
                           <button
                             key={r.label}
                             onClick={() => flyToRecent(r)}
-                            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/5 text-left"
+                            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] text-left"
                           >
                             <Clock className="size-3 text-muted-foreground shrink-0" />
                             <span className="text-[11px] truncate">{r.label}</span>
@@ -1225,7 +1280,7 @@ export function SmartMapCanvas({
 
                     {search && localResults.length > 0 && (
                       <>
-                        <div className="px-3 py-1.5 text-[8px] uppercase tracking-[0.16em] text-muted-foreground bg-white/2">
+                        <div className="px-3 py-1.5 text-[8px] uppercase tracking-[0.16em] text-muted-foreground bg-[color-mix(in_oklab,var(--color-foreground)_2%,transparent)]">
                           Sensors & Locations
                         </div>
                         {localResults.map((h) => (
@@ -1248,7 +1303,7 @@ export function SmartMapCanvas({
                               });
                               setSearchOpen(false);
                             }}
-                            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/5 text-left"
+                            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] text-left"
                           >
                             <span className="text-base">
                               {sensorTypeIcon(h.sensorType ?? "environmental")}
@@ -1272,14 +1327,14 @@ export function SmartMapCanvas({
 
                     {search && geoResults.length > 0 && (
                       <>
-                        <div className="px-3 py-1.5 text-[8px] uppercase tracking-[0.16em] text-muted-foreground bg-white/2">
+                        <div className="px-3 py-1.5 text-[8px] uppercase tracking-[0.16em] text-muted-foreground bg-[color-mix(in_oklab,var(--color-foreground)_2%,transparent)]">
                           Places & Roads
                         </div>
                         {geoResults.map((r) => (
                           <button
                             key={r.place_id}
                             onClick={() => flyToGeo(r)}
-                            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/5 text-left"
+                            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] text-left"
                           >
                             <MapPin className="size-3 text-muted-foreground shrink-0" />
                             <span className="text-[11px] truncate">{r.display_name}</span>
@@ -1330,7 +1385,7 @@ export function SmartMapCanvas({
             "shrink-0 h-9 px-3 rounded-lg flex items-center gap-1.5 text-[11px] font-medium transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
             layerPanelOpen
               ? "bg-primary/15 text-primary border border-primary/30"
-              : "bg-white/5 text-muted-foreground border border-white/10 hover:bg-white/8",
+              : "bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] text-muted-foreground border border-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)] hover:bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)]",
           )}
         >
           <Layers className="size-3.5" />
@@ -1348,7 +1403,7 @@ export function SmartMapCanvas({
 
         {/* Timeline — embedded, compact segmented control */}
         <div
-          className="hidden md:flex items-center gap-1 shrink-0 h-9 pl-2 pr-1 rounded-lg bg-white/5 border border-white/10"
+          className="hidden md:flex items-center gap-1 shrink-0 h-9 pl-2 pr-1 rounded-lg bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] border border-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)]"
           role="group"
           aria-label="Time range"
         >
@@ -1368,7 +1423,7 @@ export function SmartMapCanvas({
                     ? "bg-primary text-primary-foreground"
                     : disabled
                       ? "text-muted-foreground/30 cursor-not-allowed"
-                      : "text-muted-foreground hover:bg-white/8 hover:text-foreground active:scale-95",
+                      : "text-muted-foreground hover:bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)] hover:text-foreground active:scale-95",
                 )}
               >
                 {o.label}
@@ -1386,7 +1441,7 @@ export function SmartMapCanvas({
             onClick={toggleFullscreen}
             title="Fullscreen"
             aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-            className="size-9 grid place-items-center hover:bg-white/8 rounded-lg transition-colors text-muted-foreground active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            className="size-9 grid place-items-center hover:bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)] rounded-lg transition-colors text-muted-foreground active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
             {isFullscreen ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
           </button>
@@ -1394,7 +1449,7 @@ export function SmartMapCanvas({
             onClick={resetCamera}
             title="Reset view"
             aria-label="Reset map view"
-            className="size-9 grid place-items-center hover:bg-white/8 rounded-lg transition-colors text-muted-foreground active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            className="size-9 grid place-items-center hover:bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)] rounded-lg transition-colors text-muted-foreground active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
             <RotateCcw className="size-3.5" />
           </button>
@@ -1402,7 +1457,7 @@ export function SmartMapCanvas({
             onClick={exportImage}
             title="Export map image"
             aria-label="Export map image"
-            className="size-9 grid place-items-center hover:bg-white/8 rounded-lg transition-colors text-muted-foreground active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            className="size-9 grid place-items-center hover:bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)] rounded-lg transition-colors text-muted-foreground active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
             <Camera className="size-3.5" />
           </button>
@@ -1428,14 +1483,14 @@ export function SmartMapCanvas({
               style={{
                 background: "oklch(0.12 0.015 240 / 0.92)",
                 backdropFilter: "blur(16px) saturate(1.4)",
-                border: "1px solid oklch(1 0 0 / 0.12)",
+                border: "1px solid color-mix(in oklab, var(--color-foreground) 12%, transparent)",
                 boxShadow: "0 8px 32px -4px oklch(0 0 0 / 0.5), 0 2px 8px -2px oklch(0 0 0 / 0.3)",
               }}
             >
               {/* Header */}
               <div
                 className="flex items-center gap-2 px-3 py-2.5"
-                style={{ borderBottom: "1px solid oklch(1 0 0 / 0.08)" }}
+                style={{ borderBottom: "1px solid color-mix(in oklab, var(--color-foreground) 8%, transparent)" }}
               >
                 <Layers className="size-3.5 text-primary shrink-0" />
                 <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground flex-1">
@@ -1455,7 +1510,7 @@ export function SmartMapCanvas({
               {/* Search */}
               <div
                 className="flex items-center gap-2 px-3 py-2"
-                style={{ borderBottom: "1px solid oklch(1 0 0 / 0.06)" }}
+                style={{ borderBottom: "1px solid color-mix(in oklab, var(--color-foreground) 6%, transparent)" }}
               >
                 <Search className="size-3 text-muted-foreground shrink-0" />
                 <input
@@ -1477,10 +1532,7 @@ export function SmartMapCanvas({
               </div>
 
               {/* Layer groups — driven by registry */}
-              <div
-                className="overflow-y-auto max-h-[calc(100dvh-22rem)] [&::-webkit-scrollbar]:hidden"
-                style={{ scrollbarWidth: "none" }}
-              >
+              <div className="gis-scrollbar overflow-y-auto max-h-[calc(100dvh-22rem)]">
                 {layerRegistry.getGroups().map((group) => {
                   const allGroupLayers = layerRegistry.getByGroup(group);
                   const groupLayers = layerSearch
@@ -1501,13 +1553,13 @@ export function SmartMapCanvas({
                   return (
                     <div
                       key={group}
-                      style={{ borderBottom: "1px solid oklch(1 0 0 / 0.06)" }}
+                      style={{ borderBottom: "1px solid color-mix(in oklab, var(--color-foreground) 6%, transparent)" }}
                       className="last:border-0"
                     >
                       <button
                         onClick={() => setLayerGroupOpen((o) => ({ ...o, [group]: !o[group] }))}
                         aria-expanded={isOpen}
-                        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-white/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset"
+                        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset"
                       >
                         <span className="text-[8.5px] uppercase tracking-[0.2em] text-muted-foreground/70 flex-1 text-left font-medium">
                           {group}
@@ -1552,8 +1604,8 @@ export function SmartMapCanvas({
                                     isDisabled
                                       ? "opacity-30 cursor-not-allowed"
                                       : isOn
-                                        ? "bg-white/[0.06]"
-                                        : "hover:bg-white/[0.04]",
+                                        ? "bg-[color-mix(in_oklab,var(--color-foreground)_6%,transparent)]"
+                                        : "hover:bg-[color-mix(in_oklab,var(--color-foreground)_4%,transparent)]",
                                   )}
                                 >
                                   {/* Active indicator track */}
@@ -1571,8 +1623,8 @@ export function SmartMapCanvas({
                                     style={{
                                       background: isOn
                                         ? `color-mix(in oklab, ${l.color} 20%, transparent)`
-                                        : "oklch(1 0 0 / 0.04)",
-                                      border: `1px solid ${isOn ? `color-mix(in oklab, ${l.color} 35%, transparent)` : "oklch(1 0 0 / 0.08)"}`,
+                                        : "color-mix(in oklab, var(--color-foreground) 4%, transparent)",
+                                      border: `1px solid ${isOn ? `color-mix(in oklab, ${l.color} 35%, transparent)` : "color-mix(in oklab, var(--color-foreground) 8%, transparent)"}`,
                                     }}
                                   >
                                     {Icon && (
@@ -1607,7 +1659,7 @@ export function SmartMapCanvas({
                                     <span
                                       className="text-[7px] font-semibold px-1 py-0.5 rounded shrink-0"
                                       style={{
-                                        background: "oklch(1 0 0 / 0.06)",
+                                        background: "color-mix(in oklab, var(--color-foreground) 6%, transparent)",
                                         color: "var(--color-muted-foreground)",
                                       }}
                                     >
@@ -1648,7 +1700,7 @@ export function SmartMapCanvas({
                     <div
                       key={`${f.layerId}-${f.key}`}
                       className="px-3 py-2.5"
-                      style={{ borderTop: "1px solid oklch(1 0 0 / 0.08)" }}
+                      style={{ borderTop: "1px solid color-mix(in oklab, var(--color-foreground) 8%, transparent)" }}
                     >
                       <div className="flex justify-between text-[9px] mb-1.5">
                         <span id="heat-opacity-label" className="text-muted-foreground font-medium">
@@ -1677,7 +1729,7 @@ export function SmartMapCanvas({
               {/* Quick-toggle footer: all on / all off */}
               <div
                 className="flex items-center gap-1.5 px-3 py-2"
-                style={{ borderTop: "1px solid oklch(1 0 0 / 0.08)" }}
+                style={{ borderTop: "1px solid color-mix(in oklab, var(--color-foreground) 8%, transparent)" }}
               >
                 <button
                   onClick={() =>
@@ -1686,14 +1738,14 @@ export function SmartMapCanvas({
                       .filter((l) => !l.comingSoon && !activeLayers.includes(l.id))
                       .forEach((l) => onToggleLayer(l.id))
                   }
-                  className="flex-1 text-[9px] font-medium text-muted-foreground hover:text-foreground py-1 hover:bg-white/5 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
+                  className="flex-1 text-[9px] font-medium text-muted-foreground hover:text-foreground py-1 hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
                 >
                   All on
                 </button>
-                <div className="w-px h-3" style={{ background: "oklch(1 0 0 / 0.1)" }} />
+                <div className="w-px h-3" style={{ background: "color-mix(in oklab, var(--color-foreground) 10%, transparent)" }} />
                 <button
                   onClick={() => activeLayers.forEach((id) => onToggleLayer(id))}
-                  className="flex-1 text-[9px] font-medium text-muted-foreground hover:text-foreground py-1 hover:bg-white/5 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
+                  className="flex-1 text-[9px] font-medium text-muted-foreground hover:text-foreground py-1 hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
                 >
                   All off
                 </button>
@@ -1720,7 +1772,7 @@ export function SmartMapCanvas({
                 style={{
                   background: "oklch(0.12 0.015 240 / 0.92)",
                   backdropFilter: "blur(16px) saturate(1.4)",
-                  border: "1px solid oklch(1 0 0 / 0.12)",
+                  border: "1px solid color-mix(in oklab, var(--color-foreground) 12%, transparent)",
                   boxShadow: "0 4px 16px -4px oklch(0 0 0 / 0.4)",
                 }}
               >
@@ -1741,7 +1793,7 @@ export function SmartMapCanvas({
                 style={{
                   background: "oklch(0.12 0.015 240 / 0.92)",
                   backdropFilter: "blur(16px) saturate(1.4)",
-                  border: "1px solid oklch(1 0 0 / 0.12)",
+                  border: "1px solid color-mix(in oklab, var(--color-foreground) 12%, transparent)",
                   boxShadow: "0 4px 16px -4px oklch(0 0 0 / 0.4)",
                 }}
               >
@@ -1938,7 +1990,7 @@ export function SmartMapCanvas({
             onClick={resetNorth}
             title="Reset North"
             aria-label="Reset map bearing to north"
-            className="size-8 grid place-items-center hover:bg-white/5 rounded-lg transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            className="size-8 grid place-items-center hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] rounded-lg transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
             <span
               className="text-[11px] font-bold font-mono text-primary"
@@ -1958,7 +2010,7 @@ export function SmartMapCanvas({
             onClick={zoomIn}
             title="Zoom in"
             aria-label="Zoom in"
-            className="size-10 grid place-items-center hover:bg-white/5 rounded-lg transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            className="size-10 grid place-items-center hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] rounded-lg transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
             <Plus className="size-3.5" />
           </button>
@@ -1966,7 +2018,7 @@ export function SmartMapCanvas({
             onClick={zoomOut}
             title="Zoom out"
             aria-label="Zoom out"
-            className="size-10 grid place-items-center hover:bg-white/5 rounded-lg transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            className="size-10 grid place-items-center hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] rounded-lg transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
             <Minus className="size-3.5" />
           </button>
@@ -2004,7 +2056,7 @@ export function SmartMapCanvas({
                 ? "text-destructive hover:bg-destructive/10"
                 : geoStatus === "granted" || isTracking
                   ? "bg-blue-500/15 text-blue-400 hover:bg-blue-500/25"
-                  : "hover:bg-white/5 text-muted-foreground",
+                  : "hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] text-muted-foreground",
             )}
           >
             {geoStatus === "requesting" ? (
@@ -2030,7 +2082,7 @@ export function SmartMapCanvas({
             aria-pressed={measuring}
             className={cn(
               "size-9 grid place-items-center rounded-lg transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-              measuring ? "bg-primary/20 text-primary" : "hover:bg-white/5 text-muted-foreground",
+              measuring ? "bg-primary/20 text-primary" : "hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] text-muted-foreground",
             )}
           >
             <Ruler className="size-3.5" />
@@ -2150,7 +2202,7 @@ export function SmartMapCanvas({
                 </div>
                 <button
                   onClick={() => setPopupLoc(null)}
-                  className="text-muted-foreground hover:text-foreground hover:bg-white/10 size-6 grid place-items-center rounded-lg transition-colors text-xs shrink-0"
+                  className="text-muted-foreground hover:text-foreground hover:bg-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)] size-6 grid place-items-center rounded-lg transition-colors text-xs shrink-0"
                 >
                   ✕
                 </button>
@@ -2339,7 +2391,7 @@ export function SmartMapCanvas({
                 >
                   Zoom Here
                 </button>
-                <button className="flex-1 text-[10px] py-1.5 rounded-lg font-medium bg-white/5 text-muted-foreground hover:bg-white/10 border border-white/10 transition-colors">
+                <button className="flex-1 text-[10px] py-1.5 rounded-lg font-medium bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] text-muted-foreground hover:bg-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)] border border-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)] transition-colors">
                   Open Details
                 </button>
               </div>
@@ -2384,7 +2436,7 @@ export function SmartMapCanvas({
                 </div>
                 <button
                   onClick={() => setPopupComp(null)}
-                  className="text-muted-foreground hover:text-foreground hover:bg-white/10 size-6 flex items-center justify-center rounded-lg transition-colors shrink-0 text-xs"
+                  className="text-muted-foreground hover:text-foreground hover:bg-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)] size-6 flex items-center justify-center rounded-lg transition-colors shrink-0 text-xs"
                 >
                   ✕
                 </button>

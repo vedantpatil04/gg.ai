@@ -48,6 +48,7 @@ import {
   Search,
   ArrowUpRight,
   ArrowDownRight,
+  Navigation,
   Minus as ArrowStable,
   SortAsc,
   SortDesc,
@@ -80,6 +81,14 @@ import {
 } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   SectionHeader,
   StatusChip,
@@ -250,10 +259,49 @@ function MapPage() {
   // ── Phase 10: Live geolocation ────────────────────────────────────────────
   const geo = useGeolocation();
 
-  // Auto-switch city when the user shares their location (Section 5).
-  // Finds the nearest supported GreenGuard city by Haversine distance
-  // and switches to it — silently, with no prompt, once per position fix.
+  // ── Phase 4A: Location confirmation dialog ────────────────────────────────
+  //
+  // When the user presses "Current Location" (the Locate button inside
+  // SmartMapCanvas), we detect the nearest city but do NOT switch immediately.
+  //
+  // Flow:
+  //   geo.position arrives → find nearest city
+  //   → same as active city? silently refresh + re-centre, no dialog
+  //   → different city?      show confirmation dialog
+  //       "Keep <current>"   → dismiss, no state change
+  //       "Switch to <new>"  → setCityId(nearestId) + persist
+  //
+  // The dialog is intentionally scoped to SmartMapCanvas only — no other
+  // page or module shows this confirmation (per Phase 4A spec).
+  // Future phases (Dashboard, Forecast) can reuse `pendingCitySwitch` state
+  // by lifting it to a context; for now it lives here in the map page.
+
+  interface PendingSwitch {
+    nearestId: string;
+    nearestName: string;
+    nearestRegion: string;
+  }
+  const [pendingSwitch, setPendingSwitch] = React.useState<PendingSwitch | null>(null);
   const lastAutoSwitchRef = useRef<string | null>(null);
+
+  // Region lookup (mirrors CITY_REGION in location-intelligence.tsx)
+  const CITY_REGION_MAP: Record<string, string> = {
+    belagavi:   "Karnataka",
+    bengaluru:  "Karnataka",
+    mumbai:     "Maharashtra",
+    delhi:      "Delhi",
+    hyderabad:  "Telangana",
+    chennai:    "Tamil Nadu",
+    pune:       "Maharashtra",
+    kolkata:    "West Bengal",
+    ahmedabad:  "Gujarat",
+    london:     "England",
+    newyork:    "New York",
+    singapore:  "Singapore",
+    tokyo:      "Tokyo",
+    dubai:      "Dubai Emirate",
+  };
+
   useEffect(() => {
     if (!geo.position || !setCityId) return;
     const { lat, lng } = geo.position;
@@ -272,12 +320,26 @@ function MapPage() {
         nearestId = c.id;
       }
     }
-    // Only switch once per unique nearest city (avoids thrash on GPS drift)
-    if (nearestId !== lastAutoSwitchRef.current) {
-      lastAutoSwitchRef.current = nearestId;
-      setCityId(nearestId);
+
+    // Deduplicate: only act once per unique nearest city
+    if (nearestId === lastAutoSwitchRef.current) return;
+    lastAutoSwitchRef.current = nearestId;
+
+    if (nearestId === city.id) {
+      // Already on the correct city — just refresh data, no dialog needed
+      return;
     }
-  }, [geo.position, setCityId]);
+
+    // Different city detected — show confirmation dialog instead of switching
+    const nearestCity = CITIES.find((c) => c.id === nearestId);
+    if (!nearestCity) return;
+    const region = CITY_REGION_MAP[nearestId];
+    setPendingSwitch({
+      nearestId,
+      nearestName: nearestCity.name,
+      nearestRegion: region ? `${region}, ${nearestCity.country}` : nearestCity.country,
+    });
+  }, [geo.position, setCityId, city.id]);
 
   // Nearest sensor/complaint computed after filteredHotspots and allComplaints
   // are declared below — see "Nearby Environmental Intel" memos further down.
@@ -737,6 +799,80 @@ function MapPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-background">
+
+      {/* ── Phase 4A: Location Switch Confirmation Dialog ──────────────────
+          Rendered via Radix AlertDialog (Portal) so it floats above the
+          Smart Map canvas at all times. Only appears when the user taps
+          "Current Location" and the detected nearest city differs from the
+          active monitoring city. Dismissing keeps the current city; confirming
+          switches it and persists the choice via setCityId / localStorage.
+      ──────────────────────────────────────────────────────────────────────── */}
+      <AlertDialog open={!!pendingSwitch} onOpenChange={(open) => { if (!open) setPendingSwitch(null); }}>
+        <AlertDialogContent className="max-w-sm rounded-2xl border border-border/60 bg-background shadow-2xl p-0 overflow-hidden">
+          {/* Header */}
+          <AlertDialogHeader className="px-6 pt-6 pb-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 grid place-items-center shrink-0">
+                <Navigation className="size-5 text-primary" />
+              </div>
+              <div>
+                <AlertDialogTitle className="text-base font-semibold">
+                  Location Detected
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Your device location was found
+                </AlertDialogDescription>
+              </div>
+            </div>
+
+            {/* Detected location */}
+            <div className="rounded-xl bg-primary/5 border border-primary/15 px-4 py-3 mb-3">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground mb-1">
+                📍 You are currently in
+              </p>
+              <p className="text-sm font-semibold text-foreground">
+                {pendingSwitch?.nearestName}
+              </p>
+              <p className="text-xs text-muted-foreground">{pendingSwitch?.nearestRegion}</p>
+            </div>
+
+            {/* Current monitoring city */}
+            <div className="rounded-xl bg-muted/50 border border-border/50 px-4 py-3">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground mb-1">
+                🗺 Current monitoring city
+              </p>
+              <p className="text-sm font-semibold text-foreground">{city.name}</p>
+              <p className="text-xs text-muted-foreground">
+                AQI {city.aqi} · {aqiBand(city.aqi).label}
+              </p>
+            </div>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter className="px-6 pb-6 flex-col gap-2 sm:flex-col">
+            {/* Switch action — primary */}
+            <button
+              onClick={() => {
+                if (pendingSwitch) {
+                  setCityId(pendingSwitch.nearestId);
+                }
+                setPendingSwitch(null);
+              }}
+              className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            >
+              Switch to {pendingSwitch?.nearestName}
+            </button>
+
+            {/* Keep current — secondary */}
+            <button
+              onClick={() => setPendingSwitch(null)}
+              className="w-full h-10 rounded-xl border border-border/60 bg-muted/40 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Keep {city.name}
+            </button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* ══════════════════════════════════════════════════════════════════════
           ENTERPRISE HEADER
       ════════════════════════════════════════════════════════════════════════ */}

@@ -51,7 +51,7 @@ function AqiGauge({ aqi, color, max = 300 }: { aqi: number; color: string; max?:
         <path
           d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
           fill="none"
-          stroke="oklch(1 0 0 / 0.08)"
+          stroke="color-mix(in oklab, var(--color-foreground) 8%, transparent)"
           strokeWidth={8}
           strokeLinecap="round"
         />
@@ -79,7 +79,7 @@ function AqiGauge({ aqi, color, max = 300 }: { aqi: number; color: string; max?:
               cx={tx}
               cy={ty}
               r={2}
-              fill={mark <= aqi ? color : "oklch(1 0 0 / 0.20)"}
+              fill={mark <= aqi ? color : "color-mix(in oklab, var(--color-foreground) 20%, transparent)"}
             />
           );
         })}
@@ -100,7 +100,7 @@ function AqiGauge({ aqi, color, max = 300 }: { aqi: number; color: string; max?:
           y={cy + 10}
           textAnchor="middle"
           fontSize={8.5}
-          fill="oklch(1 0 0 / 0.5)"
+          fill="color-mix(in oklab, var(--color-foreground) 50%, transparent)"
           fontFamily="inherit"
           fontWeight={500}
           letterSpacing="0.12em"
@@ -285,7 +285,7 @@ function AqiTimeline({ timeline }: { timeline: TimelinePoint[] }) {
 
     // Label "Now"
     const nowX = 11 * barW + barW / 2;
-    ctx.fillStyle = "oklch(1 0 0 / 0.5)";
+    ctx.fillStyle = "color-mix(in oklab, var(--color-foreground) 50%, transparent)";
     ctx.font = "bold 7px Inter, system-ui";
     ctx.textAlign = "center";
     ctx.fillText("NOW", nowX, h - 1);
@@ -392,7 +392,7 @@ function CityComparison({ data }: { data: AirQualityData }) {
               </span>
               <div
                 className="flex-1 h-1.5 rounded-full overflow-hidden"
-                style={{ background: "oklch(1 0 0 / 0.08)" }}
+                style={{ background: "color-mix(in oklab, var(--color-foreground) 8%, transparent)" }}
               >
                 <motion.div
                   className="h-full rounded-full"
@@ -412,7 +412,7 @@ function CityComparison({ data }: { data: AirQualityData }) {
       {data.cityComparison.length > 6 && (
         <button
           onClick={() => setExpanded((e) => !e)}
-          className="w-full mt-1.5 text-[9px] text-muted-foreground hover:text-foreground py-1.5 flex items-center justify-center gap-1 rounded-lg hover:bg-white/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          className="w-full mt-1.5 text-[9px] text-muted-foreground hover:text-foreground py-1.5 flex items-center justify-center gap-1 rounded-lg hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
         >
           {expanded ? (
             <>
@@ -546,7 +546,7 @@ function PollutantGrid({ pollutants }: { pollutants: PollutantReading[] }) {
       {pollutants.length > 5 && (
         <button
           onClick={() => setExpanded((e) => !e)}
-          className="w-full mt-1.5 text-[9px] text-muted-foreground hover:text-foreground py-1 flex items-center justify-center gap-1 hover:bg-white/5 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          className="w-full mt-1.5 text-[9px] text-muted-foreground hover:text-foreground py-1 flex items-center justify-center gap-1 hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
         >
           {expanded ? (
             <>

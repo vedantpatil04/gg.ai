@@ -1,17 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { CloudSun, ArrowRight } from "lucide-react";
+import { CloudSun, ArrowRight, CloudOff } from "lucide-react";
 import { useCity } from "@/lib/city-context";
 import { environmentalApi } from "@/lib/api/environmental.api";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 /**
- * Environmental Overview — Weather Forecast Gateway CTA Card.
+ * Phase 1 — Weather Forecast Gateway.
  *
- * Keeps Environmental Overview focused on current conditions while serving as a
- * compact enterprise gateway to the dedicated Forecast module (/forecast).
+ * Design principles:
+ *  - Acts as a premium gateway to /forecast — clear single call to action
+ *  - Data status is communicated subtly, not alarmingly
+ *  - The card breathes: generous padding, whitespace, no cramped info
+ *  - CTA button is the visual anchor on desktop
+ *  - Mobile: stacks vertically with CTA below
  */
+
 export function ForecastOverview({ className }: { className?: string }) {
   const { city } = useCity();
 
@@ -27,73 +31,120 @@ export function ForecastOverview({ className }: { className?: string }) {
     throwOnError: false,
   });
 
-  const isAvailable = !isLoading && !isError && Array.isArray(days) && days.length > 0;
+  const isAvailable =
+    !isLoading && !isError && Array.isArray(days) && days.length > 0;
 
   return (
     <div
       className={cn(
-        "glass rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 min-h-[180px] max-h-[220px]",
+        "glass rounded-2xl overflow-hidden",
+        "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-500",
         className,
       )}
     >
-      {/* Left Column: Icon + Header + Description + Status Badge */}
-      <div className="flex items-start gap-4 min-w-0 flex-1">
+      <div className="flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8 p-6 md:p-8">
+        {/* Icon */}
         <div
-          className="size-12 md:size-14 rounded-2xl grid place-items-center shrink-0 border border-primary/20"
+          className="size-12 rounded-2xl grid place-items-center shrink-0"
           style={{
-            background: "color-mix(in oklab, var(--color-primary) 12%, transparent)",
-            color: "var(--color-primary)",
+            background: isAvailable
+              ? "color-mix(in oklab, var(--color-primary) 11%, transparent)"
+              : "oklch(1 0 0 / 0.06)",
+            color: isAvailable ? "var(--color-primary)" : "oklch(0.55 0.012 230)",
+            border: `1px solid ${isAvailable ? "color-mix(in oklab, var(--color-primary) 20%, transparent)" : "oklch(1 0 0 / 0.08)"}`,
           }}
           aria-hidden="true"
         >
-          <CloudSun className="size-6 md:size-7" />
+          {isAvailable ? (
+            <CloudSun className="size-6" />
+          ) : (
+            <CloudOff className="size-5.5" />
+          )}
         </div>
 
-        <div className="space-y-1.5 min-w-0">
+        {/* Content */}
+        <div className="flex-1 min-w-0 space-y-2">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h3 className="text-xl font-bold tracking-tight">Weather Forecast</h3>
+            <h3
+              className="text-lg font-bold tracking-tight"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              Weather &amp; Forecast Intelligence
+            </h3>
+
+            {/* Status badge */}
             <span
-              className={cn(
-                "inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full border",
+              className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] px-2.5 py-1 rounded-full border whitespace-nowrap"
+              style={
                 isAvailable
-                  ? "border-success/30 text-success bg-success/10"
-                  : "border-warning/30 text-warning bg-warning/10",
-              )}
+                  ? {
+                      color: "var(--color-success)",
+                      borderColor: "color-mix(in oklab, var(--color-success) 28%, transparent)",
+                      background: "color-mix(in oklab, var(--color-success) 9%, transparent)",
+                    }
+                  : {
+                      color: "var(--color-warning)",
+                      borderColor: "color-mix(in oklab, var(--color-warning) 28%, transparent)",
+                      background: "color-mix(in oklab, var(--color-warning) 9%, transparent)",
+                    }
+              }
             >
               <span
-                className="size-2 rounded-full"
-                style={{
-                  background: isAvailable ? "var(--color-success)" : "var(--color-warning)",
-                }}
+                className="size-1.5 rounded-full shrink-0"
+                style={{ background: isAvailable ? "var(--color-success)" : "var(--color-warning)" }}
                 aria-hidden="true"
               />
-              Forecast Service · {isAvailable ? "Available" : "Temporarily Unavailable"}
+              {isAvailable ? "Live data" : "Temporarily limited"}
             </span>
           </div>
 
-          <p className="text-sm md:text-base text-muted-foreground leading-relaxed max-w-xl">
-            View hourly, daily, and long-range weather forecasts for {city.name} with AI-powered predictive intelligence.
-          </p>
-
-          {!isAvailable && !isLoading && (
-            <p className="text-xs text-muted-foreground/70 pt-0.5">
-              Forecast data is temporarily unavailable. You can still open the Forecast Center to retry or view cached data.
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Right Column: CTA Button navigating to /forecast */}
-      <div className="shrink-0 self-stretch md:self-center flex items-center">
-        <Link to="/forecast">
-          <Button
-            size="lg"
-            className="w-full md:w-auto h-11 px-6 text-base font-semibold gap-2 rounded-xl shadow-sm hover:shadow transition-all group"
+          <p
+            className="text-sm leading-relaxed max-w-lg"
+            style={{ color: "oklch(0.55 0.014 230)" }}
           >
-            <span>Open Forecast Center</span>
-            <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-          </Button>
-        </Link>
+            {isAvailable
+              ? `Hourly, daily, and long-range forecasts for ${city.name} — with AI-powered predictive analysis.`
+              : `Forecast data for ${city.name} is temporarily limited. Open the Forecast Center to view any available or cached data.`}
+          </p>
+        </div>
+
+        {/* CTA */}
+        <div className="shrink-0 w-full md:w-auto">
+          <Link to="/forecast">
+            <button
+              type="button"
+              className={cn(
+                "group inline-flex items-center justify-center gap-2 w-full md:w-auto",
+                "h-10 px-5 rounded-xl text-sm font-semibold",
+                "transition-all duration-200",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+              )}
+              style={{
+                background: "var(--color-primary)",
+                color: "var(--color-primary-foreground)",
+                boxShadow: "0 2px 8px color-mix(in oklab, var(--color-primary) 30%, transparent)",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.opacity = "0.92";
+                (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                  "0 4px 16px color-mix(in oklab, var(--color-primary) 38%, transparent)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.opacity = "1";
+                (e.currentTarget as HTMLButtonElement).style.transform = "none";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                  "0 2px 8px color-mix(in oklab, var(--color-primary) 30%, transparent)";
+              }}
+            >
+              Open Forecast Center
+              <ArrowRight
+                className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
+                aria-hidden="true"
+              />
+            </button>
+          </Link>
+        </div>
       </div>
     </div>
   );

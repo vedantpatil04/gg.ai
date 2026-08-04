@@ -309,7 +309,7 @@ export function TutReader({ tutorial, onBack, onTutorialClick }: TutReaderProps)
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-[1200px] mx-auto pb-16">
+    <div className="p-4 md:p-6 xl:p-8 max-w-none pb-16">
       {/* Back */}
       <motion.button
         initial={{ opacity: 0, x: -8 }}
@@ -322,13 +322,13 @@ export function TutReader({ tutorial, onBack, onTutorialClick }: TutReaderProps)
         Back to Tutorials
       </motion.button>
 
-      <div className="flex gap-6 items-start">
+      <div className="flex gap-6 xl:gap-10 items-start">
         {/* Step sidebar — desktop */}
         <motion.aside
           initial={{ opacity: 0, x: -12 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: DUR_MD, ease: EASE_OUT }}
-          className="hidden lg:block w-56 xl:w-64 shrink-0 sticky top-24 self-start"
+          className="hidden lg:block w-56 xl:w-64 2xl:w-72 shrink-0 sticky top-24 self-start"
         >
           <div className="rounded-xl border border-border bg-card p-3 space-y-1">
             <div className="px-2 py-1.5 text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium">

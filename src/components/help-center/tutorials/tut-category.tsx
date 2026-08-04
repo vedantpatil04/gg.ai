@@ -40,7 +40,7 @@ export function TutCategoryPage({ category, onBack, onTutorialClick }: TutCatego
   const isFiltering = query.trim().length > 0;
 
   return (
-    <div className="p-4 md:p-6 max-w-[1200px] mx-auto pb-16 space-y-10">
+    <div className="p-4 md:p-6 xl:p-8 max-w-none pb-16 space-y-10">
       {/* Back */}
       <motion.button
         initial={{ opacity: 0, x: -8 }}
@@ -69,9 +69,7 @@ export function TutCategoryPage({ category, onBack, onTutorialClick }: TutCatego
             className="size-14 md:size-16 rounded-2xl flex items-center justify-center shrink-0"
             style={{ background: `color-mix(in oklab, ${category.accentColor} 12%, transparent)` }}
           >
-            <div style={{ color: category.accentColor }}>
-              <Icon className="size-7 md:size-8" />
-            </div>
+            <Icon className="size-7 md:size-8" style={{ color: category.accentColor }} />
           </div>
           <div className="flex-1 min-w-0">
             <div
@@ -153,7 +151,7 @@ export function TutCategoryPage({ category, onBack, onTutorialClick }: TutCatego
               variants={STAGGER(0.05, 0.05)}
               initial="hidden"
               animate="show"
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4"
             >
               {filtered.map(t => (
                 <motion.div key={t.id} variants={FADE_UP}>
@@ -173,7 +171,7 @@ export function TutCategoryPage({ category, onBack, onTutorialClick }: TutCatego
                 variants={STAGGER(0.05, 0.05)}
                 initial="hidden"
                 animate="show"
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4"
               >
                 {featured.map(t => (
                   <motion.div key={t.id} variants={FADE_UP}>

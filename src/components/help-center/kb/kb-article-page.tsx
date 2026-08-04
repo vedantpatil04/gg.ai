@@ -396,7 +396,7 @@ export function KbArticlePage({ article, onBack, onArticleClick }: KbArticlePage
     <>
       <ReadingProgressBar percent={scrollPct} />
 
-      <div className="p-4 md:p-6 max-w-[1200px] mx-auto pb-16">
+      <div className="p-4 md:p-6 xl:p-8 max-w-none pb-16">
         {/* Back button */}
         <motion.button
           initial={{ opacity: 0, x: -8 }}
@@ -409,7 +409,7 @@ export function KbArticlePage({ article, onBack, onArticleClick }: KbArticlePage
           Back to Knowledge Base
         </motion.button>
 
-        <div className="flex gap-8 items-start">
+        <div className="flex gap-8 xl:gap-12 items-start">
           {/* Main content */}
           <motion.article
             initial={{ opacity: 0, y: 16 }}
@@ -529,7 +529,7 @@ export function KbArticlePage({ article, onBack, onArticleClick }: KbArticlePage
               initial={{ opacity: 0, x: 16 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: DUR_MD, ease: EASE_OUT, delay: 0.1 }}
-              className="hidden xl:block w-56 shrink-0 sticky top-24 self-start"
+              className="hidden xl:block w-64 2xl:w-72 shrink-0 sticky top-24 self-start"
             >
               <div className="rounded-xl border border-border bg-card p-4">
                 <TableOfContents

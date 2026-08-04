@@ -12,14 +12,7 @@ import { FADE_UP } from "@/lib/motion";
 
 function CommunityIllustration() {
   return (
-    <svg
-      width="80"
-      height="64"
-      viewBox="0 0 80 64"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
+    <svg width="80" height="64" viewBox="0 0 80 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       {/* Person 1 */}
       <circle cx="28" cy="20" r="8" fill="currentColor" fillOpacity="0.18" />
       <ellipse cx="28" cy="42" rx="11" ry="9" fill="currentColor" fillOpacity="0.12" />
@@ -67,8 +60,7 @@ export function CommunityActivityCard({ cityName }: { cityName?: string }) {
         <div className="max-w-[200px]">
           <div className="text-sm font-semibold">No community activity yet.</div>
           <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-            Reports, resolutions, and citizen advisories for {cityName ?? "your city"} will appear
-            here as they come in.
+            Reports, resolutions, and citizen advisories for {cityName ?? "your city"} will appear here as they come in.
           </p>
         </div>
       </motion.div>
