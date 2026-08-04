@@ -1,0 +1,26 @@
+{
+  "title": "Notifications",
+  "empty": "You’re all caught up!",
+  "emptyDescription": "No new notifications right now.",
+  "markAllRead": "Mark all as read",
+  "markRead": "Mark as read",
+  "dismiss": "Dismiss",
+  "viewAll": "View all notifications",
+  "preferences": "Notification Preferences",
+  "new": "{{count}} new notification",
+  "new_plural": "{{count}} new notifications",
+  "types": {
+    "environment": "Environmental Alert",
+    "complaints": "Complaint Update",
+    "reports": "Report Update",
+    "authority": "Authority Update",
+    "system": "System Notification",
+    "security": "Security Alert"
+  },
+  "actions": {
+    "viewComplaint": "View complaint",
+    "viewReport": "View report",
+    "viewAlert": "View alert",
+    "viewDetails": "View details"
+  }
+}

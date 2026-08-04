@@ -1,0 +1,31 @@
+{
+  "generic": "ಏನೋ ತಪ್ಪಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+  "network": "ನೆಟ್‌ವರ್ಕ್ ದೋಷ. ನಿಮ್ಮ ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಿ.",
+  "unauthorized": "You are not authorized to perform this action.",
+  "forbidden": "You don’t have permission to access this resource.",
+  "notFound": "The requested resource was not found.",
+  "serverError": "Server error. Please try again later.",
+  "timeout": "The request timed out. Please try again.",
+  "loadFailed": "ಡೇಟಾ ಲೋಡ್ ವಿಫಲವಾಯಿತು. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+  "saveFailed": "ಬದಲಾವಣೆಗಳನ್ನು ಉಳಿಸಲು ವಿಫಲವಾಯಿತು. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+  "deleteFailed": "Failed to delete. Please try again.",
+  "sessionExpired": "ನಿಮ್ಮ ಅಧಿವೇಶನ ಮುಕ್ತಾಯಗೊಂಡಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಲಾಗ್ ಇನ್ ಮಾಡಿ.",
+  "invalidCredentials": "ಅಮಾನ್ಯ ಇಮೇಲ್ ಅಥವಾ ಪಾಸ್‌ವರ್ಡ್.",
+  "emailTaken": "This email address is already registered.",
+  "tooManyRequests": "Too many attempts. Please wait a moment.",
+  "404": {
+    "title": "Signal lost",
+    "description": "The page you’re looking for isn’t on the grid.",
+    "action": "Return to base"
+  },
+  "boundary": {
+    "title": "This page didn’t load",
+    "description": "Something went wrong on our end.",
+    "retry": "Try again",
+    "home": "Go home"
+  },
+  "offline": {
+    "title": "You’re offline",
+    "description": "Check your connection and try again."
+  }
+}

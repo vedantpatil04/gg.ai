@@ -23,6 +23,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+
+// i18n integration: the i18n module is initialized at import time
+import { i18n } from "@/i18n";
+import { LANGUAGE_NAMES, SUPPORTED_LANGUAGES } from "@/i18n/config";
+
 import {
   languageRegionApi,
   AUTO_TIMEZONE,
@@ -31,15 +36,10 @@ import {
   type TimeFormat,
   type NumberFormat,
   type MeasurementUnit,
+  type Language,
 } from "@/lib/api/language-region.api";
 
 // ─── Static option metadata ───────────────────────────────────────────────────
-const LANGUAGES = [
-  { code: "en", flag: "🇺🇸", label: "English" },
-  { code: "hi", flag: "🇮🇳", label: "Hindi" },
-  { code: "kn", flag: "🇮🇳", label: "Kannada" },
-  { code: "mr", flag: "🇮🇳", label: "Marathi" },
-] as const;
 
 const DATE_FORMAT_OPTIONS: { value: DateFormat; label: string }[] = [
   { value: "DD/MM/YYYY", label: "DD/MM/YYYY" },
@@ -144,9 +144,18 @@ export function LanguageRegionPanel() {
         });
       return { previous };
     },
-    onSuccess: (updated) => {
+    onSuccess: (updated, patch) => {
       qc.setQueryData(["language-region-preferences"], updated);
       toast.success("Language & Region preferences updated");
+
+      // ── i18n integration ────────────────────────────────────────────────
+      // If the user changed their language, apply it to i18next immediately.
+      // This updates the active locale for the entire app without a page
+      // reload. The i18n module's `languageChanged` listener persists the
+      // new value to localStorage automatically.
+      if (patch.language && SUPPORTED_LANGUAGES.includes(patch.language)) {
+        void i18n.changeLanguage(patch.language);
+      }
     },
     onError: (err: unknown, patch, context) => {
       if (context?.previous)
@@ -198,44 +207,65 @@ export function LanguageRegionPanel() {
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-x-6 gap-y-6">
-          {/* Language */}
-          <div>
-            <div className="text-xs font-medium text-muted-foreground mb-2">
+          {/* ── Language ── */}
+          <div className="sm:col-span-2">
+            <div className="text-xs font-medium text-muted-foreground mb-3">
               Language
             </div>
-            <div className="flex flex-wrap gap-2">
-              {LANGUAGES.map((lng) => (
-                <button
-                  key={lng.code}
-                  type="button"
-                  aria-pressed={prefs.language === lng.code}
-                  onClick={() =>
-                    setField(
-                      "language",
-                      lng.code as LanguageRegionPreferences["language"],
-                    )
-                  }
-                  className={cn(
-                    "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-                    prefs.language === lng.code
-                      ? "border-primary bg-primary/10 text-primary font-medium"
-                      : "border-border hover:border-primary/40",
-                  )}
-                >
-                  <span aria-hidden="true">{lng.flag}</span>
-                  {lng.label}
-                  {prefs.language === lng.code && (
-                    <CheckCircle
-                      className="size-3.5"
-                      aria-hidden="true"
-                    />
-                  )}
-                </button>
-              ))}
+            <div
+              className="flex flex-wrap gap-2"
+              role="radiogroup"
+              aria-label="Language"
+            >
+              {SUPPORTED_LANGUAGES.map((code) => {
+                const meta = LANGUAGE_NAMES[code as Language];
+                const isActive = prefs.language === code;
+                return (
+                  <button
+                    key={code}
+                    type="button"
+                    role="radio"
+                    aria-checked={isActive}
+                    aria-label={`${meta.english} (${meta.native})`}
+                    onClick={() =>
+                      setField("language", code as Language)
+                    }
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+                      isActive
+                        ? "border-primary bg-primary/10 text-primary font-medium"
+                        : "border-border hover:border-primary/40",
+                    )}
+                  >
+                    {/* Native name — confirms the user can read it before switching */}
+                    <span className={cn(isActive ? "text-primary" : "")}>
+                      {meta.native}
+                    </span>
+                    {/* English name alongside, for discoverability */}
+                    {meta.native !== meta.english && (
+                      <span className="text-muted-foreground text-xs">
+                        {meta.english}
+                      </span>
+                    )}
+                    {isActive && (
+                      <CheckCircle
+                        className="size-3.5 text-primary"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </button>
+                );
+              })}
             </div>
+            {/* Language-change feedback — only visible while saving */}
+            {mutation.isPending && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Updating language…
+              </p>
+            )}
           </div>
 
-          {/* Timezone */}
+          {/* ── Timezone ── */}
           <div>
             <label
               className="text-xs font-medium text-muted-foreground mb-2 block"
@@ -277,7 +307,7 @@ export function LanguageRegionPanel() {
             </Select>
           </div>
 
-          {/* Date Format */}
+          {/* ── Date Format ── */}
           <div>
             <div className="text-xs font-medium text-muted-foreground mb-2 inline-flex items-center gap-1.5">
               <CalendarDays className="size-3.5" />
@@ -303,7 +333,7 @@ export function LanguageRegionPanel() {
             </RadioGroup>
           </div>
 
-          {/* Time Format */}
+          {/* ── Time Format ── */}
           <div>
             <div className="text-xs font-medium text-muted-foreground mb-2 inline-flex items-center gap-1.5">
               <Clock className="size-3.5" />
@@ -329,7 +359,7 @@ export function LanguageRegionPanel() {
             </RadioGroup>
           </div>
 
-          {/* Number Format */}
+          {/* ── Number Format ── */}
           <div>
             <div className="text-xs font-medium text-muted-foreground mb-2 inline-flex items-center gap-1.5">
               <Hash className="size-3.5" />
@@ -357,7 +387,7 @@ export function LanguageRegionPanel() {
             </RadioGroup>
           </div>
 
-          {/* Measurement Units */}
+          {/* ── Measurement Units ── */}
           <div>
             <div className="text-xs font-medium text-muted-foreground mb-2 inline-flex items-center gap-1.5">
               <Ruler className="size-3.5" />
@@ -391,10 +421,6 @@ export function LanguageRegionPanel() {
           </div>
         </div>
       )}
-
-      <div className="h-5 mt-3 text-xs text-muted-foreground inline-flex items-center gap-1.5">
-        {mutation.isPending && <>Saving…</>}
-      </div>
     </Panel>
   );
 }

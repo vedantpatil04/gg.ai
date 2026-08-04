@@ -1,0 +1,18 @@
+{
+  "dashboard": "डैशबोर्ड",
+  "map": "स्मार्ट मानचित्र",
+  "reports": "Reports",
+  "notifications": "सूचनाएं",
+  "settings": "सेटिंग्स",
+  "profile": "प्रोफ़ाइल",
+  "security": "सुरक्षा",
+  "help": "सहायता",
+  "logout": "लॉग आउट",
+  "citizen": "Citizen Portal",
+  "authority": "Authority Portal",
+  "administrator": "Admin Portal",
+  "home": "Home",
+  "back": "Back",
+  "menu": "Menu",
+  "search": "Search"
+}

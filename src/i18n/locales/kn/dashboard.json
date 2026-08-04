@@ -1,0 +1,35 @@
+{
+  "title": "Dashboard",
+  "welcome": "Welcome back",
+  "goodMorning": "Good morning",
+  "goodAfternoon": "Good afternoon",
+  "goodEvening": "Good evening",
+  "overview": "Overview",
+  "recentActivity": "Recent Activity",
+  "noActivity": "No recent activity.",
+  "widgets": {
+    "airQuality": "Air Quality",
+    "waterQuality": "Water Quality",
+    "noiseLevel": "Noise Level",
+    "weather": "Weather",
+    "complaints": "Complaints",
+    "alerts": "Alerts",
+    "reports": "Reports",
+    "map": "Environmental Map"
+  },
+  "aqi": {
+    "good": "Good",
+    "moderate": "Moderate",
+    "unhealthySensitive": "Unhealthy for Sensitive Groups",
+    "unhealthy": "Unhealthy",
+    "veryUnhealthy": "Very Unhealthy",
+    "hazardous": "Hazardous"
+  },
+  "noData": "No data available",
+  "lastUpdated": "Last updated {{time}}",
+  "refresh": "Refresh data",
+  "viewDetails": "View details",
+  "allClear": "All Clear",
+  "activeAlerts": "{{count}} active alert",
+  "activeAlerts_plural": "{{count}} active alerts"
+}

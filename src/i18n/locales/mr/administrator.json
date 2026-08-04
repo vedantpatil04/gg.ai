@@ -1,0 +1,29 @@
+{
+  "title": "Admin Portal",
+  "users": "User Management",
+  "cities": "City Management",
+  "complaints": "Complaint Management",
+  "authorities": "Authority Management",
+  "analytics": "Analytics",
+  "platformHealth": "Platform Health",
+  "security": "Security Center",
+  "settings": "Platform Settings",
+  "totalUsers": "Total Users",
+  "activeComplaints": "Active Complaints",
+  "citiesMonitored": "Cities Monitored",
+  "systemStatus": "System Status",
+  "users_mgmt": {
+    "title": "Users",
+    "invite": "Invite User",
+    "deactivate": "Deactivate",
+    "activate": "Activate",
+    "resetPassword": "Reset Password",
+    "changeRole": "Change Role"
+  },
+  "status": {
+    "operational": "Operational",
+    "degraded": "Degraded",
+    "outage": "Outage",
+    "maintenance": "Maintenance"
+  }
+}

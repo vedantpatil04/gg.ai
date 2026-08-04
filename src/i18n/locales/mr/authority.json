@@ -1,0 +1,27 @@
+{
+  "title": "Authority Portal",
+  "pendingComplaints": "Pending Complaints",
+  "assignedCases": "Assigned Cases",
+  "resolvedCases": "Resolved Cases",
+  "inspections": "Inspections",
+  "noComplaints": "No complaints assigned to you.",
+  "actions": {
+    "assign": "Assign",
+    "resolve": "Mark Resolved",
+    "reject": "Reject",
+    "addNote": "Add Note",
+    "escalate": "Escalate",
+    "schedule": "Schedule Inspection"
+  },
+  "reports": {
+    "title": "Reports",
+    "generate": "Generate Report",
+    "export": "Export",
+    "schedule": "Schedule Report"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline",
+    "onLeave": "On Leave"
+  }
+}

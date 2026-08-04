@@ -1,0 +1,45 @@
+{
+  "login": "Log in",
+  "signup": "Sign up",
+  "logout": "Log out",
+  "email": "Email",
+  "password": "Password",
+  "confirmPassword": "Confirm Password",
+  "forgotPassword": "Forgot password?",
+  "resetPassword": "Reset Password",
+  "newPassword": "New Password",
+  "currentPassword": "Current Password",
+  "rememberMe": "Remember me",
+  "orContinueWith": "Or continue with",
+  "alreadyHaveAccount": "Already have an account?",
+  "dontHaveAccount": "Don’t have an account?",
+  "welcomeBack": "Welcome back",
+  "createAccount": "Create your account",
+  "name": "Full Name",
+  "organization": "Organization",
+  "phone": "Phone Number",
+  "verifyEmail": "Verify your email",
+  "resendCode": "Resend code",
+  "resendIn": "Resend in {{seconds}}s",
+  "role": {
+    "citizen": "Citizen",
+    "authority": "Environmental Authority",
+    "administrator": "Administrator"
+  },
+  "portals": {
+    "citizen": "Citizen Portal",
+    "authority": "Authority Portal",
+    "administrator": "Admin Portal"
+  },
+  "twoFA": {
+    "title": "Two-Factor Authentication",
+    "description": "Enter the code from your authenticator app.",
+    "code": "Authentication Code",
+    "verify": "Verify"
+  },
+  "pendingApproval": {
+    "title": "Approval Pending",
+    "description": "Your authority account is under review. You’ll receive an email once approved."
+  },
+  "sessionExpired": "Your session has expired. Please log in again."
+}

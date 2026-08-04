@@ -1,3 +1,12 @@
+/**
+ * GreenGuard AI — Language & Region API
+ *
+ * i18n Phase 1: all four supported languages are now accepted.
+ * Previously only "en" was listed here; "hi", "kn", "mr" were gated
+ * behind UI-level "Coming Soon" flags and rejected by the backend validator.
+ * Both restrictions are now lifted in this phase.
+ */
+
 import client from "./client";
 
 export const SUPPORTED_LANGUAGES = ["en", "hi", "kn", "mr"] as const;
@@ -28,13 +37,15 @@ export interface LanguageRegionPreferences {
 
 export const languageRegionApi = {
   get: () =>
-    client
-      .get<{ success: boolean; data: { languageRegion: LanguageRegionPreferences } }>("/settings/language-region")
-      .then((r) => r.data),
+    client.get<{
+      success: boolean;
+      data: { languageRegion: LanguageRegionPreferences };
+    }>("/settings/language-region"),
 
   // Partial update — only the included fields are touched server-side.
   update: (patch: Partial<LanguageRegionPreferences>) =>
-    client
-      .patch<{ success: boolean; data: { languageRegion: LanguageRegionPreferences } }>("/settings/language-region", patch)
-      .then((r) => r.data),
+    client.patch<{
+      success: boolean;
+      data: { languageRegion: LanguageRegionPreferences };
+    }>("/settings/language-region", patch),
 };

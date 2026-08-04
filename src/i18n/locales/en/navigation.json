@@ -1,0 +1,18 @@
+{
+  "dashboard": "Dashboard",
+  "map": "Smart Map",
+  "reports": "Reports",
+  "notifications": "Notifications",
+  "settings": "Settings",
+  "profile": "Profile",
+  "security": "Security",
+  "help": "Help",
+  "logout": "Log out",
+  "citizen": "Citizen Portal",
+  "authority": "Authority Portal",
+  "administrator": "Admin Portal",
+  "home": "Home",
+  "back": "Back",
+  "menu": "Menu",
+  "search": "Search"
+}

@@ -1,0 +1,31 @@
+{
+  "generic": "Something went wrong. Please try again.",
+  "network": "Network error. Please check your connection.",
+  "unauthorized": "You are not authorized to perform this action.",
+  "forbidden": "You don’t have permission to access this resource.",
+  "notFound": "The requested resource was not found.",
+  "serverError": "Server error. Please try again later.",
+  "timeout": "The request timed out. Please try again.",
+  "loadFailed": "Failed to load data. Please try again.",
+  "saveFailed": "Failed to save changes. Please try again.",
+  "deleteFailed": "Failed to delete. Please try again.",
+  "sessionExpired": "Your session has expired. Please log in again.",
+  "invalidCredentials": "Invalid email or password.",
+  "emailTaken": "This email address is already registered.",
+  "tooManyRequests": "Too many attempts. Please wait a moment.",
+  "404": {
+    "title": "Signal lost",
+    "description": "The page you’re looking for isn’t on the grid.",
+    "action": "Return to base"
+  },
+  "boundary": {
+    "title": "This page didn’t load",
+    "description": "Something went wrong on our end.",
+    "retry": "Try again",
+    "home": "Go home"
+  },
+  "offline": {
+    "title": "You’re offline",
+    "description": "Check your connection and try again."
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "title": "Citizen Portal",
+  "submitComplaint": "Submit a Complaint",
+  "myComplaints": "My Complaints",
+  "nearbyAlerts": "Nearby Alerts",
+  "environmentalStatus": "Environmental Status",
+  "noComplaints": "You haven’t submitted any complaints yet.",
+  "complaints": {
+    "title": "Submit Complaint",
+    "new": "New Complaint",
+    "category": "Category",
+    "description": "Description",
+    "location": "Location",
+    "attachments": "Attachments",
+    "submit": "Submit Complaint",
+    "success": "Your complaint has been submitted successfully.",
+    "trackingId": "Tracking ID",
+    "status": {
+      "submitted": "Submitted",
+      "under_review": "Under Review",
+      "in_progress": "In Progress",
+      "resolved": "Resolved",
+      "rejected": "Rejected",
+      "closed": "Closed"
+    }
+  },
+  "categories": {
+    "air": "Air Quality",
+    "water": "Water Pollution",
+    "noise": "Noise Pollution",
+    "waste": "Waste Management",
+    "soil": "Soil Contamination",
+    "other": "Other"
+  }
+}

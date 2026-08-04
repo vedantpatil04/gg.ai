@@ -1,0 +1,33 @@
+{
+  "required": "This field is required.",
+  "email": {
+    "invalid": "Please enter a valid email address.",
+    "required": "Email address is required."
+  },
+  "password": {
+    "required": "Password is required.",
+    "minLength": "Password must be at least 8 characters.",
+    "mismatch": "Passwords do not match.",
+    "weak": "Use a mix of letters, numbers, and symbols."
+  },
+  "name": {
+    "required": "Full name is required.",
+    "minLength": "Name must be at least 2 characters."
+  },
+  "phone": {
+    "invalid": "Please enter a valid phone number."
+  },
+  "otp": {
+    "invalid": "Invalid code. Please try again.",
+    "required": "Verification code is required.",
+    "expired": "Code has expired. Please request a new one."
+  },
+  "file": {
+    "tooLarge": "File is too large.",
+    "invalidType": "File type not supported."
+  },
+  "minLength": "Must be at least {{count}} characters.",
+  "maxLength": "Must be no more than {{count}} characters.",
+  "min": "Must be at least {{count}}.",
+  "max": "Must be no more than {{count}}."
+}

@@ -1,0 +1,31 @@
+{
+  "generic": "कुछ गलत हो गया। कृपया पुनः प्रयास करें।",
+  "network": "नेटवर्क त्रुटि। कृपया अपना कनेक्शन जाँचें।",
+  "unauthorized": "You are not authorized to perform this action.",
+  "forbidden": "You don’t have permission to access this resource.",
+  "notFound": "The requested resource was not found.",
+  "serverError": "Server error. Please try again later.",
+  "timeout": "The request timed out. Please try again.",
+  "loadFailed": "डेटा लोड करने में विफल। पुनः प्रयास करें।",
+  "saveFailed": "परिवर्तन सहेजने में विफल। पुनः प्रयास करें।",
+  "deleteFailed": "Failed to delete. Please try again.",
+  "sessionExpired": "आपका सत्र समाप्त हो गया है। कृपया फिर से लॉग इन करें।",
+  "invalidCredentials": "अमान्य ईमेल या पासवर्ड।",
+  "emailTaken": "This email address is already registered.",
+  "tooManyRequests": "Too many attempts. Please wait a moment.",
+  "404": {
+    "title": "Signal lost",
+    "description": "The page you’re looking for isn’t on the grid.",
+    "action": "Return to base"
+  },
+  "boundary": {
+    "title": "This page didn’t load",
+    "description": "Something went wrong on our end.",
+    "retry": "Try again",
+    "home": "Go home"
+  },
+  "offline": {
+    "title": "You’re offline",
+    "description": "Check your connection and try again."
+  }
+}

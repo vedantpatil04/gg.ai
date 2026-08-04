@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion, useScroll, useTransform } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import {
   ArrowRight,
   Activity,
@@ -11,29 +10,20 @@ import {
   Leaf,
   GitBranch,
   Map,
-  ShieldCheck,
   Zap,
   Database,
-  Lock,
   CheckCircle2,
   ArrowUpRight,
   Layers,
   Radio,
   LineChart,
   Globe2,
-  ChevronDown,
-  Landmark,
-  Building2,
-  Trees,
-  GraduationCap,
-  HeartHandshake,
-  FlaskConical,
 } from "lucide-react";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { MiniDashboard } from "@/components/landing/MiniDashboard";
-import { LandingHeroPreview } from "@/components/landing/LandingHeroPreview";
-import { LANDING_HERO_PRIMARY } from "@/assets/landing/hero/landing-hero-media";
+import { Hero } from "@/components/landing/hero/Hero";
+import { TrustStrip } from "@/components/landing/TrustStrip";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -59,7 +49,7 @@ function Landing() {
     <div className="min-h-screen bg-background text-foreground antialiased selection:bg-[color:var(--color-primary)]/30 selection:text-foreground">
       <LandingHeader />
       <Hero />
-      <TrustedOrgStrip />
+      <TrustStrip />
       <PlatformOverview />
       <LiveOperations />
       <Modules />
@@ -72,270 +62,6 @@ function Landing() {
   );
 }
 
-/* ---------------- HERO ---------------- */
-
-/** Small local hook — mirrors the pattern used across environment components. */
-function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(mq.matches);
-    const onChange = () => setReduced(mq.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-  return reduced;
-}
-
-function Hero() {
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
-  const y = useTransform(scrollYProgress, [0, 1], [0, -80]);
-  const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
-  const reduced = usePrefersReducedMotion();
-
-  // Mouse-position highlight — desktop only, purely decorative, respects reduced motion.
-  const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (reduced) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    setMouse({
-      x: ((e.clientX - rect.left) / rect.width) * 100,
-      y: ((e.clientY - rect.top) / rect.height) * 100,
-    });
-  };
-
-  const scrollToOverview = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    document.getElementById("platform-overview")?.scrollIntoView({
-      behavior: reduced ? "auto" : "smooth",
-      block: "start",
-    });
-  };
-
-  return (
-    <section
-      ref={ref}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={() => setMouse(null)}
-      className="relative min-h-[100vh] overflow-hidden"
-    >
-      {/* Layered premium background */}
-      <div className="pointer-events-none absolute inset-0 -z-20">
-        <img
-          src={LANDING_HERO_PRIMARY.imageUrl}
-          alt={LANDING_HERO_PRIMARY.imageAlt}
-          className="absolute inset-0 size-full object-cover opacity-[0.14] dark:opacity-[0.16]"
-          loading="eager"
-          fetchPriority="high"
-        />
-        {/* Base wash so the photo reads as texture, not a competing image */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(180deg, var(--color-background) 0%, color-mix(in oklab, var(--color-background) 82%, transparent) 45%, var(--color-background) 100%)",
-          }}
-        />
-        <div
-          className="absolute inset-0 opacity-[0.35]"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, color-mix(in oklab, var(--color-border) 60%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in oklab, var(--color-border) 60%, transparent) 1px, transparent 1px)",
-            backgroundSize: "56px 56px",
-            maskImage: "radial-gradient(ellipse 80% 60% at 50% 0%, black 35%, transparent 75%)",
-          }}
-        />
-        <div
-          className="absolute inset-x-0 top-0 h-[60vh]"
-          style={{
-            background:
-              "radial-gradient(60% 50% at 30% 0%, color-mix(in oklab, var(--color-primary) 25%, transparent), transparent 70%), radial-gradient(50% 40% at 80% 10%, color-mix(in oklab, var(--color-info) 20%, transparent), transparent 70%)",
-          }}
-        />
-        {/* Soft moving particles — minimal, GPU-friendly, gated by reduced motion */}
-        {!reduced && (
-          <div className="absolute inset-0 overflow-hidden">
-            {[
-              { left: "12%", top: "22%", size: 4, delay: 0 },
-              { left: "68%", top: "14%", size: 3, delay: 1.4 },
-              { left: "84%", top: "38%", size: 5, delay: 0.6 },
-              { left: "38%", top: "10%", size: 3, delay: 2.1 },
-              { left: "55%", top: "30%", size: 4, delay: 3 },
-            ].map((p, i) => (
-              <motion.span
-                key={i}
-                className="absolute rounded-full bg-[color:var(--color-primary)]/40"
-                style={{ left: p.left, top: p.top, width: p.size, height: p.size }}
-                animate={{ y: [0, -18, 0], opacity: [0.15, 0.5, 0.15] }}
-                transition={{
-                  duration: 6 + i,
-                  delay: p.delay,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              />
-            ))}
-          </div>
-        )}
-        {/* Mouse-position glow — desktop only */}
-        {mouse && (
-          <div
-            className="hidden lg:block absolute inset-0 transition-opacity duration-300"
-            style={{
-              background: `radial-gradient(420px circle at ${mouse.x}% ${mouse.y}%, color-mix(in oklab, var(--color-primary) 10%, transparent), transparent 70%)`,
-            }}
-          />
-        )}
-      </div>
-
-      <motion.div
-        style={{ y, opacity }}
-        className="mx-auto max-w-[1440px] px-6 lg:px-10 pt-16 lg:pt-24 pb-16"
-      >
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-16 items-center">
-          {/* Left: copy */}
-          <div className="max-w-2xl">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 backdrop-blur px-3 py-1 text-xs"
-            >
-              <span className="relative flex size-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[color:var(--color-primary)] opacity-60" />
-                <span className="relative inline-flex size-1.5 rounded-full bg-[color:var(--color-primary)]" />
-              </span>
-              <span className="text-muted-foreground">Live</span>
-              <span className="text-foreground/80">Monitoring 14 cities · 1,200+ sensors</span>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.05 }}
-              className="font-display mt-6 text-[44px] leading-[1.05] sm:text-5xl lg:text-[64px] lg:leading-[1.04] font-semibold tracking-[-0.02em] text-balance"
-            >
-              Environmental{" "}
-              <span className="relative">
-                <span className="bg-gradient-to-br from-[color:var(--color-primary)] to-[color:var(--color-info)] bg-clip-text text-transparent">
-                  intelligence
-                </span>
-              </span>{" "}
-              for the cities of tomorrow.
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.12 }}
-              className="mt-5 text-lg text-muted-foreground leading-relaxed max-w-xl text-pretty"
-            >
-              GreenGuard AI unifies real-time sensor data, forecasting, citizen reports and AI
-              insight into a single operating picture — so authorities can monitor, predict and act
-              on environmental risk before it becomes a crisis.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.18 }}
-              className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3"
-            >
-              <Link
-                to="/dashboard"
-                className="group inline-flex h-11 items-center gap-2 rounded-md bg-foreground px-5 text-sm font-medium text-background hover:opacity-90 transition-opacity"
-              >
-                Launch Platform
-                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-              </Link>
-              <a
-                href="#platform-overview"
-                onClick={scrollToOverview}
-                className="group inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-              >
-                Explore the Platform
-                <ChevronDown className="size-4 transition-transform group-hover:translate-y-0.5" />
-              </a>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.7, delay: 0.3 }}
-              className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs text-muted-foreground"
-            >
-              {[
-                { Icon: ShieldCheck, t: "SOC 2 ready" },
-                { Icon: Lock, t: "End-to-end encrypted" },
-                { Icon: Database, t: "OpenData compatible" },
-                { Icon: Zap, t: "Sub-second alerting" },
-              ].map(({ Icon, t }) => (
-                <div key={t} className="flex items-center gap-1.5">
-                  <Icon className="size-3.5" />
-                  {t}
-                </div>
-              ))}
-            </motion.div>
-          </div>
-
-          {/* Right: live preview of the real Environmental Overview module */}
-          <div className="lg:pl-4">
-            <LandingHeroPreview />
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Scroll indicator */}
-      <a
-        href="#platform-overview"
-        onClick={scrollToOverview}
-        aria-label="Scroll to platform overview"
-        className="hidden sm:flex absolute bottom-6 left-1/2 -translate-x-1/2 flex-col items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-      >
-        <span className="text-[10px] uppercase tracking-[0.18em]">Scroll</span>
-        <ChevronDown
-          className="size-4"
-          style={{ animation: reduced ? "none" : "hero-scroll-bounce 2.2s ease-in-out infinite" }}
-        />
-      </a>
-    </section>
-  );
-}
-
-/* ---------------- TRUSTED ORGANIZATIONS STRIP ---------------- */
-function TrustedOrgStrip() {
-  const categories = [
-    { label: "Municipal Corporations", Icon: Landmark },
-    { label: "Smart Cities", Icon: Building2 },
-    { label: "Environmental Agencies", Icon: Trees },
-    { label: "Universities", Icon: GraduationCap },
-    { label: "NGOs", Icon: HeartHandshake },
-    { label: "Research Institutions", Icon: FlaskConical },
-  ];
-
-  return (
-    <section className="border-y border-border/60 bg-card/20 py-8">
-      <div className="mx-auto max-w-[1440px] px-6 lg:px-10">
-        <div className="text-center text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-6">
-          Built for the organizations protecting our cities
-        </div>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3 lg:grid-cols-6 lg:gap-4">
-          {categories.map(({ label, Icon }) => (
-            <div
-              key={label}
-              className="flex flex-col items-center gap-2 text-muted-foreground/70 grayscale opacity-80 hover:opacity-100 hover:text-foreground transition-all"
-            >
-              <Icon className="size-5" aria-hidden="true" />
-              <span className="text-[11px] font-medium text-center leading-tight">{label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 /* ---------------- PLATFORM OVERVIEW ---------------- */
 function PlatformOverview() {
   const stats = [
@@ -345,7 +71,7 @@ function PlatformOverview() {
     { k: "<800ms", l: "Alert latency" },
   ];
   return (
-    <section id="platform-overview" className="scroll-mt-24 border-y border-border/60 bg-card/30">
+    <section id="platform-overview" className="border-y border-border/60 bg-card/30">
       <div className="mx-auto max-w-[1440px] px-6 lg:px-10 py-14">
         <div className="grid gap-8 lg:grid-cols-[1.2fr_1fr] items-center">
           <div>

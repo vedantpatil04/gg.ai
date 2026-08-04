@@ -1,0 +1,2764 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.75rem;
+  /* Light: clean instrument-panel white with deep ink */
+  --background: oklch(0.985 0.005 200);
+  --foreground: oklch(0.18 0.03 230);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.03 230);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.03 230);
+  --primary: oklch(0.62 0.17 165);
+  /* signal green */
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.955 0.012 220);
+  --secondary-foreground: oklch(0.22 0.03 230);
+  --muted: oklch(0.955 0.012 220);
+  --muted-foreground: oklch(0.5 0.02 230);
+  --accent: oklch(0.93 0.04 190);
+  --accent-foreground: oklch(0.22 0.03 230);
+  --destructive: oklch(0.58 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.68 0.16 150);
+  --warning: oklch(0.78 0.16 70);
+  --info: oklch(0.65 0.15 230);
+  --border: oklch(0.9 0.012 220);
+  --input: oklch(0.92 0.012 220);
+  --ring: oklch(0.62 0.17 165);
+  --chart-1: oklch(0.62 0.17 165);
+  --chart-2: oklch(0.65 0.15 230);
+  --chart-3: oklch(0.78 0.16 70);
+  --chart-4: oklch(0.58 0.22 25);
+  --chart-5: oklch(0.55 0.18 290);
+  --sidebar: oklch(0.98 0.006 220);
+  --sidebar-foreground: oklch(0.22 0.03 230);
+  --sidebar-primary: oklch(0.62 0.17 165);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.945 0.012 220);
+  --sidebar-accent-foreground: oklch(0.22 0.03 230);
+  --sidebar-border: oklch(0.9 0.012 220);
+  --sidebar-ring: oklch(0.62 0.17 165);
+
+  --grad-aurora: linear-gradient(135deg,
+      oklch(0.62 0.17 165) 0%,
+      oklch(0.65 0.15 230) 60%,
+      oklch(0.55 0.18 290) 100%);
+  --grad-surface: linear-gradient(180deg, oklch(1 0 0 / 0.7), oklch(1 0 0 / 0.3));
+  --shadow-elev: 0 1px 0 oklch(1 0 0 / 0.5) inset, 0 10px 30px -12px oklch(0.2 0.04 230 / 0.18);
+  --shadow-glow:
+    0 0 0 1px oklch(0.62 0.17 165 / 0.25), 0 20px 60px -20px oklch(0.62 0.17 165 / 0.35);
+
+  /* Phase 5: Premium surface system — light theme */
+  --panel-bg: oklch(0.98 0.004 220 / 0.96);
+  --panel-border: oklch(0.88 0.01 220 / 0.8);
+  --panel-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.6) inset, 0 16px 48px -8px oklch(0.2 0.04 230 / 0.22),
+    0 4px 12px -4px oklch(0.2 0.04 230 / 0.12);
+
+  --card-bg: oklch(1 0 0 / 0.85);
+  --card-border: oklch(0.9 0.01 220 / 0.7);
+  --card-shadow: 0 1px 4px oklch(0.2 0.04 230 / 0.08), 0 0 0 1px oklch(1 0 0 / 0.8) inset;
+
+  --control-bg: oklch(0.99 0.003 220 / 0.92);
+  --control-border: oklch(0.88 0.01 220 / 0.6);
+  --control-shadow: 0 2px 8px oklch(0.2 0.04 230 / 0.14), 0 0 0 1px oklch(1 0 0 / 0.7) inset;
+
+  --overlay-bg: oklch(1 0 0 / 0.97);
+  --overlay-border: oklch(0.86 0.012 220 / 0.8);
+  --overlay-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.8) inset, 0 24px 64px -12px oklch(0.2 0.04 230 / 0.28),
+    0 8px 24px -8px oklch(0.2 0.04 230 / 0.16);
+}
+
+.dark {
+  /* Mission-control deep blue-black */
+  --background: oklch(0.16 0.022 240);
+  --foreground: oklch(0.96 0.01 220);
+  --card: oklch(0.21 0.025 240);
+  --card-foreground: oklch(0.96 0.01 220);
+  --popover: oklch(0.21 0.025 240);
+  --popover-foreground: oklch(0.96 0.01 220);
+  --primary: oklch(0.78 0.18 160);
+  --primary-foreground: oklch(0.14 0.02 240);
+  --secondary: oklch(0.26 0.03 240);
+  --secondary-foreground: oklch(0.96 0.01 220);
+  --muted: oklch(0.24 0.025 240);
+  --muted-foreground: oklch(0.7 0.02 230);
+  --accent: oklch(0.32 0.05 200);
+  --accent-foreground: oklch(0.96 0.01 220);
+  --destructive: oklch(0.68 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.78 0.18 160);
+  --warning: oklch(0.82 0.17 80);
+  --info: oklch(0.72 0.16 230);
+  --border: oklch(1 0 0 / 0.08);
+  --input: oklch(1 0 0 / 0.12);
+  --ring: oklch(0.78 0.18 160);
+  --chart-1: oklch(0.78 0.18 160);
+  --chart-2: oklch(0.72 0.16 230);
+  --chart-3: oklch(0.82 0.17 80);
+  --chart-4: oklch(0.68 0.22 25);
+  --chart-5: oklch(0.7 0.18 300);
+  --sidebar: oklch(0.18 0.022 240);
+  --sidebar-foreground: oklch(0.92 0.01 220);
+  --sidebar-primary: oklch(0.78 0.18 160);
+  --sidebar-primary-foreground: oklch(0.14 0.02 240);
+  --sidebar-accent: oklch(0.24 0.03 240);
+  --sidebar-accent-foreground: oklch(0.96 0.01 220);
+  --sidebar-border: oklch(1 0 0 / 0.06);
+  --sidebar-ring: oklch(0.78 0.18 160);
+
+  --grad-aurora: linear-gradient(135deg,
+      oklch(0.78 0.18 160) 0%,
+      oklch(0.65 0.18 230) 55%,
+      oklch(0.6 0.2 295) 100%);
+  --grad-surface: linear-gradient(180deg, oklch(1 0 0 / 0.06), oklch(1 0 0 / 0.02));
+  --shadow-elev: 0 1px 0 oklch(1 0 0 / 0.05) inset, 0 12px 40px -10px oklch(0 0 0 / 0.5);
+  --shadow-glow: 0 0 0 1px oklch(0.78 0.18 160 / 0.3), 0 20px 60px -20px oklch(0.78 0.18 160 / 0.4);
+
+  /* Phase 5: Premium surface system — dark theme */
+  --panel-bg: oklch(0.15 0.018 240 / 0.94);
+  --panel-border: oklch(1 0 0 / 0.09);
+  --panel-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.05) inset, 0 20px 60px -12px oklch(0 0 0 / 0.6),
+    0 4px 16px -4px oklch(0 0 0 / 0.4);
+
+  --card-bg: oklch(1 0 0 / 0.05);
+  --card-border: oklch(1 0 0 / 0.08);
+  --card-shadow: 0 1px 0 oklch(1 0 0 / 0.04) inset, 0 2px 8px oklch(0 0 0 / 0.24);
+
+  --control-bg: oklch(0.18 0.02 240 / 0.92);
+  --control-border: oklch(1 0 0 / 0.1);
+  --control-shadow: 0 0 0 1px oklch(1 0 0 / 0.04) inset, 0 4px 16px oklch(0 0 0 / 0.4);
+
+  --overlay-bg: oklch(0.14 0.018 240 / 0.97);
+  --overlay-border: oklch(1 0 0 / 0.11);
+  --overlay-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.05) inset, 0 28px 72px -16px oklch(0 0 0 / 0.7),
+    0 8px 28px -8px oklch(0 0 0 / 0.45);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family:
+      "Inter",
+      system-ui,
+      -apple-system,
+      sans-serif;
+    font-feature-settings: "cv11", "ss01", "ss03";
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+}
+
+@utility glass {
+  background: var(--grad-surface);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-elev);
+}
+
+/* ─── Phase 5: Premium Surface System ────────────────────────────────────────
+   Three elevation tiers replace the single semi-transparent `glass` utility
+   for map-overlay surfaces. The key difference vs `glass`: opacity is high
+   enough that the map beneath never bleeds through and makes text unreadable.
+   Each tier adds more shadow/depth to signal its elevation level.
+
+   Tier 1  glass-panel   — large panels: Layer Manager, drawer, search
+   Tier 2  glass-card    — data cards inside panels, KPI chips
+   Tier 3  glass-control — compact icon/button controls (zoom, compass)
+   Tier 4  glass-overlay — top-most overlays (popups, tooltips)
+─────────────────────────────────────────────────────────────────────────── */
+
+@utility glass-panel {
+  background: var(--panel-bg);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--panel-shadow);
+}
+
+@utility glass-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+}
+
+@utility glass-control {
+  background: var(--control-bg);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid var(--control-border);
+  box-shadow: var(--control-shadow);
+}
+
+@utility glass-overlay {
+  background: var(--overlay-bg);
+  backdrop-filter: blur(28px) saturate(170%);
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  border: 1px solid var(--overlay-border);
+  box-shadow: var(--overlay-shadow);
+}
+
+/* ─── Phase 5: Entrance animation for map overlay panels ─────────────────── */
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@utility panel-enter {
+  animation: panel-in 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ─── Phase 5: Shimmer skeleton loader ───────────────────────────────────── */
+@keyframes skel-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@utility skeleton {
+  background: linear-gradient(90deg,
+      var(--card-bg) 0%,
+      color-mix(in oklab, var(--color-foreground) 7%, transparent) 50%,
+      var(--card-bg) 100%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.8s linear infinite;
+}
+
+@utility aurora {
+  background-image: var(--grad-aurora);
+}
+
+@utility text-aurora {
+  background-image: var(--grad-aurora);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility grid-bg {
+  background-image:
+    linear-gradient(to right,
+      color-mix(in oklab, var(--color-foreground) 6%, transparent) 1px,
+      transparent 1px),
+    linear-gradient(to bottom,
+      color-mix(in oklab, var(--color-foreground) 6%, transparent) 1px,
+      transparent 1px);
+  background-size: 48px 48px;
+}
+
+@utility radial-spot {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%,
+      color-mix(in oklab, var(--color-primary) 22%, transparent),
+      transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 100%,
+      color-mix(in oklab, var(--color-info) 18%, transparent),
+      transparent 60%);
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-primary) 50%, transparent);
+  }
+
+  70% {
+    box-shadow: 0 0 0 14px color-mix(in oklab, var(--color-primary) 0%, transparent);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-primary) 0%, transparent);
+  }
+}
+
+@utility pulse-dot {
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes float-y {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@utility floaty {
+  animation: float-y 6s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@utility shimmer {
+  background: linear-gradient(90deg,
+      transparent,
+      color-mix(in oklab, var(--color-foreground) 8%, transparent),
+      transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2.4s linear infinite;
+}
+
+/* ─── Phase 2: Forecast hero ambience ─────────────────────────────────────── */
+@keyframes drift-blob {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  33% {
+    transform: translate(3%, -4%) scale(1.08);
+  }
+
+  66% {
+    transform: translate(-3%, 3%) scale(0.96);
+  }
+}
+
+@utility drift-blob {
+  animation: drift-blob 25s ease-in-out infinite;
+}
+
+@keyframes cloud-drift {
+  0% {
+    transform: translateX(-8%);
+  }
+
+  100% {
+    transform: translateX(8%);
+  }
+}
+
+@utility cloud-drift {
+  animation: cloud-drift 40s ease-in-out infinite alternate;
+}
+
+@keyframes particle-drift {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(var(--particle-x, 12px), -120px);
+    opacity: 0;
+  }
+}
+
+@utility particle-drift {
+  animation: particle-drift 18s linear infinite;
+}
+
+@keyframes orbit-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@utility orbit-spin {
+  animation: orbit-spin 14s linear infinite;
+}
+
+@keyframes wind-flow {
+  0% {
+    transform: translateX(-40%);
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  80% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(40%);
+    opacity: 0;
+  }
+}
+
+@utility wind-flow {
+  animation: wind-flow 2.6s ease-in-out infinite;
+}
+
+@keyframes wave-rise {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6%);
+  }
+}
+
+@utility wave-rise {
+  animation: wave-rise 4s ease-in-out infinite;
+}
+
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@utility marquee-scroll {
+  animation: marquee-scroll 22s linear infinite;
+}
+
+@keyframes glow-pulse {
+
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@utility glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* ─── Phase 1: Enterprise Application Shell — Design Tokens ──────────────────
+   All shell-level tokens live here so every phase that follows can read from
+   the same source of truth without touching component files.
+
+   Naming convention:
+     --shell-*      Shell layout geometry (widths, padding, heights)
+     --float-*      Floating / elevation aesthetics
+     --transition-* Duration + easing for motion primitives
+─────────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Workspace max-width tiers (consumed by WorkspaceContainer) */
+  --shell-workspace-narrow: 1280px;
+  --shell-workspace-default: 1600px;
+  --shell-workspace-wide: 1920px;
+
+  /* Sidebar geometry — Phase 2 will move these into the floating sidebar */
+  --shell-sidebar-width: 256px;
+  --shell-sidebar-collapsed-width: 80px;
+  --shell-topbar-height: 64px;
+
+  /* Spacing scale used by the shell (supplements Tailwind's scale) */
+  --shell-gap-xs: 0.5rem;
+  /* 8px  */
+  --shell-gap-sm: 0.75rem;
+  /* 12px */
+  --shell-gap-md: 1rem;
+  /* 16px */
+  --shell-gap-lg: 1.5rem;
+  /* 24px */
+  --shell-gap-xl: 2rem;
+  /* 32px */
+  --shell-gap-2xl: 3rem;
+  /* 48px */
+
+  /* Floating elevation scale — light theme */
+  --float-shadow-sm:
+    0 1px 2px oklch(0.2 0.04 230 / 0.06),
+    0 0 0 1px oklch(1 0 0 / 0.7) inset;
+  --float-shadow-md:
+    0 4px 12px -2px oklch(0.2 0.04 230 / 0.12),
+    0 1px 3px oklch(0.2 0.04 230 / 0.08),
+    0 0 0 1px oklch(1 0 0 / 0.6) inset;
+  --float-shadow-lg:
+    0 8px 24px -4px oklch(0.2 0.04 230 / 0.16),
+    0 2px 8px oklch(0.2 0.04 230 / 0.08),
+    0 0 0 1px oklch(1 0 0 / 0.55) inset;
+  --float-shadow-xl:
+    0 16px 48px -8px oklch(0.2 0.04 230 / 0.22),
+    0 4px 16px oklch(0.2 0.04 230 / 0.1),
+    0 0 0 1px oklch(1 0 0 / 0.5) inset;
+
+  /* Border radius scale */
+  --shell-radius-panel: 1rem;
+  /* 16px — sidebar, topbar */
+  --shell-radius-card: 0.875rem;
+  /* 14px — cards */
+  --shell-radius-chip: 0.5rem;
+  /* 8px  — badges, chips */
+
+  /* Transition system */
+  --transition-fast: 120ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-base: 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-slow: 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-layout: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Shell background — very slightly off-white for depth vs pure white cards */
+  --shell-bg: oklch(0.965 0.006 220);
+}
+
+.dark {
+  /* Floating elevation scale — dark theme */
+  --float-shadow-sm:
+    0 1px 2px oklch(0 0 0 / 0.3),
+    0 0 0 1px oklch(1 0 0 / 0.04) inset;
+  --float-shadow-md:
+    0 4px 12px -2px oklch(0 0 0 / 0.45),
+    0 1px 3px oklch(0 0 0 / 0.3),
+    0 0 0 1px oklch(1 0 0 / 0.05) inset;
+  --float-shadow-lg:
+    0 8px 24px -4px oklch(0 0 0 / 0.55),
+    0 2px 8px oklch(0 0 0 / 0.35),
+    0 0 0 1px oklch(1 0 0 / 0.06) inset;
+  --float-shadow-xl:
+    0 16px 48px -8px oklch(0 0 0 / 0.65),
+    0 4px 16px oklch(0 0 0 / 0.4),
+    0 0 0 1px oklch(1 0 0 / 0.05) inset;
+
+  /* Shell background — deeper than card for proper layering */
+  --shell-bg: oklch(0.13 0.018 240);
+}
+
+/* ─── Phase 1: Shell utility classes ─────────────────────────────────────────
+   These are composable utilities consumed by the shell components.
+   They do not replace existing utilities — they extend the system.
+─────────────────────────────────────────────────────────────────────────────── */
+
+/* Floating card — primary surface for workspace content */
+@utility float-card {
+  background: var(--color-card);
+  border-radius: var(--shell-radius-card);
+  box-shadow: var(--float-shadow-md);
+  border: 1px solid var(--color-border);
+}
+
+/* Floating panel — larger surface (sidebar, drawers) */
+@utility float-panel {
+  background: var(--color-sidebar);
+  border-radius: var(--shell-radius-panel);
+  box-shadow: var(--float-shadow-lg);
+  border: 1px solid var(--color-sidebar-border);
+}
+
+/* Elevated topbar */
+@utility float-topbar {
+  background: oklch(from var(--color-background) l c h / 0.85);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: var(--float-shadow-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Page-enter animation — applied to the main content area on route change */
+@keyframes shell-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility page-enter {
+  animation: shell-page-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none !important;
+  }
+}
+
+/* Shell background utility — use on the outermost wrapper */
+@utility shell-bg {
+  background-color: var(--shell-bg);
+}
+
+/* ─── Phase 2: Floating Sidebar — supplemental tokens ───────────────────────
+   These extend the Phase 1 shell tokens. Nothing from Phase 1 is altered.
+─────────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Floating sidebar geometry */
+  --sidebar-float-inset: 0.75rem;
+  /* 12px gap from viewport edge (the m-3) */
+  --sidebar-float-gap: 0.75rem;
+  /* 12px gap between sidebar and content */
+  --sidebar-expanded-width: 248px;
+  --sidebar-collapsed-width: 64px;
+
+  /* Content left offset = collapsed width + inset + gap */
+  --content-left-offset: 88px;
+  /* 64 + 12 + 12 */
+
+  /* Sidebar floating shadow — light */
+  --sidebar-shadow:
+    0 8px 32px -4px oklch(0.2 0.04 230 / 0.18),
+    0 2px 8px oklch(0.2 0.04 230 / 0.1),
+    0 0 0 1px oklch(1 0 0 / 0.06) inset;
+}
+
+.dark {
+  /* Sidebar floating shadow — dark */
+  --sidebar-shadow:
+    0 8px 32px -4px oklch(0 0 0 / 0.55),
+    0 2px 8px oklch(0 0 0 / 0.35),
+    0 0 0 1px oklch(1 0 0 / 0.05) inset;
+}
+
+/* Thin scrollbar for sidebar nav overflow */
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+@utility scrollbar-track-transparent {
+  scrollbar-color: transparent transparent;
+}
+
+@utility scrollbar-thumb-sidebar-border\/60 {
+  scrollbar-color: oklch(from var(--color-sidebar-border) l c h / 0.6) transparent;
+}
+
+/* ─── Phase 3: Enterprise Navbar — supplemental tokens ──────────────────────
+   Extends Phase 1 & 2 tokens. Nothing from earlier phases is altered.
+─────────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --navbar-height: 64px;
+
+  /* Search bar focus ring — matches sidebar-ring but scoped to navbar */
+  --navbar-search-ring: oklch(from var(--color-primary) l c h / 0.12);
+
+  /* Profile dropdown shadow */
+  --navbar-dropdown-shadow:
+    0 8px 24px -4px oklch(0.2 0.04 230 / 0.16),
+    0 2px 8px oklch(0.2 0.04 230 / 0.08),
+    0 0 0 1px oklch(0 0 0 / 0.04);
+}
+
+.dark {
+  --navbar-dropdown-shadow:
+    0 8px 24px -4px oklch(0 0 0 / 0.55),
+    0 2px 8px oklch(0 0 0 / 0.35),
+    0 0 0 1px oklch(1 0 0 / 0.05);
+}
+
+/* Scrolled navbar — elevated shadow transition class */
+@utility navbar-scrolled {
+  box-shadow:
+    0 4px 24px -2px oklch(0.15 0.03 230 / 0.18),
+    0 1px 4px oklch(0.15 0.03 230 / 0.08);
+}
+
+@utility navbar-scrolled-dark {
+  box-shadow:
+    0 4px 24px -2px oklch(0 0 0 / 0.5),
+    0 1px 4px oklch(0 0 0 / 0.3);
+}
+
+/* ─── V3 Environmental Overview: Dark-context overrides ──────────────────────
+   When .dark is forced on the EnvironmentOverview wrapper, ensure all
+   child components (glass cards, section headers, metric chips, maps,
+   chart labels, skeleton loaders) render correctly against the cinematic
+   dark background without requiring individual component changes.
+
+   We intentionally scope every rule to `.dark .env-v3-*` or use the
+   existing dark-variant CSS variables — no global side-effects.
+───────────────────────────────────────────────────────────────────────────── */
+
+/* V3 Glass card — enhanced dark-mode surface for the forced dark wrapper */
+@utility glass-v3 {
+  background: linear-gradient(135deg, oklch(1 0 0 / 0.07) 0%, oklch(1 0 0 / 0.03) 100%);
+  backdrop-filter: blur(22px) saturate(145%);
+  -webkit-backdrop-filter: blur(22px) saturate(145%);
+  border: 1px solid oklch(1 0 0 / 0.10);
+  box-shadow: 0 0 0 1px oklch(1 0 0 / 0.05) inset, 0 16px 48px -12px oklch(0 0 0 / 0.55);
+}
+
+/* V3 Hover float — GPU-accelerated lift for interactive cards */
+@utility float-hover {
+  transition:
+    transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.28s ease;
+}
+
+.float-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 60px oklch(0 0 0 / 0.45);
+}
+
+/* V3 Glow accent border animation */
+@keyframes v3-border-glow {
+
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1.0;
+  }
+}
+
+@utility glow-border {
+  animation: v3-border-glow 3s ease-in-out infinite;
+}
+
+/* V3 Score ring shimmer — used on the radial health score arc cap */
+@keyframes v3-score-shimmer {
+  0% {
+    stroke-dashoffset: 0;
+  }
+
+  100% {
+    stroke-dashoffset: -60;
+  }
+}
+
+/* Fade-up stagger utility for Framer Motion fallback in SSR */
+@keyframes v3-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility env-fade-up {
+  animation: v3-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Pulsing live indicator dot */
+@keyframes v3-live-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.65;
+  }
+
+  70% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@utility live-ping {
+  animation: v3-live-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GreenGuard AI — Policy Simulator Design System
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Semantic tokens ────────────────────────────────────────────────────── */
+:root {
+  /* Panel surfaces — three elevation tiers */
+  --sim-panel-bg:           oklch(1 0 0 / 0.82);
+  --sim-panel-border:       oklch(0.88 0.01 220 / 0.65);
+  --sim-panel-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.55) inset,
+    0 12px 40px -8px oklch(0.2 0.04 230 / 0.14),
+    0 2px 8px -2px oklch(0.2 0.04 230 / 0.08);
+  --sim-panel-hover-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.65) inset,
+    0 20px 56px -10px oklch(0.2 0.04 230 / 0.22),
+    0 4px 16px -4px oklch(0.2 0.04 230 / 0.14);
+
+  --sim-kpi-bg:             oklch(1 0 0 / 0.92);
+  --sim-kpi-border:         oklch(0.9 0.01 220 / 0.55);
+  --sim-kpi-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.8) inset,
+    0 4px 16px -4px oklch(0.2 0.04 230 / 0.1);
+  --sim-kpi-hover-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.9) inset,
+    0 10px 32px -6px oklch(0.2 0.04 230 / 0.2);
+
+  --sim-score-bg:           oklch(0.97 0.005 220 / 0.7);
+  --sim-score-border:       oklch(0.9 0.01 220 / 0.5);
+  --sim-muted-bg:           oklch(0.96 0.006 220 / 0.55);
+  --sim-muted-border:       oklch(0.9 0.01 220 / 0.45);
+
+  --sim-icon-badge-bg:      color-mix(in oklab, var(--primary) 10%, transparent);
+  --sim-icon-badge-border:  color-mix(in oklab, var(--primary) 22%, transparent);
+
+  --sim-btn-ghost-bg:       oklch(1 0 0 / 0.65);
+  --sim-btn-ghost-border:   oklch(0.88 0.01 220 / 0.6);
+  --sim-btn-ghost-shadow:   0 1px 4px oklch(0.2 0.04 230 / 0.08), 0 0 0 1px oklch(1 0 0 / 0.7) inset;
+  --sim-btn-ghost-hover-bg: oklch(1 0 0 / 0.88);
+  --sim-btn-ghost-hover-shadow:
+    0 3px 10px oklch(0.2 0.04 230 / 0.14), 0 0 0 1px oklch(1 0 0 / 0.82) inset;
+
+  /* Motion tokens */
+  --sim-ease:               cubic-bezier(0.22, 1, 0.36, 1);
+  --sim-t-fast:             120ms;
+  --sim-t-base:             200ms;
+  --sim-t-slow:             360ms;
+
+  /* Spacing scale */
+  --sim-space-xs: 0.25rem;
+  --sim-space-sm: 0.5rem;
+  --sim-space-md: 0.75rem;
+  --sim-space-lg: 1rem;
+  --sim-space-xl: 1.5rem;
+  --sim-space-2xl:2rem;
+}
+
+.dark {
+  --sim-panel-bg:           oklch(0.155 0.018 240 / 0.92);
+  --sim-panel-border:       oklch(1 0 0 / 0.088);
+  --sim-panel-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.04) inset,
+    0 20px 64px -14px oklch(0 0 0 / 0.6),
+    0 4px 18px -4px oklch(0 0 0 / 0.38);
+  --sim-panel-hover-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.055) inset,
+    0 24px 72px -14px oklch(0 0 0 / 0.7),
+    0 6px 24px -6px oklch(0 0 0 / 0.45);
+
+  --sim-kpi-bg:             oklch(0.175 0.022 240 / 0.9);
+  --sim-kpi-border:         oklch(1 0 0 / 0.09);
+  --sim-kpi-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.04) inset,
+    0 6px 20px -4px oklch(0 0 0 / 0.45);
+  --sim-kpi-hover-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.06) inset,
+    0 12px 36px -6px oklch(0 0 0 / 0.6);
+
+  --sim-score-bg:           oklch(0.19 0.022 240 / 0.7);
+  --sim-score-border:       oklch(1 0 0 / 0.07);
+  --sim-muted-bg:           oklch(0.2 0.022 240 / 0.55);
+  --sim-muted-border:       oklch(1 0 0 / 0.07);
+
+  --sim-icon-badge-bg:      color-mix(in oklab, var(--primary) 16%, transparent);
+  --sim-icon-badge-border:  color-mix(in oklab, var(--primary) 30%, transparent);
+
+  --sim-btn-ghost-bg:       oklch(1 0 0 / 0.06);
+  --sim-btn-ghost-border:   oklch(1 0 0 / 0.1);
+  --sim-btn-ghost-shadow:   0 0 0 1px oklch(1 0 0 / 0.04) inset, 0 2px 8px oklch(0 0 0 / 0.3);
+  --sim-btn-ghost-hover-bg: oklch(1 0 0 / 0.1);
+  --sim-btn-ghost-hover-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.06) inset, 0 4px 16px oklch(0 0 0 / 0.42);
+}
+
+/* ─── Panel ──────────────────────────────────────────────────────────────── */
+.sim-panel {
+  background: var(--sim-panel-bg);
+  border: 1px solid var(--sim-panel-border);
+  box-shadow: var(--sim-panel-shadow);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  transition:
+    box-shadow var(--sim-t-base) var(--sim-ease),
+    border-color var(--sim-t-base) var(--sim-ease);
+}
+
+.sim-panel:hover {
+  box-shadow: var(--sim-panel-hover-shadow);
+}
+
+/* ─── KPI card ───────────────────────────────────────────────────────────── */
+.sim-kpi-card {
+  background: var(--sim-kpi-bg);
+  border: 1px solid var(--sim-kpi-border);
+  box-shadow: var(--sim-kpi-shadow);
+  transition:
+    box-shadow var(--sim-t-base) var(--sim-ease),
+    transform var(--sim-t-base) var(--sim-ease),
+    border-color var(--sim-t-base) var(--sim-ease);
+  will-change: transform, box-shadow;
+  display: flex;
+  flex-direction: column;
+}
+
+.sim-kpi-card:hover {
+  box-shadow: var(--sim-kpi-hover-shadow);
+  transform: translateY(-2px);
+}
+
+.sim-hero-aqi {
+  min-height: 220px;
+}
+
+@media (min-width: 1024px) {
+  .sim-hero-aqi {
+    min-height: 0;
+  }
+}
+
+/* ─── Score card ─────────────────────────────────────────────────────────── */
+.sim-score-card {
+  background: var(--sim-score-bg);
+  border: 1px solid var(--sim-score-border);
+  transition: background var(--sim-t-fast) var(--sim-ease);
+}
+
+/* ─── Muted card ─────────────────────────────────────────────────────────── */
+.sim-muted-card {
+  background: var(--sim-muted-bg);
+  border: 1px solid var(--sim-muted-border);
+}
+
+/* ─── Icon badge ─────────────────────────────────────────────────────────── */
+.sim-icon-badge {
+  background: var(--sim-icon-badge-bg);
+  border: 1px solid var(--sim-icon-badge-border);
+}
+
+/* ─── Ghost button ───────────────────────────────────────────────────────── */
+.sim-btn-ghost {
+  background: var(--sim-btn-ghost-bg);
+  border: 1px solid var(--sim-btn-ghost-border);
+  box-shadow: var(--sim-btn-ghost-shadow);
+  color: var(--color-foreground);
+  transition:
+    background var(--sim-t-fast) var(--sim-ease),
+    box-shadow var(--sim-t-fast) var(--sim-ease),
+    transform var(--sim-t-fast) var(--sim-ease),
+    color var(--sim-t-fast) var(--sim-ease),
+    border-color var(--sim-t-fast) var(--sim-ease);
+}
+
+.sim-btn-ghost:hover:not(:disabled) {
+  background: var(--sim-btn-ghost-hover-bg);
+  box-shadow: var(--sim-btn-ghost-hover-shadow);
+  transform: translateY(-1px) scale(1.015);
+}
+
+.sim-btn-ghost:active:not(:disabled) {
+  transform: translateY(0) scale(0.975);
+  box-shadow: var(--sim-btn-ghost-shadow);
+}
+
+.sim-btn-ghost:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.sim-btn-ghost.sim-btn-active {
+  background: color-mix(in oklab, var(--color-primary) 12%, transparent);
+  border-color: color-mix(in oklab, var(--color-primary) 40%, transparent);
+  color: var(--color-primary);
+  box-shadow: 0 2px 8px -2px color-mix(in oklab, var(--color-primary) 20%, transparent);
+}
+
+.sim-btn-success {
+  color: var(--color-success) !important;
+  border-color: color-mix(in oklab, var(--color-success) 35%, transparent) !important;
+  background: color-mix(in oklab, var(--color-success) 10%, transparent) !important;
+}
+
+.sim-btn-error {
+  color: var(--color-destructive) !important;
+  border-color: color-mix(in oklab, var(--color-destructive) 35%, transparent) !important;
+  background: color-mix(in oklab, var(--color-destructive) 10%, transparent) !important;
+}
+
+/* ─── Primary button ─────────────────────────────────────────────────────── */
+.sim-btn-primary {
+  background-image: var(--grad-aurora, linear-gradient(135deg, var(--color-primary), var(--color-info)));
+  color: var(--color-primary-foreground);
+  border: 1px solid transparent;
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.15) inset,
+    0 4px 14px -4px color-mix(in oklab, var(--color-primary) 40%, transparent);
+  transition:
+    opacity var(--sim-t-fast) var(--sim-ease),
+    box-shadow var(--sim-t-fast) var(--sim-ease),
+    transform var(--sim-t-fast) var(--sim-ease);
+}
+
+.sim-btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px) scale(1.015);
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.2) inset,
+    0 8px 24px -6px color-mix(in oklab, var(--color-primary) 55%, transparent);
+}
+
+.sim-btn-primary:active:not(:disabled) {
+  opacity: 1;
+  transform: translateY(0) scale(0.975);
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.1) inset,
+    0 2px 6px -2px color-mix(in oklab, var(--color-primary) 25%, transparent);
+}
+
+.sim-btn-primary:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.sim-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── AI state button variants ───────────────────────────────────────────── */
+.sim-ai-stale {
+  animation: sim-stale-pulse 2s var(--sim-ease) infinite;
+}
+
+@keyframes sim-stale-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px color-mix(in oklab, var(--color-warning) 45%, transparent),
+      0 4px 14px -4px color-mix(in oklab, var(--color-warning) 30%, transparent),
+      0 1px 0 oklch(1 0 0 / 0.15) inset;
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px color-mix(in oklab, var(--color-warning) 28%, transparent),
+      0 8px 28px -6px color-mix(in oklab, var(--color-warning) 50%, transparent),
+      0 1px 0 oklch(1 0 0 / 0.15) inset;
+  }
+}
+
+.sim-ai-success {
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--color-success) 40%, transparent),
+    0 4px 14px -4px color-mix(in oklab, var(--color-success) 30%, transparent),
+    0 1px 0 oklch(1 0 0 / 0.15) inset;
+}
+
+.sim-ai-error {
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--color-destructive) 40%, transparent),
+    0 4px 14px -4px color-mix(in oklab, var(--color-destructive) 30%, transparent),
+    0 1px 0 oklch(1 0 0 / 0.15) inset;
+}
+
+/* ─── Button ripple ──────────────────────────────────────────────────────── */
+.sim-btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.sim-btn-ripple::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: oklch(1 0 0 / 0.18);
+  border-radius: inherit;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  pointer-events: none;
+}
+
+.sim-btn-ripple:active::after {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 0s, transform 0s;
+}
+
+/* ─── Preset chips ───────────────────────────────────────────────────────── */
+.sim-preset-chip-idle {
+  background: var(--sim-btn-ghost-bg);
+  border: 1px solid var(--sim-btn-ghost-border);
+  box-shadow: var(--sim-btn-ghost-shadow);
+  color: var(--color-muted-foreground);
+  transition:
+    background var(--sim-t-fast) var(--sim-ease),
+    color var(--sim-t-fast) var(--sim-ease),
+    box-shadow var(--sim-t-fast) var(--sim-ease),
+    transform var(--sim-t-fast) var(--sim-ease),
+    border-color var(--sim-t-fast) var(--sim-ease);
+}
+
+.sim-preset-chip-idle:hover {
+  background: var(--sim-btn-ghost-hover-bg);
+  color: var(--color-foreground);
+  box-shadow: var(--sim-btn-ghost-hover-shadow);
+  transform: translateY(-1px) scale(1.02);
+}
+
+.sim-preset-chip-idle:active {
+  transform: scale(0.97);
+}
+
+.sim-preset-chip-active {
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--color-primary) 18%, transparent),
+    color-mix(in oklab, var(--color-info) 14%, transparent)
+  );
+  border: 1px solid color-mix(in oklab, var(--color-primary) 40%, transparent);
+  color: var(--color-primary);
+  box-shadow:
+    0 2px 10px -2px color-mix(in oklab, var(--color-primary) 25%, transparent),
+    0 0 0 1px color-mix(in oklab, var(--color-primary) 12%, transparent) inset;
+  transition:
+    background var(--sim-t-fast) var(--sim-ease),
+    box-shadow var(--sim-t-fast) var(--sim-ease),
+    transform var(--sim-t-fast) var(--sim-ease);
+}
+
+.sim-preset-chip-active:hover {
+  transform: translateY(-1px) scale(1.02);
+}
+
+.sim-preset-chip-active:active {
+  transform: scale(0.97);
+}
+
+.sim-preset-chip:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* ─── Active dot on Compare ──────────────────────────────────────────────── */
+.sim-active-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  animation: sim-dot-breathe 2s var(--sim-ease) infinite;
+  margin-left: 2px;
+}
+
+@keyframes sim-dot-breathe {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.55; transform: scale(0.7); }
+}
+
+/* ─── Range slider ───────────────────────────────────────────────────────── */
+.sim-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--color-muted-foreground) 18%, transparent);
+  cursor: pointer;
+  transition: background var(--sim-t-fast) var(--sim-ease);
+  position: relative;
+  z-index: 1;
+}
+
+.sim-range:hover {
+  background: color-mix(in oklab, var(--color-muted-foreground) 26%, transparent);
+}
+
+.sim-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--range-color, var(--color-primary));
+  border: 2px solid oklch(1 0 0 / 0.9);
+  box-shadow:
+    0 1px 4px oklch(0 0 0 / 0.2),
+    0 0 0 1px var(--range-color, var(--color-primary));
+  cursor: grab;
+  transition:
+    transform var(--sim-t-fast) var(--sim-ease),
+    box-shadow var(--sim-t-fast) var(--sim-ease);
+  will-change: transform;
+}
+
+.sim-range::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow:
+    0 2px 10px oklch(0 0 0 / 0.25),
+    0 0 0 4px color-mix(in oklab, var(--range-color, var(--color-primary)) 22%, transparent);
+}
+
+.sim-range::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.15);
+  box-shadow:
+    0 3px 12px oklch(0 0 0 / 0.3),
+    0 0 0 6px color-mix(in oklab, var(--range-color, var(--color-primary)) 16%, transparent);
+}
+
+.sim-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--range-color, var(--color-primary));
+  border: 2px solid oklch(1 0 0 / 0.9);
+  box-shadow: 0 1px 4px oklch(0 0 0 / 0.2);
+  cursor: grab;
+  transition: transform var(--sim-t-fast) var(--sim-ease);
+}
+
+.sim-range::-moz-range-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.15);
+}
+
+.sim-range:focus-visible {
+  outline: none;
+}
+
+.sim-range:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--range-color, var(--color-primary)) 30%, transparent),
+    0 2px 8px oklch(0 0 0 / 0.2);
+}
+
+/* ─── Lever track fill ───────────────────────────────────────────────────── */
+.sim-lever-track-fill {
+  transition: width 16ms linear;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: width;
+}
+
+.sim-lever-row:not(:active) .sim-lever-track-fill {
+  transition: width 320ms var(--sim-ease);
+}
+
+/* ─── Lever row ──────────────────────────────────────────────────────────── */
+.sim-lever-row {
+  transition: background var(--sim-t-fast) var(--sim-ease);
+  border-radius: 0.625rem;
+  padding: 0.375rem 0.375rem;
+  margin: 0 -0.375rem;
+}
+
+.sim-lever-row:hover {
+  background: color-mix(in oklab, var(--color-muted-foreground) 4.5%, transparent);
+}
+
+.sim-lever-highlighted {
+  animation: sim-lever-flash 1.8s var(--sim-ease) forwards;
+}
+
+@keyframes sim-lever-flash {
+  0%   { background: color-mix(in oklab, var(--color-primary) 13%, transparent); }
+  40%  { background: color-mix(in oklab, var(--color-primary) 9%, transparent); }
+  100% { background: transparent; }
+}
+
+/* ─── Custom scrollbar ───────────────────────────────────────────────────── */
+.sim-scrollbar { scrollbar-width: thin; scrollbar-color: var(--sim-muted-border) transparent; }
+.sim-scrollbar::-webkit-scrollbar { width: 4px; }
+.sim-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.sim-scrollbar::-webkit-scrollbar-thumb { background: var(--sim-muted-border); border-radius: 9999px; }
+.sim-scrollbar::-webkit-scrollbar-thumb:hover { background: color-mix(in oklab, var(--color-muted-foreground) 38%, transparent); }
+
+/* ─── Select ─────────────────────────────────────────────────────────────── */
+.sim-select {
+  background: var(--sim-muted-bg);
+  border: 1px solid var(--sim-muted-border);
+  color: var(--color-foreground);
+  transition: border-color var(--sim-t-fast) var(--sim-ease), box-shadow var(--sim-t-fast) var(--sim-ease);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+.sim-select:focus {
+  outline: none;
+  border-color: color-mix(in oklab, var(--color-primary) 50%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 15%, transparent);
+}
+
+/* ─── Compare panel ──────────────────────────────────────────────────────── */
+.sim-compare-panel {
+  border-color: color-mix(in oklab, var(--color-primary) 25%, var(--sim-panel-border));
+  box-shadow:
+    var(--sim-panel-shadow),
+    0 0 0 1px color-mix(in oklab, var(--color-primary) 10%, transparent);
+}
+
+.sim-compare-active-badge {
+  background: color-mix(in oklab, var(--color-primary) 10%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-primary) 28%, transparent);
+  color: var(--color-primary);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+/* ─── Stale AI warning bar ───────────────────────────────────────────────── */
+.sim-stale-bar {
+  background: color-mix(in oklab, var(--color-warning) 8%, var(--sim-panel-bg));
+  border: 1px solid color-mix(in oklab, var(--color-warning) 30%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ─── Summary cell ───────────────────────────────────────────────────────── */
+.sim-summary-cell {
+  background: var(--sim-muted-bg);
+  border: 1px solid var(--sim-muted-border);
+  transition:
+    background var(--sim-t-fast) var(--sim-ease),
+    transform var(--sim-t-fast) var(--sim-ease),
+    box-shadow var(--sim-t-fast) var(--sim-ease);
+}
+
+.sim-summary-cell:hover {
+  background: var(--sim-btn-ghost-hover-bg);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px -2px oklch(0 0 0 / 0.1);
+}
+
+.sim-summary-cell:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* ─── AQI hero ───────────────────────────────────────────────────────────── */
+.sim-aqi-hero-number {
+  font-size: clamp(2.75rem, 5.5vw, 4.25rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  transition: color var(--sim-t-slow) var(--sim-ease);
+}
+
+.sim-aqi-status-badge {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  transition:
+    background-color var(--sim-t-slow) var(--sim-ease),
+    color var(--sim-t-slow) var(--sim-ease),
+    border-color var(--sim-t-slow) var(--sim-ease);
+}
+
+/* ─── Progress bars ──────────────────────────────────────────────────────── */
+.sim-kpi-card .h-full.rounded-full,
+.sim-score-card .h-full.rounded-full {
+  transition: width 700ms var(--sim-ease), background 350ms var(--sim-ease);
+}
+
+/* ─── Chart tooltip ──────────────────────────────────────────────────────── */
+.sim-chart-tooltip {
+  background: var(--color-popover);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12px;
+  box-shadow: 0 8px 24px -8px oklch(0 0 0 / 0.25);
+  min-width: 130px;
+}
+
+.sim-chart-tooltip-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-muted-foreground);
+  margin-bottom: 6px;
+}
+
+.sim-chart-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.sim-chart-tooltip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sim-chart-tooltip-name { flex: 1; color: var(--color-muted-foreground); }
+.sim-chart-tooltip-val  { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--color-foreground); }
+
+/* ─── Skeleton ───────────────────────────────────────────────────────────── */
+@keyframes sim-skeleton-wave {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.sim-skeleton {
+  background: linear-gradient(
+    105deg,
+    var(--sim-muted-bg) 30%,
+    color-mix(in oklab, var(--color-muted-foreground) 10%, var(--sim-muted-bg)) 50%,
+    var(--sim-muted-bg) 70%
+  );
+  background-size: 200% 100%;
+  animation: sim-skeleton-wave 1.6s linear infinite;
+  border: 1px solid var(--sim-muted-border);
+}
+
+/* ─── KPI shimmer on recalculating ──────────────────────────────────────── */
+@keyframes sim-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.sim-kpi-recalculating { position: relative; overflow: hidden; }
+
+.sim-kpi-recalculating::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 30%, oklch(1 0 0 / 0.07) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: sim-shimmer 1.2s linear infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.dark .sim-kpi-recalculating::after {
+  background: linear-gradient(105deg, transparent 30%, oklch(1 0 0 / 0.04) 50%, transparent 70%);
+  background-size: 200% 100%;
+}
+
+/* ─── AI generating dots ─────────────────────────────────────────────────── */
+@keyframes sim-dot-pulse-anim {
+  0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+  40%           { opacity: 1;   transform: scale(1);   }
+}
+
+.sim-dot-pulse {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.sim-dot-pulse::before,
+.sim-dot-pulse::after,
+.sim-dot-pulse {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  animation: sim-dot-pulse-anim 1.4s ease-in-out infinite;
+}
+
+.sim-dot-pulse::before { animation-delay: 0s; }
+.sim-dot-pulse         { animation-delay: 0.2s; }
+.sim-dot-pulse::after  { animation-delay: 0.4s; }
+
+/* ─── Typography ─────────────────────────────────────────────────────────── */
+.sim-page-title {
+  font-family: var(--font-display, inherit);
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+}
+
+.sim-subtitle {
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--color-muted-foreground);
+}
+
+.sim-eyebrow {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ─── Entrance animations ────────────────────────────────────────────────── */
+@keyframes sim-card-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sim-panel-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.996); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes sim-hero-num-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sim-cell-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sim-area-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.sim-panel-enter {
+  animation: sim-panel-in 0.24s var(--sim-ease) both;
+}
+
+.sim-header {
+  animation: sim-card-in 0.28s var(--sim-ease) 0.04s both;
+}
+
+.sim-preset-section {
+  animation: sim-card-in 0.28s var(--sim-ease) 0.08s both;
+}
+
+.sim-kpi-card:nth-child(1) { animation: sim-card-in 0.3s var(--sim-ease) 0.10s both; }
+.sim-kpi-card:nth-child(2) { animation: sim-card-in 0.3s var(--sim-ease) 0.14s both; }
+.sim-kpi-card:nth-child(3) { animation: sim-card-in 0.3s var(--sim-ease) 0.18s both; }
+.sim-kpi-card:nth-child(4) { animation: sim-card-in 0.3s var(--sim-ease) 0.22s both; }
+
+.sim-preset-chip { animation: sim-card-in 0.25s var(--sim-ease) both; }
+
+.sim-hero-aqi .sim-aqi-hero-number {
+  animation: sim-hero-num-in 0.4s var(--sim-ease) 0.05s both;
+}
+
+.sim-summary-cell:nth-child(1) { animation: sim-cell-in 0.25s var(--sim-ease) 0.05s both; }
+.sim-summary-cell:nth-child(2) { animation: sim-cell-in 0.25s var(--sim-ease) 0.09s both; }
+.sim-summary-cell:nth-child(3) { animation: sim-cell-in 0.25s var(--sim-ease) 0.13s both; }
+.sim-summary-cell:nth-child(4) { animation: sim-cell-in 0.25s var(--sim-ease) 0.17s both; }
+.sim-summary-cell:nth-child(5) { animation: sim-cell-in 0.25s var(--sim-ease) 0.21s both; }
+.sim-summary-cell:nth-child(6) { animation: sim-cell-in 0.25s var(--sim-ease) 0.25s both; }
+
+.sim-score-card .h-full { animation: sim-bar-fill 0.8s var(--sim-ease) 0.2s both; }
+
+@keyframes sim-bar-fill { from { width: 0; } }
+
+.recharts-area-area { animation: sim-area-fade 0.5s var(--sim-ease) both; }
+
+/* ─── Accessibility ──────────────────────────────────────────────────────── */
+.sim-kpi-card:focus-within { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+
+@media (forced-colors: active) {
+  .sim-aqi-status-badge  { border: 1px solid ButtonText; forced-color-adjust: none; }
+  .sim-lever-track-fill  { forced-color-adjust: none; }
+  .sim-aqi-hero-number   { forced-color-adjust: none; }
+}
+
+/* ─── Touch targets ──────────────────────────────────────────────────────── */
+@media (max-width: 639px) {
+  .sim-btn-ghost,
+  .sim-btn-primary,
+  .sim-preset-chip { min-height: 40px; }
+
+  .sim-aqi-hero-number { font-size: 2.75rem; }
+  .sim-hero-aqi        { min-height: 180px; }
+  .sim-summary-cell    { padding: 0.5rem 0.625rem; }
+}
+
+/* ─── Tablet ─────────────────────────────────────────────────────────────── */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .sim-aqi-hero-number { font-size: 3.5rem; }
+  .sim-panel { backdrop-filter: blur(16px) saturate(145%); -webkit-backdrop-filter: blur(16px) saturate(145%); }
+}
+
+/* ─── 1080p+ ─────────────────────────────────────────────────────────────── */
+@media (min-width: 1440px) {
+  .sim-panel { backdrop-filter: blur(24px) saturate(165%); -webkit-backdrop-filter: blur(24px) saturate(165%); }
+}
+
+/* ─── Reduce motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .sim-header,
+  .sim-preset-section,
+  .sim-preset-chip,
+  .sim-panel-enter,
+  .sim-kpi-card,
+  .sim-summary-cell,
+  .sim-score-card .h-full,
+  .sim-hero-aqi .sim-aqi-hero-number,
+  .recharts-area-area,
+  .sim-ai-stale,
+  .sim-active-dot,
+  .sim-dot-pulse,
+  .sim-dot-pulse::before,
+  .sim-dot-pulse::after,
+  .sim-lever-highlighted,
+  .sim-skeleton,
+  .sim-kpi-recalculating::after,
+  .sim-btn-ripple::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .sim-kpi-card:hover,
+  .sim-summary-cell:hover,
+  .sim-btn-ghost:hover:not(:disabled),
+  .sim-btn-primary:hover:not(:disabled),
+  .sim-preset-chip-idle:hover,
+  .sim-preset-chip-active:hover {
+    transform: none !important;
+  }
+
+  .sim-lever-highlighted {
+    background: color-mix(in oklab, var(--color-primary) 8%, transparent);
+  }
+
+  .sim-aqi-status-badge { transition: none !important; }
+  .sim-lever-track-fill,
+  .sim-lever-row:not(:active) .sim-lever-track-fill { transition: none !important; }
+  .sim-kpi-card .h-full.rounded-full,
+  .sim-score-card .h-full.rounded-full { transition: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PHASE 1 — INFORMATION ARCHITECTURE & PREMIUM LAYOUT SYSTEM
+   ═══════════════════════════════════════════════════════════════════════════
+   Scope: Environmental Overview page only.
+   All existing utilities are preserved above — nothing below modifies them.
+
+   Design contract:
+     •  env-*          Environmental Overview page layout
+     •  Enterprise spacing scale: section gaps use CSS custom properties
+     •  Typography hierarchy: 4 levels (eyebrow, section, display, compact)
+     •  Section modes: full / split-right / stacked
+     •  Semantic colour: each content domain gets one accent colour
+     •  Section dividers: subtle gradient rules, not borders
+     •  Reduced motion: every animation is gated
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Enterprise spacing scale ───────────────────────────────────────────────
+   Separate from --shell-gap-* which belongs to the app shell.
+   These values govern the environmental overview scrolling experience.
+────────────────────────────────────────────────────────────────────────── */
+:root {
+  --env-gap-section:  5.5rem;   /* 88px — major zone separation        */
+  --env-gap-divider:  3rem;     /* 48px — above/below section dividers */
+  --env-split-header: 38%;      /* split-right header column share     */
+  --env-max-body:     1520px;   /* editorial max-width                 */
+  --env-px-body:      1rem;     /* horizontal page padding             */
+}
+
+@media (min-width: 640px)  { :root { --env-px-body: 1.5rem; } }
+@media (min-width: 768px)  { :root { --env-px-body: 2.5rem; } }
+@media (min-width: 1280px) { :root { --env-px-body: 3.5rem; } }
+@media (min-width: 1536px) { :root { --env-px-body: 4rem;   } }
+
+/* ── Body container ──────────────────────────────────────────────────────── */
+.env-body-container {
+  max-width: var(--env-max-body);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left:  var(--env-px-body);
+  padding-right: var(--env-px-body);
+}
+
+/* ── Zone wrapper (used for the telemetry strip which has no section header) */
+.env-zone {
+  padding-top: var(--env-gap-section);
+}
+
+.env-zone--telemetry {
+  padding-top: 2rem;
+}
+
+@media (min-width: 768px) {
+  .env-zone--telemetry { padding-top: 2.75rem; }
+}
+
+/* ── Section divider ─────────────────────────────────────────────────────────
+   A breath of whitespace + a very subtle fading gradient rule.
+   Marks zone boundaries without visual weight.
+────────────────────────────────────────────────────────────────────────── */
+.env-section-divider {
+  height: 1px;
+  margin-top:    var(--env-gap-divider);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    oklch(1 0 0 / 0.065) 18%,
+    oklch(1 0 0 / 0.09)  50%,
+    oklch(1 0 0 / 0.065) 82%,
+    transparent 100%
+  );
+}
+
+/* ── Typography system ───────────────────────────────────────────────────────
+   Four levels, largest → smallest:
+
+   env-title-display   editorial large, split-right header
+   env-title-section   full-width major section heading
+   env-title-compact   compact inline heading for stacked sub-sections
+   env-eyebrow         tiny uppercase label, accent-coloured
+   env-description     supporting prose beneath title
+────────────────────────────────────────────────────────────────────────── */
+.env-eyebrow {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.env-title-display {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.5vw, 3.5rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.04;
+  color: oklch(0.96 0.008 220);
+  margin-top: 1rem;
+}
+
+.env-title-section {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 2.2vw, 2.1rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  color: oklch(0.96 0.008 220);
+  margin-top: 0.55rem;
+}
+
+.env-title-compact {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: oklch(0.96 0.008 220);
+  margin-top: 0.45rem;
+}
+
+.env-description {
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: oklch(0.55 0.013 232);
+  max-width: 46ch;
+  margin-top: 0.9rem;
+}
+
+/* ── Full-width section layout ───────────────────────────────────────────────
+   Used for: Pollutants, Forecast, Regional Comparison, Alerts.
+   Header (eyebrow + title + optional description) above full-width content.
+────────────────────────────────────────────────────────────────────────── */
+.env-section-full {
+  padding-top: var(--env-gap-section);
+}
+
+.env-section-full__header {
+  margin-bottom: 2.5rem;
+}
+
+@media (min-width: 768px) {
+  .env-section-full__header { margin-bottom: 3rem; }
+}
+
+.env-section-full__rule {
+  height: 2px;
+  border-radius: 9999px;
+  width: 100%;
+  margin-bottom: 1.4rem;
+}
+
+/* ── Split-right section layout ──────────────────────────────────────────────
+   Used for: AI Intelligence (the most important editorial section).
+   Desktop: sticky header left (38%), content right (62%).
+   Mobile: stacks vertically, header first.
+────────────────────────────────────────────────────────────────────────── */
+.env-section-split {
+  padding-top: var(--env-gap-section);
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .env-section-split {
+    display: grid;
+    grid-template-columns: var(--env-split-header) 1fr;
+    gap: 3rem 5rem;
+    align-items: start;
+  }
+}
+
+@media (min-width: 1280px) {
+  .env-section-split { gap: 3rem 6rem; }
+}
+
+.env-section-split__header {
+  position: relative;
+  padding-bottom: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .env-section-split__header {
+    padding-bottom: 0;
+    position: sticky;
+    top: 4.5rem; /* clears app navbar */
+  }
+}
+
+.env-section-split__bar {
+  height: 2px;
+  width: 100%;
+  border-radius: 9999px;
+  margin-bottom: 1.4rem;
+}
+
+/* Vertical accent line — desktop only, anchors the sticky header */
+.env-section-split__glow-line {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .env-section-split__glow-line {
+    display: block;
+    position: absolute;
+    left: -1.75rem;
+    top: 0.5rem;
+    bottom: 0;
+    width: 2px;
+    border-radius: 9999px;
+    opacity: 0.65;
+  }
+}
+
+/* ── Stacked / compact section layout ────────────────────────────────────────
+   Used inside the asymmetric Health + Map zone.
+   Compact inline header sits above compact content.
+────────────────────────────────────────────────────────────────────────── */
+.env-section-stacked {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.env-section-stacked__header {
+  display: flex;
+  align-items: stretch;
+  gap: 0.875rem;
+}
+
+.env-section-stacked__stripe {
+  width: 2px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+  align-self: stretch;
+  min-height: 1.75rem;
+}
+
+/* ── Asymmetric two-column zone (Health 35% | Map 65%) ───────────────────────
+   On tablet and above: side by side.
+   On mobile: single column, health first.
+────────────────────────────────────────────────────────────────────────── */
+.env-split-asymmetric {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .env-split-asymmetric {
+    grid-template-columns: 1fr 1.8fr;
+    gap: 2.5rem;
+    align-items: start;
+  }
+}
+
+@media (min-width: 1280px) {
+  .env-split-asymmetric { gap: 3.5rem; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EXECUTIVE INTELLIGENCE STRIP
+   Phase 1 telemetry rail — AQI hero + secondary panels.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Strip grid ──────────────────────────────────────────────────────────── */
+.env-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+/* AQI hero spans both columns on small screens */
+.env-strip .env-strip__hero {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 1024px) {
+  .env-strip {
+    grid-template-columns: minmax(0, 1.58fr) repeat(4, minmax(0, 1fr));
+    grid-template-rows: auto;
+  }
+  .env-strip .env-strip__hero {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+
+/* ── AQI Hero panel ─────────────────────────────────────────────────────── */
+.env-strip__hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.625rem;
+  padding: 1.5rem;
+  min-height: 13.5rem;
+
+  background: linear-gradient(
+    145deg,
+    oklch(1 0 0 / 0.09) 0%,
+    color-mix(in oklab, var(--band-color, oklch(0.65 0.14 210)) 8%, oklch(1 0 0 / 0.04)) 100%
+  );
+  backdrop-filter: blur(28px) saturate(155%);
+  -webkit-backdrop-filter: blur(28px) saturate(155%);
+  border: 1px solid color-mix(in oklab, var(--band-color, oklch(0.65 0.14 210)) 22%, oklch(1 0 0 / 0.07));
+  box-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.05) inset,
+    0 20px 56px -10px oklch(0 0 0 / 0.52),
+    0 0 40px -20px color-mix(in oklab, var(--band-color, oklch(0.65 0.14 210)) 38%, transparent);
+}
+
+.env-strip__hero-glow {
+  position: absolute;
+  top: -3.5rem;
+  right: -3.5rem;
+  width: 12rem;
+  height: 12rem;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--band-color, oklch(0.65 0.14 210)) 16%, transparent) 0%,
+    transparent 70%
+  );
+  filter: blur(24px);
+  pointer-events: none;
+}
+
+.env-strip__hero-eyebrow {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--band-color, oklch(0.65 0.14 210)) 85%, oklch(0.7 0.01 230));
+}
+
+.env-strip__hero-gauge-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 7rem;
+}
+
+.env-strip__hero-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+}
+
+.env-strip__hero-value {
+  font-size: 2.4rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.env-strip__hero-unit {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: oklch(0.44 0.012 230);
+}
+
+.env-strip__hero-band {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ── Secondary panels ──────────────────────────────────────────────────── */
+.env-strip__secondary {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.375rem;
+  border-radius: 1.25rem;
+  padding: 1.2rem 1.25rem;
+  min-height: 8.5rem;
+  cursor: default;
+
+  background: linear-gradient(145deg, oklch(1 0 0 / 0.065) 0%, oklch(1 0 0 / 0.025) 100%);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid oklch(1 0 0 / 0.08);
+  box-shadow: 0 0 0 1px oklch(1 0 0 / 0.04) inset, 0 4px 16px oklch(0 0 0 / 0.22);
+
+  transition:
+    transform   0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow  0.22s ease;
+}
+
+.env-strip__secondary:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.06) inset,
+    0 12px 32px -6px oklch(0 0 0 / 0.38);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .env-strip__secondary:hover { transform: none; }
+}
+
+.env-strip__secondary-icon {
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: 0.55rem;
+  display: grid;
+  place-items: center;
+  color: oklch(0.66 0.13 210);
+  background: oklch(0.66 0.13 210 / 0.11);
+  flex-shrink: 0;
+}
+
+.env-strip__secondary-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  margin-top: 0.2rem;
+}
+
+.env-strip__secondary-value {
+  font-size: clamp(1.6rem, 3.5vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: oklch(0.93 0.008 220);
+}
+
+.env-strip__secondary-unit {
+  font-size: 0.68em;
+  font-weight: 500;
+  color: oklch(0.46 0.012 230);
+  align-self: flex-end;
+  padding-bottom: 0.1em;
+}
+
+.env-strip__secondary-meta {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.env-strip__secondary-sublabel {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: oklch(0.42 0.012 230);
+}
+
+/* ── Trend labels ─────────────────────────────────────────────────────── */
+.env-strip__trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 9px;
+  font-weight: 500;
+  color: oklch(0.46 0.010 230);
+}
+
+.env-strip__trend--up   { color: hsl(28 90% 55%); }
+.env-strip__trend--down { color: var(--color-success); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLASS-HOVER — interactive elevation for glass surface cards
+   Used by health recommendation, pollutants, nearby cities, etc.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@utility glass-hover {
+  transition:
+    transform   0.26s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow  0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.glass-hover:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.07) inset,
+    0 22px 56px -12px oklch(0 0 0 / 0.44),
+    0 8px 24px -6px oklch(0 0 0 / 0.28);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-hover:hover { transform: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HERO SCROLL BOUNCE
+   Used by CinematicHero scroll-cue arrow. Global keyframe so it's available
+   regardless of component bundle order.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes hero-scroll-bounce {
+  0%, 100% { transform: translateY(0); opacity: 0.55; }
+  50%       { transform: translateY(6px); opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   REDUCED MOTION — global gate for all Phase 1 animations
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .env-strip__secondary,
+  .glass-hover {
+    transition: none !important;
+  }
+
+  .env-strip__secondary:hover,
+  .glass-hover:hover {
+    transform: none !important;
+  }
+}
+
+/* ══ END PHASE 1 ══════════════════════════════════════════════════════════ */
+
+@keyframes orbit-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@utility orbit-spin {
+  animation: orbit-spin 14s linear infinite;
+}
+
+@keyframes wind-flow {
+  0%   { transform: translateX(-40%); opacity: 0; }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateX(40%); opacity: 0; }
+}
+
+@utility wind-flow {
+  animation: wind-flow 2.6s ease-in-out infinite;
+}
+
+@keyframes wave-rise {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-6%); }
+}
+
+@utility wave-rise {
+  animation: wave-rise 4s ease-in-out infinite;
+}
+
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@utility marquee-scroll {
+  animation: marquee-scroll 22s linear infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%       { opacity: 1; }
+}
+
+@utility glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* ─── Phase 1: Enterprise Application Shell — Design Tokens ────────────── */
+:root {
+  --shell-workspace-narrow: 1280px;
+  --shell-workspace-default: 1600px;
+  --shell-workspace-wide: 1920px;
+  --shell-sidebar-width: 256px;
+  --shell-sidebar-collapsed-width: 80px;
+  --shell-topbar-height: 64px;
+  --shell-gap-xs: 0.5rem;
+  --shell-gap-sm: 0.75rem;
+  --shell-gap-md: 1rem;
+  --shell-gap-lg: 1.5rem;
+  --shell-gap-xl: 2rem;
+  --shell-gap-2xl: 3rem;
+  --float-shadow-sm:
+    0 1px 2px oklch(0.2 0.04 230 / 0.06),
+    0 0 0 1px oklch(1 0 0 / 0.7) inset;
+  --float-shadow-md:
+    0 4px 12px -2px oklch(0.2 0.04 230 / 0.12),
+    0 1px 3px oklch(0.2 0.04 230 / 0.08),
+    0 0 0 1px oklch(1 0 0 / 0.6) inset;
+  --float-shadow-lg:
+    0 8px 24px -4px oklch(0.2 0.04 230 / 0.16),
+    0 2px 8px oklch(0.2 0.04 230 / 0.08),
+    0 0 0 1px oklch(1 0 0 / 0.55) inset;
+  --float-shadow-xl:
+    0 16px 48px -8px oklch(0.2 0.04 230 / 0.22),
+    0 4px 16px oklch(0.2 0.04 230 / 0.1),
+    0 0 0 1px oklch(1 0 0 / 0.5) inset;
+  --shell-radius-panel: 1rem;
+  --shell-radius-card: 0.875rem;
+  --shell-radius-chip: 0.5rem;
+  --transition-fast: 120ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-base: 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-slow: 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-layout: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --shell-bg: oklch(0.965 0.006 220);
+}
+
+.dark {
+  --float-shadow-sm:
+    0 1px 2px oklch(0 0 0 / 0.3),
+    0 0 0 1px oklch(1 0 0 / 0.04) inset;
+  --float-shadow-md:
+    0 4px 12px -2px oklch(0 0 0 / 0.45),
+    0 1px 3px oklch(0 0 0 / 0.3),
+    0 0 0 1px oklch(1 0 0 / 0.05) inset;
+  --float-shadow-lg:
+    0 8px 24px -4px oklch(0 0 0 / 0.55),
+    0 2px 8px oklch(0 0 0 / 0.35),
+    0 0 0 1px oklch(1 0 0 / 0.06) inset;
+  --float-shadow-xl:
+    0 16px 48px -8px oklch(0 0 0 / 0.65),
+    0 4px 16px oklch(0 0 0 / 0.4),
+    0 0 0 1px oklch(1 0 0 / 0.05) inset;
+  --shell-bg: oklch(0.13 0.018 240);
+}
+
+@utility float-card {
+  background: var(--color-card);
+  border-radius: var(--shell-radius-card);
+  box-shadow: var(--float-shadow-md);
+  border: 1px solid var(--color-border);
+}
+
+@utility float-panel {
+  background: var(--color-sidebar);
+  border-radius: var(--shell-radius-panel);
+  box-shadow: var(--float-shadow-lg);
+  border: 1px solid var(--color-sidebar-border);
+}
+
+@utility float-topbar {
+  background: oklch(from var(--color-background) l c h / 0.85);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: var(--float-shadow-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+
+@keyframes shell-page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@utility page-enter {
+  animation: shell-page-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter { animation: none !important; }
+}
+
+@utility shell-bg {
+  background-color: var(--shell-bg);
+}
+
+:root {
+  --sidebar-float-inset: 0.75rem;
+  --sidebar-float-gap: 0.75rem;
+  --sidebar-expanded-width: 248px;
+  --sidebar-collapsed-width: 64px;
+  --content-left-offset: 88px;
+  --sidebar-shadow:
+    0 8px 32px -4px oklch(0.2 0.04 230 / 0.18),
+    0 2px 8px oklch(0.2 0.04 230 / 0.1),
+    0 0 0 1px oklch(1 0 0 / 0.06) inset;
+}
+
+.dark {
+  --sidebar-shadow:
+    0 8px 32px -4px oklch(0 0 0 / 0.55),
+    0 2px 8px oklch(0 0 0 / 0.35),
+    0 0 0 1px oklch(1 0 0 / 0.05) inset;
+}
+
+@utility scrollbar-thin { scrollbar-width: thin; }
+@utility scrollbar-track-transparent { scrollbar-color: transparent transparent; }
+@utility scrollbar-thumb-sidebar-border\/60 {
+  scrollbar-color: oklch(from var(--color-sidebar-border) l c h / 0.6) transparent;
+}
+
+:root {
+  --navbar-height: 64px;
+  --navbar-search-ring: oklch(from var(--color-primary) l c h / 0.12);
+  --navbar-dropdown-shadow:
+    0 8px 24px -4px oklch(0.2 0.04 230 / 0.16),
+    0 2px 8px oklch(0.2 0.04 230 / 0.08),
+    0 0 0 1px oklch(0 0 0 / 0.04);
+}
+
+.dark {
+  --navbar-dropdown-shadow:
+    0 8px 24px -4px oklch(0 0 0 / 0.55),
+    0 2px 8px oklch(0 0 0 / 0.35),
+    0 0 0 1px oklch(1 0 0 / 0.05);
+}
+
+@utility navbar-scrolled {
+  box-shadow:
+    0 4px 24px -2px oklch(0.15 0.03 230 / 0.18),
+    0 1px 4px oklch(0.15 0.03 230 / 0.08);
+}
+
+@utility navbar-scrolled-dark {
+  box-shadow:
+    0 4px 24px -2px oklch(0 0 0 / 0.5),
+    0 1px 4px oklch(0 0 0 / 0.3);
+}
+
+@utility glass-v3 {
+  background: linear-gradient(135deg, oklch(1 0 0 / 0.07) 0%, oklch(1 0 0 / 0.03) 100%);
+  backdrop-filter: blur(22px) saturate(145%);
+  -webkit-backdrop-filter: blur(22px) saturate(145%);
+  border: 1px solid oklch(1 0 0 / 0.10);
+  box-shadow: 0 0 0 1px oklch(1 0 0 / 0.05) inset, 0 16px 48px -12px oklch(0 0 0 / 0.55);
+}
+
+@utility float-hover {
+  transition:
+    transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.28s ease;
+}
+
+.float-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 60px oklch(0 0 0 / 0.45);
+}
+
+@keyframes v3-border-glow {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1.0; }
+}
+
+@utility glow-border {
+  animation: v3-border-glow 3s ease-in-out infinite;
+}
+
+@keyframes v3-score-shimmer {
+  0%   { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -60; }
+}
+
+@keyframes v3-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@utility env-fade-up {
+  animation: v3-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes v3-live-ping {
+  0%   { transform: scale(1); opacity: 0.65; }
+  70%  { transform: scale(2.2); opacity: 0; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+@utility live-ping {
+  animation: v3-live-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* ═══ Policy Simulator Design System (all rules preserved verbatim) ════════ */
+:root {
+  --sim-panel-bg:           oklch(1 0 0 / 0.82);
+  --sim-panel-border:       oklch(0.88 0.01 220 / 0.65);
+  --sim-panel-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.55) inset,
+    0 12px 40px -8px oklch(0.2 0.04 230 / 0.14),
+    0 2px 8px -2px oklch(0.2 0.04 230 / 0.08);
+  --sim-panel-hover-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.65) inset,
+    0 20px 56px -10px oklch(0.2 0.04 230 / 0.22),
+    0 4px 16px -4px oklch(0.2 0.04 230 / 0.14);
+  --sim-kpi-bg:             oklch(1 0 0 / 0.92);
+  --sim-kpi-border:         oklch(0.9 0.01 220 / 0.55);
+  --sim-kpi-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.8) inset,
+    0 4px 16px -4px oklch(0.2 0.04 230 / 0.1);
+  --sim-kpi-hover-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.9) inset,
+    0 10px 32px -6px oklch(0.2 0.04 230 / 0.2);
+  --sim-score-bg:           oklch(0.97 0.005 220 / 0.7);
+  --sim-score-border:       oklch(0.9 0.01 220 / 0.5);
+  --sim-muted-bg:           oklch(0.96 0.006 220 / 0.55);
+  --sim-muted-border:       oklch(0.9 0.01 220 / 0.45);
+  --sim-icon-badge-bg:      color-mix(in oklab, var(--primary) 10%, transparent);
+  --sim-icon-badge-border:  color-mix(in oklab, var(--primary) 22%, transparent);
+  --sim-btn-ghost-bg:       oklch(1 0 0 / 0.65);
+  --sim-btn-ghost-border:   oklch(0.88 0.01 220 / 0.6);
+  --sim-btn-ghost-shadow:   0 1px 4px oklch(0.2 0.04 230 / 0.08), 0 0 0 1px oklch(1 0 0 / 0.7) inset;
+  --sim-btn-ghost-hover-bg: oklch(1 0 0 / 0.88);
+  --sim-btn-ghost-hover-shadow:
+    0 3px 10px oklch(0.2 0.04 230 / 0.14), 0 0 0 1px oklch(1 0 0 / 0.82) inset;
+  --sim-ease:               cubic-bezier(0.22, 1, 0.36, 1);
+  --sim-t-fast:             120ms;
+  --sim-t-base:             200ms;
+  --sim-t-slow:             360ms;
+  --sim-space-xs: 0.25rem; --sim-space-sm: 0.5rem; --sim-space-md: 0.75rem;
+  --sim-space-lg: 1rem;    --sim-space-xl: 1.5rem; --sim-space-2xl:2rem;
+}
+
+.dark {
+  --sim-panel-bg:           oklch(0.155 0.018 240 / 0.92);
+  --sim-panel-border:       oklch(1 0 0 / 0.088);
+  --sim-panel-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.04) inset,
+    0 20px 64px -14px oklch(0 0 0 / 0.6),
+    0 4px 18px -4px oklch(0 0 0 / 0.38);
+  --sim-panel-hover-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.055) inset,
+    0 24px 72px -14px oklch(0 0 0 / 0.7),
+    0 6px 24px -6px oklch(0 0 0 / 0.45);
+  --sim-kpi-bg:             oklch(0.175 0.022 240 / 0.9);
+  --sim-kpi-border:         oklch(1 0 0 / 0.09);
+  --sim-kpi-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.04) inset,
+    0 6px 20px -4px oklch(0 0 0 / 0.45);
+  --sim-kpi-hover-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.06) inset,
+    0 12px 36px -6px oklch(0 0 0 / 0.6);
+  --sim-score-bg:           oklch(0.19 0.022 240 / 0.7);
+  --sim-score-border:       oklch(1 0 0 / 0.07);
+  --sim-muted-bg:           oklch(0.2 0.022 240 / 0.55);
+  --sim-muted-border:       oklch(1 0 0 / 0.07);
+  --sim-icon-badge-bg:      color-mix(in oklab, var(--primary) 16%, transparent);
+  --sim-icon-badge-border:  color-mix(in oklab, var(--primary) 30%, transparent);
+  --sim-btn-ghost-bg:       oklch(1 0 0 / 0.06);
+  --sim-btn-ghost-border:   oklch(1 0 0 / 0.1);
+  --sim-btn-ghost-shadow:   0 0 0 1px oklch(1 0 0 / 0.04) inset, 0 2px 8px oklch(0 0 0 / 0.3);
+  --sim-btn-ghost-hover-bg: oklch(1 0 0 / 0.1);
+  --sim-btn-ghost-hover-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.06) inset, 0 4px 16px oklch(0 0 0 / 0.42);
+}
+
+.sim-panel {
+  background: var(--sim-panel-bg); border: 1px solid var(--sim-panel-border);
+  box-shadow: var(--sim-panel-shadow);
+  backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
+  transition: box-shadow var(--sim-t-base) var(--sim-ease), border-color var(--sim-t-base) var(--sim-ease);
+}
+.sim-panel:hover { box-shadow: var(--sim-panel-hover-shadow); }
+
+.sim-kpi-card {
+  background: var(--sim-kpi-bg); border: 1px solid var(--sim-kpi-border);
+  box-shadow: var(--sim-kpi-shadow);
+  transition: box-shadow var(--sim-t-base) var(--sim-ease), transform var(--sim-t-base) var(--sim-ease), border-color var(--sim-t-base) var(--sim-ease);
+  will-change: transform, box-shadow; display: flex; flex-direction: column;
+}
+.sim-kpi-card:hover { box-shadow: var(--sim-kpi-hover-shadow); transform: translateY(-2px); }
+
+.sim-hero-aqi { min-height: 220px; }
+@media (min-width: 1024px) { .sim-hero-aqi { min-height: 0; } }
+
+.sim-score-card { background: var(--sim-score-bg); border: 1px solid var(--sim-score-border); transition: background var(--sim-t-fast) var(--sim-ease); }
+.sim-muted-card { background: var(--sim-muted-bg); border: 1px solid var(--sim-muted-border); }
+.sim-icon-badge { background: var(--sim-icon-badge-bg); border: 1px solid var(--sim-icon-badge-border); }
+
+.sim-btn-ghost {
+  background: var(--sim-btn-ghost-bg); border: 1px solid var(--sim-btn-ghost-border);
+  box-shadow: var(--sim-btn-ghost-shadow); color: var(--color-foreground);
+  transition: background var(--sim-t-fast) var(--sim-ease), box-shadow var(--sim-t-fast) var(--sim-ease), transform var(--sim-t-fast) var(--sim-ease), color var(--sim-t-fast) var(--sim-ease), border-color var(--sim-t-fast) var(--sim-ease);
+}
+.sim-btn-ghost:hover:not(:disabled) { background: var(--sim-btn-ghost-hover-bg); box-shadow: var(--sim-btn-ghost-hover-shadow); transform: translateY(-1px) scale(1.015); }
+.sim-btn-ghost:active:not(:disabled) { transform: translateY(0) scale(0.975); box-shadow: var(--sim-btn-ghost-shadow); }
+.sim-btn-ghost:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+.sim-btn-ghost.sim-btn-active { background: color-mix(in oklab, var(--color-primary) 12%, transparent); border-color: color-mix(in oklab, var(--color-primary) 40%, transparent); color: var(--color-primary); box-shadow: 0 2px 8px -2px color-mix(in oklab, var(--color-primary) 20%, transparent); }
+.sim-btn-success { color: var(--color-success) !important; border-color: color-mix(in oklab, var(--color-success) 35%, transparent) !important; background: color-mix(in oklab, var(--color-success) 10%, transparent) !important; }
+.sim-btn-error { color: var(--color-destructive) !important; border-color: color-mix(in oklab, var(--color-destructive) 35%, transparent) !important; background: color-mix(in oklab, var(--color-destructive) 10%, transparent) !important; }
+
+.sim-btn-primary {
+  background-image: var(--grad-aurora, linear-gradient(135deg, var(--color-primary), var(--color-info)));
+  color: var(--color-primary-foreground); border: 1px solid transparent;
+  box-shadow: 0 1px 0 oklch(1 0 0 / 0.15) inset, 0 4px 14px -4px color-mix(in oklab, var(--color-primary) 40%, transparent);
+  transition: opacity var(--sim-t-fast) var(--sim-ease), box-shadow var(--sim-t-fast) var(--sim-ease), transform var(--sim-t-fast) var(--sim-ease);
+}
+.sim-btn-primary:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px) scale(1.015); box-shadow: 0 1px 0 oklch(1 0 0 / 0.2) inset, 0 8px 24px -6px color-mix(in oklab, var(--color-primary) 55%, transparent); }
+.sim-btn-primary:active:not(:disabled) { opacity: 1; transform: translateY(0) scale(0.975); box-shadow: 0 1px 0 oklch(1 0 0 / 0.1) inset, 0 2px 6px -2px color-mix(in oklab, var(--color-primary) 25%, transparent); }
+.sim-btn-primary:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+.sim-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.sim-ai-stale { animation: sim-stale-pulse 2s var(--sim-ease) infinite; }
+@keyframes sim-stale-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-warning) 45%, transparent), 0 4px 14px -4px color-mix(in oklab, var(--color-warning) 30%, transparent), 0 1px 0 oklch(1 0 0 / 0.15) inset; }
+  50% { box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-warning) 28%, transparent), 0 8px 28px -6px color-mix(in oklab, var(--color-warning) 50%, transparent), 0 1px 0 oklch(1 0 0 / 0.15) inset; }
+}
+.sim-ai-success { box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-success) 40%, transparent), 0 4px 14px -4px color-mix(in oklab, var(--color-success) 30%, transparent), 0 1px 0 oklch(1 0 0 / 0.15) inset; }
+.sim-ai-error   { box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-destructive) 40%, transparent), 0 4px 14px -4px color-mix(in oklab, var(--color-destructive) 30%, transparent), 0 1px 0 oklch(1 0 0 / 0.15) inset; }
+
+.sim-btn-ripple { position: relative; overflow: hidden; }
+.sim-btn-ripple::after { content: ""; position: absolute; inset: 0; background: oklch(1 0 0 / 0.18); border-radius: inherit; opacity: 0; transform: scale(0.6); transition: opacity 0.35s ease, transform 0.35s ease; pointer-events: none; }
+.sim-btn-ripple:active::after { opacity: 1; transform: scale(1); transition: opacity 0s, transform 0s; }
+
+.sim-preset-chip-idle { background: var(--sim-btn-ghost-bg); border: 1px solid var(--sim-btn-ghost-border); box-shadow: var(--sim-btn-ghost-shadow); color: var(--color-muted-foreground); transition: background var(--sim-t-fast) var(--sim-ease), color var(--sim-t-fast) var(--sim-ease), box-shadow var(--sim-t-fast) var(--sim-ease), transform var(--sim-t-fast) var(--sim-ease), border-color var(--sim-t-fast) var(--sim-ease); }
+.sim-preset-chip-idle:hover { background: var(--sim-btn-ghost-hover-bg); color: var(--color-foreground); box-shadow: var(--sim-btn-ghost-hover-shadow); transform: translateY(-1px) scale(1.02); }
+.sim-preset-chip-idle:active { transform: scale(0.97); }
+.sim-preset-chip-active { background: linear-gradient(135deg, color-mix(in oklab, var(--color-primary) 18%, transparent), color-mix(in oklab, var(--color-info) 14%, transparent)); border: 1px solid color-mix(in oklab, var(--color-primary) 40%, transparent); color: var(--color-primary); box-shadow: 0 2px 10px -2px color-mix(in oklab, var(--color-primary) 25%, transparent), 0 0 0 1px color-mix(in oklab, var(--color-primary) 12%, transparent) inset; transition: background var(--sim-t-fast) var(--sim-ease), box-shadow var(--sim-t-fast) var(--sim-ease), transform var(--sim-t-fast) var(--sim-ease); }
+.sim-preset-chip-active:hover { transform: translateY(-1px) scale(1.02); }
+.sim-preset-chip-active:active { transform: scale(0.97); }
+.sim-preset-chip:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+
+.sim-active-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--color-primary); animation: sim-dot-breathe 2s var(--sim-ease) infinite; margin-left: 2px; }
+@keyframes sim-dot-breathe { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.55; transform: scale(0.7); } }
+
+.sim-range { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 9999px; background: color-mix(in oklab, var(--color-muted-foreground) 18%, transparent); cursor: pointer; transition: background var(--sim-t-fast) var(--sim-ease); position: relative; z-index: 1; }
+.sim-range:hover { background: color-mix(in oklab, var(--color-muted-foreground) 26%, transparent); }
+.sim-range::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--range-color, var(--color-primary)); border: 2px solid oklch(1 0 0 / 0.9); box-shadow: 0 1px 4px oklch(0 0 0 / 0.2), 0 0 0 1px var(--range-color, var(--color-primary)); cursor: grab; transition: transform var(--sim-t-fast) var(--sim-ease), box-shadow var(--sim-t-fast) var(--sim-ease); will-change: transform; }
+.sim-range::-webkit-slider-thumb:hover { transform: scale(1.2); box-shadow: 0 2px 10px oklch(0 0 0 / 0.25), 0 0 0 4px color-mix(in oklab, var(--range-color, var(--color-primary)) 22%, transparent); }
+.sim-range::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.15); box-shadow: 0 3px 12px oklch(0 0 0 / 0.3), 0 0 0 6px color-mix(in oklab, var(--range-color, var(--color-primary)) 16%, transparent); }
+.sim-range::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--range-color, var(--color-primary)); border: 2px solid oklch(1 0 0 / 0.9); box-shadow: 0 1px 4px oklch(0 0 0 / 0.2); cursor: grab; transition: transform var(--sim-t-fast) var(--sim-ease); }
+.sim-range::-moz-range-thumb:active { cursor: grabbing; transform: scale(1.15); }
+.sim-range:focus-visible { outline: none; }
+.sim-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px color-mix(in oklab, var(--range-color, var(--color-primary)) 30%, transparent), 0 2px 8px oklch(0 0 0 / 0.2); }
+
+.sim-lever-track-fill { transition: width 16ms linear; transform: translateZ(0); backface-visibility: hidden; will-change: width; }
+.sim-lever-row:not(:active) .sim-lever-track-fill { transition: width 320ms var(--sim-ease); }
+.sim-lever-row { transition: background var(--sim-t-fast) var(--sim-ease); border-radius: 0.625rem; padding: 0.375rem; margin: 0 -0.375rem; }
+.sim-lever-row:hover { background: color-mix(in oklab, var(--color-muted-foreground) 4.5%, transparent); }
+.sim-lever-highlighted { animation: sim-lever-flash 1.8s var(--sim-ease) forwards; }
+@keyframes sim-lever-flash { 0% { background: color-mix(in oklab, var(--color-primary) 13%, transparent); } 40% { background: color-mix(in oklab, var(--color-primary) 9%, transparent); } 100% { background: transparent; } }
+
+.sim-scrollbar { scrollbar-width: thin; scrollbar-color: var(--sim-muted-border) transparent; }
+.sim-scrollbar::-webkit-scrollbar { width: 4px; }
+.sim-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.sim-scrollbar::-webkit-scrollbar-thumb { background: var(--sim-muted-border); border-radius: 9999px; }
+.sim-scrollbar::-webkit-scrollbar-thumb:hover { background: color-mix(in oklab, var(--color-muted-foreground) 38%, transparent); }
+
+.sim-score-card .h-full.rounded-full { transition: width 700ms var(--sim-ease), background 350ms var(--sim-ease); }
+
+.sim-chart-tooltip { background: var(--color-popover); border: 1px solid var(--color-border); border-radius: 10px; padding: 10px 12px; font-size: 12px; box-shadow: 0 8px 24px -8px oklch(0 0 0 / 0.25); min-width: 130px; }
+.sim-chart-tooltip-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-muted-foreground); margin-bottom: 6px; }
+.sim-chart-tooltip-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.sim-chart-tooltip-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.sim-chart-tooltip-name { flex: 1; color: var(--color-muted-foreground); }
+.sim-chart-tooltip-val  { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--color-foreground); }
+
+@keyframes sim-skeleton-wave { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+.sim-skeleton { background: linear-gradient(105deg, var(--sim-muted-bg) 30%, color-mix(in oklab, var(--color-muted-foreground) 10%, var(--sim-muted-bg)) 50%, var(--sim-muted-bg) 70%); background-size: 200% 100%; animation: sim-skeleton-wave 1.6s linear infinite; border: 1px solid var(--sim-muted-border); }
+
+@keyframes sim-shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+.sim-kpi-recalculating { position: relative; overflow: hidden; }
+.sim-kpi-recalculating::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, oklch(1 0 0 / 0.07) 50%, transparent 70%); background-size: 200% 100%; animation: sim-shimmer 1.2s linear infinite; pointer-events: none; border-radius: inherit; }
+.dark .sim-kpi-recalculating::after { background: linear-gradient(105deg, transparent 30%, oklch(1 0 0 / 0.04) 50%, transparent 70%); background-size: 200% 100%; }
+
+@keyframes sim-dot-pulse-anim { 0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }
+.sim-dot-pulse { display: inline-flex; gap: 3px; align-items: center; }
+.sim-dot-pulse::before, .sim-dot-pulse::after, .sim-dot-pulse { content: ""; display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--color-primary); animation: sim-dot-pulse-anim 1.4s ease-in-out infinite; }
+.sim-dot-pulse::before { animation-delay: 0s; }
+.sim-dot-pulse { animation-delay: 0.2s; }
+.sim-dot-pulse::after  { animation-delay: 0.4s; }
+
+.sim-page-title { font-family: var(--font-display, inherit); letter-spacing: -0.025em; line-height: 1.05; }
+.sim-subtitle { font-size: 0.8125rem; line-height: 1.55; color: var(--color-muted-foreground); }
+.sim-eyebrow { display: inline-flex; align-items: center; }
+
+@keyframes sim-card-in  { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes sim-panel-in { from { opacity: 0; transform: translateY(-4px) scale(0.996); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes sim-hero-num-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes sim-cell-in  { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes sim-area-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.sim-panel-enter { animation: sim-panel-in 0.24s var(--sim-ease) both; }
+.sim-header { animation: sim-card-in 0.28s var(--sim-ease) 0.04s both; }
+.sim-preset-section { animation: sim-card-in 0.28s var(--sim-ease) 0.08s both; }
+.sim-kpi-card:nth-child(1) { animation: sim-card-in 0.3s var(--sim-ease) 0.10s both; }
+.sim-kpi-card:nth-child(2) { animation: sim-card-in 0.3s var(--sim-ease) 0.14s both; }
+.sim-kpi-card:nth-child(3) { animation: sim-card-in 0.3s var(--sim-ease) 0.18s both; }
+.sim-kpi-card:nth-child(4) { animation: sim-card-in 0.3s var(--sim-ease) 0.22s both; }
+.sim-preset-chip { animation: sim-card-in 0.25s var(--sim-ease) both; }
+.sim-hero-aqi .sim-aqi-hero-number { animation: sim-hero-num-in 0.4s var(--sim-ease) 0.05s both; }
+.sim-summary-cell:nth-child(1) { animation: sim-cell-in 0.25s var(--sim-ease) 0.05s both; }
+.sim-summary-cell:nth-child(2) { animation: sim-cell-in 0.25s var(--sim-ease) 0.09s both; }
+.sim-summary-cell:nth-child(3) { animation: sim-cell-in 0.25s var(--sim-ease) 0.13s both; }
+.sim-summary-cell:nth-child(4) { animation: sim-cell-in 0.25s var(--sim-ease) 0.17s both; }
+.sim-summary-cell:nth-child(5) { animation: sim-cell-in 0.25s var(--sim-ease) 0.21s both; }
+.sim-summary-cell:nth-child(6) { animation: sim-cell-in 0.25s var(--sim-ease) 0.25s both; }
+.sim-score-card .h-full { animation: sim-bar-fill 0.8s var(--sim-ease) 0.2s both; }
+@keyframes sim-bar-fill { from { width: 0; } }
+.recharts-area-area { animation: sim-area-fade 0.5s var(--sim-ease) both; }
+
+.sim-kpi-card:focus-within { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+
+@media (forced-colors: active) {
+  .sim-aqi-status-badge  { border: 1px solid ButtonText; forced-color-adjust: none; }
+  .sim-lever-track-fill  { forced-color-adjust: none; }
+  .sim-aqi-hero-number   { forced-color-adjust: none; }
+}
+
+@media (max-width: 639px) {
+  .sim-btn-ghost, .sim-btn-primary, .sim-preset-chip { min-height: 40px; }
+  .sim-aqi-hero-number { font-size: 2.75rem; }
+  .sim-hero-aqi        { min-height: 180px; }
+  .sim-summary-cell    { padding: 0.5rem 0.625rem; }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .sim-aqi-hero-number { font-size: 3.5rem; }
+  .sim-panel { backdrop-filter: blur(16px) saturate(145%); -webkit-backdrop-filter: blur(16px) saturate(145%); }
+}
+
+@media (min-width: 1440px) {
+  .sim-panel { backdrop-filter: blur(24px) saturate(165%); -webkit-backdrop-filter: blur(24px) saturate(165%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sim-header, .sim-preset-section, .sim-preset-chip, .sim-panel-enter,
+  .sim-kpi-card, .sim-summary-cell, .sim-score-card .h-full,
+  .sim-hero-aqi .sim-aqi-hero-number, .recharts-area-area,
+  .sim-ai-stale, .sim-active-dot, .sim-dot-pulse, .sim-dot-pulse::before, .sim-dot-pulse::after,
+  .sim-lever-highlighted, .sim-skeleton, .sim-kpi-recalculating::after, .sim-btn-ripple::after {
+    animation: none !important; transition: none !important;
+  }
+  .sim-kpi-card:hover, .sim-summary-cell:hover,
+  .sim-btn-ghost:hover:not(:disabled), .sim-btn-primary:hover:not(:disabled),
+  .sim-preset-chip-idle:hover, .sim-preset-chip-active:hover { transform: none !important; }
+  .sim-lever-highlighted { background: color-mix(in oklab, var(--color-primary) 8%, transparent); }
+  .sim-aqi-status-badge { transition: none !important; }
+  .sim-lever-track-fill, .sim-lever-row:not(:active) .sim-lever-track-fill { transition: none !important; }
+  .sim-kpi-card .h-full.rounded-full, .sim-score-card .h-full.rounded-full { transition: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GreenGuard AI — Landing Page Phase 1: Enterprise Foundation & Hero
+   ═══════════════════════════════════════════════════════════════════════════
+   New primitives for the redesigned nav + hero. Nothing above this line is
+   altered — these compose with the existing glass / grid-bg / aurora /
+   floaty utilities rather than replacing them. */
+
+/* Subtle film-grain texture for the hero background layers. */
+@utility noise-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+}
+
+/* Safe-area padding for the fullscreen mobile nav drawer (notched devices). */
+@utility safe-top {
+  padding-top: max(env(safe-area-inset-top), 1.25rem);
+}
+
+@utility safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 1.25rem);
+}
