@@ -4,7 +4,7 @@ export const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000/a
 
 const client = axios.create({
   baseURL: API_BASE,
-  timeout: 15_000,
+  timeout: 60_000,
 });
 
 // ─── Request interceptor: attach access token ────────────────────────────────

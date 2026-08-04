@@ -63,8 +63,8 @@ export function isValidTimezone(tz: unknown): boolean {
   if (typeof tz !== "string") return false;
   if (tz === AUTO_TIMEZONE) return true;
   try {
-    if (typeof Intl.supportedValuesOf === "function") {
-      return Intl.supportedValuesOf("timeZone").includes(tz);
+    if (typeof (Intl as any).supportedValuesOf === "function") {
+      return (Intl as any).supportedValuesOf("timeZone").includes(tz);
     }
   } catch {
     // fall through to the constructor-based check below

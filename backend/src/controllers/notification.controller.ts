@@ -9,6 +9,7 @@
 import { Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import { Notification } from "../models/Notification";
+import { User } from "../models/User";
 import { AppError } from "../middleware/errorHandler";
 import { AuthRequest } from "../middleware/auth";
 import type { NotificationCategory, NotificationStatus } from "../models/Notification";
@@ -228,7 +229,6 @@ export async function getPreferences(
     if (!req.user) return next(new AppError("Not authenticated", 401));
 
     // Re-fetch the user so we have the notificationPreferences Map
-    const { User } = await import("../models/User");
     const dbUser = await User.findById(req.user._id).select("notificationPreferences role").lean();
 
     let prefs: Record<string, boolean>;
@@ -261,7 +261,6 @@ export async function updatePreferences(
     }
 
     // Update using $set on the user document
-    const { User } = await import("../models/User");
     await User.findByIdAndUpdate(req.user._id, {
       $set: { notificationPreferences: preferences },
     });
