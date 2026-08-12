@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import {
   Globe,
   AlertTriangle,
@@ -24,7 +25,9 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-// i18n integration: the i18n module is initialized at import time
+// i18n: importing the module here ensures initialization has run.
+// `i18n.changeLanguage()` is called on successful save so the active locale
+// switches immediately without a page reload.
 import { i18n } from "@/i18n";
 import { LANGUAGE_NAMES, SUPPORTED_LANGUAGES } from "@/i18n/config";
 
@@ -39,7 +42,7 @@ import {
   type Language,
 } from "@/lib/api/language-region.api";
 
-// ─── Static option metadata ───────────────────────────────────────────────────
+// ─── Option metadata ──────────────────────────────────────────────────────────
 
 const DATE_FORMAT_OPTIONS: { value: DateFormat; label: string }[] = [
   { value: "DD/MM/YYYY", label: "DD/MM/YYYY" },
@@ -47,9 +50,9 @@ const DATE_FORMAT_OPTIONS: { value: DateFormat; label: string }[] = [
   { value: "YYYY-MM-DD", label: "YYYY-MM-DD" },
 ];
 
-const TIME_FORMAT_OPTIONS: { value: TimeFormat; label: string }[] = [
-  { value: "24h", label: "24 Hour" },
-  { value: "12h", label: "12 Hour" },
+const TIME_FORMAT_OPTIONS: { value: TimeFormat; labelKey: string }[] = [
+  { value: "24h", labelKey: "language.hour24" },
+  { value: "12h", labelKey: "language.hour12" },
 ];
 
 const NUMBER_FORMAT_OPTIONS: { value: NumberFormat; label: string }[] = [
@@ -57,16 +60,12 @@ const NUMBER_FORMAT_OPTIONS: { value: NumberFormat; label: string }[] = [
   { value: "1.234,56", label: "1.234,56" },
 ];
 
-const UNIT_OPTIONS: {
-  value: MeasurementUnit;
-  label: string;
-  desc: string;
-}[] = [
-  { value: "metric", label: "Metric", desc: "°C · km · μg/m³ · mm" },
-  { value: "imperial", label: "Imperial", desc: "°F · mi · inches" },
+const UNIT_OPTIONS: { value: MeasurementUnit; labelKey: string; desc: string }[] = [
+  { value: "metric",   labelKey: "language.metric",   desc: "°C · km · μg/m³ · mm" },
+  { value: "imperial", labelKey: "language.imperial", desc: "°F · mi · inches" },
 ];
 
-function getTimezoneGroups(): Record<string, string[]> {
+function getTimezoneGroups(otherLabel: string): Record<string, string[]> {
   let zones: string[];
   try {
     zones =
@@ -78,7 +77,7 @@ function getTimezoneGroups(): Record<string, string[]> {
   }
   const groups: Record<string, string[]> = {};
   for (const zone of zones) {
-    const region = zone.includes("/") ? zone.split("/")[0] : "Other";
+    const region = zone.includes("/") ? zone.split("/")[0] : otherLabel;
     (groups[region] ??= []).push(zone);
   }
   return groups;
@@ -86,12 +85,13 @@ function getTimezoneGroups(): Record<string, string[]> {
 
 // ─── Shared error state ───────────────────────────────────────────────────────
 function ErrorState({
-  text = "Couldn't load this right now.",
+  text,
   onRetry,
 }: {
   text?: string;
   onRetry: () => void;
 }) {
+  const { t } = useTranslation("settings");
   return (
     <div
       className="flex flex-col items-center justify-center gap-2 py-8 text-center"
@@ -100,12 +100,12 @@ function ErrorState({
       <div className="size-10 rounded-full bg-destructive/10 grid place-items-center">
         <AlertTriangle className="size-4 text-destructive" />
       </div>
-      <p className="text-sm text-muted-foreground">{text}</p>
+      <p className="text-sm text-muted-foreground">{text ?? t("language.couldntLoad")}</p>
       <button
         onClick={onRetry}
         className="text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded px-1"
       >
-        Try again
+        {t("language.tryAgain")}
       </button>
     </div>
   );
@@ -114,7 +114,11 @@ function ErrorState({
 // ─── Panel ────────────────────────────────────────────────────────────────────
 export function LanguageRegionPanel() {
   const qc = useQueryClient();
-  const timezoneGroups = useMemo(() => getTimezoneGroups(), []);
+  const { t } = useTranslation("settings");
+  const timezoneGroups = useMemo(
+    () => getTimezoneGroups(t("language.otherTimezoneRegion")),
+    [t],
+  );
 
   const {
     data: prefs,
@@ -123,6 +127,8 @@ export function LanguageRegionPanel() {
     refetch,
   } = useQuery({
     queryKey: ["language-region-preferences"],
+    // languageRegionApi.get() resolves to:
+    //   { success: boolean; data: { languageRegion: LanguageRegionPreferences } }
     queryFn: () =>
       languageRegionApi.get().then((r) => r.data.languageRegion),
     staleTime: 15_000,
@@ -132,6 +138,7 @@ export function LanguageRegionPanel() {
   const mutation = useMutation({
     mutationFn: (patch: Partial<LanguageRegionPreferences>) =>
       languageRegionApi.update(patch).then((r) => r.data.languageRegion),
+
     onMutate: async (patch) => {
       await qc.cancelQueries({ queryKey: ["language-region-preferences"] });
       const previous = qc.getQueryData<LanguageRegionPreferences>([
@@ -144,28 +151,30 @@ export function LanguageRegionPanel() {
         });
       return { previous };
     },
+
     onSuccess: (updated, patch) => {
       qc.setQueryData(["language-region-preferences"], updated);
-      toast.success("Language & Region preferences updated");
+      toast.success(t("language.updated"));
 
-      // ── i18n integration ────────────────────────────────────────────────
-      // If the user changed their language, apply it to i18next immediately.
-      // This updates the active locale for the entire app without a page
-      // reload. The i18n module's `languageChanged` listener persists the
-      // new value to localStorage automatically.
+      // ── i18n integration ────────────────────────────────────────────────────
+      // Apply the new language to i18next immediately so the entire app
+      // switches locale without a page reload.  The i18n module's
+      // `languageChanged` listener automatically persists the change to
+      // localStorage and updates <html lang>.
       if (patch.language && SUPPORTED_LANGUAGES.includes(patch.language)) {
         void i18n.changeLanguage(patch.language);
       }
     },
+
     onError: (err: unknown, patch, context) => {
       if (context?.previous)
         qc.setQueryData(["language-region-preferences"], context.previous);
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? "Couldn't save your language & region preferences.";
-      toast.error("Couldn't save", {
+          ?.message ?? t("language.couldntSave");
+      toast.error(t("language.couldntSaveTitle"), {
         description: message,
-        action: { label: "Retry", onClick: () => mutation.mutate(patch) },
+        action: { label: t("language.retry"), onClick: () => mutation.mutate(patch) },
       });
     },
   });
@@ -179,21 +188,21 @@ export function LanguageRegionPanel() {
 
   return (
     <Panel
-      eyebrow="Language & Region"
+      eyebrow={t("language.title")}
       title={
         <span className="inline-flex items-center gap-2">
           <Globe className="size-4 text-primary" />
-          Language & Region
+          {t("language.title")}
         </span>
       }
     >
       <p className="text-sm text-muted-foreground -mt-2 mb-4">
-        Customize regional preferences for GreenGuard AI.
+        {t("language.description")}
       </p>
 
       {isError ? (
         <ErrorState
-          text="Couldn't load your language & region preferences."
+          text={t("language.couldntLoad")}
           onRetry={refetch}
         />
       ) : isLoading || !prefs ? (
@@ -210,12 +219,12 @@ export function LanguageRegionPanel() {
           {/* ── Language ── */}
           <div className="sm:col-span-2">
             <div className="text-xs font-medium text-muted-foreground mb-3">
-              Language
+              {t("language.language")}
             </div>
             <div
               className="flex flex-wrap gap-2"
               role="radiogroup"
-              aria-label="Language"
+              aria-label={t("language.language")}
             >
               {SUPPORTED_LANGUAGES.map((code) => {
                 const meta = LANGUAGE_NAMES[code as Language];
@@ -227,21 +236,19 @@ export function LanguageRegionPanel() {
                     role="radio"
                     aria-checked={isActive}
                     aria-label={`${meta.english} (${meta.native})`}
-                    onClick={() =>
-                      setField("language", code as Language)
-                    }
+                    onClick={() => setField("language", code as Language)}
                     className={cn(
-                      "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+                      "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                       isActive
                         ? "border-primary bg-primary/10 text-primary font-medium"
                         : "border-border hover:border-primary/40",
                     )}
                   >
-                    {/* Native name — confirms the user can read it before switching */}
-                    <span className={cn(isActive ? "text-primary" : "")}>
-                      {meta.native}
-                    </span>
-                    {/* English name alongside, for discoverability */}
+                    {/* Native script — lets the user recognise their language
+                        before selecting it, even if the UI hasn't switched yet */}
+                    <span>{meta.native}</span>
+                    {/* English label for discoverability */}
                     {meta.native !== meta.english && (
                       <span className="text-muted-foreground text-xs">
                         {meta.english}
@@ -257,35 +264,29 @@ export function LanguageRegionPanel() {
                 );
               })}
             </div>
-            {/* Language-change feedback — only visible while saving */}
-            {mutation.isPending && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Updating language…
-              </p>
-            )}
           </div>
 
           {/* ── Timezone ── */}
           <div>
             <label
               className="text-xs font-medium text-muted-foreground mb-2 block"
-              id="timezone-label"
+              id="tz-label"
             >
               <span className="inline-flex items-center gap-1.5">
-                <Clock className="size-3.5" />
-                Timezone
+                <Clock className="size-3.5" aria-hidden="true" />
+                {t("language.timezone")}
               </span>
             </label>
             <Select
               value={prefs.timezone}
               onValueChange={(v) => setField("timezone", v)}
             >
-              <SelectTrigger aria-labelledby="timezone-label">
-                <SelectValue placeholder="Select a timezone" />
+              <SelectTrigger aria-labelledby="tz-label">
+                <SelectValue placeholder={t("language.selectTimezone")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={AUTO_TIMEZONE}>
-                  Automatically detect
+                  {t("language.timezoneAuto")}
                 </SelectItem>
                 {Object.entries(timezoneGroups)
                   .sort(([a], [b]) => a.localeCompare(b))
@@ -310,23 +311,20 @@ export function LanguageRegionPanel() {
           {/* ── Date Format ── */}
           <div>
             <div className="text-xs font-medium text-muted-foreground mb-2 inline-flex items-center gap-1.5">
-              <CalendarDays className="size-3.5" />
-              Date Format
+              <CalendarDays className="size-3.5" aria-hidden="true" />
+              {t("language.dateFormat")}
             </div>
             <RadioGroup
               value={prefs.dateFormat}
               onValueChange={(v) => setField("dateFormat", v as DateFormat)}
-              aria-label="Date Format"
+              aria-label={t("language.dateFormat")}
             >
               {DATE_FORMAT_OPTIONS.map((opt) => (
                 <label
                   key={opt.value}
                   className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors cursor-pointer text-sm"
                 >
-                  <RadioGroupItem
-                    value={opt.value}
-                    id={`date-${opt.value}`}
-                  />
+                  <RadioGroupItem value={opt.value} id={`date-${opt.value}`} />
                   {opt.label}
                 </label>
               ))}
@@ -336,24 +334,21 @@ export function LanguageRegionPanel() {
           {/* ── Time Format ── */}
           <div>
             <div className="text-xs font-medium text-muted-foreground mb-2 inline-flex items-center gap-1.5">
-              <Clock className="size-3.5" />
-              Time Format
+              <Clock className="size-3.5" aria-hidden="true" />
+              {t("language.timeFormat")}
             </div>
             <RadioGroup
               value={prefs.timeFormat}
               onValueChange={(v) => setField("timeFormat", v as TimeFormat)}
-              aria-label="Time Format"
+              aria-label={t("language.timeFormat")}
             >
               {TIME_FORMAT_OPTIONS.map((opt) => (
                 <label
                   key={opt.value}
                   className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors cursor-pointer text-sm"
                 >
-                  <RadioGroupItem
-                    value={opt.value}
-                    id={`time-${opt.value}`}
-                  />
-                  {opt.label}
+                  <RadioGroupItem value={opt.value} id={`time-${opt.value}`} />
+                  {t(opt.labelKey)}
                 </label>
               ))}
             </RadioGroup>
@@ -362,25 +357,22 @@ export function LanguageRegionPanel() {
           {/* ── Number Format ── */}
           <div>
             <div className="text-xs font-medium text-muted-foreground mb-2 inline-flex items-center gap-1.5">
-              <Hash className="size-3.5" />
-              Number Format
+              <Hash className="size-3.5" aria-hidden="true" />
+              {t("language.numberFormat")}
             </div>
             <RadioGroup
               value={prefs.numberFormat}
               onValueChange={(v) =>
                 setField("numberFormat", v as NumberFormat)
               }
-              aria-label="Number Format"
+              aria-label={t("language.numberFormat")}
             >
               {NUMBER_FORMAT_OPTIONS.map((opt) => (
                 <label
                   key={opt.value}
                   className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors cursor-pointer text-sm"
                 >
-                  <RadioGroupItem
-                    value={opt.value}
-                    id={`num-${opt.value}`}
-                  />
+                  <RadioGroupItem value={opt.value} id={`num-${opt.value}`} />
                   {opt.label}
                 </label>
               ))}
@@ -390,15 +382,15 @@ export function LanguageRegionPanel() {
           {/* ── Measurement Units ── */}
           <div>
             <div className="text-xs font-medium text-muted-foreground mb-2 inline-flex items-center gap-1.5">
-              <Ruler className="size-3.5" />
-              Measurement Units
+              <Ruler className="size-3.5" aria-hidden="true" />
+              {t("language.measurementUnits")}
             </div>
             <RadioGroup
               value={prefs.measurementUnit}
               onValueChange={(v) =>
                 setField("measurementUnit", v as MeasurementUnit)
               }
-              aria-label="Measurement Units"
+              aria-label={t("language.measurementUnits")}
             >
               {UNIT_OPTIONS.map((opt) => (
                 <label
@@ -410,7 +402,7 @@ export function LanguageRegionPanel() {
                     id={`unit-${opt.value}`}
                   />
                   <span>
-                    {opt.label}{" "}
+                    {t(opt.labelKey)}{" "}
                     <span className="text-muted-foreground text-xs">
                       ({opt.desc})
                     </span>
@@ -421,6 +413,10 @@ export function LanguageRegionPanel() {
           </div>
         </div>
       )}
+
+      <div className="h-5 mt-3 text-xs text-muted-foreground inline-flex items-center gap-1.5">
+        {mutation.isPending && <>{t("saving", { ns: "common" })}</>}
+      </div>
     </Panel>
   );
 }

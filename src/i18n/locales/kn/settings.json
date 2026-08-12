@@ -56,7 +56,17 @@
     "measurementUnits": "Measurement Units",
     "metric": "Metric",
     "imperial": "Imperial",
-    "updated": "Language & Region preferences updated"
+    "updated": "Language & Region preferences updated",
+    "hour24": "24 ಗಂಟೆ",
+    "hour12": "12 ಗಂಟೆ",
+    "selectTimezone": "ಸಮಯ ವಲಯವನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+    "saving": "ಉಳಿಸಲಾಗುತ್ತಿದೆ…",
+    "couldntLoad": "ನಿಮ್ಮ ಭಾಷೆ ಮತ್ತು ಪ್ರದೇಶ ಆದ್ಯತೆಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+    "tryAgain": "ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ",
+    "couldntSave": "ನಿಮ್ಮ ಭಾಷೆ ಮತ್ತು ಪ್ರದೇಶ ಆದ್ಯತೆಗಳನ್ನು ಉಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+    "couldntSaveTitle": "ಉಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ",
+    "retry": "ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ",
+    "otherTimezoneRegion": "ಇತರೆ"
   },
   "dashboard": {
     "title": "Dashboard Preferences",
@@ -69,7 +79,38 @@
     "restoreTitle": "Restore dashboard preferences?",
     "restoreDescription": "This will reset widget visibility, default landing page, default city, and pinned cards to their default values.",
     "updated": "Dashboard preferences updated",
-    "restored": "Dashboard preferences restored"
+    "restored": "Dashboard preferences restored",
+    "selectPage": "ಪುಟವನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+    "searchCities": "ನಗರಗಳನ್ನು ಹುಡುಕಿ…",
+    "noCityFound": "ಯಾವುದೇ ನಗರ ಕಂಡುಬಂದಿಲ್ಲ.",
+    "selectCity": "ಒಂದು ನಗರವನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+    "showWidgetAria": "{{label}} ವಿಜೆಟ್ ತೋರಿಸಿ",
+    "pinCardAria": "{{label}} ಪಿನ್ ಮಾಡಿ",
+    "cancel": "ರದ್ದುಮಾಡಿ",
+    "restore": "ಮರುಸ್ಥಾಪಿಸಿ",
+    "couldntLoad": "ನಿಮ್ಮ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ಆದ್ಯತೆಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+    "couldntSave": "ನಿಮ್ಮ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ಆದ್ಯತೆಗಳನ್ನು ಉಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+    "couldntSaveTitle": "ಉಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ",
+    "couldntRestore": "ಡೀಫಾಲ್ಟ್‌ಗಳನ್ನು ಮರುಸ್ಥಾಪಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ",
+    "pleaseTryAgain": "ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+    "retry": "ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ",
+    "widgets": {
+      "aqi": "ವಾಯು ಗುಣಮಟ್ಟ ಸೂಚ್ಯಂಕ",
+      "weather": "ಹವಾಮಾನ ಸಾರಾಂಶ",
+      "trends": "ಮಾಲಿನ್ಯ ಪ್ರವೃತ್ತಿಗಳು",
+      "complaints": "ಇತ್ತೀಚಿನ ದೂರುಗಳು",
+      "alerts": "ಪರಿಸರ ಎಚ್ಚರಿಕೆಗಳು",
+      "reports": "ವರದಿಗಳ ಅವಲೋಕನ",
+      "quickActions": "ತ್ವರಿತ ಕ್ರಮಗಳು"
+    },
+    "pinnable": {
+      "aqi": "AQI",
+      "forecast": "ಮುನ್ಸೂಚನೆ",
+      "map": "ಸ್ಮಾರ್ಟ್ ಮ್ಯಾಪ್",
+      "complaints": "ದೂರಿನ ಸ್ಥಿತಿ",
+      "weather": "ಹವಾಮಾನ",
+      "reports": "ವರದಿಗಳು"
+    }
   },
   "maps": {
     "title": "Map Preferences",
@@ -130,5 +171,7 @@
     "terms": "Terms of Service",
     "privacyPolicy": "Privacy Policy",
     "support": "Support"
-  }
+  },
+  "ariaSections": "ಸೆಟ್ಟಿಂಗ್‌ಗಳ ವಿಭಾಗಗಳು",
+  "ariaNav": "ಸೆಟ್ಟಿಂಗ್‌ಗಳ ನ್ಯಾವಿಗೇಷನ್"
 }

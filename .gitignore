@@ -35,6 +35,7 @@ Thumbs.db
 
 # Uploads folder
 backend/uploads/
+uploads/
 
 # Downloaded nested copies
 greenguard-Ai (3)/

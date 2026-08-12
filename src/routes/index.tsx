@@ -2,28 +2,27 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
-  Activity,
   Brain,
-  CloudRain,
   MessageSquare,
   FileBarChart,
   Leaf,
   GitBranch,
-  Map,
   Zap,
   Database,
   CheckCircle2,
   ArrowUpRight,
-  Layers,
   Radio,
-  LineChart,
   Globe2,
 } from "lucide-react";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
-import { MiniDashboard } from "@/components/landing/MiniDashboard";
 import { Hero } from "@/components/landing/hero/Hero";
 import { TrustStrip } from "@/components/landing/TrustStrip";
+import { SectionDivider } from "@/components/landing/experiences/shared";
+import { EnvironmentalOverviewExperience } from "@/components/landing/experiences/EnvironmentalOverviewExperience";
+import { SmartMapExperience } from "@/components/landing/experiences/SmartMapExperience";
+import { ForecastIntelligenceExperience } from "@/components/landing/experiences/ForecastIntelligenceExperience";
+import { AICopilotExperience } from "@/components/landing/experiences/AICopilotExperience";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -52,8 +51,17 @@ function Landing() {
       <TrustStrip />
       <PlatformOverview />
       <LiveOperations />
+
+      {/* ── Phase 2: live platform experiences ── */}
+      <EnvironmentalOverviewExperience />
+      <SectionDivider tone="info" />
+      <SmartMapExperience />
+      <SectionDivider tone="info" />
+      <ForecastIntelligenceExperience />
+      <SectionDivider tone="chart5" />
+      <AICopilotExperience />
+
       <Modules />
-      <DashboardShowcase />
       <HowItWorks />
       <Benefits />
       <CTA />
@@ -280,27 +288,6 @@ function LiveOperations() {
 function Modules() {
   const modules = [
     {
-      to: "/dashboard",
-      icon: Activity,
-      name: "Environmental Monitoring",
-      desc: "Unified live view of air, water, weather and risk for every monitored zone.",
-      tag: "Core",
-    },
-    {
-      to: "/copilot",
-      icon: Brain,
-      name: "AI Copilot",
-      desc: "Ask anything about your environment in plain language. Get cited, actionable answers.",
-      tag: "AI",
-    },
-    {
-      to: "/forecast",
-      icon: CloudRain,
-      name: "Forecast",
-      desc: "72-hour predictive horizon for AQI, weather and risk — backed by validated models.",
-      tag: "Predictive",
-    },
-    {
       to: "/citizen",
       icon: MessageSquare,
       name: "Citizen Hub",
@@ -328,22 +315,15 @@ function Modules() {
       desc: "Model the environmental impact of policy decisions before you commit to them.",
       tag: "Decision",
     },
-    {
-      to: "/map",
-      icon: Map,
-      name: "Smart Map",
-      desc: "Spatial intelligence layer — heatmaps, hotspots and asset-level drilldown.",
-      tag: "Geospatial",
-    },
   ];
 
   return (
     <section className="py-24 border-t border-border/60">
       <div className="mx-auto max-w-[1440px] px-6 lg:px-10">
         <SectionHead
-          eyebrow="Platform Modules"
-          title="Built for the people who run cities."
-          sub="Every module shares the same data fabric — so insight discovered in one place is immediately actionable in the next."
+          eyebrow="The Rest Of The Platform"
+          title="Four more modules, same data fabric."
+          sub="Environmental Overview, Smart Map, Forecast and AI Copilot are above — every module shares the same underlying data, so insight in one place is immediately actionable in the next."
         />
 
         <div className="mt-12 grid gap-px bg-border/60 rounded-2xl overflow-hidden border border-border/60 sm:grid-cols-2 lg:grid-cols-4">
@@ -377,65 +357,6 @@ function Modules() {
               </Link>
             </motion.div>
           ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ---------------- DASHBOARD SHOWCASE ---------------- */
-function DashboardShowcase() {
-  const tabs = [
-    { icon: Activity, label: "Operations" },
-    { icon: LineChart, label: "Forecast" },
-    { icon: Brain, label: "Copilot" },
-    { icon: Layers, label: "Map" },
-  ];
-  return (
-    <section className="py-24 border-t border-border/60 bg-card/30">
-      <div className="mx-auto max-w-[1440px] px-6 lg:px-10">
-        <SectionHead
-          eyebrow="Inside The Platform"
-          title="Software that respects your attention."
-          sub="No dashboards-for-the-sake-of-dashboards. Every surface in GreenGuard AI is engineered around a specific decision."
-        />
-
-        <div className="mt-12 rounded-2xl border border-border/60 bg-card overflow-hidden shadow-2xl">
-          <div className="flex items-center gap-1 border-b border-border/60 px-3 py-2 overflow-x-auto">
-            {tabs.map((t, i) => (
-              <button
-                key={t.label}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs whitespace-nowrap transition-colors ${
-                  i === 0
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <t.icon className="size-3.5" /> {t.label}
-              </button>
-            ))}
-            <div className="ml-auto text-[11px] font-mono text-muted-foreground hidden sm:block">
-              greenguard.ai · live preview
-            </div>
-          </div>
-          <div className="p-6 lg:p-10">
-            <MiniDashboard />
-          </div>
-        </div>
-
-        <div className="mt-8 flex flex-wrap items-center gap-3 justify-center">
-          <Link
-            to="/dashboard"
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-foreground px-4 text-sm font-medium text-background hover:opacity-90"
-          >
-            Explore the dashboard <ArrowRight className="size-4" />
-          </Link>
-          <Link
-            to="/forecast"
-            className="inline-flex h-10 items-center gap-2 rounded-md border border-border/70 px-4 text-sm font-medium hover:bg-card"
-          >
-            See the forecast engine
-          </Link>
         </div>
       </div>
     </section>

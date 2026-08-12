@@ -9,6 +9,11 @@ export type ComplaintStatus =
   | "closed"; // admin verified and closed — terminal
 
 export type ComplaintPriority = "low" | "medium" | "high" | "critical";
+
+// Automation 2 — Smart Routing. Distinguishes an assignment made by the
+// Smart Routing Engine from one made by an administrator. Optional/undefined
+// for complaints assigned before Automation 2 existed — backward compatible.
+export type AssignmentSource = "automatic" | "manual";
 export type IssueType =
   | "air_pollution"
   | "water_contamination"
@@ -42,6 +47,7 @@ export interface IComplaintEvent {
 }
 
 export interface IComplaint extends Document {
+  _id: mongoose.Types.ObjectId;
   title: string;
   description: string;
   issueType: IssueType;
@@ -57,6 +63,9 @@ export interface IComplaint extends Document {
   assignedBy?: mongoose.Types.ObjectId;
   assignedAt?: Date;
   assignedByName?: string;
+
+  // Automation 2 — Smart Routing. Set whenever assignedTo is set/changed.
+  assignmentSource?: AssignmentSource;
 
   resolution?: string;
   resolvedAt?: Date;
@@ -122,6 +131,7 @@ const ComplaintSchema = new Schema<IComplaint>(
     assignedBy: { type: Schema.Types.ObjectId, ref: "User" },
     assignedAt: { type: Date },
     assignedByName: { type: String, maxlength: 100 },
+    assignmentSource: { type: String, enum: ["automatic", "manual"] },
 
     resolution: { type: String, trim: true },
     resolvedAt: { type: Date },

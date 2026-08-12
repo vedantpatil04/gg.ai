@@ -6,6 +6,7 @@
  */
 
 import type { ComponentType, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   FileText,
   Bell,
@@ -107,20 +108,21 @@ export function NoSearchResultsEmpty({
   onClear?: () => void;
   compact?: boolean;
 }) {
+  const { t } = useTranslation("common");
   return (
     <EmptyStateBase
       icon={Search}
-      title="No results found"
+      title={t("noResults")}
       description={
         query
-          ? `No matches for "${query}". Try different keywords or clear the filter.`
-          : "No items match the current filter. Try adjusting your search."
+          ? t("noResultsForQuery", { query })
+          : t("noResultsGeneric")
       }
       compact={compact}
       action={
         onClear && (
           <Button size="sm" variant="outline" onClick={onClear}>
-            Clear filters
+            {t("clearFilters")}
           </Button>
         )
       }
@@ -129,11 +131,12 @@ export function NoSearchResultsEmpty({
 }
 
 export function NoNotificationsEmpty({ compact }: { compact?: boolean }) {
+  const { t } = useTranslation("notifications");
   return (
     <EmptyStateBase
       icon={Bell}
-      title="All caught up"
-      description="No notifications right now. New activity will appear here."
+      title={t("empty")}
+      description={t("emptyDescription")}
       compact={compact}
     />
   );

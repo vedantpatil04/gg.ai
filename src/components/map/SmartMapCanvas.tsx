@@ -120,6 +120,20 @@ const BASE_MAP_ID_BY_THEME: Record<"light" | "dark", string> = {
   light: "osm-light",
 };
 
+// Development-only GIS initialization state tracer.
+// Traces: MOUNTED → CONTAINER_READY → CONSTRUCTOR_START → CONSTRUCTOR_SUCCESS
+//         → WAITING_FOR_STYLE → STYLE_LOADED → MAP_LOADED → READY
+// On failure: GIS_INIT_ERROR: <stage> — <error message>
+function gisTrace(stage: string, detail?: string) {
+  if (process.env.NODE_ENV !== "production") {
+    if (detail) {
+      console.debug(`[GIS_INIT] ${stage}:`, detail);
+    } else {
+      console.debug(`[GIS_INIT] ${stage}`);
+    }
+  }
+}
+
 function getBaseMapStyle(theme: "light" | "dark"): maplibregl.StyleSpecification {
   const cfg = baseMapRegistry.get(BASE_MAP_ID_BY_THEME[theme]) ?? baseMapRegistry.active;
   const style = cfg?.style ?? FALLBACK_STYLE;
@@ -304,7 +318,21 @@ export function SmartMapCanvas({
   const heatReadyRef = useRef(false);
 
   // Phase 11: current app theme drives which basemap style is active.
-  const { theme } = useTheme();
+  // IMPORTANT: use resolvedTheme (always "light" | "dark"), NOT theme, which
+  // can be "system". Using theme="system" causes getBaseMapStyle to fall back
+  // to FALLBACK_STYLE and triggers a premature setStyle() call that aborts the
+  // initial map load and causes a double-attachStyleOwnedLayers crash.
+  const { resolvedTheme } = useTheme();
+
+  // Always-current refs so the stable initializeMap callback reads
+  // the latest values without needing to be recreated on every render.
+  const latestMapDataRef = useRef(mapData);
+  const latestCityRef = useRef(city);
+  const latestThemeRef = useRef<"light" | "dark">(resolvedTheme);
+  latestMapDataRef.current = mapData;
+  latestCityRef.current = city;
+  latestThemeRef.current = resolvedTheme;
+
   const [zoom, setZoom] = useState(12);
   const [bearing, setBearing] = useState(0);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -313,6 +341,11 @@ export function SmartMapCanvas({
   const [measuring, setMeasuring] = useState(false);
   const [measurePoints, setMeasurePoints] = useState<{ lat: number; lng: number }[]>([]);
   const [mapReady, setMapReady] = useState(false);
+  // GIS initialization error state — set when maplibre fails to initialize so
+  // the UI can exit the loading state deterministically with a retry option.
+  const [mapInitError, setMapInitError] = useState<string | null>(null);
+  // Bumped by the retry button so the initialization useEffect re-runs cleanly.
+  const [gisRetryCount, setGisRetryCount] = useState(0);
   // Phase 11: bumped each time a theme change finishes swapping the basemap
   // style (map.setStyle drops any sources/layers not declared in the new
   // style, so effects that own style-level sources — the AQI heatmap, the
@@ -436,76 +469,175 @@ export function SmartMapCanvas({
   // heatmap, measure-tool line) are wiped by map.setStyle() on a theme
   // change, since they aren't part of the new style JSON. This is the same
   // setup logic used both on first "load" and again after each style swap.
+  //
+  // IDEMPOTENCY GUARD: Each addSource/addLayer call is guarded with a
+  // getSource/getLayer check. This prevents the "Source already exists" crash
+  // that occurred when both the `load` handler and a concurrent `style.load`
+  // handler called this function before the first had finished.
   const attachStyleOwnedLayers = useCallback((map: maplibregl.Map) => {
     // AQI heatmap source
-    map.addSource("aqi-heat", {
-      type: "geojson",
-      data: { type: "FeatureCollection", features: [] },
-    });
-    map.addLayer({
-      id: "aqi-heat-layer",
-      type: "heatmap",
-      source: "aqi-heat",
-      maxzoom: 15,
-      paint: {
-        "heatmap-weight": ["interpolate", ["linear"], ["get", "level"], 0, 0, 100, 1],
-        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 8, 0.5, 14, 1.5],
-        "heatmap-color": [
-          "interpolate",
-          ["linear"],
-          ["heatmap-density"],
-          0,
-          "rgba(0,200,80,0)",
-          0.2,
-          "rgba(80,220,0,0.5)",
-          0.4,
-          "rgba(220,200,0,0.65)",
-          0.65,
-          "rgba(240,100,0,0.8)",
-          0.85,
-          "rgba(200,20,20,0.9)",
-          1,
-          "rgba(100,0,180,0.95)",
-        ],
-        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 7, 16, 14, 50],
-        "heatmap-opacity": 0.55,
-      },
-      layout: { visibility: "none" },
-    });
+    if (!map.getSource("aqi-heat")) {
+      map.addSource("aqi-heat", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+    }
+    if (!map.getLayer("aqi-heat-layer")) {
+      map.addLayer({
+        id: "aqi-heat-layer",
+        type: "heatmap",
+        source: "aqi-heat",
+        maxzoom: 15,
+        paint: {
+          "heatmap-weight": ["interpolate", ["linear"], ["get", "level"], 0, 0, 100, 1],
+          "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 8, 0.5, 14, 1.5],
+          "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0,
+            "rgba(0,200,80,0)",
+            0.2,
+            "rgba(80,220,0,0.5)",
+            0.4,
+            "rgba(220,200,0,0.65)",
+            0.65,
+            "rgba(240,100,0,0.8)",
+            0.85,
+            "rgba(200,20,20,0.9)",
+            1,
+            "rgba(100,0,180,0.95)",
+          ],
+          "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 7, 16, 14, 50],
+          "heatmap-opacity": 0.55,
+        },
+        layout: { visibility: "none" },
+      });
+    }
 
     // Measure-tool line source (Phase 1) — follows the same pattern as aqi-heat above
-    map.addSource("measure-line", {
-      type: "geojson",
-      data: { type: "FeatureCollection", features: [] },
-    });
-    map.addLayer({
-      id: "measure-line-layer",
-      type: "line",
-      source: "measure-line",
-      layout: { "line-cap": "round" },
-      paint: { "line-color": "#22d3ee", "line-width": 2, "line-dasharray": [2, 1.5] },
-    });
+    if (!map.getSource("measure-line")) {
+      map.addSource("measure-line", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+    }
+    if (!map.getLayer("measure-line-layer")) {
+      map.addLayer({
+        id: "measure-line-layer",
+        type: "line",
+        source: "measure-line",
+        layout: { "line-cap": "round" },
+        paint: { "line-color": "#22d3ee", "line-width": 2, "line-dasharray": [2, 1.5] },
+      });
+    }
   }, []);
 
-  useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
-    const c = mapData?.center ?? { lat: city.lat, lng: city.lng };
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: getBaseMapStyle(theme),
-      center: [c.lng, c.lat],
-      zoom: mapData?.zoom ?? 12,
-      bearing: mapData?.bearing ?? 0,
-      pitch: mapData?.pitch ?? 0,
-      attributionControl: false,
-    });
+  // ── GIS Engine Initialization ─────────────────────────────────────────────
+  // The map must NOT be created until its container has a non-zero rendered
+  // size. In a flex/grid layout the browser computes dimensions after the
+  // first paint, so reading clientWidth/clientHeight at effect-mount time
+  // often returns 0. We use a ResizeObserver to wait for the first non-zero
+  // measurement, then build the MapLibre instance exactly once.
+  //
+  // Failure modes handled:
+  //  • Container never gains size (layout bug) → 15-second timeout → error state
+  //  • MapLibre map.on('error') fires (WebGL2 fail, bad style, etc.) → error state
+  //  • 'load' event never fires (tile 404, network offline) → 20-second timeout → error state
+  //  • React dev double-mount: the init ref `mapInitiatedRef` prevents a second
+  //    concurrent initialization on the same container element instance.
+  //
+  // All paths exit to either mapReady=true or mapInitError≠null — never stuck.
+  const mapInitiatedRef = useRef(false);
+
+  const initializeMap = useCallback((container: HTMLDivElement) => {
+    // Guard: only one map per container element lifetime
+    if (mapInitiatedRef.current || mapRef.current) return;
+    mapInitiatedRef.current = true;
+
+    gisTrace("MOUNTED");
+    gisTrace("CONTAINER_READY", `${container.clientWidth} × ${container.clientHeight}`);
+
+    // Read latest values from refs so retry always uses current config
+    const currentMapData = latestMapDataRef.current;
+    const currentCity = latestCityRef.current;
+    // latestThemeRef is now always "light" | "dark" (uses resolvedTheme)
+    const currentTheme = latestThemeRef.current;
+    const c = currentMapData?.center ?? { lat: currentCity.lat, lng: currentCity.lng };
+    let map: maplibregl.Map;
+
+    gisTrace("CONSTRUCTOR_START");
+    try {
+      map = new maplibregl.Map({
+        container,
+        style: getBaseMapStyle(currentTheme),
+        center: [c.lng, c.lat],
+        zoom: currentMapData?.zoom ?? 12,
+        bearing: currentMapData?.bearing ?? 0,
+        pitch: currentMapData?.pitch ?? 0,
+        attributionControl: false,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "MapLibre constructor failed";
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[GIS_INIT_ERROR] CONSTRUCTOR_START —", err);
+      }
+      setMapInitError(msg);
+      mapInitiatedRef.current = false;
+      return;
+    }
+    gisTrace("CONSTRUCTOR_SUCCESS");
+
     map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
     map.addControl(new maplibregl.ScaleControl({ maxWidth: 110, unit: "metric" }), "bottom-left");
 
+    // Track whether 'load' fired so the timeout can skip if already resolved.
+    let loadFired = false;
+    // Deterministic timeout: if 'load' has not fired within 20 s, surface an
+    // error so the UI can offer a retry rather than hanging forever.
+    const loadTimeoutId = window.setTimeout(() => {
+      if (loadFired || !mapRef.current) return;
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[GIS_INIT_ERROR] WAITING_FOR_STYLE — load event timed out after 20 s");
+      }
+      setMapInitError("GIS engine timed out. Check network connectivity and retry.");
+    }, 20_000);
+
+    gisTrace("WAITING_FOR_STYLE");
+
     map.on("load", () => {
+      loadFired = true;
+      clearTimeout(loadTimeoutId);
+      gisTrace("STYLE_LOADED");
       attachStyleOwnedLayers(map);
       heatReadyRef.current = true;
       setMapReady(true);
+      setMapInitError(null);
+      // Ensure the map fills its container correctly after the style is loaded
+      map.resize();
+      gisTrace("MAP_LOADED");
+      gisTrace("READY");
+    });
+
+    // Catch MapLibre-level errors (WebGL2 context loss, invalid style, etc.)
+    map.on("error", (e) => {
+      const errMsg = e?.error?.message ?? "GIS engine encountered an error";
+      const isStyleLayerError =
+        errMsg.includes("Source") ||
+        errMsg.includes("Layer") ||
+        errMsg.includes("tile");
+      if (process.env.NODE_ENV !== "production") {
+        // Log all map errors for debugging — fatal ones are surfaced to the UI
+        console.debug("[GIS] map error event:", errMsg, "| loadFired:", loadFired, "| isStyleLayerError:", isStyleLayerError);
+      }
+      // Style/tile errors after load are non-fatal; only treat pre-load errors as fatal
+      if (!loadFired && !isStyleLayerError) {
+        clearTimeout(loadTimeoutId);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(`[GIS_INIT_ERROR] WAITING_FOR_STYLE — ${errMsg}`);
+        }
+        setMapInitError(errMsg);
+      }
     });
 
     map.on("zoom", () => setZoom(+map.getZoom().toFixed(1)));
@@ -521,28 +653,99 @@ export function SmartMapCanvas({
 
     mapRef.current = map;
 
-    // Phase 3 (Rendering Performance / Memory Optimization): ResizeObserver
-    // on the container so the MapLibre canvas always matches its CSS size.
-    // Without this, toggling the intelligence panel, rotating a phone, or
-    // resizing the browser leaves the rendered viewport stale until the next
-    // full-page repaint. Cleaned up in the same effect return to prevent leaks.
-    let ro: ResizeObserver | null = null;
+    // ResizeObserver keeps the MapLibre canvas in sync with its CSS container.
+    // Attach AFTER the map is created so that any resize during initialization
+    // is handled cleanly. Separate from the pre-init ResizeObserver below.
     if (typeof ResizeObserver !== "undefined") {
-      ro = new ResizeObserver(() => {
+      const ro = new ResizeObserver(() => {
         mapRef.current?.resize();
       });
-      if (containerRef.current) ro.observe(containerRef.current);
+      ro.observe(container);
+      // Store for cleanup
+      (map as maplibregl.Map & { _gg_ro?: ResizeObserver })._gg_ro = ro;
     }
 
     return () => {
-      ro?.disconnect();
-      map.remove();
-      mapRef.current = null;
+      clearTimeout(loadTimeoutId);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachStyleOwnedLayers]);
+
+  useEffect(() => {
+    if (mapRef.current) return; // Already initialized — guard against re-runs
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Reset init flag when the effect re-runs (e.g. after explicit retry)
+    mapInitiatedRef.current = false;
+
+    // Wait for the container to have non-zero dimensions before constructing
+    // the MapLibre instance. In SSR-hydration and initial flex-layout paint the
+    // container is often 0×0 at this point; MapLibre v5 silently fails in that case.
+    let cleanupLoadTimeout: (() => void) | undefined;
+    let containerSizeTimeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const tryInit = () => {
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      if (w > 0 && h > 0) {
+        cleanupLoadTimeout = initializeMap(container) ?? undefined;
+      }
+    };
+
+    // Try immediately in case the container is already sized (most navigations)
+    tryInit();
+
+    // If not yet sized, observe until it gains dimensions
+    let sizeObserver: ResizeObserver | null = null;
+    if (!mapInitiatedRef.current && typeof ResizeObserver !== "undefined") {
+      sizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect;
+          if (width > 0 && height > 0 && !mapInitiatedRef.current) {
+            sizeObserver?.disconnect();
+            sizeObserver = null;
+            clearTimeout(containerSizeTimeoutId);
+            cleanupLoadTimeout = initializeMap(container) ?? undefined;
+            break;
+          }
+        }
+      });
+      sizeObserver.observe(container);
+
+      // Hard timeout: if the container never gains size (broken layout), show error
+      containerSizeTimeoutId = setTimeout(() => {
+        if (!mapInitiatedRef.current) {
+          sizeObserver?.disconnect();
+          sizeObserver = null;
+          if (process.env.NODE_ENV !== "production") {
+            console.error("[GIS] Container never gained non-zero size — layout issue");
+          }
+          setMapInitError("Map container has no size. Check layout configuration.");
+        }
+      }, 15_000);
+    }
+
+    return () => {
+      clearTimeout(containerSizeTimeoutId);
+      sizeObserver?.disconnect();
+      cleanupLoadTimeout?.();
+
+      const map = mapRef.current;
+      if (map) {
+        // Clean up the ResizeObserver attached to the map instance
+        (map as maplibregl.Map & { _gg_ro?: ResizeObserver })._gg_ro?.disconnect();
+        map.remove();
+        mapRef.current = null;
+      }
+      mapInitiatedRef.current = false;
       setMapReady(false);
+      setMapInitError(null);
       heatReadyRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initializeMap, gisRetryCount]);
 
   // ── Phase 11: theme-driven basemap swap ──────────────────────────────────────
   // Skips the very first render (the map already mounts with the correct
@@ -559,15 +762,21 @@ export function SmartMapCanvas({
       themeMountedRef.current = true;
       return;
     }
-    if (!map) return;
+    // Only swap the style if the map is fully initialized and ready.
+    // Calling setStyle() during or before the initial load causes MapLibre to
+    // cancel the original style load, which then fires both the `load` and
+    // `style.load` events for the replacement style, leading to a double
+    // attachStyleOwnedLayers call and a "Source already exists" crash.
+    if (!map || !mapRef.current) return;
     heatReadyRef.current = false;
     map.once("style.load", () => {
       attachStyleOwnedLayers(map);
       heatReadyRef.current = true;
       setStyleVersion((v) => v + 1);
     });
-    map.setStyle(getBaseMapStyle(theme));
-  }, [theme, attachStyleOwnedLayers]);
+    // resolvedTheme is always "light" | "dark" — never "system"
+    map.setStyle(getBaseMapStyle(resolvedTheme));
+  }, [resolvedTheme, attachStyleOwnedLayers]);
 
   // ── Phase 10: Animated user location marker ──────────────────────────────────
   // Renders a blue dot + pulsing accuracy ring when `userPosition` is set.
@@ -1170,9 +1379,9 @@ export function SmartMapCanvas({
       {/* Real MapLibre canvas */}
       <div ref={containerRef} className="absolute inset-0 w-full h-full" />
 
-      {/* Loading overlay */}
+      {/* Loading overlay — shown while GIS engine initializes */}
       <AnimatePresence>
-        {!mapReady && (
+        {!mapReady && !mapInitError && (
           <motion.div
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -1197,6 +1406,53 @@ export function SmartMapCanvas({
                 />
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* GIS Engine Unavailable — deterministic error state with retry */}
+      <AnimatePresence>
+        {mapInitError && !mapReady && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute inset-0 bg-background flex flex-col items-center justify-center z-50 gap-4 px-6"
+          >
+            <div className="size-12 rounded-2xl bg-destructive/10 border border-destructive/20 grid place-items-center">
+              <AlertTriangle className="size-5 text-destructive" />
+            </div>
+            <div className="flex flex-col items-center gap-1.5 text-center">
+              <span className="text-[13px] font-semibold text-foreground">
+                GIS Engine Unavailable
+              </span>
+              <span className="text-[10px] text-muted-foreground max-w-xs leading-relaxed">
+                {mapInitError}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                // Tear down any partial map instance, reset all init state,
+                // then let the useEffect re-run to attempt a fresh initialization.
+                const map = mapRef.current;
+                if (map) {
+                  (map as maplibregl.Map & { _gg_ro?: ResizeObserver })._gg_ro?.disconnect();
+                  map.remove();
+                  mapRef.current = null;
+                }
+                mapInitiatedRef.current = false;
+                heatReadyRef.current = false;
+                setMapReady(false);
+                setMapInitError(null);
+                // Re-trigger the initialization useEffect via retryCount bump
+                setGisRetryCount((n) => n + 1);
+              }}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 text-[11px] font-medium hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            >
+              <RotateCcw className="size-3.5" />
+              Retry GIS Engine
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

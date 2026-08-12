@@ -1,10 +1,12 @@
 /**
  * GreenGuard AI — Language & Region API
  *
- * i18n Phase 1: all four supported languages are now accepted.
- * Previously only "en" was listed here; "hi", "kn", "mr" were gated
- * behind UI-level "Coming Soon" flags and rejected by the backend validator.
- * Both restrictions are now lifted in this phase.
+ * i18n Phase 1: SUPPORTED_LANGUAGES now includes all four languages.
+ * Previously only "en" was listed here; "hi", "kn", "mr" were blocked by
+ * the backend validator. Both restrictions are lifted in this phase.
+ *
+ * Response shape (all methods unwrap the Axios response via `.then(r => r.data)`):
+ *   { success: boolean; data: { languageRegion: LanguageRegionPreferences } }
  */
 
 import client from "./client";
@@ -24,6 +26,7 @@ export type NumberFormat = (typeof NUMBER_FORMATS)[number];
 export const MEASUREMENT_UNITS = ["metric", "imperial"] as const;
 export type MeasurementUnit = (typeof MEASUREMENT_UNITS)[number];
 
+/** Sentinel value meaning "follow the browser/OS timezone". */
 export const AUTO_TIMEZONE = "auto";
 
 export interface LanguageRegionPreferences {
@@ -37,15 +40,18 @@ export interface LanguageRegionPreferences {
 
 export const languageRegionApi = {
   get: () =>
-    client.get<{
-      success: boolean;
-      data: { languageRegion: LanguageRegionPreferences };
-    }>("/settings/language-region"),
+    client
+      .get<{ success: boolean; data: { languageRegion: LanguageRegionPreferences } }>(
+        "/settings/language-region",
+      )
+      .then((r) => r.data),
 
-  // Partial update — only the included fields are touched server-side.
+  /** Partial update — only the included fields are touched server-side. */
   update: (patch: Partial<LanguageRegionPreferences>) =>
-    client.patch<{
-      success: boolean;
-      data: { languageRegion: LanguageRegionPreferences };
-    }>("/settings/language-region", patch),
+    client
+      .patch<{ success: boolean; data: { languageRegion: LanguageRegionPreferences } }>(
+        "/settings/language-region",
+        patch,
+      )
+      .then((r) => r.data),
 };

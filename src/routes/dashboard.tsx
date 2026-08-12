@@ -3,70 +3,35 @@ import autoTable from "jspdf-autotable";
 import { createFileRoute } from "@tanstack/react-router";
 import { AppLayout } from "@/components/app-layout";
 import { ProtectedRoute } from "@/components/protected-route";
-import { Panel, SectionTitle, StatCard } from "@/components/ui-bits";
+import { Panel, SectionTitle } from "@/components/ui-bits";
 import { useCity } from "@/lib/city-context";
 import { useAuth } from "@/lib/auth-context";
 import { AUTHORITY_ROLES } from "@/lib/role-routing";
-import { aqiBand, ALERTS, INSIGHTS, trendSeries } from "@/lib/mock-data";
-import { computeEnvHealthScore, getMainPollutant } from "@/lib/environmental-health";
-import { formatRelativeTime, getGreetingText } from "@/lib/format-time";
-import { EnvironmentalTimeline } from "@/components/dashboard/environmental-timeline";
-import {
-  getOutdoorGuidance,
-  getPollutionTrend,
-  getWeatherImpact,
-  getHealthRiskLabel,
-  getActivityGuidance,
-  computeAIConfidence,
-  findInsightByTag,
-  deriveThingsToWatch,
-} from "@/lib/ai-brief";
+import { aqiBand, ALERTS, INSIGHTS } from "@/lib/mock-data";
+import { computeEnvHealthScore } from "@/lib/environmental-health";
+import { formatRelativeTime } from "@/lib/format-time";
+import { computeDataFreshness } from "@/lib/data-freshness";
+import { getPollutionTrend, deriveThingsToWatch, deriveWhatMattersNow } from "@/lib/ai-brief";
 import { useQuery } from "@tanstack/react-query";
 import { alertApi, copilotApi, adminApi } from "@/lib/api/services.api";
 import { environmentalApi } from "@/lib/api/environmental.api";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { SceneBackground } from "@/components/dashboard/motion-primitives";
 import { STAGGER, FADE_UP } from "@/lib/motion";
 
 const PAGE_STAGGER = STAGGER(0.07, 0);
 const PAGE_SECTION = FADE_UP;
-import {
-  Droplets,
-  AlertTriangle,
-  Sparkles,
-  ArrowUpRight,
-  ShieldAlert,
-  Loader2,
-} from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Sparkles, ArrowUpRight, Loader2 } from "lucide-react";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { WelcomeHero } from "@/components/dashboard/welcome-hero";
-import { EnvironmentalHealthHero } from "@/components/dashboard/environmental-health-hero";
-import { AIDailyBriefCard } from "@/components/dashboard/ai-daily-brief";
 import { QuickActions } from "@/components/dashboard/quick-actions";
-import { HighlightsGrid } from "@/components/dashboard/highlights-grid";
-import { AlertsCard } from "@/components/dashboard/alerts-card";
-import { MiniTrendCard } from "@/components/dashboard/mini-trend-card";
-import { MapPreviewCard } from "@/components/dashboard/map-preview-card";
-import { CommunityActivityCard } from "@/components/dashboard/community-activity-card";
-import { EcoTipCard } from "@/components/dashboard/eco-tip-card";
-import { PollutantBreakdownCard } from "@/components/dashboard/pollutant-breakdown-card";
-import { WeatherInsightsCard } from "@/components/dashboard/weather-insights-card";
-import { NearbyCitiesCard } from "@/components/dashboard/nearby-cities-card";
-import { LiveActivityFeed } from "@/components/dashboard/live-activity-feed";
+import { CurrentConditions } from "@/components/dashboard/current-conditions";
+import { WhatMattersNow } from "@/components/dashboard/what-matters-now";
+import { DataStatus } from "@/components/dashboard/data-status";
+import { LiveEnvironmentalActivity } from "@/components/dashboard/live-environmental-activity";
+import { Aqi24hChart, type Aqi24hPoint } from "@/components/dashboard/aqi-24h-chart";
+import { AroundYou } from "@/components/dashboard/around-you";
+import type { DashboardAlert } from "@/components/dashboard/alerts-card";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Citizen Dashboard — GreenGuard AI" }] }),
@@ -81,16 +46,16 @@ export const Route = createFileRoute("/dashboard")({
 
 function Dashboard() {
   const [currentTime, setCurrentTime] = useState("");
-  const { city, isApiConnected, refreshCity } = useCity();
+  const { city, cities, isApiConnected, refreshCity } = useCity();
   const { user } = useAuth();
   const band = aqiBand(city.aqi);
-  const series = trendSeries(city.aqi, city.aqi, 24, 24);
   const showReports = !!user && AUTHORITY_ROLES.includes(user.role);
 
-  // Phase 4: real 7-day history for chart — falls back to mock series above
+  // Real 7-day history, used to derive a coarse pollution trend ("What
+  // Matters Now"). Phase 1 realism rule: when this isn't available yet, the
+  // trend derivation falls back to "Stable" rather than a fabricated series.
   const {
     data: historyData,
-    isLoading: historyLoading,
     refetch: refetchHistory,
   } = useQuery({
     queryKey: ["city-history", city.id, 7],
@@ -99,17 +64,37 @@ function Dashboard() {
     enabled: !!city.id,
   });
 
-  const chartSeries: Array<{ label: string; aqi: number; pm25: number; no2: number }> = historyData
-    ?.data?.history?.length
-    ? historyData.data.history.map(
-        (d: { date: string; aqi: { avg: number }; pm25: number; no2: number }) => ({
-          label: d.date.slice(5), // "MM-DD"
-          aqi: d.aqi?.avg ?? 0,
-          pm25: d.pm25 ?? 0,
-          no2: d.no2 ?? 0,
-        }),
-      )
-    : series;
+  const trendHistory: Array<{ aqi: number }> = historyData?.data?.history?.length
+    ? historyData.data.history.map((d: { aqi: { avg: number } }) => ({ aqi: d.aqi?.avg ?? 0 }))
+    : [];
+
+  // Real 24h hourly trend for the single "Air Quality · 24 Hours" chart.
+  const { data: trend24hData, isLoading: trend24hLoading, refetch: refetchTrend24h } = useQuery({
+    queryKey: ["city-trend-24h", city.id],
+    queryFn: () => environmentalApi.getCityTrend(city.id, 24),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!city.id,
+    throwOnError: false,
+  });
+
+  const aqi24hPoints: Aqi24hPoint[] = useMemo(() => {
+    const trend = trend24hData?.data?.trend;
+    if (!Array.isArray(trend) || trend.length === 0) return [];
+
+    return trend
+      .map((t: { timestamp: string; aqi: number }) => {
+        const ts = new Date(t.timestamp).getTime();
+        return { timestamp: t.timestamp, aqi: t.aqi, ts };
+      })
+      .filter((p) => !Number.isNaN(p.ts))
+      .sort((a, b) => a.ts - b.ts)
+      .map(({ timestamp, aqi }) => ({
+        timestamp,
+        aqi,
+        label: new Date(timestamp).toLocaleTimeString([], { hour: "numeric" }),
+      }));
+  }, [trend24hData]);
+
   const isAdmin = user?.role === "administrator";
 
   useEffect(() => {
@@ -136,14 +121,10 @@ function Dashboard() {
     throwOnError: false,
   });
 
-  const {
-    data: insightData,
-    isLoading: insightsLoading,
-    refetch: refetchInsights,
-    dataUpdatedAt: insightsUpdatedAt,
-    isError: insightsError,
-    isFetching: insightsFetching,
-  } = useQuery({
+  // insightData/refetchInsights back the "AI Insights & Recommendations"
+  // page of the PDF export below; the on-dashboard AI brief card that used
+  // to render this was replaced by What Matters Now (see ai-brief.ts).
+  const { data: insightData, refetch: refetchInsights } = useQuery({
     queryKey: ["insights", city.id],
     queryFn: () => copilotApi.getInsights(city.id).then((r) => r.data.insights),
     staleTime: 5 * 60_000,
@@ -164,52 +145,29 @@ function Dashboard() {
     throwOnError: false,
   });
 
+  // `alerts`/`insights` keep their existing offline-fallback behavior
+  // because the PDF export/advisory generators below (unchanged, Phase 1
+  // out of scope) still read from them.
   const alerts = alertData ?? ALERTS;
   const insights = insightData ?? INSIGHTS;
   const adminSummary = adminSummaryData?.summary;
 
-  // Phase 2: real composite Environmental Health Score — see
+  // Real composite Environmental Health Score — see
   // src/lib/environmental-health.ts for the documented AQI/risk/water
-  // weighting. Replaces the Phase 1 placeholder that just echoed city.eco.
+  // weighting. The score itself is real; only its large Dashboard display
+  // was removed in Phase 1 (it now belongs on Environmental Overview). The
+  // header pill below still uses envHealth.band.
   const envHealth = computeEnvHealthScore({ aqi: city.aqi, risk: city.risk, water: city.water });
-  const mainPollutant = getMainPollutant({
-    pm25: city.pm25,
-    pm10: city.pm10,
-    no2: city.no2,
-    o3: city.o3,
-  });
-  const heroLastUpdated = formatRelativeTime(city.updatedAt);
+  const dataLastUpdatedLabel = formatRelativeTime(city.updatedAt);
+  const dataFreshness = computeDataFreshness(city.updatedAt, isApiConnected);
 
-  // Phase 3: AI Daily Brief. The lead/supporting paragraphs are genuine
-  // Gemini-authored text pulled straight from the existing insights
-  // response (see src/lib/ai-brief.ts for why chips/activity/confidence are
-  // deterministic derivations rather than a second AI call).
-  const safeInsights = Array.isArray(insights) ? insights : INSIGHTS;
-  const briefLead = findInsightByTag(safeInsights, ["Air Quality"]);
-  const briefSupporting = [
-    findInsightByTag(safeInsights, ["Water"]),
-    findInsightByTag(safeInsights, ["Risk", "Forecast"]),
-    findInsightByTag(safeInsights, ["Sustainability"]),
-  ].filter((i): i is NonNullable<typeof i> => !!i);
-  const briefGreeting = getGreetingText();
-  const outdoorGuidance = getOutdoorGuidance(city.aqi);
-  const pollutionTrend = getPollutionTrend(chartSeries);
-  const weatherImpact = getWeatherImpact(city.windSpeed);
-  const healthRisk = getHealthRiskLabel(city.risk);
-  const activityGuidance = getActivityGuidance(city.aqi);
-  const aiConfidence = computeAIConfidence({
-    isApiConnected,
-    temp: city.temp,
-    humidity: city.humidity,
-    windSpeed: city.windSpeed,
-    water: city.water,
-    historyPoints: chartSeries.length,
-  });
-  const briefGeneratedAgo = formatRelativeTime(
-    insightsUpdatedAt ? new Date(insightsUpdatedAt).toISOString() : undefined,
-  );
-  const briefIsError = isApiConnected && insightsError;
-  const briefIsEmpty = !insightsLoading && !briefIsError && safeInsights.length === 0;
+  // Phase 1 sections use only real alert data — never the offline mock
+  // fallback — so "What Matters Now" / "Live Environmental Activity" never
+  // present fabricated alerts as if they were real.
+  const realAlerts: DashboardAlert[] = Array.isArray(alertData) ? alertData : [];
+
+  const pollutionTrend = getPollutionTrend(trendHistory);
+  const hasReliableHistory = trendHistory.length >= 2;
   const thingsToWatch = deriveThingsToWatch({
     pollutionTrend,
     humidity: city.humidity,
@@ -218,19 +176,14 @@ function Dashboard() {
     water: city.water,
     aqi: city.aqi,
   });
-
-  const [isRefreshingInsights, setIsRefreshingInsights] = useState(false);
-  const handleRefreshInsights = async () => {
-    // Phase 3: AI-only refresh -- regenerates just the Daily Brief, not the
-    // whole dashboard, with its own duplicate-request guard.
-    if (isRefreshingInsights) return;
-    setIsRefreshingInsights(true);
-    try {
-      await refetchInsights();
-    } finally {
-      setIsRefreshingInsights(false);
-    }
-  };
+  const whatMattersItems = deriveWhatMattersNow({
+    aqi: city.aqi,
+    band,
+    pollutionTrend,
+    hasHistory: hasReliableHistory,
+    watchItems: thingsToWatch,
+    activeAlertsCount: realAlerts.length,
+  });
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const handleRefresh = async () => {
@@ -239,7 +192,13 @@ function Dashboard() {
     if (isRefreshing) return;
     setIsRefreshing(true);
     try {
-      await Promise.all([refreshCity(), refetchAlerts(), refetchInsights(), refetchHistory()]);
+      await Promise.all([
+        refreshCity(),
+        refetchAlerts(),
+        refetchInsights(),
+        refetchHistory(),
+        refetchTrend24h(),
+      ]);
     } finally {
       setIsRefreshing(false);
     }
@@ -1109,7 +1068,6 @@ function Dashboard() {
 
   return (
     <>
-      <SceneBackground aqi={city.aqi} />
       <motion.div
         className="p-4 md:p-8 space-y-6 max-w-[1600px] mx-auto"
         variants={PAGE_STAGGER}
@@ -1213,321 +1171,50 @@ function Dashboard() {
         )}
 
         <motion.div variants={PAGE_SECTION}>
-          <EnvironmentalHealthHero
-            score={envHealth.score}
-            band={envHealth.band}
-            aqi={city.aqi}
-            aqiBand={band}
-            mainPollutant={mainPollutant}
-            temp={city.temp}
-            humidity={city.humidity}
-            windSpeed={city.windSpeed}
-            lastUpdated={heroLastUpdated}
-          />
-        </motion.div>
-
-        <motion.div variants={PAGE_SECTION}>
-          <AIDailyBriefCard
-            greeting={briefGreeting}
-            userName={user?.name}
-            cityName={city.name}
-            leadInsight={briefLead}
-            supportingInsights={briefSupporting}
-            aqi={city.aqi}
-            aqiLabel={band.label}
-            outdoorGuidance={outdoorGuidance}
-            pollutionTrend={pollutionTrend}
-            weatherImpact={weatherImpact}
-            healthRisk={healthRisk}
-            activityGuidance={activityGuidance}
-            confidence={aiConfidence}
-            generatedAgo={briefGeneratedAgo}
-            isLoading={isApiConnected && insightsLoading}
-            isRefreshing={isRefreshingInsights || (insightsFetching && !insightsLoading)}
-            onRefresh={handleRefreshInsights}
-            isError={briefIsError}
-            isEmpty={briefIsEmpty}
-            watchItems={thingsToWatch}
-          />
-        </motion.div>
-
-        <motion.div variants={PAGE_SECTION}>
-          <QuickActions showReports={showReports} />
-        </motion.div>
-
-        <motion.div variants={PAGE_SECTION}>
-          <HighlightsGrid
+          <CurrentConditions
             aqi={city.aqi}
             band={band}
             temp={city.temp}
             humidity={city.humidity}
             windSpeed={city.windSpeed}
-          />
-        </motion.div>
-
-        <motion.div variants={PAGE_SECTION} className="grid lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-7">
-            <AlertsCard
-              alerts={Array.isArray(alerts) ? alerts : ALERTS}
-              isLoading={isApiConnected && alertsLoading}
-            />
-          </div>
-          <div className="lg:col-span-5">
-            <MiniTrendCard
-              series={chartSeries.map((d) => ({ label: d.label, aqi: d.aqi }))}
-              isLoading={isApiConnected && historyLoading}
-            />
-          </div>
-        </motion.div>
-
-        <motion.div variants={PAGE_SECTION}>
-          <EnvironmentalTimeline
-            series={chartSeries.map((d) => ({ label: d.label, aqi: d.aqi }))}
-            isLoading={isApiConnected && historyLoading}
+            freshness={dataFreshness}
+            lastUpdatedLabel={dataLastUpdatedLabel}
           />
         </motion.div>
 
         <motion.div variants={PAGE_SECTION}>
-          <MapPreviewCard cityName={city.name} aqi={city.aqi} aqiBand={band} />
+          <WhatMattersNow items={whatMattersItems} isLoading={isApiConnected && alertsLoading} />
         </motion.div>
 
-        <motion.div variants={PAGE_SECTION} className="grid lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-7">
-            <CommunityActivityCard cityName={city.name} />
-          </div>
-          <div className="lg:col-span-5">
-            <EcoTipCard />
-          </div>
-        </motion.div>
-
-        {/*
-        Detailed environmental analytics — retained from the previous
-        dashboard build (full pollutant trend, composite scores, sensor
-        network health). These don't have a named slot in the Phase 1
-        Citizen Dashboard Foundation yet, so rather than dropping working
-        functionality they stay here, below the new foundation, ready to
-        be folded into a later phase.
-      */}
-        {/* ── Phase 2: Pollutant Breakdown ── */}
         <motion.div variants={PAGE_SECTION}>
-          <PollutantBreakdownCard
-            pm25={city.pm25}
-            pm10={city.pm10}
-            no2={city.no2}
-            o3={city.o3}
-            aqi={city.aqi}
+          <DataStatus
+            isConnected={isApiConnected}
+            freshness={dataFreshness}
+            lastUpdatedLabel={dataLastUpdatedLabel}
           />
         </motion.div>
 
-        {/* ── Phase 2: Weather Insights ── */}
         <motion.div variants={PAGE_SECTION}>
-          <WeatherInsightsCard
-            temp={city.temp}
-            humidity={city.humidity}
-            windSpeed={city.windSpeed}
-            aqi={city.aqi}
-            lat={city.lat}
+          <LiveEnvironmentalActivity
+            alerts={realAlerts}
+            cityName={city.name}
+            updatedAt={city.updatedAt}
+            isLoading={isApiConnected && alertsLoading}
           />
         </motion.div>
 
-        {/* ── Phase 2: Nearby Cities ── */}
         <motion.div variants={PAGE_SECTION}>
-          <NearbyCitiesCard
-            currentCityId={city.id}
-            currentLat={city.lat}
-            currentLng={city.lng}
-          />
+          <Aqi24hChart points={aqi24hPoints} isLoading={trend24hLoading} />
         </motion.div>
 
-        {/* ── Phase 2: Live Activity Feed ── */}
         <motion.div variants={PAGE_SECTION}>
-          <LiveActivityFeed />
+          <AroundYou currentCity={city} cities={cities} />
         </motion.div>
 
-        <div id="detailed-analytics" className="space-y-6">
-          <SectionTitle eyebrow="Deep dive" title="Detailed environmental analytics" />
-
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-            <StatCard
-              label="Water Quality"
-              value={city.water}
-              unit="WQI"
-              accent="info"
-              hint={city.water > 75 ? "Excellent" : "Acceptable"}
-              trend={{ value: 3, direction: "down" }}
-              icon={<Droplets className="size-4" />}
-            />
-            <StatCard
-              label="Risk Score"
-              value={city.risk}
-              unit="/100"
-              accent={city.risk > 60 ? "destructive" : "warning"}
-              hint="Composite exposure"
-              trend={{ value: 4, direction: "up" }}
-              icon={<ShieldAlert className="size-4" />}
-            />
-            <StatCard
-              label="Active Alerts"
-              value={Array.isArray(alerts) ? alerts.length : city.alerts}
-              accent="destructive"
-              hint="Check alert feed"
-              icon={<AlertTriangle className="size-4" />}
-            />
-          </div>
-
-          <Panel
-            eyebrow="Telemetry"
-            title="7-day pollutant trend"
-            action={
-              <div className="flex gap-1 text-[11px]">
-                {["AQI", "PM2.5", "NO₂"].map((l, i) => (
-                  <span
-                    key={l}
-                    className="flex items-center gap-1 text-muted-foreground px-2 py-0.5 rounded border border-border"
-                  >
-                    <span
-                      className="size-1.5 rounded-full"
-                      style={{
-                        background: [
-                          "var(--color-primary)",
-                          "var(--color-info)",
-                          "var(--color-warning)",
-                        ][i],
-                      }}
-                    />
-                    {l}
-                  </span>
-                ))}
-              </div>
-            }
-          >
-            <div className="h-72">
-              <ResponsiveContainer>
-                <AreaChart data={chartSeries}>
-                  <defs>
-                    <linearGradient id="g1" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.5} />
-                      <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="g2" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="var(--color-info)" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="var(--color-info)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid
-                    stroke="var(--color-border)"
-                    strokeDasharray="3 3"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="label"
-                    tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: "var(--color-popover)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: 10,
-                      fontSize: 12,
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="aqi"
-                    stroke="var(--color-primary)"
-                    strokeWidth={2}
-                    fill="url(#g1)"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="pm25"
-                    stroke="var(--color-info)"
-                    strokeWidth={2}
-                    fill="url(#g2)"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="no2"
-                    stroke="var(--color-warning)"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </Panel>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <Panel eyebrow="Composition" title="Pollutant breakdown">
-              <div className="h-60">
-                <ResponsiveContainer>
-                  <BarChart
-                    data={[
-                      { k: "PM2.5", v: city.pm25, lim: 25 },
-                      { k: "PM10", v: city.pm10, lim: 50 },
-                      { k: "NO₂", v: city.no2, lim: 40 },
-                      { k: "O₃", v: city.o3, lim: 60 },
-                      { k: "CO₂", v: city.co2 - 380, lim: 50 },
-                    ]}
-                  >
-                    <CartesianGrid
-                      stroke="var(--color-border)"
-                      strokeDasharray="3 3"
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="k"
-                      tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: "var(--color-popover)",
-                        border: "1px solid var(--color-border)",
-                        borderRadius: 10,
-                        fontSize: 12,
-                      }}
-                    />
-                    <Bar
-                      dataKey="lim"
-                      fill="color-mix(in oklab, var(--color-muted-foreground) 20%, transparent)"
-                      radius={[6, 6, 0, 0]}
-                    />
-                    <Bar dataKey="v" fill="var(--color-primary)" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Panel>
-
-            <Panel eyebrow="Sustainability" title="EcoScore, carbon & renewables">
-              <div className="flex flex-col h-full justify-between gap-4">
-                <p className="text-sm text-muted-foreground">
-                  EcoScore, carbon intensity, renewable share, green cover, waste diversion and
-                  water recycling for {city.name} now live on the Sustainability page.
-                </p>
-                <a
-                  href="/sustainability"
-                  className="text-sm font-medium text-primary inline-flex items-center gap-1.5"
-                >
-                  View Sustainability <ArrowUpRight className="size-3.5" />
-                </a>
-              </div>
-            </Panel>
-          </div>
-        </div>
+        <motion.div variants={PAGE_SECTION} className="space-y-4">
+          <SectionTitle eyebrow="Explore" title="Explore GreenGuard" />
+          <QuickActions showReports={showReports} />
+        </motion.div>
       </motion.div>
     </>
   );

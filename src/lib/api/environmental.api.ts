@@ -120,6 +120,28 @@ export interface CityHistoryDay {
   readings: number;
 }
 
+// ─── Phase 3: Relationships & Trends — verified-only trend summary ───────────
+// Returned by /environmental/trends/:cityId. `direction`/`sufficient` reflect
+// only genuine ingested readings (source: "api") — seeded/demo data is
+// excluded server-side, so a "insufficient-data" direction here is an honest
+// signal, not a fabricated fallback.
+export interface CityTrendPeriod {
+  avgAqi: number | null;
+  avgPm25: number | null;
+  avgRisk: number | null;
+  direction: "improving" | "worsening" | "stable" | "insufficient-data";
+  readings: number;
+  sufficient: boolean;
+}
+
+export interface CityTrendsResponse {
+  cityId: string;
+  cityName: string;
+  current: { aqi: number; pm25: number; risk: number; eco: number; timestamp: string };
+  trend7d: CityTrendPeriod;
+  trend30d: CityTrendPeriod;
+}
+
 export interface DailyForecast {
   date: string;
   icon: string;
@@ -180,7 +202,8 @@ export const environmentalApi = {
     data: { cityId: string; days: number; history: CityHistoryDay[] };
   }> => client.get(`/environmental/history/${cityId}`, { params: { days } }).then((r) => r.data),
 
-  getTrends: (cityId: string) => client.get(`/environmental/trends/${cityId}`).then((r) => r.data),
+  getTrends: (cityId: string): Promise<{ success: boolean; data: CityTrendsResponse }> =>
+    client.get(`/environmental/trends/${cityId}`).then((r) => r.data),
 
   getRankings: () => client.get("/environmental/rankings").then((r) => r.data),
 

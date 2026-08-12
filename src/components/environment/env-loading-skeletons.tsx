@@ -4,56 +4,64 @@ import { cn } from "@/lib/utils";
 /**
  * Environmental Overview — reusable loading skeletons.
  *
- * Phase 12 cleanup: removed dead exports for sections that no longer exist
- * (AQI & Weather Intelligence, Environmental Context, WeatherOverview,
- * AQI Trend) and generic placeholder skeletons (Weather, Forecast, Chart,
- * Pollutants, Map) that were never imported by active components.
+ * Phase 1 (foundation rebuild) cleanup: removed dead exports for the
+ * cinematic hero and telemetry strip that Phase 1 replaced
+ * (EnvHeroCommandCenterSkeleton, EnvMetricsStripSkeleton — both belonged to
+ * components deleted in this phase) and added skeletons for the two new
+ * Phase 1 foundation sections.
  *
  * Active exports (all consumed by at least one component):
- *   EnvHeroCommandCenterSkeleton  → env-hero-command-center
- *   EnvMetricsStripSkeleton       → env-metrics-strip
+ *   EnvCityContextSkeleton        → env-city-context
+ *   EnvCurrentConditionsSkeleton  → env-current-conditions
  *   EnvAqiHeroSkeleton            → env-live-aqi-hero
  *   EnvForecastOverviewSkeleton   → env-forecast-overview
- *   EnvPollutantsOverviewSkeleton → env-pollutants
  *   EnvHealthRecommendationSkeleton → env-health-recommendation
  *   EnvMapPreviewSkeleton         → env-map
  *   EnvAISummarySkeleton          → env-ai-summary
+ *   EnvUnderstandingSkeleton      → env-understanding (Phase 2)
+ *   EnvTrendsSkeleton              → env-trends (Phase 3)
  */
 
-export function EnvHeroCommandCenterSkeleton({ className }: { className?: string }) {
+export function EnvCityContextSkeleton({ className }: { className?: string }) {
   return (
-    <div className={cn("glass rounded-2xl p-5 md:p-8", className)}>
-      <div className="flex items-center justify-between gap-4 pb-5">
-        <Skeleton className="h-3 w-48" />
-        <Skeleton className="h-6 w-28 rounded-full" />
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-border p-5 flex flex-col gap-3">
-            <Skeleton className="h-3 w-28" />
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-12 w-24" />
-            <Skeleton className="h-5 w-20 rounded-full" />
-            <Skeleton className="h-3 w-full" />
-          </div>
-        ))}
+    <div
+      className={cn(
+        "grid grid-cols-1 md:grid-cols-[minmax(260px,340px)_1fr] gap-5 md:gap-8",
+        className,
+      )}
+    >
+      <Skeleton className="h-[170px] sm:h-[200px] md:h-[220px] lg:h-[250px] xl:h-[280px] rounded-2xl" />
+      <div className="flex flex-col justify-center gap-3">
+        <Skeleton className="h-7 w-40" />
+        <Skeleton className="h-3.5 w-56" />
+        <Skeleton className="h-3.5 w-32" />
+        <Skeleton className="h-3.5 w-full max-w-md" />
       </div>
     </div>
   );
 }
 
-export function EnvMetricsStripSkeleton({ className }: { className?: string }) {
+export function EnvCurrentConditionsSkeleton({ className }: { className?: string }) {
   return (
-    <div className={cn("grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3", className)}>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="glass rounded-xl p-4 flex items-center gap-3">
-          <Skeleton className="size-9 rounded-lg shrink-0" />
-          <div className="flex-1 space-y-1.5">
-            <Skeleton className="h-2.5 w-14" />
-            <Skeleton className="h-4 w-10" />
+    <div className={cn("space-y-4", className)}>
+      <Skeleton className="h-3 w-32" />
+      <div className="rounded-2xl border border-border p-5 md:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-8">
+          <div className="flex items-center gap-4 sm:flex-col sm:items-start sm:gap-3 shrink-0">
+            <Skeleton className="size-[108px] rounded-full" />
+            <Skeleton className="h-5 w-20 rounded-full" />
+          </div>
+          <div className="hidden sm:block w-px self-stretch bg-border" aria-hidden="true" />
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 flex-1 w-full">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex items-baseline justify-between gap-2">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-3.5 w-12" />
+              </div>
+            ))}
           </div>
         </div>
-      ))}
+      </div>
     </div>
   );
 }
@@ -100,25 +108,6 @@ export function EnvForecastOverviewSkeleton({
             <Skeleton className="size-8 rounded-full" />
             <Skeleton className="h-4 w-10" />
             <Skeleton className="h-3 w-8" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export function EnvPollutantsOverviewSkeleton({ className }: { className?: string }) {
-  return (
-    <div className={cn("glass rounded-2xl p-6 md:p-8", className)}>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            className="flex flex-col items-center gap-1.5 rounded-xl border border-border p-4"
-          >
-            <Skeleton className="h-3 w-12" />
-            <Skeleton className="h-5 w-14" />
-            <Skeleton className="h-2.5 w-10" />
           </div>
         ))}
       </div>
@@ -186,6 +175,44 @@ export function EnvAISummarySkeleton({ className }: { className?: string }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Skeleton className="h-52 rounded-2xl" />
         <Skeleton className="h-52 rounded-2xl" />
+      </div>
+    </div>
+  );
+}
+
+export function EnvUnderstandingSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("space-y-4", className)}>
+      <Skeleton className="h-3 w-52" />
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.1fr] gap-4">
+        <div className="rounded-2xl border border-border p-5 md:p-6 space-y-4">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-2/3" />
+          <Skeleton className="h-7 w-16" />
+          <Skeleton className="h-2.5 w-full rounded-full" />
+        </div>
+        <div className="space-y-2.5">
+          <Skeleton className="h-16 rounded-xl" />
+          <Skeleton className="h-16 rounded-xl" />
+          <Skeleton className="h-28 rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function EnvTrendsSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("space-y-4", className)}>
+      <Skeleton className="h-3 w-40" />
+      <div className="rounded-2xl border border-border p-5 md:p-6 space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-5 w-24 rounded-full" />
+        </div>
+        <Skeleton className="h-48 w-full rounded-xl" />
+        <Skeleton className="h-14 w-full rounded-xl" />
       </div>
     </div>
   );

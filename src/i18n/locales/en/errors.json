@@ -27,5 +27,23 @@
   "offline": {
     "title": "You’re offline",
     "description": "Check your connection and try again."
+  },
+  "states": {
+    "network": {
+      "title": "Connection error",
+      "description": "Unable to reach the server. Check your connection and try again."
+    },
+    "server": {
+      "title": "Something went wrong",
+      "description": "The server returned an error. This is usually temporary — please try again."
+    },
+    "forbidden": {
+      "title": "Access denied",
+      "description": "You don't have permission to view this content."
+    },
+    "loadFailed": {
+      "title": "Failed to load",
+      "description": "Something went wrong loading this data. Please try refreshing."
+    }
   }
 }

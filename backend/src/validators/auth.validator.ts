@@ -1,4 +1,5 @@
 import { body } from "express-validator";
+import { normalizeAuthorityDepartment } from "../constants/smartRouting";
 
 export const signupValidator = [
   body("name").trim().isLength({ min: 2, max: 100 }).withMessage("Name must be 2–100 characters"),
@@ -12,8 +13,37 @@ export const signupValidator = [
   // Administrator is not permitted. This is enforced again in the controller
   // so the rule holds even if this validator list is ever changed.
   body("role").optional().isIn(["citizen", "authority"]).withMessage("Invalid role"),
-  body("organization").optional().trim().isLength({ max: 200 }),
+  // Organization/Board stays flexible free text (not a hardcoded dropdown)
+  // for every role, but is only mandatory for Authority registration —
+  // Citizen accounts have no organization/board and must keep working
+  // exactly as before. Two independent chains (rather than one .optional()
+  // + .if() chain) avoid ambiguity between "absent" and "conditionally
+  // required" on the same field.
+  body("organization")
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage("Organization/Board must be under 200 characters"),
+  body("organization")
+    .if(body("role").equals("authority"))
+    .trim()
+    .notEmpty()
+    .withMessage("Organization/Board is required for Authority registration"),
   body("phone").optional().trim(),
+  // Department is the structured classification Smart Routing (Automation 2)
+  // matches against — it is REQUIRED for Authority registration and MUST
+  // resolve to one of the canonical COMPLAINT_DEPARTMENTS values (accepting
+  // either the slug or its human-readable label). It is never required, and
+  // is ignored if supplied, for Citizen registration. Never trust the
+  // frontend dropdown alone — arbitrary/unsupported strings are rejected
+  // here regardless of what the client sends.
+  body("department")
+    .if(body("role").equals("authority"))
+    .notEmpty()
+    .withMessage("Department is required for Authority registration")
+    .bail()
+    .custom((value) => normalizeAuthorityDepartment(value) !== null)
+    .withMessage("Invalid department. Please select a department from the list."),
 ];
 
 export const loginValidator = [

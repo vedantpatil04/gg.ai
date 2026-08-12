@@ -56,7 +56,17 @@
     "measurementUnits": "Measurement Units",
     "metric": "Metric",
     "imperial": "Imperial",
-    "updated": "Language & Region preferences updated"
+    "updated": "Language & Region preferences updated",
+    "hour24": "24 Hour",
+    "hour12": "12 Hour",
+    "selectTimezone": "Select a timezone",
+    "saving": "Saving…",
+    "couldntLoad": "Couldn't load your language & region preferences.",
+    "tryAgain": "Try again",
+    "couldntSave": "Couldn't save your language & region preferences.",
+    "couldntSaveTitle": "Couldn't save",
+    "retry": "Retry",
+    "otherTimezoneRegion": "Other"
   },
   "dashboard": {
     "title": "Dashboard Preferences",
@@ -69,7 +79,38 @@
     "restoreTitle": "Restore dashboard preferences?",
     "restoreDescription": "This will reset widget visibility, default landing page, default city, and pinned cards to their default values.",
     "updated": "Dashboard preferences updated",
-    "restored": "Dashboard preferences restored"
+    "restored": "Dashboard preferences restored",
+    "selectPage": "Select a page",
+    "searchCities": "Search cities…",
+    "noCityFound": "No city found.",
+    "selectCity": "Select a city",
+    "showWidgetAria": "Show {{label}} widget",
+    "pinCardAria": "Pin {{label}}",
+    "cancel": "Cancel",
+    "restore": "Restore",
+    "couldntLoad": "Couldn't load your dashboard preferences.",
+    "couldntSave": "Couldn't save your dashboard preferences.",
+    "couldntSaveTitle": "Couldn't save",
+    "couldntRestore": "Couldn't restore defaults",
+    "pleaseTryAgain": "Please try again.",
+    "retry": "Retry",
+    "widgets": {
+      "aqi": "Air Quality Index",
+      "weather": "Weather Summary",
+      "trends": "Pollution Trends",
+      "complaints": "Recent Complaints",
+      "alerts": "Environmental Alerts",
+      "reports": "Reports Overview",
+      "quickActions": "Quick Actions"
+    },
+    "pinnable": {
+      "aqi": "AQI",
+      "forecast": "Forecast",
+      "map": "Smart Map",
+      "complaints": "Complaint Status",
+      "weather": "Weather",
+      "reports": "Reports"
+    }
   },
   "maps": {
     "title": "Map Preferences",
@@ -130,5 +171,7 @@
     "terms": "Terms of Service",
     "privacyPolicy": "Privacy Policy",
     "support": "Support"
-  }
+  },
+  "ariaSections": "Settings sections",
+  "ariaNav": "Settings navigation"
 }

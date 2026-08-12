@@ -58,7 +58,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth, type UserRole } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { Clock, Hash } from "lucide-react";
-import { ALL_NAV_GROUPS } from "@/components/app-layout";
+import { useTranslation } from "react-i18next";
+import { useNavGroups, type NavGroup } from "@/components/app-layout";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -147,16 +148,17 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
 }
 
 // ─── Build command entries from nav data ──────────────────────────────────────
-// Single source of truth: ALL_NAV_GROUPS exported from app-layout.tsx.
-// The same icons, labels, routes, and permission flags used by the sidebar.
+// Single source of truth: useNavGroups() (app-layout.tsx) — same icons,
+// translated labels, routes, and permission flags used by the sidebar.
 
 function buildEntries(
+  navGroups: NavGroup[],
   isAuthenticated: boolean,
   role: UserRole | undefined,
 ): CommandEntry[] {
   const entries: CommandEntry[] = [];
 
-  for (const group of ALL_NAV_GROUPS) {
+  for (const group of navGroups) {
     for (const item of group.items) {
       // Permission check mirrors isNavItemVisible in app-layout.tsx
       if (!item.public) {
@@ -205,6 +207,8 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const navigate       = useNavigate();
   const pathname       = useRouterState({ select: (s) => s.location.pathname });
   const { user, isAuthenticated } = useAuth();
+  const { t } = useTranslation("common");
+  const { ALL_NAV_GROUPS } = useNavGroups();
 
   const [query, setQuery] = useState("");
   const [recentPaths, setRecentPaths] = useState<string[]>([]);
@@ -220,7 +224,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   }, [open]);
 
   // All navigable entries (permission-filtered)
-  const allEntries = buildEntries(isAuthenticated, user?.role);
+  const allEntries = buildEntries(ALL_NAV_GROUPS, isAuthenticated, user?.role);
 
   // Entries keyed by route for O(1) lookup
   const entryByPath = Object.fromEntries(allEntries.map((e) => [e.to, e]));
@@ -267,9 +271,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
           ref={inputRef}
           value={query}
           onValueChange={setQuery}
-          placeholder="Search pages, sections…"
+          placeholder={t("searchPagesSections")}
           className="h-12 text-sm flex-1 bg-transparent outline-none border-0 ring-0 focus:ring-0 placeholder:text-muted-foreground/60"
-          aria-label="Command palette search"
+          aria-label={t("commandPaletteSearch")}
         />
         <kbd className="hidden sm:flex items-center gap-0.5 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground/70 shrink-0 ml-2">
           Esc
@@ -283,8 +287,8 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
           <CommandEmpty>
             <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
               <Hash className="size-8 opacity-30" />
-              <p className="text-sm font-medium">No matching pages</p>
-              <p className="text-xs opacity-70">Try a different search term</p>
+              <p className="text-sm font-medium">{t("noMatchingPages")}</p>
+              <p className="text-xs opacity-70">{t("tryDifferentSearchTerm")}</p>
             </div>
           </CommandEmpty>
         )}
@@ -309,7 +313,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         {!isSearching && (
           <>
             {recentEntries.length > 0 && (
-              <CommandGroup heading="Recent">
+              <CommandGroup heading={t("recent")}>
                 {recentEntries.map((entry) => (
                   <PaletteItem
                     key={entry.id}
@@ -351,17 +355,17 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       <div className="border-t border-border px-3 py-2 flex items-center gap-3 text-[10px] text-muted-foreground/60 shrink-0">
         <span className="flex items-center gap-1">
           <kbd className="rounded border border-border bg-muted/60 px-1 py-0.5 font-mono">↑↓</kbd>
-          Navigate
+          {t("kbdNavigate")}
         </span>
         <span className="flex items-center gap-1">
           <kbd className="rounded border border-border bg-muted/60 px-1 py-0.5 font-mono">↵</kbd>
-          Open
+          {t("kbdOpen")}
         </span>
         <span className="flex items-center gap-1">
           <kbd className="rounded border border-border bg-muted/60 px-1 py-0.5 font-mono">Esc</kbd>
-          Close
+          {t("kbdClose")}
         </span>
-        <span className="ml-auto opacity-50">{kbdHint} to toggle</span>
+        <span className="ml-auto opacity-50">{t("kbdToggle", { key: kbdHint })}</span>
       </div>
     </Command>
   );
@@ -413,7 +417,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
               )}
               role="dialog"
               aria-modal="true"
-              aria-label="Command palette"
+              aria-label={t("commandPalette")}
               onKeyDown={(e) => {
                 if (e.key === "Escape") onClose();
               }}
@@ -438,6 +442,7 @@ interface PaletteItemProps {
 
 function PaletteItem({ entry, onSelect, isActive, showRecent }: PaletteItemProps) {
   const Icon = entry.icon;
+  const { t } = useTranslation("common");
 
   return (
     <CommandItem
@@ -449,7 +454,7 @@ function PaletteItem({ entry, onSelect, isActive, showRecent }: PaletteItemProps
         "aria-selected:bg-accent aria-selected:text-accent-foreground",
         isActive && "text-primary",
       )}
-      aria-label={`Navigate to ${entry.label}`}
+      aria-label={t("navigateTo", { label: entry.label })}
     >
       {/* Icon */}
       <div

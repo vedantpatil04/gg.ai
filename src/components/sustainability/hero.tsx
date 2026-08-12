@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  MapPin, Clock, RadioTower, TrendingUp, TrendingDown, Minus,
-  Gauge, Thermometer, Droplets, CloudCog, Waves, BarChart3, Award, Target, Sparkles, ChevronDown
+  MapPin, Clock, RadioTower,
+  Gauge, Thermometer, Droplets, CloudCog, Waves, Sparkles,
 } from "lucide-react";
 import type { City } from "@/lib/mock-data";
 import { StatusChip, type Tone } from "@/components/map/intelligence-ui";
 import { CountUp } from "@/components/sustainability/count-up";
+import { formatRelativeTime } from "@/lib/format-time";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 14 },
@@ -16,58 +17,28 @@ const fadeUp = {
   }),
 };
 
-function relativeTime(ms: number) {
-  const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
-  if (s < 5) return "just now";
-  if (s < 60) return `${s}s ago`;
-  const m = Math.round(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.round(m / 60);
-  return `${h}h ago`;
-}
-
 export function SustainabilityHero({
-  city, isApiConnected, grade, band, tone, trendDirection, trendValue,
+  city, isApiConnected, grade, band, tone,
 }: {
   city: City;
   isApiConnected: boolean;
   grade: string;
   band: string;
   tone: Tone;
-  trendDirection: "up" | "down" | "flat";
-  trendValue: number;
 }) {
   const [now, setNow] = useState(() => new Date());
-  const [lastSyncAt, setLastSyncAt] = useState(() => Date.now());
-  const [, forceTick] = useState(0);
 
-  // Clock tick
+  // Clock tick — also keeps the "Updated" freshness label below in sync
+  // each second, since it's derived from city.updatedAt on every render.
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
 
-  // Re-stamp "last sync" whenever the live city payload changes identity
-  useEffect(() => {
-    setLastSyncAt(Date.now());
-  }, [city]);
-
-  // Tick relative label
-  useEffect(() => {
-    const id = setInterval(() => forceTick((n) => n + 1), 15_000);
-    return () => clearInterval(id);
-  }, []);
-
-  const scrollToSection = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
-  const TrendIcon = trendDirection === "up" ? TrendingUp : trendDirection === "down" ? TrendingDown : Minus;
-  const trendColor =
-    trendDirection === "up" ? "var(--color-success)" : trendDirection === "down" ? "var(--color-destructive)" : "var(--color-muted-foreground)";
+  // Real reading timestamp (same field used across the Environment page,
+  // Dashboard, and the rest of this page) — not a client-side "last
+  // component render" clock.
+  const updatedLabel = formatRelativeTime(city.updatedAt);
 
   const summary = [
     { icon: Gauge, label: "AQI", value: city.aqi, decimals: 0, suffix: "" },
@@ -90,10 +61,9 @@ export function SustainabilityHero({
         aria-hidden="true"
       />
 
-      {/* Background ambient lighting effects */}
+      {/* Background ambient lighting — a single soft glow, not two */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute -top-20 -left-20 size-80 rounded-full bg-primary/20 blur-3xl floaty" style={{ animationDuration: "8s" }} />
-        <div className="absolute -bottom-24 -right-20 size-96 rounded-full bg-info/15 blur-3xl floaty" style={{ animationDuration: "10s", animationDelay: "1s" }} />
+        <div className="absolute -top-20 -left-20 size-80 rounded-full bg-primary/15 blur-3xl floaty" style={{ animationDuration: "9s" }} />
       </div>
 
       <div className="relative space-y-8">
@@ -102,7 +72,7 @@ export function SustainabilityHero({
           <motion.div variants={fadeUp} custom={0} className="lg:col-span-5 space-y-4">
             <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground font-bold flex items-center gap-2">
               <Sparkles className="size-4 text-primary shrink-0" />
-              Executive Sustainability Intelligence
+              Sustainability Overview
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight flex items-center gap-3">
               <MapPin className="size-8 sm:size-10 text-primary shrink-0" />
@@ -122,7 +92,7 @@ export function SustainabilityHero({
               </span>
               <span className="flex items-center gap-1.5 font-medium">
                 <RadioTower className="size-4 text-info shrink-0" />
-                Synced {relativeTime(lastSyncAt)}
+                Updated {updatedLabel}
               </span>
             </div>
           </motion.div>
@@ -154,13 +124,6 @@ export function SustainabilityHero({
                   <CountUp value={city.eco} />
                 </div>
                 <div className="text-xs sm:text-sm font-semibold text-muted-foreground mt-0.5">EcoScore · Grade {grade}</div>
-                <div
-                  className="mt-1.5 inline-flex items-center gap-1 text-xs sm:text-sm font-bold tabular-nums"
-                  style={{ color: trendColor }}
-                >
-                  <TrendIcon className="size-4" />
-                  {trendDirection === "flat" ? "Stable" : `${trendValue} pts`}
-                </div>
               </div>
             </div>
           </motion.div>
@@ -189,44 +152,6 @@ export function SustainabilityHero({
             </div>
           </motion.div>
         </div>
-
-        {/* ── Executive Quick Navigation Buttons Bar ──────────────────────── */}
-        <motion.div variants={fadeUp} custom={3} className="pt-4 border-t border-border/40">
-          <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3 flex items-center gap-1.5">
-            <ChevronDown className="size-3.5 text-primary animate-bounce" />
-            Quick Navigation Anchors
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:flex md:flex-wrap gap-2.5 sm:gap-3">
-            <button
-              onClick={() => scrollToSection("analytics")}
-              className="min-h-[48px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold aurora text-primary-foreground flex items-center justify-center gap-2 transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] shadow-md"
-            >
-              <BarChart3 className="size-4 shrink-0" />
-              <span>View Analytics</span>
-            </button>
-            <button
-              onClick={() => scrollToSection("esg")}
-              className="min-h-[48px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold glass hover:bg-muted/30 text-foreground flex items-center justify-center gap-2 transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <Award className="size-4 text-success shrink-0" />
-              <span>View ESG Intelligence</span>
-            </button>
-            <button
-              onClick={() => scrollToSection("sdg")}
-              className="min-h-[48px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold glass hover:bg-muted/30 text-foreground flex items-center justify-center gap-2 transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <Target className="size-4 text-info shrink-0" />
-              <span>View SDG Alignment</span>
-            </button>
-            <button
-              onClick={() => scrollToSection("recommendations")}
-              className="min-h-[48px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold glass hover:bg-muted/30 text-foreground flex items-center justify-center gap-2 transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] col-span-2 sm:col-span-1"
-            >
-              <Sparkles className="size-4 text-primary shrink-0" />
-              <span>Jump to Recommendations</span>
-            </button>
-          </div>
-        </motion.div>
       </div>
     </motion.div>
   );

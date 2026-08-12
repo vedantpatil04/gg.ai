@@ -37,6 +37,7 @@ import {
 import type { KbArticle, KbSection } from "./kb-data";
 import { KB_CATEGORIES_BY_ID, KB_ARTICLES } from "./kb-data";
 import { getRelatedArticles } from "./kb-search";
+import { AIArticleSummary, AIExplainSelection } from "../ai/help-ai-panel";
 import {
   useRecentlyViewed,
   useReadingProgress,
@@ -337,6 +338,17 @@ export function KbArticlePage({ article, onBack, onArticleClick }: KbArticlePage
   const [scrollPct, setScrollPct] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [selectedText, setSelectedText] = useState("");
+  const [explainOpen, setExplainOpen] = useState(false);
+
+  const handleMouseUp = () => {
+    const sel = window.getSelection();
+    const text = sel?.toString().trim() ?? "";
+    if (text.length > 3 && text.length < 300) {
+      setSelectedText(text);
+      setExplainOpen(true);
+    }
+  };
 
   const { addRecent } = useRecentlyViewed();
   const { setArticleProgress } = useReadingProgress();
@@ -415,9 +427,21 @@ export function KbArticlePage({ article, onBack, onArticleClick }: KbArticlePage
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: DUR_MD, ease: EASE_OUT }}
-            className="flex-1 min-w-0"
+            className="flex-1 min-w-0 relative"
             ref={contentRef}
+            onMouseUp={handleMouseUp}
           >
+            {/* AI Explain popup */}
+            <AnimatePresence>
+              {explainOpen && selectedText && (
+                <div className="absolute top-0 right-0 z-20">
+                  <AIExplainSelection
+                    selectedText={selectedText}
+                    onClose={() => { setExplainOpen(false); setSelectedText(""); }}
+                  />
+                </div>
+              )}
+            </AnimatePresence>
             {/* Article header */}
             <header className="mb-8">
               {/* Category + difficulty */}
@@ -461,7 +485,7 @@ export function KbArticlePage({ article, onBack, onArticleClick }: KbArticlePage
               </div>
 
               {/* Action bar */}
-              <div className="flex items-center gap-2 pb-6 border-b border-border">
+              <div className="flex flex-wrap items-center gap-2 pb-6 border-b border-border">
                 <BookmarkButton articleId={article.id} />
                 <button
                   onClick={copyLink}
@@ -478,6 +502,10 @@ export function KbArticlePage({ article, onBack, onArticleClick }: KbArticlePage
                   <Printer className="size-3.5" />
                   Print
                 </button>
+                <AIArticleSummary
+                  title={article.title}
+                  content={article.content.map(s => s.text ?? s.items?.join(" ") ?? "").filter(Boolean).join("\n\n")}
+                />
 
                 {/* Progress pill */}
                 {scrollPct > 0 && scrollPct < 100 && (

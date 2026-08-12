@@ -11,7 +11,7 @@
  */
 
 import { Link } from "@tanstack/react-router";
-import { Activity, Map, CloudSun, Megaphone, Sparkles, FileText } from "lucide-react";
+import { Activity, Map, CloudSun, Megaphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, useReducedMotion } from "framer-motion";
 import { STAGGER, HOVER_LIFT, TAP_PRESS } from "@/lib/motion";
@@ -25,16 +25,16 @@ interface QuickAction {
   description: string;
 }
 
+// Phase 1 correction pass: reduced to the canonical set of Explore
+// destinations. "Intelligence Center" and "Reports" were removed from this
+// Dashboard promotion — neither is one of the spec's named destinations,
+// and both remain reachable from their own areas of the app.
 const ACTIONS: QuickAction[] = [
-  { label: "Environmental", icon: Activity, href: "#environmental-health", anchor: true, accent: "var(--color-success)",     description: "Health score & metrics" },
+  { label: "Environmental Overview", icon: Activity, href: "/environment", accent: "var(--color-success)",     description: "Health score & metrics" },
   { label: "Smart Map",     icon: Map,      href: "/map",                  accent: "var(--color-info)",        description: "Interactive AQI map" },
   { label: "Forecast",      icon: CloudSun, href: "/forecast",             accent: "var(--color-warning)",     description: "7-day outlook" },
   { label: "Report Issue",  icon: Megaphone,href: "/citizen",              accent: "var(--color-destructive)", description: "Flag a problem" },
-  { label: "Intelligence Center", icon: Sparkles, href: "/intelligence",          accent: "var(--color-primary)",     description: "AI environmental advisor" },
 ];
-
-const REPORTS_ACTION: QuickAction =
-  { label: "Reports", icon: FileText, href: "/reports", accent: "var(--color-primary)", description: "Analytics & exports" };
 
 const tileVariant = {
   hidden: { opacity: 0, y: 12 },
@@ -98,9 +98,8 @@ function ActionTile({ action }: { action: QuickAction }) {
   );
 }
 
-export function QuickActions({ showReports }: { showReports: boolean }) {
+export function QuickActions({ showReports: _showReports }: { showReports: boolean }) {
   const prefersReduced = useReducedMotion();
-  const actions = showReports ? [...ACTIONS, REPORTS_ACTION] : ACTIONS;
 
   return (
     <motion.div
@@ -109,7 +108,7 @@ export function QuickActions({ showReports }: { showReports: boolean }) {
       initial={prefersReduced ? false : "hidden"}
       animate="show"
     >
-      {actions.map((a) => <ActionTile key={a.label} action={a} />)}
+      {ACTIONS.map((a) => <ActionTile key={a.label} action={a} />)}
     </motion.div>
   );
 }

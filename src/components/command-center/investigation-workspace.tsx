@@ -27,6 +27,7 @@ import {
   RotateCcw,
   Lock,
   CheckSquare,
+  ImageOff,
 } from "lucide-react";
 import { complaintApi } from "@/lib/api/services.api";
 import { Panel, Pill, WorkspaceHeader } from "@/components/ui-bits";
@@ -66,6 +67,7 @@ export interface ComplaintRecord {
   assignedBy?: { _id?: string; name?: string; email?: string };
   assignedAt?: string;
   assignedByName?: string;
+  assignmentSource?: "automatic" | "manual";
   // Phase 3C — verification
   verifiedBy?: { _id?: string; name?: string; email?: string };
   verifiedAt?: string;
@@ -283,6 +285,79 @@ function ClosedNotice({ complaint }: { complaint: ComplaintRecord }) {
   );
 }
 
+// Single evidence tile with a clean project-consistent fallback (instead of a
+// raw browser broken-image icon) if the resolved URL fails to load — mirrors
+// the same treatment used on the Administrator side (complaint-detail-panel.tsx,
+// resolution-verification-workspace.tsx) so both roles behave consistently.
+function EvidenceCard({
+  img,
+  index,
+  canEdit,
+  removing,
+  onOpen,
+  onRemove,
+}: {
+  img: string;
+  index: number;
+  canEdit: boolean;
+  removing: boolean;
+  onOpen: (src: string) => void;
+  onRemove: () => void;
+}) {
+  const src = resolveAssetUrl(img) ?? img;
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div className="relative flex flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/30 aspect-video text-muted-foreground">
+        <ImageOff className="size-5" />
+        <span className="text-[10px] uppercase tracking-wider">Evidence unavailable</span>
+        {canEdit && (
+          <button
+            onClick={onRemove}
+            className="absolute top-1.5 right-1.5 size-6 rounded-full bg-background/80 hover:bg-destructive/90 hover:text-white grid place-items-center border border-border transition-colors"
+          >
+            {removing ? <Loader2 className="size-3 animate-spin" /> : <X className="size-3" />}
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={() => onOpen(src)}
+      className="relative group rounded-xl overflow-hidden border border-border bg-muted/30 aspect-video cursor-pointer"
+    >
+      <img
+        src={src}
+        alt={`Evidence ${index + 1}`}
+        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+        onError={() => setFailed(true)}
+      />
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+        <ExternalLink className="size-5 text-white drop-shadow" />
+      </div>
+      {canEdit && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          className="absolute top-1.5 right-1.5 size-7 rounded-full bg-destructive/90 hover:bg-destructive grid place-items-center opacity-0 group-hover:opacity-100 transition-all shadow-lg"
+        >
+          {removing ? (
+            <Loader2 className="size-3.5 animate-spin text-white" />
+          ) : (
+            <X className="size-3.5 text-white" />
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Evidence panel ───────────────────────────────────────────────────────────
 function EvidencePanel({
   complaint,
@@ -329,41 +404,17 @@ function EvidencePanel({
       <Panel eyebrow="Evidence" title="Photographic Evidence">
         {complaint.images?.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-            {complaint.images.map((img, i) => {
-              const src = resolveAssetUrl(img) ?? img;
-              return (
-                <div
-                  key={i}
-                  onClick={() => setLightbox(src)}
-                  className="relative group rounded-xl overflow-hidden border border-border bg-muted/30 aspect-video cursor-pointer"
-                >
-                  <img
-                    src={src}
-                    alt={`Evidence ${i + 1}`}
-                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <ExternalLink className="size-5 text-white drop-shadow" />
-                  </div>
-                  {canEdit && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeMutation.mutate(img);
-                      }}
-                      className="absolute top-1.5 right-1.5 size-7 rounded-full bg-destructive/90 hover:bg-destructive grid place-items-center opacity-0 group-hover:opacity-100 transition-all shadow-lg"
-                    >
-                      {removeMutation.isPending ? (
-                        <Loader2 className="size-3.5 animate-spin text-white" />
-                      ) : (
-                        <X className="size-3.5 text-white" />
-                      )}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+            {complaint.images.map((img, i) => (
+              <EvidenceCard
+                key={i}
+                img={img}
+                index={i}
+                canEdit={canEdit}
+                removing={removeMutation.isPending}
+                onOpen={setLightbox}
+                onRemove={() => removeMutation.mutate(img)}
+              />
+            ))}
           </div>
         )}
         {canEdit && (

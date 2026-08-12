@@ -19,33 +19,13 @@ import { cn } from "@/lib/utils";
 import {
   useEnterpriseAuthorityList,
   useBulkOperation,
+  APPROVAL_PILL,
+  CAPACITY_META,
+  AVAILABILITY_PILL,
   type EnterpriseAuthority,
   type CapacityLabel,
   type AuthorityAvailability,
 } from "./authority-directory-queries";
-import type { AuthorityApprovalStatus } from "@/components/admin/authority-requests/authority-request-queries";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const APPROVAL_PILL: Record<AuthorityApprovalStatus, "success" | "warning" | "destructive"> = {
-  approved: "success",
-  pending: "warning",
-  rejected: "destructive",
-};
-
-const CAPACITY_META: Record<CapacityLabel, { label: string; tone: "success" | "warning" | "destructive" | "muted" }> = {
-  free: { label: "Free", tone: "success" },
-  moderate: { label: "Moderate", tone: "warning" },
-  busy: { label: "Busy", tone: "warning" },
-  overloaded: { label: "Overloaded", tone: "destructive" },
-};
-
-const AVAILABILITY_PILL: Record<AuthorityAvailability, "success" | "warning" | "info" | "muted"> = {
-  available: "success",
-  busy: "warning",
-  on_leave: "info",
-  inactive: "muted",
-};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -166,9 +146,9 @@ export function AuthorityEnterpriseList({
     if (statusFilter === "overloaded") return arr.filter((a) => a.workload?.capacity === "overloaded");
     if (statusFilter === "underutilized") return arr.filter((a) => (a.workload?.active ?? 0) <= 2 && a.isActive);
 
-    if (sort === "workload") arr.sort((a, b) => (sortDir === "asc" ? a.workload.total - b.workload.total : b.workload.total - a.workload.total));
-    else if (sort === "resolutionRate") arr.sort((a, b) => (sortDir === "asc" ? a.workload.resolutionRate - b.workload.resolutionRate : b.workload.resolutionRate - a.workload.resolutionRate));
-    else if (sort === "activeCases") arr.sort((a, b) => (sortDir === "asc" ? a.workload.active - b.workload.active : b.workload.active - a.workload.active));
+    if (sort === "workload") arr.sort((a, b) => (sortDir === "asc" ? (a.workload?.total ?? 0) - (b.workload?.total ?? 0) : (b.workload?.total ?? 0) - (a.workload?.total ?? 0)));
+    else if (sort === "resolutionRate") arr.sort((a, b) => (sortDir === "asc" ? (a.workload?.resolutionRate ?? 0) - (b.workload?.resolutionRate ?? 0) : (b.workload?.resolutionRate ?? 0) - (a.workload?.resolutionRate ?? 0)));
+    else if (sort === "activeCases") arr.sort((a, b) => (sortDir === "asc" ? (a.workload?.active ?? 0) - (b.workload?.active ?? 0) : (b.workload?.active ?? 0) - (a.workload?.active ?? 0)));
     return arr;
   }, [data, sort, sortDir, statusFilter]);
 
@@ -296,7 +276,7 @@ export function AuthorityEnterpriseList({
               >
                 <div className="flex items-center gap-2">
                   <div className="size-7 rounded-lg bg-primary/15 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
-                    {a.name.slice(0, 2).toUpperCase()}
+                    {(a.name || "AU").slice(0, 2).toUpperCase()}
                   </div>
                   <div className="min-w-0">
                     <div className="text-sm font-medium truncate">{a.name}</div>
@@ -316,7 +296,7 @@ export function AuthorityEnterpriseList({
 
               {/* Joined */}
               <div className="text-xs text-muted-foreground whitespace-nowrap">
-                {format(new Date(a.createdAt), "MMM d, yyyy")}
+                {a.createdAt ? format(new Date(a.createdAt), "MMM d, yyyy") : "—"}
               </div>
 
               {/* Active cases */}
@@ -330,7 +310,7 @@ export function AuthorityEnterpriseList({
               </div>
 
               {/* Capacity */}
-              {a.workload ? (
+              {a.workload && a.workload.capacity && CAPACITY_META[a.workload.capacity] ? (
                 <Pill tone={CAPACITY_META[a.workload.capacity].tone}>
                   {CAPACITY_META[a.workload.capacity].label}
                 </Pill>
@@ -340,9 +320,11 @@ export function AuthorityEnterpriseList({
 
               {/* Status */}
               <div className="flex flex-col gap-1 items-end">
-                <Pill tone={APPROVAL_PILL[a.approvalStatus]}>{a.approvalStatus}</Pill>
-                <Pill tone={AVAILABILITY_PILL[a.availability] ?? "muted"}>
-                  {a.availability.replace("_", " ")}
+                <Pill tone={a.approvalStatus && APPROVAL_PILL[a.approvalStatus] ? APPROVAL_PILL[a.approvalStatus] : "warning"}>
+                  {a.approvalStatus || "pending"}
+                </Pill>
+                <Pill tone={a.availability && AVAILABILITY_PILL[a.availability] ? AVAILABILITY_PILL[a.availability] : "muted"}>
+                  {a.availability ? a.availability.replace("_", " ") : "unknown"}
                 </Pill>
               </div>
             </div>

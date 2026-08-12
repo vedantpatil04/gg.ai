@@ -45,7 +45,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
 import { Pill } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
 import {
@@ -55,10 +54,13 @@ import {
   useAssignCities,
   useRemoveCities,
   useSetPrimaryCity,
+  useCityList,
+  APPROVAL_PILL,
+  CAPACITY_META,
+  AVAILABILITY_PILL,
   type EnterpriseAuthority,
   type CapacityLabel,
 } from "./authority-directory-queries";
-import type { AuthorityApprovalStatus } from "@/components/admin/authority-requests/authority-request-queries";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -78,21 +80,6 @@ const LIFECYCLE_ACTIONS: Record<LifecycleAction, LifecycleActionMeta> = {
   reinstate: { label: "Reinstate", icon: RefreshCw, variant: "default", description: "Restore a suspended account. Re-enables login and re-approves." },
   lock: { label: "Lock Account", icon: Lock, variant: "destructive", description: "Temporarily lock account for 24 hours." },
   unlock: { label: "Unlock", icon: Unlock, variant: "default", description: "Remove the account lock immediately." },
-};
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-const APPROVAL_PILL: Record<AuthorityApprovalStatus, "success" | "warning" | "destructive"> = {
-  approved: "success",
-  pending: "warning",
-  rejected: "destructive",
-};
-
-const CAPACITY_META: Record<CapacityLabel, { label: string; tone: "success" | "warning" | "destructive" | "muted" }> = {
-  free: { label: "Free", tone: "success" },
-  moderate: { label: "Moderate", tone: "warning" },
-  busy: { label: "Busy", tone: "warning" },
-  overloaded: { label: "Overloaded", tone: "destructive" },
 };
 
 function ProfileAvatar({ name, avatar }: { name: string; avatar?: string }) {
@@ -168,13 +155,13 @@ export function AuthorityProfileDrawer({
 }: AuthorityProfileDrawerProps) {
   const [tab, setTab] = useState("overview");
   const [pendingAction, setPendingAction] = useState<LifecycleAction | null>(null);
-  const [cityInput, setCityInput] = useState("");
   const [showCityForm, setShowCityForm] = useState(false);
 
   const { data: detail, isLoading: detailLoading } = useAuthorityDetail(authority?._id ?? null);
   const { data: lifecycleData, isLoading: lifecycleLoading } = useAuthorityLifecycleHistory(
     tab === "activity" ? (authority?._id ?? null) : null,
   );
+  const { data: cityList, isLoading: cityListLoading } = useCityList();
 
   const lifecycle = usePerformLifecycleAction();
   const assignCities = useAssignCities();
@@ -185,15 +172,19 @@ export function AuthorityProfileDrawer({
   const workload = detail?.workload ?? authority?.workload;
   const cityVolumes = detail?.cityVolumes ?? {};
 
+  // The picker only ever offers real, active GreenGuard cities (the City
+  // model) that aren't already assigned — jurisdiction must never be typed
+  // in as free text (see Smart Routing jurisdiction-integrity requirement).
+  const unassignedCities = (cityList ?? []).filter((c) => !(a?.assignedCities ?? []).includes(c.cityId));
+
   function handleLifecycleConfirm() {
     if (!pendingAction || !a) return;
     lifecycle.mutate({ id: a._id, action: pendingAction }, { onSuccess: () => setPendingAction(null) });
   }
 
-  function handleAssignCity() {
-    const city = cityInput.trim().toLowerCase();
-    if (!city || !a) return;
-    assignCities.mutate({ id: a._id, cities: [city] }, { onSuccess: () => { setCityInput(""); setShowCityForm(false); } });
+  function handleAssignCity(cityId: string) {
+    if (!a) return;
+    assignCities.mutate({ id: a._id, cities: [cityId] }, { onSuccess: () => setShowCityForm(false) });
   }
 
   function handleRemoveCity(city: string) {
@@ -238,11 +229,17 @@ export function AuthorityProfileDrawer({
                         {a.employeeId && <span className="ml-1 text-muted-foreground">#{a.employeeId}</span>}
                       </SheetDescription>
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        <Pill tone={APPROVAL_PILL[a.approvalStatus]}>{a.approvalStatus}</Pill>
+                        <Pill tone={a.approvalStatus && APPROVAL_PILL[a.approvalStatus] ? APPROVAL_PILL[a.approvalStatus] : "warning"}>
+                          {a.approvalStatus || "pending"}
+                        </Pill>
                         <Pill tone={a.isActive ? "success" : "muted"}>{a.isActive ? "Active" : "Inactive"}</Pill>
-                        {workload && <Pill tone={CAPACITY_META[workload.capacity].tone}>{CAPACITY_META[workload.capacity].label}</Pill>}
-                        <Pill tone={a.availability === "available" ? "success" : a.availability === "on_leave" ? "info" : "muted"}>
-                          {a.availability.replace("_", " ")}
+                        {workload && workload.capacity && CAPACITY_META[workload.capacity] && (
+                          <Pill tone={CAPACITY_META[workload.capacity].tone}>
+                            {CAPACITY_META[workload.capacity].label}
+                          </Pill>
+                        )}
+                        <Pill tone={a.availability && AVAILABILITY_PILL[a.availability] ? AVAILABILITY_PILL[a.availability] : "muted"}>
+                          {a.availability ? a.availability.replace("_", " ") : "unknown"}
                         </Pill>
                       </div>
                     </div>
@@ -299,14 +296,14 @@ export function AuthorityProfileDrawer({
                         value={a.isVerified ? "Verified" : "Unverified"}
                       />
                     </div>
-                    {a.specializations.length > 0 && (
+                    {a.specializations && a.specializations.length > 0 && (
                       <div className="space-y-2">
                         <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Specializations</h4>
                         <div className="flex flex-wrap gap-1.5">
                           {a.specializations.map((s) => (
                             <span key={s} className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border bg-primary/8 text-primary border-primary/20">
                               <Tag className="size-2.5" />
-                              {s.replace("_", " ")}
+                              {s ? s.replace("_", " ") : ""}
                             </span>
                           ))}
                         </div>
@@ -340,22 +337,27 @@ export function AuthorityProfileDrawer({
                     </div>
 
                     {showCityForm && (
-                      <div className="flex gap-2">
-                        <Input
-                          value={cityInput}
-                          onChange={(e) => setCityInput(e.target.value)}
-                          placeholder="City ID (e.g. belagavi)"
-                          className="h-8 text-sm flex-1"
-                          onKeyDown={(e) => e.key === "Enter" && handleAssignCity()}
-                        />
-                        <Button
-                          size="sm"
-                          className="h-8"
-                          disabled={assignCities.isPending || !cityInput.trim()}
-                          onClick={handleAssignCity}
-                        >
-                          {assignCities.isPending ? <Loader2 className="size-3 animate-spin" /> : "Add"}
-                        </Button>
+                      <div className="rounded-xl border border-border p-2 space-y-1 max-h-56 overflow-y-auto">
+                        {cityListLoading ? (
+                          <div className="text-xs text-muted-foreground text-center py-3">Loading cities…</div>
+                        ) : unassignedCities.length === 0 ? (
+                          <div className="text-xs text-muted-foreground text-center py-3">
+                            All supported cities are already assigned.
+                          </div>
+                        ) : (
+                          unassignedCities.map((city) => (
+                            <button
+                              key={city.cityId}
+                              type="button"
+                              disabled={assignCities.isPending}
+                              onClick={() => handleAssignCity(city.cityId)}
+                              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-sm hover:bg-muted/60 disabled:opacity-50 text-left"
+                            >
+                              <span>{city.name}</span>
+                              <Plus className="size-3.5 text-muted-foreground" />
+                            </button>
+                          ))
+                        )}
                       </div>
                     )}
 
@@ -513,7 +515,7 @@ export function AuthorityProfileDrawer({
                               <div className="absolute -left-[5px] top-1 size-2.5 rounded-full border-2 border-primary bg-background" />
                               <div className="rounded-xl border bg-muted/30 p-3 space-y-1">
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="text-xs font-semibold capitalize">{evt.event.replace(/_/g, " ")}</span>
+                                  <span className="text-xs font-semibold capitalize">{evt.event ? evt.event.replace(/_/g, " ") : "Event"}</span>
                                   <span className="text-[10px] text-muted-foreground shrink-0">
                                     {format(new Date(evt.at), "MMM d, yyyy 'at' h:mm a")}
                                   </span>

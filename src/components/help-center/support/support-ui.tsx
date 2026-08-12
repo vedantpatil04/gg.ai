@@ -265,7 +265,7 @@ export function ContactCard({
       <p className="text-xs text-muted-foreground leading-relaxed mb-3 line-clamp-2">{method.description}</p>
 
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-muted-foreground">{method.detail}</span>
+        <span className="text-[10px] text-muted-foreground">{method.availability}</span>
         {!method.comingSoon && (
           <span
             className="text-[10px] font-semibold px-2 py-1 rounded-lg transition-colors"

@@ -39,6 +39,7 @@ import {
   notifyAccountLocked,
   notifyAccountUnlocked,
 } from "../services/notification.service";
+import { normalizeAuthorityDepartment } from "../constants/smartRouting";
 
 // Maps a login portal (as selected on the frontend) to the User.role values
 // stored in the database. Kept separate because the "Administrator" portal
@@ -52,7 +53,7 @@ const PORTAL_ROLE_MAP: Record<string, "citizen" | "authority" | "administrator">
 // ─── Signup ─────────────────────────────────────────────────────────────────
 export async function signup(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { name, email, password, role, organization, phone, city } = req.body;
+    const { name, email, password, role, organization, phone, city, department } = req.body;
 
     // Public Administrator registration is never permitted. signupValidator
     // already restricts the "role" field to citizen/authority, but that rule
@@ -71,6 +72,23 @@ export async function signup(req: Request, res: Response, next: NextFunction): P
     // in; Citizen accounts keep the existing immediate-activation behavior.
     const approvalStatus = resolvedRole === "authority" ? "pending" : "approved";
 
+    // Department is only meaningful — and only required/validated — for
+    // Authority registration (see signupValidator). It is resolved to the
+    // canonical COMPLAINT_DEPARTMENTS slug here (never persisted as
+    // arbitrary free text) so Smart Routing's department matching is
+    // deterministic from the moment the authority is approved. Never trust
+    // signupValidator alone to have run — re-validate defensively so this
+    // endpoint can never persist an authority with a missing/invalid
+    // department, and so Citizen accounts never get a department at all.
+    let resolvedDepartment: string | undefined;
+    if (resolvedRole === "authority") {
+      const canonicalDepartment = normalizeAuthorityDepartment(department);
+      if (!canonicalDepartment) {
+        return next(new AppError("A valid department is required for Authority registration", 400));
+      }
+      resolvedDepartment = canonicalDepartment;
+    }
+
     const user = await User.create({
       name,
       email,
@@ -79,6 +97,7 @@ export async function signup(req: Request, res: Response, next: NextFunction): P
       organization,
       phone,
       city,
+      department: resolvedDepartment,
       approvalStatus,
       // A password is genuinely being established right now, regardless of
       // approval status — this is what makes the Security Overview's

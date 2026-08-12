@@ -24,7 +24,7 @@ const TONE_COLORS = {
 
 export function ExecutiveKpiStrip({ items }: { items: KpiItem[] }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
       {items.map((k, i) => {
         const progress = k.target ? Math.min(100, Math.round((k.value / k.target) * 100)) : null;
         const toneColors = k.status ? TONE_COLORS[k.status.tone] : null;

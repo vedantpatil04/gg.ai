@@ -119,9 +119,9 @@ function ComplaintRow({
   complaint: CitizenComplaint;
   onClick: () => void;
 }) {
-  const statusMeta = getStatusMeta(complaint.status);
-  const severityMeta = getSeverityMeta(complaint.severity);
   const assignedAuth = complaint.assignedTo as { name?: string } | null;
+  const statusMeta = getStatusMeta(complaint.status, !!assignedAuth);
+  const severityMeta = getSeverityMeta(complaint.severity);
 
   return (
     <div

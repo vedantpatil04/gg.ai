@@ -14,6 +14,10 @@ export interface SignupPayload {
   organization?: string;
   phone?: string;
   city?: string;
+  /** Required (and backend-validated) only when role === "authority" — see
+   *  src/lib/authority-departments.ts and
+   *  backend/src/validators/auth.validator.ts. */
+  department?: string;
 }
 export interface UpdateProfilePayload {
   name?: string;

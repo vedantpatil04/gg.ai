@@ -23,6 +23,7 @@ import {
   Camera,
   Trash2,
   UserCheck,
+  ImageOff,
 } from "lucide-react";
 import { complaintApi } from "@/lib/api/services.api";
 import { Panel, Pill, WorkspaceHeader } from "@/components/ui-bits";
@@ -138,28 +139,54 @@ function EvidenceGallery({ images }: { images: string[] }) {
         </AnimatePresence>
       )}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {images.map((img, i) => {
-          const src = resolveAssetUrl(img) ?? img;
-          return (
-            <div
-              key={i}
-              onClick={() => setLightbox(src)}
-              className="relative group rounded-xl overflow-hidden border border-border bg-muted/30 aspect-video cursor-pointer"
-            >
-              <img
-                src={src}
-                alt={`Evidence ${i + 1}`}
-                className="w-full h-full object-cover transition-transform group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <ExternalLink className="size-5 text-white drop-shadow" />
-              </div>
-            </div>
-          );
-        })}
+        {images.map((img, i) => (
+          <EvidenceTile key={i} img={img} index={i} onOpen={setLightbox} />
+        ))}
       </div>
     </>
+  );
+}
+
+// Single evidence tile with a clean fallback if the image fails to load,
+// instead of a raw broken-image icon — matches EvidenceThumb's treatment in
+// complaint-detail-panel.tsx and the Authority-side investigation workspace.
+function EvidenceTile({
+  img,
+  index,
+  onOpen,
+}: {
+  img: string;
+  index: number;
+  onOpen: (src: string) => void;
+}) {
+  const src = resolveAssetUrl(img) ?? img;
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/30 aspect-video text-muted-foreground">
+        <ImageOff className="size-5" />
+        <span className="text-[10px] uppercase tracking-wider">Evidence unavailable</span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={() => onOpen(src)}
+      className="relative group rounded-xl overflow-hidden border border-border bg-muted/30 aspect-video cursor-pointer"
+    >
+      <img
+        src={src}
+        alt={`Evidence ${index + 1}`}
+        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+        onError={() => setFailed(true)}
+      />
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+        <ExternalLink className="size-5 text-white drop-shadow" />
+      </div>
+    </div>
   );
 }
 

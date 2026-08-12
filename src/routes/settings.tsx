@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { AppLayout } from "@/components/app-layout";
 import { ProtectedRoute } from "@/components/protected-route";
 import { useTheme, type Theme } from "@/lib/theme";
@@ -53,17 +54,16 @@ type Section =
 
 const NAV_ITEMS: {
   id: Section;
-  label: string;
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
-  { id: "appearance", label: "Appearance", icon: Palette },
-  { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "language", label: "Language & Region", icon: Globe },
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "maps", label: "Maps", icon: MapIcon },
-  { id: "accessibility", label: "Accessibility", icon: AccessibilityIcon },
-  { id: "privacy", label: "Privacy", icon: Lock },
-  { id: "about", label: "About", icon: Info },
+  { id: "appearance", icon: Palette },
+  { id: "notifications", icon: Bell },
+  { id: "language", icon: Globe },
+  { id: "dashboard", icon: LayoutDashboard },
+  { id: "maps", icon: MapIcon },
+  { id: "accessibility", icon: AccessibilityIcon },
+  { id: "privacy", icon: Lock },
+  { id: "about", icon: Info },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -71,6 +71,7 @@ function SettingsPage() {
   const [section, setSection] = useState<Section>("appearance");
   const { theme, setTheme } = useTheme();
   const [appearanceSaving, setAppearanceSaving] = useState(false);
+  const { t } = useTranslation("settings");
 
   // Reconcile with the server-persisted preference once on mount — covers
   // the case where this is a new device/browser whose localStorage doesn't
@@ -114,7 +115,7 @@ function SettingsPage() {
             GreenGuard AI
           </div>
           <h1 className="text-2xl font-semibold tracking-tight mt-0.5">
-            Settings
+            {t("title")}
           </h1>
         </div>
       </div>
@@ -124,7 +125,7 @@ function SettingsPage() {
         <div
           className="flex gap-0.5 px-4 py-2 min-w-max"
           role="tablist"
-          aria-label="Settings sections"
+          aria-label={t("ariaSections")}
         >
           {NAV_ITEMS.map((item) => (
             <button
@@ -140,7 +141,7 @@ function SettingsPage() {
               )}
             >
               <item.icon className="size-3.5 shrink-0" />
-              {item.label}
+              {t(`sections.${item.id}`)}
             </button>
           ))}
         </div>
@@ -151,10 +152,10 @@ function SettingsPage() {
         {/* Sidebar — desktop only */}
         <nav
           className="hidden md:flex flex-col gap-0.5 w-52 shrink-0 sticky top-8"
-          aria-label="Settings navigation"
+          aria-label={t("ariaNav")}
         >
           <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2 px-3">
-            Settings
+            {t("title")}
           </div>
           {NAV_ITEMS.map((item) => (
             <button
@@ -176,7 +177,7 @@ function SettingsPage() {
                     : "text-muted-foreground",
                 )}
               />
-              {item.label}
+              {t(`sections.${item.id}`)}
             </button>
           ))}
         </nav>
@@ -185,9 +186,7 @@ function SettingsPage() {
         <main
           className="flex-1 min-w-0"
           role="tabpanel"
-          aria-label={
-            NAV_ITEMS.find((n) => n.id === section)?.label ?? "Settings"
-          }
+          aria-label={t(`sections.${section}`, { defaultValue: t("title") })}
         >
           {section === "appearance" && (
             <AppearanceSection

@@ -461,6 +461,12 @@ export async function approveAuthorityRequest(
     }
 
     request.approvalStatus = "approved";
+    if (!request.availability) {
+      (request as unknown as { availability: string }).availability = "available";
+    }
+    if (!request.assignedCities) {
+      (request as unknown as { assignedCities: string[] }).assignedCities = [];
+    }
     await request.save();
 
     logger.info("[admin] Authority request approved", {

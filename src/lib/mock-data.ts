@@ -1,3 +1,27 @@
+// ─── Phase 2: Transparent EcoScore (mirrors backend/src/services/ecoScore.service.ts) ─
+// The backend is the single source of truth for this calculation — these
+// types just describe the shape of what it returns so the frontend can
+// display it without recomputing anything.
+export type EcoScoreMetricKey =
+  "airQuality" | "greenCover" | "renewableEnergy" | "waterQuality" | "wasteDiversion";
+
+export interface EcoScoreMetricBreakdown {
+  rawValue: number | null;
+  normalizedScore: number | null;
+  weight: number;
+  effectiveWeight: number;
+  contribution: number;
+  available: boolean;
+}
+
+export interface EcoScoreBreakdown {
+  score: number;
+  grade: string;
+  dataComplete: boolean;
+  missingMetrics: EcoScoreMetricKey[];
+  breakdown: Record<EcoScoreMetricKey, EcoScoreMetricBreakdown>;
+}
+
 export type City = {
   id: string;
   name: string;
@@ -34,6 +58,11 @@ export type City = {
    *  "Last updated X ago" display. Undefined for the static offline
    *  fallback rows below, since they don't represent a real reading time. */
   updatedAt?: string;
+  /** Phase 2 — transparent EcoScore breakdown from the backend EcoScore
+   *  engine. Undefined only in the fully-offline mock fallback, since the
+   *  static rows below aren't backed by a real per-metric reading to
+   *  explain. See ecoGrade()/eco for the offline-fallback equivalent. */
+  ecoScore?: EcoScoreBreakdown;
 };
 
 export const CITIES: City[] = [

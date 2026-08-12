@@ -27,6 +27,7 @@
 
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import {
   Wifi,
   WifiOff,
@@ -56,16 +57,16 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 // Single source of truth for app version — matches the sidebar status card.
 
 const APP_VERSION = "v2.4.1";
-const APP_ENV     = "Production";
 
 // ─── Quick links — only real routes ──────────────────────────────────────────
+// `label` holds an i18n key resolved against the "navigation" namespace.
 
 const FOOTER_LINKS = [
-  { label: "Help",    to: "/help"          },
-  { label: "About",   to: "/help/about"    },
-  { label: "Privacy", to: "/privacy"       },
-  { label: "Terms",   to: "/terms"         },
-  { label: "Docs",    to: "/docs"          },
+  { label: "help",    to: "/help"          },
+  { label: "about",   to: "/help/about"    },
+  { label: "privacy", to: "/privacy"       },
+  { label: "terms",   to: "/terms"         },
+  { label: "docs",    to: "/docs"          },
 ] as const;
 
 // ─── Service indicators ───────────────────────────────────────────────────────
@@ -122,6 +123,7 @@ export function PlatformStatusBar() {
   const { isAuthenticated } = useAuth();
   const prefersReduced = useReducedMotion();
   const lastUpdated = useRelativeTime(cityDataUpdatedAt);
+  const { t } = useTranslation(["common", "navigation"]);
 
   // Only render for authenticated users — the landing page has its own footer
   if (!isAuthenticated) return null;
@@ -129,20 +131,20 @@ export function PlatformStatusBar() {
   const services: ServiceStatus[] = [
     {
       id:        "env",
-      label:     "Environmental APIs",
+      label:     t("environmentalApis"),
       icon:      Leaf,
       connected: isApiConnected,
       fetching:  isCityFetching,
     },
     {
       id:        "ai",
-      label:     "AI Services",
+      label:     t("aiServices"),
       icon:      Brain,
       connected: true,   // AI Copilot is always available client-side
     },
     {
       id:        "platform",
-      label:     "Platform",
+      label:     t("platform"),
       icon:      Cpu,
       connected: true,   // If we're rendering, the platform is up
     },
@@ -152,10 +154,10 @@ export function PlatformStatusBar() {
   const anyFetching  = services.some((s) => s.fetching);
 
   const platformStatus = anyFetching
-    ? "Refreshing…"
+    ? t("refreshing")
     : allConnected
-    ? "Platform Online"
-    : "Degraded";
+    ? t("platformOnline")
+    : t("platformDegraded");
 
   return (
     <motion.footer
@@ -174,7 +176,7 @@ export function PlatformStatusBar() {
         "select-none",
       )}
       role="contentinfo"
-      aria-label="Platform status"
+      aria-label={t("platformStatus")}
     >
       <TooltipProvider delayDuration={400}>
         <div className="h-full flex items-center gap-0 px-5 lg:px-7">
@@ -188,7 +190,7 @@ export function PlatformStatusBar() {
               {APP_VERSION}
             </span>
             <span className="text-[10px] text-muted-foreground/40">·</span>
-            <span className="text-[10px] text-muted-foreground/60">{APP_ENV}</span>
+            <span className="text-[10px] text-muted-foreground/60">{t("production")}</span>
           </div>
 
           {/* ── CENTER: Platform status + services ─────────────────────────── */}
@@ -210,7 +212,7 @@ export function PlatformStatusBar() {
                 </div>
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs">
-                Monitoring: {city.name}
+                {t("monitoring", { city: city.name })}
               </TooltipContent>
             </Tooltip>
 
@@ -233,7 +235,7 @@ export function PlatformStatusBar() {
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="text-xs">
-                      {svc.label}: {svc.fetching ? "Refreshing" : svc.connected ? "Connected" : "Unavailable"}
+                      {svc.label}: {svc.fetching ? t("refreshingLabel") : svc.connected ? t("connectedLabel") : t("unavailableLabel")}
                     </TooltipContent>
                   </Tooltip>
                 );
@@ -253,7 +255,7 @@ export function PlatformStatusBar() {
                     className="flex items-center gap-1"
                   >
                     <RefreshCw className="size-2.5 animate-spin" />
-                    <span className="text-[10px]">Refreshing…</span>
+                    <span className="text-[10px]">{t("refreshing")}</span>
                   </motion.div>
                 ) : (
                   <motion.div
@@ -265,7 +267,7 @@ export function PlatformStatusBar() {
                     className="flex items-center gap-1"
                   >
                     <span className="text-[10px] whitespace-nowrap">
-                      Updated {lastUpdated}
+                      {t("updatedTime", { time: lastUpdated })}
                     </span>
                   </motion.div>
                 )}
@@ -288,7 +290,7 @@ export function PlatformStatusBar() {
                   i < FOOTER_LINKS.length - 1 && "border-r border-border/30",
                 )}
               >
-                {link.label}
+                {t(link.label, { ns: "navigation" })}
               </Link>
             ))}
           </div>
@@ -299,7 +301,7 @@ export function PlatformStatusBar() {
               <DropdownMenuTrigger asChild>
                 <button
                   className="flex items-center gap-1 text-[10px] text-muted-foreground/60 hover:text-foreground/80 transition-colors px-1.5 py-1"
-                  aria-label="Platform links"
+                  aria-label={t("platformLinks")}
                 >
                   <MoreHorizontal className="size-3.5" />
                 </button>
@@ -311,7 +313,7 @@ export function PlatformStatusBar() {
                     <DropdownMenuItem asChild>
                       <Link to={link.to} className="flex items-center gap-2 text-xs">
                         <ChevronRight className="size-3 text-muted-foreground" />
-                        {link.label}
+                        {t(link.label, { ns: "navigation" })}
                       </Link>
                     </DropdownMenuItem>
                   </div>
@@ -326,13 +328,13 @@ export function PlatformStatusBar() {
               to="/help"
               className="text-[10px] text-muted-foreground/60 hover:text-foreground/80 transition-colors"
             >
-              Help
+              {t("help", { ns: "navigation" })}
             </Link>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   className="text-muted-foreground/60 hover:text-foreground/80 transition-colors"
-                  aria-label="More platform links"
+                  aria-label={t("morePlatformLinks")}
                 >
                   <MoreHorizontal className="size-3.5" />
                 </button>
@@ -342,10 +344,10 @@ export function PlatformStatusBar() {
                   GreenGuard AI {APP_VERSION}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                {FOOTER_LINKS.filter((l) => l.label !== "Help").map((link) => (
+                {FOOTER_LINKS.filter((l) => l.label !== "help").map((link) => (
                   <DropdownMenuItem key={link.to} asChild>
                     <Link to={link.to} className="text-xs">
-                      {link.label}
+                      {t(link.label, { ns: "navigation" })}
                     </Link>
                   </DropdownMenuItem>
                 ))}

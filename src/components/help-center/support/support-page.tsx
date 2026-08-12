@@ -4,8 +4,8 @@ import {
   HeadphonesIcon, Search, Clock, CheckCircle2, Star,
   AlertTriangle, TicketIcon, Bug, Lightbulb, MessageSquarePlus,
   Users, BarChart3, ThumbsUp, Phone, Mail, X, ChevronRight,
-  Shield, Activity, TrendingUp, ArrowRight, Check,
-  ChevronLeft, Filter, Circle, ExternalLink, MapPin,
+  Shield, ArrowRight, Check, ChevronLeft, Circle,
+  ExternalLink, MapPin, Loader2, RefreshCw, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -15,21 +15,23 @@ import {
 import { SectionHeader, EmptyState } from "../help-card";
 import {
   StatusBadge, PriorityBadge, FormField, FormInput, FormTextarea,
-  FormSelect, TicketCard, ContactCard, StarRating, NpsSlider,
+  FormSelect, ContactCard, StarRating, NpsSlider,
   SuccessState, SupportSection, AvailabilityDot,
 } from "./support-ui";
 import {
-  CONTACT_METHODS, MOCK_TICKETS, AUTHORITY_DIRECTORY,
-  FEATURE_REQUESTS, EMERGENCY_TYPES, SUPPORT_ANALYTICS,
-  SUPPORT_CATEGORIES, DEPARTMENTS, ENVIRONMENTS,
+  CONTACT_METHODS, AUTHORITY_DIRECTORY,
+  EMERGENCY_TYPES, SUPPORT_CATEGORIES, DEPARTMENTS, ENVIRONMENTS,
   BUG_CATEGORIES, PLATFORMS, BROWSERS, DEVICES,
   TICKET_STATUS_STYLE, FEATURE_STATUS_STYLE,
 } from "./support-data";
 import type { TicketStatus } from "./support-data";
 import {
-  useTickets, useFeatureRequests, useBugReports, useFeedback,
+  useTickets, useTicketStats, useFeatureRequests, useBugReports, useFeedback,
+  type NewTicketInput,
 } from "./support-store";
+import type { SupportTicketDTO } from "@/lib/api/support.api";
 import { KB_ARTICLES } from "../kb/kb-data";
+import { HelpAIPanel, AITicketDrafter, DuplicateTicketWarning } from "../ai/help-ai-panel";
 import { TUTORIALS } from "../tutorials/tut-data";
 
 // ─── 1. Hero ───────────────────────────────────────────────────────────────────
@@ -39,6 +41,7 @@ function SupportHero({ onSearch, onCreateTicket }: {
   onCreateTicket: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const { data: stats } = useTicketStats();
 
   return (
     <motion.div
@@ -133,10 +136,10 @@ function SupportHero({ onSearch, onCreateTicket }: {
           {/* SLA stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-4 gap-4 pt-6 border-t border-border">
             {[
-              { value: SUPPORT_ANALYTICS.avgResponseTime, label: "Avg Response",        icon: Clock    },
-              { value: `${SUPPORT_ANALYTICS.satisfactionScore}/5`, label: "Satisfaction", icon: Star     },
-              { value: SUPPORT_ANALYTICS.resolutionRate,  label: "Resolution Rate",     icon: CheckCircle2 },
-              { value: "24/7",                             label: "Emergency Support",   icon: Shield   },
+              { value: stats?.avgResponseTime   ?? "—",    label: "Avg Response",    icon: Clock        },
+              { value: stats ? `${stats.satisfactionScore}/5` : "—", label: "Satisfaction", icon: Star },
+              { value: stats?.resolutionRate    ?? "—",    label: "Resolution Rate", icon: CheckCircle2 },
+              { value: "24/7",                              label: "Emergency Support", icon: Shield     },
             ].map(({ value, label, icon: Icon }) => (
               <div key={label} className="flex items-center gap-3">
                 <div className="size-9 rounded-xl bg-muted/60 flex items-center justify-center shrink-0">
@@ -193,7 +196,7 @@ function CreateTicketForm({
   onBack: () => void;
   onSuccess: (id: string) => void;
 }) {
-  const { createTicket } = useTickets();
+  const { createTicket, isCreating } = useTickets();
   const [subject, setSubject]         = useState("");
   const [category, setCategory]       = useState("");
   const [priority, setPriority]       = useState<"low" | "medium" | "high" | "critical">("medium");
@@ -215,8 +218,9 @@ function CreateTicketForm({
 
   const handleSubmit = () => {
     if (!validate()) return;
-    const ticket = createTicket({ subject, category, priority, description, department, environment });
-    onSuccess(ticket.id);
+    createTicket({ subject, category, priority, description, department, environment })
+      .then(result => onSuccess(result.ticket._id))
+      .catch(() => {});
   };
 
   const suggestions = useMemo(() => {
@@ -258,6 +262,21 @@ function CreateTicketForm({
             <p className="text-sm text-muted-foreground">Describe your issue and our team will respond within the guaranteed SLA window.</p>
           </div>
 
+          {/* AI Ticket Drafter */}
+          <AITicketDrafter
+            onApplyDraft={draft => {
+              if (draft.subject)     setSubject(draft.subject);
+              if (draft.category)    setCategory(draft.category);
+              if (draft.priority)    setPriority(draft.priority as typeof priority);
+              if (draft.department)  setDepartment(draft.department);
+              if (draft.environment) setEnvironment(draft.environment);
+              if (draft.description) setDescription(
+                [draft.description, draft.stepsToReproduce, draft.possibleCause]
+                  .filter(Boolean).join("\n\n")
+              );
+            }}
+          />
+
           <SupportSection>
             <div className="p-5 space-y-4">
               {/* Subject */}
@@ -268,6 +287,8 @@ function CreateTicketForm({
                   placeholder="Brief description of your issue"
                 />
                 {errors.subject && <p className="text-xs text-destructive mt-1">{errors.subject}</p>}
+                {/* Duplicate ticket detection */}
+                {subject.length >= 10 && <DuplicateTicketWarning subject={subject} />}
               </FormField>
 
               {/* Category + Priority */}
@@ -354,10 +375,11 @@ function CreateTicketForm({
                 <motion.button
                   whileHover={HOVER_LIFT_SM} whileTap={TAP_PRESS_SM}
                   onClick={handleSubmit}
-                  className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+                  disabled={isCreating}
+                  className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <TicketIcon className="size-4" />
-                  Submit Ticket
+                  {isCreating ? <Loader2 className="size-4 animate-spin" /> : <TicketIcon className="size-4" />}
+                  {isCreating ? "Submitting…" : "Submit Ticket"}
                 </motion.button>
                 <button
                   onClick={onBack}
@@ -438,18 +460,19 @@ function CreateTicketForm({
 // ─── 4. Ticket Dashboard ───────────────────────────────────────────────────────
 
 function TicketDashboard({ onCreateTicket }: { onCreateTicket: () => void }) {
-  const { tickets } = useTickets();
   const [filter, setFilter] = useState<TicketStatus | "all">("all");
-
-  const filtered = filter === "all" ? tickets : tickets.filter(t => t.status === filter);
+  const { data: stats, isLoading: statsLoading } = useTicketStats();
+  const { tickets, isLoading, isError, refetch } = useTickets(
+    filter !== "all" ? { status: filter } : undefined,
+  );
 
   const counts = {
-    all:         tickets.length,
-    open:        tickets.filter(t => t.status === "open").length,
-    in_progress: tickets.filter(t => t.status === "in_progress").length,
-    waiting:     tickets.filter(t => t.status === "waiting").length,
-    resolved:    tickets.filter(t => t.status === "resolved").length,
-    closed:      tickets.filter(t => t.status === "closed").length,
+    all:         stats?.total       ?? 0,
+    open:        stats?.open        ?? 0,
+    in_progress: stats?.in_progress ?? 0,
+    waiting:     stats?.waiting     ?? 0,
+    resolved:    stats?.resolved    ?? 0,
+    closed:      stats?.closed      ?? 0,
   };
 
   return (
@@ -464,7 +487,9 @@ function TicketDashboard({ onCreateTicket }: { onCreateTicket: () => void }) {
           { label: "Total",       value: counts.all,         color: "var(--color-primary)"         },
         ].map(({ label, value, color }) => (
           <div key={label} className="rounded-xl border border-border bg-background p-3 text-center">
-            <div className="text-2xl font-bold tabular-nums" style={{ color }}>{value}</div>
+            <div className="text-2xl font-bold tabular-nums" style={{ color }}>
+              {statsLoading ? "—" : value}
+            </div>
             <div className="text-[10px] text-muted-foreground mt-0.5">{label}</div>
           </div>
         ))}
@@ -496,64 +521,88 @@ function TicketDashboard({ onCreateTicket }: { onCreateTicket: () => void }) {
         </motion.button>
       </div>
 
-      {/* Ticket list */}
-      <AnimatePresence mode="wait">
-        {filtered.length === 0 ? (
-          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <EmptyState
-              icon={TicketIcon}
-              title="No tickets found"
-              description="Create a new ticket to get help from our support team."
-              action={
-                <button
-                  onClick={onCreateTicket}
-                  className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity"
-                >
-                  Create Ticket
-                </button>
-              }
-            />
-          </motion.div>
-        ) : (
-          <motion.div
-            key={filter}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-3"
+      {/* Ticket list — live from /api/support/tickets */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-16 gap-3 text-muted-foreground">
+          <Loader2 className="size-5 animate-spin" />
+          <span className="text-sm">Loading tickets…</span>
+        </div>
+      ) : isError ? (
+        <div className="flex flex-col items-center justify-center py-12 gap-3">
+          <p className="text-sm text-muted-foreground">Failed to load tickets.</p>
+          <button
+            onClick={() => refetch()}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-xs hover:bg-muted transition-colors"
           >
-            {filtered.map(ticket => (
-              <div key={ticket.id} className="rounded-xl border border-border bg-background p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                      <span className="text-[10px] font-mono text-muted-foreground">{ticket.id}</span>
-                      <StatusBadge status={ticket.status} />
-                      <PriorityBadge priority={ticket.priority} />
-                    </div>
-                    <p className="text-sm font-semibold leading-snug mb-1.5 line-clamp-2">{ticket.subject}</p>
-                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
-                      <span>{ticket.category}</span>
-                      {ticket.department && <><span>·</span><span>{ticket.department}</span></>}
-                      {ticket.environment && <><span>·</span><span>{ticket.environment}</span></>}
-                      <span>·</span>
-                      <span>Team: {ticket.assignedTeam}</span>
-                      <span>·</span>
-                      <span>Updated {ticket.updatedAt}</span>
-                    </div>
-                    {(ticket.status === "open" || ticket.status === "in_progress") && (
-                      <div className="mt-2 text-[10px] text-muted-foreground">
-                        Est. response: <span className="font-semibold text-foreground">{ticket.estimatedResponse}</span>
+            <RefreshCw className="size-3.5" /> Retry
+          </button>
+        </div>
+      ) : (
+        <AnimatePresence mode="wait">
+          {tickets.length === 0 ? (
+            <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <EmptyState
+                icon={TicketIcon}
+                title="No tickets found"
+                description={
+                  filter === "all"
+                    ? "Create a new ticket to get help from our support team."
+                    : `No ${TICKET_STATUS_STYLE[filter as TicketStatus]?.label ?? filter} tickets.`
+                }
+                action={
+                  filter === "all" ? (
+                    <button
+                      onClick={onCreateTicket}
+                      className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity"
+                    >
+                      Create Ticket
+                    </button>
+                  ) : undefined
+                }
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key={filter}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-3"
+            >
+              {tickets.map((ticket: SupportTicketDTO) => (
+                <div key={ticket._id} className="rounded-xl border border-border bg-background p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                        <span className="text-[10px] font-mono text-muted-foreground">
+                          {ticket._id.slice(-8).toUpperCase()}
+                        </span>
+                        <StatusBadge status={ticket.status} />
+                        <PriorityBadge priority={ticket.priority} />
                       </div>
-                    )}
+                      <p className="text-sm font-semibold leading-snug mb-1.5 line-clamp-2">{ticket.subject}</p>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+                        <span>{ticket.category}</span>
+                        {ticket.department  && <><span>·</span><span>{ticket.department}</span></>}
+                        {ticket.environment && <><span>·</span><span>{ticket.environment}</span></>}
+                        {ticket.assignedTeam && <><span>·</span><span>Team: {ticket.assignedTeam}</span></>}
+                        <span>·</span>
+                        <span>Updated {new Date(ticket.updatedAt).toLocaleDateString()}</span>
+                      </div>
+                      {(ticket.status === "open" || ticket.status === "in_progress") && ticket.estimatedResponse && (
+                        <div className="mt-2 text-[10px] text-muted-foreground">
+                          Est. response: <span className="font-semibold text-foreground">{ticket.estimatedResponse}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
     </div>
   );
 }
@@ -831,12 +880,10 @@ function AuthorityDirectory() {
 // ─── 7. Feature Requests ──────────────────────────────────────────────────────
 
 function FeatureRequestsSection() {
-  const { toggleVote, hasVoted, getVotes } = useFeatureRequests();
   const [filter, setFilter] = useState<"all" | "planned" | "in_progress" | "shipped">("all");
-
-  const filtered = filter === "all"
-    ? FEATURE_REQUESTS
-    : FEATURE_REQUESTS.filter(f => f.status === filter);
+  const { features, isLoading, isError, hasVoted, getVotes, toggleVote } = useFeatureRequests(
+    filter !== "all" ? { status: filter } : undefined,
+  );
 
   return (
     <div className="p-5 space-y-4">
@@ -855,15 +902,23 @@ function FeatureRequestsSection() {
         ))}
       </div>
 
+      {isLoading && (
+        <div className="flex items-center gap-3 py-8 justify-center text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" /><span className="text-sm">Loading…</span>
+        </div>
+      )}
+      {isError && (
+        <p className="text-sm text-muted-foreground text-center py-8">Failed to load feature requests.</p>
+      )}
       <div className="space-y-3">
-        {filtered.map(feature => {
+        {features.map(feature => {
           const style = FEATURE_STATUS_STYLE[feature.status];
-          const voted = hasVoted(feature.id);
-          const votes = getVotes(feature.id, feature.votes);
+          const voted = hasVoted(feature._id);
+          const votes = getVotes(feature._id);
 
           return (
             <motion.div
-              key={feature.id}
+              key={feature._id}
               whileHover={{ y: -1 }}
               className="rounded-xl border border-border bg-background p-4"
             >
@@ -871,7 +926,7 @@ function FeatureRequestsSection() {
                 {/* Vote */}
                 <motion.button
                   whileTap={TAP_PRESS_SM}
-                  onClick={() => toggleVote(feature.id)}
+                  onClick={() => toggleVote(feature._id)}
                   className={cn(
                     "flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl border shrink-0 transition-all duration-200 min-w-[52px]",
                     voted
@@ -919,7 +974,7 @@ function FeatureRequestsSection() {
 // ─── 8. Feedback Center ───────────────────────────────────────────────────────
 
 function FeedbackCenter() {
-  const { submitted, submitFeedback, reset } = useFeedback();
+  const { submitted, isSubmitting: feedbackSubmitting, submitFeedback, reset } = useFeedback();
   const [rating, setRating]                 = useState(0);
   const [category, setCategory]             = useState("");
   const [comment, setComment]               = useState("");
@@ -984,11 +1039,12 @@ function FeedbackCenter() {
 
       <motion.button
         whileHover={HOVER_LIFT_SM} whileTap={TAP_PRESS_SM}
-        onClick={() => rating > 0 && submitFeedback({ rating, category, comment, nps, uiSatisfaction: uiSat, aiSatisfaction: aiSat })}
-        disabled={rating === 0}
-        className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+        onClick={() => rating > 0 && !feedbackSubmitting && submitFeedback({ rating, category, comment, nps, uiSatisfaction: uiSat, aiSatisfaction: aiSat })}
+        disabled={rating === 0 || feedbackSubmitting}
+        className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
       >
-        Submit Feedback
+        {feedbackSubmitting && <Loader2 className="size-4 animate-spin" />}
+        {feedbackSubmitting ? "Submitting…" : "Submit Feedback"}
       </motion.button>
     </div>
   );
@@ -997,7 +1053,7 @@ function FeedbackCenter() {
 // ─── 9. Bug Reporting ─────────────────────────────────────────────────────────
 
 function BugReportForm() {
-  const { submitted, submitBug, reset } = useBugReports();
+  const { submitted, isSubmitting: bugSubmitting, submitBug, reset } = useBugReports();
   const [title, setTitle]           = useState("");
   const [category, setCategory]     = useState("");
   const [severity, setSeverity]     = useState("");
@@ -1074,11 +1130,12 @@ function BugReportForm() {
 
       <motion.button
         whileHover={HOVER_LIFT_SM} whileTap={TAP_PRESS_SM}
-        onClick={() => canSubmit && submitBug({ title, category, severity, browser, device, steps, expected, actual })}
-        disabled={!canSubmit}
-        className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+        onClick={() => canSubmit && !bugSubmitting && submitBug({ title, category, severity, browser, device, steps, expected, actual, platform })}
+        disabled={!canSubmit || bugSubmitting}
+        className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
       >
-        Submit Bug Report
+        {bugSubmitting && <Loader2 className="size-4 animate-spin" />}
+        {bugSubmitting ? "Submitting…" : "Submit Bug Report"}
       </motion.button>
     </div>
   );
@@ -1087,27 +1144,29 @@ function BugReportForm() {
 // ─── 10. Support Analytics ────────────────────────────────────────────────────
 
 function SupportAnalytics() {
+  const { data: stats, isLoading } = useTicketStats();
   const { tickets } = useTickets();
-  const open      = tickets.filter(t => t.status === "open").length;
-  const inProg    = tickets.filter(t => t.status === "in_progress").length;
-  const resolved  = tickets.filter(t => t.status === "resolved" || t.status === "closed").length;
-  const total     = tickets.length;
-  const resRate   = total > 0 ? Math.round((resolved / total) * 100) : 0;
+
+  const kpis = [
+    { label: "Total Tickets",   value: stats?.total ?? "—",          color: "var(--color-primary)"  },
+    { label: "Open",            value: stats?.open  ?? "—",          color: "var(--color-info)"     },
+    { label: "In Progress",     value: stats?.in_progress ?? "—",    color: "var(--color-warning)"  },
+    { label: "Resolved",        value: stats?.resolved ?? "—",       color: "var(--color-success)"  },
+    { label: "Resolution Rate", value: stats?.resolutionRate ?? "—", color: "var(--color-success)"  },
+    { label: "Avg Response",    value: stats?.avgResponseTime ?? "—", color: "var(--color-primary)" },
+  ];
+
+  const satScore = stats?.satisfactionScore ?? 0;
 
   return (
     <div className="p-5 space-y-5">
-      {/* KPI grid */}
+      {/* KPI grid — live from /api/support/tickets/stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 xl:grid-cols-6 gap-3">
-        {[
-          { label: "Total Tickets",    value: total,                                 color: "var(--color-primary)"         },
-          { label: "Open",             value: open,                                  color: "var(--color-info)"            },
-          { label: "In Progress",      value: inProg,                                color: "var(--color-warning)"         },
-          { label: "Resolved",         value: resolved,                              color: "var(--color-success)"         },
-          { label: "Resolution Rate",  value: `${resRate}%`,                         color: "var(--color-success)"         },
-          { label: "Avg Response",     value: SUPPORT_ANALYTICS.avgResponseTime,     color: "var(--color-primary)"         },
-        ].map(({ label, value, color }) => (
+        {kpis.map(({ label, value, color }) => (
           <div key={label} className="rounded-xl border border-border bg-background p-3 text-center">
-            <div className="text-xl font-bold tabular-nums" style={{ color }}>{value}</div>
+            <div className="text-xl font-bold tabular-nums" style={{ color }}>
+              {isLoading ? "—" : value}
+            </div>
             <div className="text-[10px] text-muted-foreground mt-1">{label}</div>
           </div>
         ))}
@@ -1120,13 +1179,13 @@ function SupportAnalytics() {
             <Star className="size-3.5 text-warning fill-warning" />
             Customer Satisfaction
           </div>
-          <span className="text-xl font-bold tabular-nums">{SUPPORT_ANALYTICS.satisfactionScore}/5</span>
+          <span className="text-xl font-bold tabular-nums">{satScore > 0 ? `${satScore}/5` : "—"}</span>
         </div>
         <div className="h-2 rounded-full bg-muted overflow-hidden">
           <motion.div
             className="h-full aurora rounded-full"
             initial={{ width: 0 }}
-            animate={{ width: `${(SUPPORT_ANALYTICS.satisfactionScore / 5) * 100}%` }}
+            animate={{ width: `${(satScore / 5) * 100}%` }}
             transition={{ duration: 0.9, ease: EASE_OUT }}
           />
         </div>
@@ -1136,9 +1195,9 @@ function SupportAnalytics() {
       <div className="rounded-xl border border-border bg-background p-4">
         <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium mb-3">Recent Activity</div>
         <div className="space-y-3">
-          {tickets.slice(0, 5).map(ticket => (
-            <div key={ticket.id} className="flex items-center gap-3 text-xs">
-              <span className="font-mono text-muted-foreground shrink-0 w-20">{ticket.id}</span>
+          {tickets.slice(0, 5).map((ticket: SupportTicketDTO) => (
+            <div key={ticket._id} className="flex items-center gap-3 text-xs">
+              <span className="font-mono text-muted-foreground shrink-0 w-20">{ticket._id.slice(-8).toUpperCase()}</span>
               <span className="flex-1 truncate text-muted-foreground">{ticket.subject}</span>
               <div className="flex items-center gap-2 shrink-0">
                 <PriorityBadge priority={ticket.priority} />
@@ -1158,6 +1217,7 @@ interface Tab { id: string; label: string; icon: typeof TicketIcon; danger?: boo
 
 const TABS: Tab[] = [
   { id: "tickets",   label: "Tickets",         icon: TicketIcon        },
+  { id: "ai",        label: "AI Assistant",     icon: Sparkles          },
   { id: "emergency", label: "Emergency",        icon: AlertTriangle, danger: true },
   { id: "authority", label: "Authority Dir.",   icon: Users             },
   { id: "bug",       label: "Bug Reports",      icon: Bug               },
@@ -1269,6 +1329,11 @@ export function SupportCenterPage() {
                   transition={{ duration: DUR_SM, ease: EASE_OUT }}
                 >
                   {activeTab === "tickets"   && <TicketDashboard onCreateTicket={() => setCreatingTicket(true)} />}
+                  {activeTab === "ai"        && (
+                    <div className="p-5">
+                      <HelpAIPanel onCreateTicket={() => { setCreatingTicket(true); setActiveTab("tickets"); }} />
+                    </div>
+                  )}
                   {activeTab === "emergency" && <EmergencyAssistance />}
                   {activeTab === "authority" && <AuthorityDirectory />}
                   {activeTab === "bug"       && <BugReportForm />}

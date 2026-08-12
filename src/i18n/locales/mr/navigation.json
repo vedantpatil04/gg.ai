@@ -12,7 +12,36 @@
   "authority": "Authority Portal",
   "administrator": "Admin Portal",
   "home": "Home",
-  "back": "Back",
+  "back": "मागे",
   "menu": "Menu",
-  "search": "Search"
+  "search": "शोधा",
+  "environment": "पर्यावरण विहंगावलोकन",
+  "aiCopilot": "AI कोपायलट",
+  "forecast": "अंदाज",
+  "citizenHub": "नागरिक हब",
+  "sustainability": "शाश्वतता",
+  "simulator": "धोरण सिम्युलेटर",
+  "commandCenter": "कमांड सेंटर",
+  "adminPortal": "प्रशासक पोर्टल",
+  "helpCenter": "मदत केंद्र",
+  "intelligence": "इंटेलिजन्स",
+  "signIn": "साइन इन करा",
+  "signOut": "साइन आउट करा",
+  "groups": {
+    "workspace": "कार्यक्षेत्र",
+    "aiIntelligence": "AI इंटेलिजन्स",
+    "community": "समुदाय",
+    "operations": "कामकाज",
+    "administration": "प्रशासन",
+    "account": "खाते"
+  },
+  "roleLabels": {
+    "citizen": "नागरिक",
+    "authority": "प्राधिकरण",
+    "administrator": "प्रशासक"
+  },
+  "about": "विषयी",
+  "privacy": "गोपनीयता",
+  "terms": "अटी",
+  "docs": "कागदपत्रे"
 }

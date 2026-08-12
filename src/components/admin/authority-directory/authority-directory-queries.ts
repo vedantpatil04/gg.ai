@@ -9,6 +9,26 @@ import type { AuthorityRequest } from "@/components/admin/authority-requests/aut
 export type AuthorityAvailability = "available" | "busy" | "on_leave" | "inactive";
 export type CapacityLabel = "free" | "moderate" | "busy" | "overloaded";
 
+export const APPROVAL_PILL: Record<string, "success" | "warning" | "destructive"> = {
+  approved: "success",
+  pending: "warning",
+  rejected: "destructive",
+};
+
+export const CAPACITY_META: Record<CapacityLabel, { label: string; tone: "success" | "warning" | "destructive" | "muted" }> = {
+  free: { label: "Free", tone: "success" },
+  moderate: { label: "Moderate", tone: "warning" },
+  busy: { label: "Busy", tone: "warning" },
+  overloaded: { label: "Overloaded", tone: "destructive" },
+};
+
+export const AVAILABILITY_PILL: Record<string, "success" | "warning" | "info" | "muted"> = {
+  available: "success",
+  busy: "warning",
+  on_leave: "info",
+  inactive: "muted",
+};
+
 export interface AuthorityWorkload {
   active: number;
   pending: number;
@@ -176,6 +196,29 @@ export function useAuthorityLifecycleHistory(id: string | null) {
       authorityMgmtApi.getLifecycleHistory(id!).then((r) => r.data as { lifecycleEvents: LifecycleEvent[] }),
     staleTime: 15_000,
     enabled: isApiConnected && !!id,
+    throwOnError: false,
+  });
+}
+
+// ─── Supported cities (jurisdiction source of truth) ──────────────────────────
+// Backs the Assigned Cities checklist — the existing 14 GreenGuard cities from
+// the City model, never a free-text/typed value. Jurisdiction is an Admin
+// governance decision, so the picker must only ever offer real, active cities.
+export interface SupportedCity {
+  cityId: string;
+  name: string;
+  country: string;
+  isActive: boolean;
+}
+
+export function useCityList() {
+  const { isApiConnected } = useCity();
+  return useQuery({
+    queryKey: ["admin-city-list"],
+    queryFn: () =>
+      adminApi.getCities().then((r) => (r.data as { cities: SupportedCity[] }).cities.filter((c) => c.isActive)),
+    staleTime: 5 * 60_000,
+    enabled: isApiConnected,
     throwOnError: false,
   });
 }

@@ -74,6 +74,9 @@ interface AuthContextValue extends AuthState {
     role?: string;
     organization?: string;
     phone?: string;
+    /** Required when role === "authority" — see
+     *  src/lib/authority-departments.ts. */
+    department?: string;
   }) => Promise<{ user: AuthUser; pending: boolean }>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<AuthUser>) => Promise<void>;
@@ -201,6 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role?: string;
       organization?: string;
       phone?: string;
+      department?: string;
     }) => {
       const res = await authApi.signup(data);
       const { user, accessToken, refreshToken } = res.data;

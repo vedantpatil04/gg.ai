@@ -35,6 +35,20 @@ function appendLifecycleEvent(
   });
 }
 
+// Validate that every requested city id refers to a real, active GreenGuard
+// city (the existing City model — the single supported-city source of
+// truth). Smart Routing jurisdiction (`User.assignedCities`) must only ever
+// be set to values that exist in this collection, never arbitrary
+// admin-typed strings. Returns the normalized (lowercased) city ids on
+// success, or null if any requested id is invalid/unsupported.
+async function validateCityIds(cities: string[]): Promise<string[] | null> {
+  const normalized = cities.map((c) => String(c).trim().toLowerCase()).filter(Boolean);
+  if (normalized.length === 0) return null;
+  const found = await City.find({ cityId: { $in: normalized }, isActive: true }).select("cityId").lean();
+  const foundIds = new Set(found.map((c) => c.cityId));
+  return normalized.every((c) => foundIds.has(c)) ? normalized : null;
+}
+
 // Derive capacity label from active complaint count
 function capacityLabel(active: number): "free" | "moderate" | "busy" | "overloaded" {
   if (active === 0) return "free";
@@ -123,6 +137,8 @@ export async function listAuthorities(
 
         return {
           ...u,
+          assignedCities: Array.isArray((u as { assignedCities?: string[] }).assignedCities) ? (u as { assignedCities?: string[] }).assignedCities : [],
+          specializations: Array.isArray((u as { specializations?: string[] }).specializations) ? (u as { specializations?: string[] }).specializations : [],
           workload: {
             active,
             pending,
@@ -192,7 +208,15 @@ export async function getAuthorityDetail(
     res.json({
       success: true,
       data: {
-        authority,
+        authority: {
+          ...authority,
+          assignedCities: Array.isArray((authority as { assignedCities?: string[] }).assignedCities)
+            ? (authority as { assignedCities?: string[] }).assignedCities
+            : [],
+          specializations: Array.isArray((authority as { specializations?: string[] }).specializations)
+            ? (authority as { specializations?: string[] }).specializations
+            : [],
+        },
         workload: {
           active,
           pending,
@@ -265,16 +289,27 @@ export async function assignCities(
       return next(new AppError("cities array is required", 400));
     }
 
+    // Jurisdiction is a governance decision — only real, active GreenGuard
+    // cities may become Smart Routing jurisdiction. Reject unsupported ids
+    // instead of silently trusting admin-typed text.
+    const validCities = await validateCityIds(cities);
+    if (!validCities) {
+      return next(new AppError("One or more cities are not valid, active GreenGuard cities", 400));
+    }
+    if (primaryCity && !validCities.includes(String(primaryCity).trim().toLowerCase())) {
+      return next(new AppError("primaryCity must be one of the assigned cities", 400));
+    }
+
     const authority = await User.findOne({ _id: req.params.id, role: "authority" }).select("+lifecycleEvents");
     if (!authority) return next(new AppError("Authority not found", 404));
 
-    const newCities = cities.filter(
+    const newCities = validCities.filter(
       (c) => !(authority as unknown as { assignedCities: string[] }).assignedCities.includes(c),
     );
 
     // Use $addToSet to prevent duplicates
-    const updateOp: Record<string, unknown> = { $addToSet: { assignedCities: { $each: cities } } };
-    if (primaryCity) (updateOp as Record<string, unknown>).$set = { primaryCity };
+    const updateOp: Record<string, unknown> = { $addToSet: { assignedCities: { $each: validCities } } };
+    if (primaryCity) (updateOp as Record<string, unknown>).$set = { primaryCity: primaryCity.trim().toLowerCase() };
 
     await User.updateOne({ _id: authority._id }, updateOp);
 
@@ -679,6 +714,18 @@ export async function bulkOperation(
     const VALID = ["activate", "deactivate", "assign_cities", "remove_cities"];
     if (!VALID.includes(action)) return next(new AppError("Invalid bulk action", 400));
 
+    // Same jurisdiction-integrity rule as the single-authority endpoint:
+    // bulk city assignment must only ever use real, active GreenGuard cities.
+    let validCities: string[] | undefined;
+    if (action === "assign_cities") {
+      if (!cities?.length) return next(new AppError("cities array is required for assign_cities", 400));
+      const validated = await validateCityIds(cities);
+      if (!validated) {
+        return next(new AppError("One or more cities are not valid, active GreenGuard cities", 400));
+      }
+      validCities = validated;
+    }
+
     const adminId = req.user?._id?.toString();
     const adminName = (req.user as { name?: string } | undefined)?.name ?? "Administrator";
 
@@ -708,9 +755,9 @@ export async function bulkOperation(
             appendLifecycleEvent(authority as Parameters<typeof appendLifecycleEvent>[0], "deactivated", "Account deactivated (bulk operation).", adminId, adminName);
             break;
           case "assign_cities":
-            if (!cities?.length) break;
-            await User.updateOne({ _id: id }, { $addToSet: { assignedCities: { $each: cities } } });
-            appendLifecycleEvent(authority as Parameters<typeof appendLifecycleEvent>[0], "cities_assigned", `Bulk city assignment: ${cities.join(", ")}`, adminId, adminName);
+            if (!validCities?.length) break;
+            await User.updateOne({ _id: id }, { $addToSet: { assignedCities: { $each: validCities } } });
+            appendLifecycleEvent(authority as Parameters<typeof appendLifecycleEvent>[0], "cities_assigned", `Bulk city assignment: ${validCities.join(", ")}`, adminId, adminName);
             break;
           case "remove_cities":
             if (!cities?.length) break;

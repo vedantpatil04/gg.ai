@@ -9,6 +9,7 @@
  */
 
 import { AlertTriangle, RefreshCw, ShieldOff, WifiOff, ServerCrash } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -29,10 +30,12 @@ export function ErrorStateBase({
   title,
   description,
   onRetry,
-  retryLabel = "Try again",
+  retryLabel,
   className,
   compact = false,
 }: ErrorStateBaseProps) {
+  const { t } = useTranslation("common");
+  const resolvedRetryLabel = retryLabel ?? t("retry");
   return (
     <div
       className={cn(
@@ -58,7 +61,7 @@ export function ErrorStateBase({
       {onRetry && (
         <Button size="sm" variant="outline" onClick={onRetry} className="gap-1.5 mt-1">
           <RefreshCw className="size-3.5" />
-          {retryLabel}
+          {resolvedRetryLabel}
         </Button>
       )}
     </div>
@@ -74,11 +77,12 @@ export function NetworkError({
   onRetry?: () => void;
   compact?: boolean;
 }) {
+  const { t } = useTranslation("errors");
   return (
     <ErrorStateBase
       icon={WifiOff}
-      title="Connection error"
-      description="Unable to reach the server. Check your connection and try again."
+      title={t("states.network.title")}
+      description={t("states.network.description")}
       onRetry={onRetry}
       compact={compact}
     />
@@ -94,11 +98,12 @@ export function ServerError({
   onRetry?: () => void;
   compact?: boolean;
 }) {
+  const { t } = useTranslation("errors");
   return (
     <ErrorStateBase
       icon={ServerCrash}
-      title="Something went wrong"
-      description="The server returned an error. This is usually temporary — please try again."
+      title={t("states.server.title")}
+      description={t("states.server.description")}
       onRetry={onRetry}
       compact={compact}
     />
@@ -108,11 +113,12 @@ export function ServerError({
 // ─── Authorization error ──────────────────────────────────────────────────────
 
 export function AuthorizationError({ compact }: { compact?: boolean }) {
+  const { t } = useTranslation("errors");
   return (
     <ErrorStateBase
       icon={ShieldOff}
-      title="Access denied"
-      description="You don't have permission to view this content."
+      title={t("states.forbidden.title")}
+      description={t("states.forbidden.description")}
       compact={compact}
     />
   );
@@ -129,10 +135,11 @@ export function QueryError({
   onRetry?: () => void;
   compact?: boolean;
 }) {
+  const { t } = useTranslation("errors");
   return (
     <ErrorStateBase
-      title="Failed to load"
-      description={message ?? "Something went wrong loading this data. Please try refreshing."}
+      title={t("states.loadFailed.title")}
+      description={message ?? t("states.loadFailed.description")}
       onRetry={onRetry}
       compact={compact}
     />

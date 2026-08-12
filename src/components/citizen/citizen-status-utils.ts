@@ -24,6 +24,11 @@ export const STATUS_META: Record<
   ComplaintStatus,
   { label: string; tone: "muted" | "warning" | "info" | "success" | "destructive" | "primary" }
 > = {
+  // "pending" covers two real backend situations — received-but-unassigned
+  // and assigned-but-investigation-not-started (there is no separate
+  // "assigned" status in this project; see constants/smartRouting.ts on the
+  // backend). getStatusMeta() below picks the accurate label using
+  // assignedTo; this entry is the fallback when assignment info isn't known.
   pending: { label: "Pending", tone: "warning" },
   "in-progress": { label: "In Progress", tone: "info" },
   resolved: { label: "Awaiting Verification", tone: "primary" },
@@ -32,7 +37,14 @@ export const STATUS_META: Record<
   closed: { label: "Closed", tone: "success" },
 };
 
-export function getStatusMeta(status: string) {
+// isAssigned should be true when the complaint's assignedTo is populated.
+// Only affects the "pending" status, where it distinguishes "received, not
+// yet assigned" from "assigned, investigation not yet started" — both are
+// the same backend status, but citizens should see different wording.
+export function getStatusMeta(status: string, isAssigned?: boolean) {
+  if (status === "pending" && isAssigned) {
+    return { label: "Assigned", tone: "info" as const };
+  }
   return (
     STATUS_META[status as ComplaintStatus] ?? { label: status ?? "", tone: "muted" as const }
   );

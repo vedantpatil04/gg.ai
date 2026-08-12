@@ -69,8 +69,7 @@ function _fallback(msg: string): string {
 // ─── JSON helper — parses Gemini's JSON output robustly ──────────────────────
 function parseJSON<T>(text: string, fallback: T): T {
   try {
-    const match =
-      text.match(/```(?:json)?\s*([\s\S]*?)```/) || text.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
+    const match = text.match(/```(?:json)?\s*([\s\S]*?)```/) || text.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
     if (match) return JSON.parse(match[1] ?? match[0]);
     return JSON.parse(text);
   } catch {
@@ -84,7 +83,7 @@ function parseJSON<T>(text: string, fallback: T): T {
 export async function generateCopilotResponse(
   question: string,
   cityData: Record<string, unknown>,
-  userRole = "citizen",
+  userRole = "citizen"
 ): Promise<string> {
   const prompt = `
 CITY: ${cityData.cityName}, ${cityData.country}
@@ -118,9 +117,7 @@ export interface HealthAdvice {
   generalPublic: string;
 }
 
-export async function generateHealthAdvice(
-  cityData: Record<string, unknown>,
-): Promise<HealthAdvice> {
+export async function generateHealthAdvice(cityData: Record<string, unknown>): Promise<HealthAdvice> {
   const aqi = Number(cityData.aqi);
   const riskLevel: HealthAdvice["riskLevel"] =
     aqi <= 50 ? "Low" : aqi <= 100 ? "Moderate" : aqi <= 200 ? "High" : "Severe";
@@ -153,48 +150,14 @@ Return this exact JSON structure:
   return parseJSON<HealthAdvice>(text, {
     riskLevel,
     summary: `AQI is ${aqi} — ${riskLevel.toLowerCase()} risk conditions in ${cityData.cityName}.`,
-    outdoor:
-      aqi > 150
-        ? "Avoid outdoor activities. Stay indoors with windows closed."
-        : aqi > 100
-          ? "Limit prolonged outdoor exposure, especially during peak hours."
-          : "Outdoor activities are generally safe.",
-    exercise:
-      aqi > 150
-        ? "Postpone all outdoor exercise."
-        : aqi > 100
-          ? "Move workouts indoors or reduce intensity."
-          : "Light to moderate outdoor exercise is acceptable.",
-    sensitiveGroups:
-      aqi > 100
-        ? "Asthma and heart patients should avoid outdoor exposure and keep inhalers accessible."
-        : "Sensitive groups should monitor symptoms and limit prolonged outdoor stays.",
-    masks:
-      aqi > 150
-        ? "N95/FFP2 masks strongly recommended outdoors."
-        : aqi > 100
-          ? "Surgical mask recommended in crowded outdoor areas."
-          : "Masks optional for healthy individuals.",
-    schools:
-      aqi > 150
-        ? "Consider suspending outdoor school activities."
-        : aqi > 100
-          ? "Limit recess and outdoor PE classes."
-          : "Normal school activities may proceed.",
-    elderly:
-      aqi > 100
-        ? "Elderly persons should remain indoors. Ensure ventilation with air purifiers."
-        : "Elderly may go outdoors briefly in the morning when AQI is lower.",
-    children:
-      aqi > 100
-        ? "Keep children indoors. Avoid playgrounds near roads."
-        : "Children can play outdoors with normal precautions.",
-    generalPublic:
-      aqi > 150
-        ? "Stay indoors. Seal windows. Use air purifiers."
-        : aqi > 100
-          ? "Reduce time outdoors. Avoid dusty or smoky areas."
-          : "No special precautions needed.",
+    outdoor: aqi > 150 ? "Avoid outdoor activities. Stay indoors with windows closed." : aqi > 100 ? "Limit prolonged outdoor exposure, especially during peak hours." : "Outdoor activities are generally safe.",
+    exercise: aqi > 150 ? "Postpone all outdoor exercise." : aqi > 100 ? "Move workouts indoors or reduce intensity." : "Light to moderate outdoor exercise is acceptable.",
+    sensitiveGroups: aqi > 100 ? "Asthma and heart patients should avoid outdoor exposure and keep inhalers accessible." : "Sensitive groups should monitor symptoms and limit prolonged outdoor stays.",
+    masks: aqi > 150 ? "N95/FFP2 masks strongly recommended outdoors." : aqi > 100 ? "Surgical mask recommended in crowded outdoor areas." : "Masks optional for healthy individuals.",
+    schools: aqi > 150 ? "Consider suspending outdoor school activities." : aqi > 100 ? "Limit recess and outdoor PE classes." : "Normal school activities may proceed.",
+    elderly: aqi > 100 ? "Elderly persons should remain indoors. Ensure ventilation with air purifiers." : "Elderly may go outdoors briefly in the morning when AQI is lower.",
+    children: aqi > 100 ? "Keep children indoors. Avoid playgrounds near roads." : "Children can play outdoors with normal precautions.",
+    generalPublic: aqi > 150 ? "Stay indoors. Seal windows. Use air purifiers." : aqi > 100 ? "Reduce time outdoors. Avoid dusty or smoky areas." : "No special precautions needed.",
   });
 }
 
@@ -270,7 +233,7 @@ Return ONLY valid JSON:
 export async function generateReportSummary(
   reportTitle: string,
   cityId: string,
-  metrics: Record<string, unknown>,
+  metrics: Record<string, unknown>
 ): Promise<string> {
   const prompt = `Write a 3-sentence professional executive summary for an environmental report titled "${reportTitle}" covering ${cityId}. Key metrics: ${JSON.stringify(metrics)}. Be specific and data-driven.`;
   return generate(prompt, SYSTEM_REPORT_ANALYST);
@@ -287,9 +250,7 @@ export interface CityInsightSet {
   topActions: string[];
 }
 
-export async function generateCityInsights(
-  cityData: Record<string, unknown>,
-): Promise<CityInsightSet> {
+export async function generateCityInsights(cityData: Record<string, unknown>): Promise<CityInsightSet> {
   const prompt = `
 Generate environmental intelligence insights for ${cityData.cityName}, ${cityData.country}.
 
@@ -319,34 +280,14 @@ Return ONLY valid JSON:
 }
 
 export async function getInsightsFromData(
-  cityData: Record<string, unknown>,
+  cityData: Record<string, unknown>
 ): Promise<Array<{ icon: string; title: string; body: string; tag: string }>> {
   const insights = await generateCityInsights(cityData);
   return [
-    {
-      icon: "trend",
-      title: `AQI ${cityData.aqi} — ${Number(cityData.aqi) > 150 ? "Unhealthy" : Number(cityData.aqi) > 100 ? "Moderate" : "Good"}`,
-      body: insights.aqiInsights,
-      tag: "Air Quality",
-    },
-    {
-      icon: "drop",
-      title: `Water Quality Index: ${cityData.water}/100`,
-      body: insights.environmentalSummary,
-      tag: "Water",
-    },
-    {
-      icon: "alert",
-      title: `Risk Score: ${cityData.risk}/100`,
-      body: insights.riskAnalysis,
-      tag: "Risk",
-    },
-    {
-      icon: "leaf",
-      title: `EcoScore: ${cityData.eco}/100`,
-      body: insights.sustainabilityInsights,
-      tag: "Sustainability",
-    },
+    { icon: "trend", title: `AQI ${cityData.aqi} — ${Number(cityData.aqi) > 150 ? "Unhealthy" : Number(cityData.aqi) > 100 ? "Moderate" : "Good"}`, body: insights.aqiInsights, tag: "Air Quality" },
+    { icon: "drop",  title: `Water Quality Index: ${cityData.water}/100`, body: insights.environmentalSummary, tag: "Water" },
+    { icon: "alert", title: `Risk Score: ${cityData.risk}/100`, body: insights.riskAnalysis, tag: "Risk" },
+    { icon: "leaf",  title: `EcoScore: ${cityData.eco}/100`, body: insights.sustainabilityInsights, tag: "Sustainability" },
   ];
 }
 
@@ -393,16 +334,8 @@ Return ONLY valid JSON:
     reason: `${alert.title} detected due to elevated ${alert.category === "air" ? "pollutant concentration" : alert.category} levels in ${alert.area}.`,
     riskExplanation: `${alert.severity === "critical" ? "Immediate action required" : "Situation requires monitoring"}. Conditions may worsen without intervention.`,
     healthImpact: `${alert.severity === "critical" ? "High health risk for all residents" : "Sensitive groups most affected"}. Respiratory and cardiovascular stress possible.`,
-    recommendedActions: [
-      "Stay indoors with windows closed",
-      "Wear N95 mask if going outside",
-      "Check GreenGuard AI for updates",
-    ],
-    authorityRecommendations: [
-      "Deploy mobile monitoring units to affected zone",
-      "Issue public advisory via emergency broadcast",
-      "Coordinate with industrial units for emission reduction",
-    ],
+    recommendedActions: ["Stay indoors with windows closed", "Wear N95 mask if going outside", "Check GreenGuard AI for updates"],
+    authorityRecommendations: ["Deploy mobile monitoring units to affected zone", "Issue public advisory via emergency broadcast", "Coordinate with industrial units for emission reduction"],
   });
 }
 
@@ -423,7 +356,7 @@ export interface PolicyAnalysis {
 export async function generatePolicyInsight(
   cityData: Record<string, unknown>,
   levers: Record<string, number>,
-  results: Record<string, unknown>,
+  results: Record<string, unknown>
 ): Promise<string> {
   const analysis = await generateFullPolicyAnalysis(cityData, levers, results);
   return analysis.summary + " " + analysis.environmentalImpact;
@@ -432,38 +365,24 @@ export async function generatePolicyInsight(
 export async function generateFullPolicyAnalysis(
   cityData: Record<string, unknown>,
   levers: Record<string, number>,
-  results: Record<string, unknown>,
+  results: Record<string, unknown>
 ): Promise<PolicyAnalysis> {
   // Phase 5: levers may include 4 extra optional fields. Render only the ones present
   // so this function stays backward compatible with legacy 4-lever callers.
   const extraLeverLines = [
     levers.renewable !== undefined ? `  Renewable Energy Adoption: ${levers.renewable}%` : null,
-    levers.publicTransport !== undefined
-      ? `  Public Transport Usage: ${levers.publicTransport}%`
-      : null,
-    levers.wasteManagement !== undefined
-      ? `  Waste Management Efficiency: ${levers.wasteManagement}%`
-      : null,
+    levers.publicTransport !== undefined ? `  Public Transport Usage: ${levers.publicTransport}%` : null,
+    levers.wasteManagement !== undefined ? `  Waste Management Efficiency: ${levers.wasteManagement}%` : null,
     levers.greenArea !== undefined ? `  Green Area Expansion: ${levers.greenArea}%` : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  ].filter(Boolean).join("\n");
 
   const extraResultLines = [
     results.projectedPm25 !== undefined ? `  PM2.5: ${results.projectedPm25} µg/m³` : null,
     results.projectedPm10 !== undefined ? `  PM10: ${results.projectedPm10} µg/m³` : null,
-    results.projectedRiskScore !== undefined
-      ? `  Environmental Risk Score: ${results.projectedRiskScore}/100`
-      : null,
-    results.projectedWaterQuality !== undefined
-      ? `  Water Quality Index: ${results.projectedWaterQuality}/100`
-      : null,
-    results.sustainabilityIndex !== undefined
-      ? `  Sustainability Index: ${results.sustainabilityIndex}/100`
-      : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
+    results.projectedRiskScore !== undefined ? `  Environmental Risk Score: ${results.projectedRiskScore}/100` : null,
+    results.projectedWaterQuality !== undefined ? `  Water Quality Index: ${results.projectedWaterQuality}/100` : null,
+    results.sustainabilityIndex !== undefined ? `  Sustainability Index: ${results.sustainabilityIndex}/100` : null,
+  ].filter(Boolean).join("\n");
 
   const prompt = `
 Policy simulation for ${cityData.cityName}, ${cityData.country}.
@@ -514,8 +433,7 @@ Return ONLY valid JSON:
       "Introduce carbon pricing for high-emission industrial units",
       "Launch public transport subsidy to support traffic reduction",
     ],
-    estimatedTimeline:
-      "Measurable AQI improvement within 6–18 months; full carbon reduction realised over 3–5 years.",
+    estimatedTimeline: "Measurable AQI improvement within 6–18 months; full carbon reduction realised over 3–5 years.",
     costBenefit: `Estimated net benefit: ${Number(results.aqiDelta) < -20 ? "strong positive ROI" : "moderate ROI"} considering reduced healthcare costs and productivity gains.`,
   });
 }
@@ -539,10 +457,7 @@ export async function generateAdminSummary(stats: {
   cities: Array<{ cityName: string; aqi: number; risk: number }>;
 }): Promise<AdminAISummary> {
   const ranked = [...stats.cities].sort((a, b) => b.aqi - a.aqi);
-  const top3 = ranked
-    .slice(0, 3)
-    .map((c) => `${c.cityName} (AQI ${c.aqi})`)
-    .join(", ");
+  const top3 = ranked.slice(0, 3).map((c) => `${c.cityName} (AQI ${c.aqi})`).join(", ");
   const avgAqi = Math.round(stats.cities.reduce((s, c) => s + c.aqi, 0) / stats.cities.length);
 
   const prompt = `
@@ -585,7 +500,7 @@ Return ONLY valid JSON:
 // EXISTING FEATURE — RECOMMENDATIONS (enhanced)
 // ══════════════════════════════════════════════════════════════════════════════
 export async function generateRecommendations(
-  cityData: Record<string, unknown>,
+  cityData: Record<string, unknown>
 ): Promise<Array<{ title: string; impact: string; effort: string; confidence: number }>> {
   const prompt = `
 For ${cityData.cityName}: AQI ${cityData.aqi}, PM2.5 ${cityData.pm25} µg/m³, Water QI ${cityData.water}/100, Risk ${cityData.risk}/100.
@@ -594,35 +509,13 @@ Return ONLY a JSON array:
 [{"title":"specific action","impact":"metric improvement e.g. −18 AQI","effort":"Low|Medium|High","confidence":0.0-1.0}]`;
 
   const text = await generate(prompt, SYSTEM_ENV_ANALYST);
-  const parsed = parseJSON<
-    Array<{ title: string; impact: string; effort: string; confidence: number }>
-  >(text, []);
+  const parsed = parseJSON<Array<{ title: string; impact: string; effort: string; confidence: number }>>(text, []);
   if (Array.isArray(parsed) && parsed.length >= 1) return parsed.slice(0, 4);
   return [
-    {
-      title: "Restrict heavy vehicles 06:00–10:00 in urban core",
-      impact: "−18 AQI",
-      effort: "Low",
-      confidence: 0.86,
-    },
-    {
-      title: "Activate misting stations in high-pollution zones",
-      impact: "−9 PM10",
-      effort: "Medium",
-      confidence: 0.74,
-    },
-    {
-      title: "Issue public advisory for sensitive groups",
-      impact: "Health risk ↓15%",
-      effort: "Low",
-      confidence: 0.92,
-    },
-    {
-      title: "Audit industrial cluster emissions",
-      impact: "−24 PM2.5",
-      effort: "High",
-      confidence: 0.68,
-    },
+    { title: "Restrict heavy vehicles 06:00–10:00 in urban core", impact: "−18 AQI", effort: "Low", confidence: 0.86 },
+    { title: "Activate misting stations in high-pollution zones", impact: "−9 PM10", effort: "Medium", confidence: 0.74 },
+    { title: "Issue public advisory for sensitive groups", impact: "Health risk ↓15%", effort: "Low", confidence: 0.92 },
+    { title: "Audit industrial cluster emissions", impact: "−24 PM2.5", effort: "High", confidence: 0.68 },
   ];
 }
 
@@ -648,40 +541,32 @@ export async function analyzeAQITrend(cityId: string, days: number = 7): Promise
     {
       $group: {
         _id: { $dateToString: { format: "%Y-%m-%d", date: "$timestamp" } },
-        avgAqi: { $avg: "$aqi" },
+        avgAqi:  { $avg: "$aqi" },
         avgPm25: { $avg: "$pm25" },
-        avgNo2: { $avg: "$no2" },
-        avgO3: { $avg: "$o3" },
-        maxAqi: { $max: "$aqi" },
+        avgNo2:  { $avg: "$no2" },
+        avgO3:   { $avg: "$o3" },
+        maxAqi:  { $max: "$aqi" },
       },
     },
     { $sort: { _id: 1 } },
   ]);
 
-  const latest = await EnvironmentalData.findOne({ cityId: cityId.toLowerCase() })
-    .sort({ timestamp: -1 })
-    .lean();
+  const latest = await EnvironmentalData.findOne({ cityId: cityId.toLowerCase() }).sort({ timestamp: -1 }).lean();
   const cityName = latest?.cityName ?? cityId;
 
   const fallback: AQITrendInsight = {
     summary: `${cityName} AQI trend data is being collected. Current AQI: ${latest?.aqi ?? "N/A"}.`,
-    direction: (latest?.aqi ?? 0 > 100) ? "elevated" : "moderate",
+    direction: latest?.aqi ?? 0 > 100 ? "elevated" : "moderate",
     primaryDrivers: ["PM2.5 particulates", "Traffic emissions"],
     forecast: "Conditions expected to remain similar over the next 24 hours.",
-    healthAlert:
-      (latest?.aqi ?? 0 > 150)
-        ? "Sensitive groups should limit outdoor exposure."
-        : "Air quality is acceptable for most individuals.",
+    healthAlert: latest?.aqi ?? 0 > 150 ? "Sensitive groups should limit outdoor exposure." : "Air quality is acceptable for most individuals.",
   };
 
   if (!history.length || !latest) return fallback;
 
-  const dataTable = history
-    .map(
-      (d) =>
-        `${d._id}: AQI ${Math.round(d.avgAqi)}, PM2.5 ${Math.round(d.avgPm25)}, NO2 ${Math.round(d.avgNo2)}, O3 ${Math.round(d.avgO3)}, Peak ${Math.round(d.maxAqi)}`,
-    )
-    .join("\n");
+  const dataTable = history.map(d =>
+    `${d._id}: AQI ${Math.round(d.avgAqi)}, PM2.5 ${Math.round(d.avgPm25)}, NO2 ${Math.round(d.avgNo2)}, O3 ${Math.round(d.avgO3)}, Peak ${Math.round(d.maxAqi)}`
+  ).join("\n");
 
   const prompt = `
 You are an environmental data analyst. Analyze this ${days}-day AQI trend for ${cityName}:
@@ -712,29 +597,16 @@ export interface HotspotAnalysis {
 }
 
 export async function analyzePollutionHotspots(cityId: string): Promise<HotspotAnalysis> {
-  const latest = await EnvironmentalData.findOne({ cityId: cityId.toLowerCase() })
-    .sort({ timestamp: -1 })
-    .lean();
+  const latest = await EnvironmentalData.findOne({ cityId: cityId.toLowerCase() }).sort({ timestamp: -1 }).lean();
 
   const fallback: HotspotAnalysis = {
     overallRisk: "moderate",
     worstPollutant: "PM2.5",
     hotspotZones: [
-      {
-        zone: "Industrial Corridor",
-        concern: "High particulate matter from manufacturing",
-        recommendation: "Enforce emission limits during peak hours",
-      },
-      {
-        zone: "Transport Hub",
-        concern: "NO2 from diesel vehicles",
-        recommendation: "Promote electric vehicle transition",
-      },
+      { zone: "Industrial Corridor", concern: "High particulate matter from manufacturing", recommendation: "Enforce emission limits during peak hours" },
+      { zone: "Transport Hub", concern: "NO2 from diesel vehicles", recommendation: "Promote electric vehicle transition" },
     ],
-    immediateActions: [
-      "Issue advisory for sensitive groups",
-      "Increase monitoring frequency in industrial zones",
-    ],
+    immediateActions: ["Issue advisory for sensitive groups", "Increase monitoring frequency in industrial zones"],
   };
 
   if (!latest) return fallback;
@@ -750,7 +622,7 @@ export async function analyzePollutionHotspots(cityId: string): Promise<HotspotA
   const worstEntry = Object.entries(pollutants).sort((a, b) => {
     // Normalize against WHO limits: PM2.5=15, PM10=45, NO2=25, O3=100, SO2=40, CO=4
     const limits: Record<string, number> = { PM25: 15, PM10: 45, NO2: 25, O3: 100, SO2: 40, CO: 4 };
-    return b[1] / (limits[b[0]] ?? 1) - a[1] / (limits[a[0]] ?? 1);
+    return (b[1] / (limits[b[0]] ?? 1)) - (a[1] / (limits[a[0]] ?? 1));
   })[0];
 
   const prompt = `
@@ -797,42 +669,16 @@ export interface HealthImpactAnalysis {
 }
 
 export async function generateHealthImpactAnalysis(cityId: string): Promise<HealthImpactAnalysis> {
-  const latest = await EnvironmentalData.findOne({ cityId: cityId.toLowerCase() })
-    .sort({ timestamp: -1 })
-    .lean();
+  const latest = await EnvironmentalData.findOne({ cityId: cityId.toLowerCase() }).sort({ timestamp: -1 }).lean();
 
   const aqi = latest?.aqi ?? 80;
   const fallback: HealthImpactAnalysis = {
-    riskLevel:
-      aqi > 200
-        ? "Very Unhealthy"
-        : aqi > 150
-          ? "Unhealthy"
-          : aqi > 100
-            ? "Unhealthy for Sensitive Groups"
-            : aqi > 50
-              ? "Moderate"
-              : "Good",
-    affectedGroups:
-      aqi > 100
-        ? ["Elderly", "Children under 12", "Asthma patients", "Heart disease patients"]
-        : ["General public unaffected"],
-    symptoms:
-      aqi > 100
-        ? ["Respiratory irritation", "Eye irritation", "Aggravated asthma"]
-        : ["Minimal symptoms expected"],
-    recommendations: [
-      "Monitor air quality updates",
-      "Keep windows closed during peak pollution hours",
-    ],
-    hospitalAdvisory:
-      aqi > 150
-        ? "Hospitals should expect increased respiratory admissions."
-        : "No unusual hospital preparation needed.",
-    outdoorGuidance:
-      aqi > 150
-        ? "Avoid outdoor activities. Use N95 masks if going outside."
-        : "Light outdoor activity acceptable. Avoid prolonged strenuous exercise.",
+    riskLevel: aqi > 200 ? "Very Unhealthy" : aqi > 150 ? "Unhealthy" : aqi > 100 ? "Unhealthy for Sensitive Groups" : aqi > 50 ? "Moderate" : "Good",
+    affectedGroups: aqi > 100 ? ["Elderly", "Children under 12", "Asthma patients", "Heart disease patients"] : ["General public unaffected"],
+    symptoms: aqi > 100 ? ["Respiratory irritation", "Eye irritation", "Aggravated asthma"] : ["Minimal symptoms expected"],
+    recommendations: ["Monitor air quality updates", "Keep windows closed during peak pollution hours"],
+    hospitalAdvisory: aqi > 150 ? "Hospitals should expect increased respiratory admissions." : "No unusual hospital preparation needed.",
+    outdoorGuidance: aqi > 150 ? "Avoid outdoor activities. Use N95 masks if going outside." : "Light outdoor activity acceptable. Avoid prolonged strenuous exercise.",
   };
 
   if (!latest) return fallback;
@@ -869,9 +715,7 @@ export interface RiskAnalysis {
 }
 
 export async function generateEnvironmentalRiskAnalysis(cityId: string): Promise<RiskAnalysis> {
-  const latest = await EnvironmentalData.findOne({ cityId: cityId.toLowerCase() })
-    .sort({ timestamp: -1 })
-    .lean();
+  const latest = await EnvironmentalData.findOne({ cityId: cityId.toLowerCase() }).sort({ timestamp: -1 }).lean();
 
   const fallback: RiskAnalysis = {
     compositeScore: latest?.risk ?? 50,
@@ -923,7 +767,7 @@ export interface CityComparisonAnalysis {
 }
 
 export async function compareCities(cityIds: string[]): Promise<CityComparisonAnalysis> {
-  const ids = cityIds.map((id) => id.toLowerCase());
+  const ids = cityIds.map(id => id.toLowerCase());
   const cities = await EnvironmentalData.aggregate([
     { $match: { cityId: { $in: ids } } },
     { $sort: { cityId: 1, timestamp: -1 } },
@@ -937,18 +781,14 @@ export async function compareCities(cityIds: string[]): Promise<CityComparisonAn
     bestPerformer: cities[0]?.cityName ?? "N/A",
     worstPerformer: cities[cities.length - 1]?.cityName ?? "N/A",
     keyDifferences: ["AQI variance across network", "PM2.5 concentration differences"],
-    networkRecommendation:
-      "Share pollution mitigation strategies from lower-AQI cities to higher-AQI cities.",
+    networkRecommendation: "Share pollution mitigation strategies from lower-AQI cities to higher-AQI cities.",
   };
 
   if (cities.length < 2) return fallback;
 
-  const table = cities
-    .map(
-      (c) =>
-        `${c.cityName}: AQI ${c.aqi}, PM2.5 ${c.pm25}, Risk ${c.risk}, Eco ${c.eco}, Water ${c.water}, Carbon ${c.carbon}`,
-    )
-    .join("\n");
+  const table = cities.map(c =>
+    `${c.cityName}: AQI ${c.aqi}, PM2.5 ${c.pm25}, Risk ${c.risk}, Eco ${c.eco}, Water ${c.water}, Carbon ${c.carbon}`
+  ).join("\n");
 
   const prompt = `
 Compare these cities environmental performance using real data:
@@ -978,17 +818,13 @@ export interface SustainabilityRecommendations {
   benchmarkVsNetwork: string;
 }
 
-export async function generateSustainabilityRecommendations(
-  cityId: string,
-): Promise<SustainabilityRecommendations> {
+export async function generateSustainabilityRecommendations(cityId: string): Promise<SustainabilityRecommendations> {
   const id = cityId.toLowerCase();
   const latest = await EnvironmentalData.findOne({ cityId: id }).sort({ timestamp: -1 }).lean();
 
   // Get 30-day avg for trend
   const avg30 = await EnvironmentalData.aggregate([
-    {
-      $match: { cityId: id, timestamp: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },
-    },
+    { $match: { cityId: id, timestamp: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
     { $group: { _id: null, avgEco: { $avg: "$eco" }, avgRisk: { $avg: "$risk" } } },
   ]);
 
@@ -999,29 +835,17 @@ export async function generateSustainabilityRecommendations(
     { $group: { _id: null, avgEco: { $avg: "$doc.eco" } } },
   ]);
 
-  const currentEco = latest?.eco ?? 50;
-  const avg30Eco = avg30[0]?.avgEco ?? currentEco;
-  const networkEco = networkAvg[0]?.avgEco ?? 50;
-  const trendDir = currentEco >= avg30Eco ? "improving" : "declining";
+  const currentEco    = latest?.eco    ?? 50;
+  const avg30Eco      = avg30[0]?.avgEco ?? currentEco;
+  const networkEco    = networkAvg[0]?.avgEco ?? 50;
+  const trendDir      = currentEco >= avg30Eco ? "improving" : "declining";
 
   const fallback: SustainabilityRecommendations = {
     overallScore: currentEco,
     trend: trendDir,
-    quickWins: [
-      "Expand public transport routes",
-      "Launch citizen tree-planting initiative",
-      "Install solar panels on government buildings",
-    ],
-    mediumTermActions: [
-      "Phase out coal-based power plants",
-      "Introduce EV charging infrastructure",
-      "Upgrade industrial emission filters",
-    ],
-    longTermGoals: [
-      "Achieve 40% renewable energy mix by 2030",
-      "Restore 15% green cover",
-      "Reduce carbon footprint by 30%",
-    ],
+    quickWins: ["Expand public transport routes", "Launch citizen tree-planting initiative", "Install solar panels on government buildings"],
+    mediumTermActions: ["Phase out coal-based power plants", "Introduce EV charging infrastructure", "Upgrade industrial emission filters"],
+    longTermGoals: ["Achieve 40% renewable energy mix by 2030", "Restore 15% green cover", "Reduce carbon footprint by 30%"],
     benchmarkVsNetwork: `${latest?.cityName ?? cityId} eco score of ${currentEco} is ${currentEco >= networkEco ? "above" : "below"} the network average of ${Math.round(networkEco)}.`,
   };
 
@@ -1052,7 +876,7 @@ Return ONLY valid JSON:
   const text = await generate(prompt, SYSTEM_ENV_ANALYST);
   const result = parseJSON<SustainabilityRecommendations>(text, fallback);
   result.overallScore = currentEco;
-  result.trend = trendDir;
+  result.trend        = trendDir;
   return result;
 }
 
@@ -1074,7 +898,7 @@ export async function generateExecutiveBriefing(
   cityData: Record<string, unknown>,
   levers: Record<string, number>,
   results: Record<string, unknown>,
-  executiveScores: Record<string, unknown>,
+  executiveScores: Record<string, unknown>
 ): Promise<ExecutiveBriefing> {
   const prompt = `
 Produce a government/judge-ready executive briefing for an environmental policy simulation.
@@ -1140,7 +964,7 @@ export async function generateComparisonNarrative(
   cityName: string,
   scenarioAName: string,
   scenarioBName: string,
-  diff: Record<string, unknown>,
+  diff: Record<string, unknown>
 ): Promise<ScenarioComparisonNarrative> {
   const prompt = `
 Compare two environmental policy scenarios for ${cityName}.
@@ -1201,25 +1025,19 @@ export async function generateNetworkExecutiveSummary(params: {
   totalComplaints: number;
 }): Promise<NetworkExecutiveSummary> {
   const { cities, activeAlerts, totalComplaints } = params;
-  const avgAqi = cities.reduce((s, c) => s + c.aqi, 0) / cities.length;
+  const avgAqi  = cities.reduce((s, c) => s + c.aqi, 0) / cities.length;
   const avgRisk = cities.reduce((s, c) => s + (c.risk ?? 0), 0) / cities.length;
-  const avgEco = cities.reduce((s, c) => s + (c.eco ?? 0), 0) / cities.length;
+  const avgEco  = cities.reduce((s, c) => s + (c.eco ?? 0), 0) / cities.length;
 
   const rating: NetworkExecutiveSummary["overallHealthRating"] =
-    avgAqi > 200
-      ? "Critical"
-      : avgAqi > 150
-        ? "Poor"
-        : avgAqi > 100
-          ? "Moderate"
-          : avgAqi > 50
-            ? "Good"
-            : "Excellent";
+    avgAqi > 200 ? "Critical" :
+    avgAqi > 150 ? "Poor" :
+    avgAqi > 100 ? "Moderate" :
+    avgAqi > 50  ? "Good" : "Excellent";
 
-  const cityTable = cities
-    .slice(0, 8)
-    .map((c) => `${c.cityName}: AQI ${c.aqi}, Risk ${c.risk}/100, EcoScore ${c.eco}/100`)
-    .join("\n");
+  const cityTable = cities.slice(0, 8).map(c =>
+    `${c.cityName}: AQI ${c.aqi}, Risk ${c.risk}/100, EcoScore ${c.eco}/100`
+  ).join("\n");
 
   const prompt = `
 Produce a government-board-ready Environmental Network Assessment.
@@ -1278,27 +1096,14 @@ export interface AuthorityActionPlan {
 }
 
 export async function generateAuthorityActionPlan(
-  cityData: {
-    cityName: string;
-    country: string;
-    aqi: number;
-    risk: number;
-    eco: number;
-    pm25: number;
-    pm10: number;
-    carbon: number;
-  },
+  cityData: { cityName: string; country: string; aqi: number; risk: number; eco: number; pm25: number; pm10: number; carbon: number },
   complaints: { total: number; pending: number },
-  alerts: { total: number; critical: number },
+  alerts: { total: number; critical: number }
 ): Promise<AuthorityActionPlan> {
   const urgency: AuthorityActionPlan["urgencyLevel"] =
-    cityData.aqi > 200 || alerts.critical > 0
-      ? "Immediate"
-      : cityData.aqi > 150 || complaints.pending > 10
-        ? "High"
-        : cityData.aqi > 100
-          ? "Moderate"
-          : "Routine";
+    cityData.aqi > 200 || alerts.critical > 0 ? "Immediate" :
+    cityData.aqi > 150 || complaints.pending > 10 ? "High" :
+    cityData.aqi > 100 ? "Moderate" : "Routine";
 
   const prompt = `
 Generate a structured authority action plan for municipal officers.
@@ -1319,7 +1124,7 @@ Return ONLY valid JSON:
   "trafficOptimization": ["specific action 1", "specific action 2", "specific action 3"],
   "wasteManagement": ["specific action 1", "specific action 2"],
   "inspectionSchedule": ["specific inspection target 1 with frequency", "target 2"],
-  "emergencyInterventions": ${cityData.aqi > 150 || alerts.critical > 0 ? '["intervention 1", "intervention 2"]' : "[]"},
+  "emergencyInterventions": ${cityData.aqi > 150 || alerts.critical > 0 ? '["intervention 1", "intervention 2"]' : '[]'},
   "estimatedAqiImprovement": "e.g. −15 to −25 AQI within 3 months",
   "timeframe": "e.g. Immediate: 0–2 weeks | Short-term: 1–3 months | Long-term: 6–12 months"
 }`;
@@ -1341,13 +1146,9 @@ Return ONLY valid JSON:
       `Industrial cluster emissions audit — weekly for facilities in risk zones`,
       `Construction site dust control inspection — bi-weekly`,
     ],
-    emergencyInterventions:
-      cityData.aqi > 150
-        ? [
-            `Issue public health advisory for AQI ${cityData.aqi}`,
-            `Activate emergency response protocol — suspend outdoor school activities`,
-          ]
-        : [],
+    emergencyInterventions: cityData.aqi > 150
+      ? [`Issue public health advisory for AQI ${cityData.aqi}`, `Activate emergency response protocol — suspend outdoor school activities`]
+      : [],
     estimatedAqiImprovement: `−12 to −20 AQI within 6–8 weeks with consistent enforcement`,
     timeframe: `Immediate: 0–2 weeks | Short-term: 1–3 months | Long-term: 6–12 months`,
   });
@@ -1379,17 +1180,16 @@ export async function generateExecutiveReport(
     resolvedComplaints: number;
     resolutionRate: number;
     worstCity: { name: string; aqi: number } | null;
-    bestCity: { name: string; aqi: number } | null;
+    bestCity:  { name: string; aqi: number } | null;
   },
-  reportType: string,
+  reportType: string
 ): Promise<ExecutiveReportOutput> {
   const now = new Date();
-  const period =
-    reportType === "Weekly"
-      ? `Week of ${now.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}`
-      : reportType === "Monthly"
-        ? now.toLocaleDateString("en-IN", { month: "long", year: "numeric" })
-        : `As of ${now.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}`;
+  const period = reportType === "Weekly"
+    ? `Week of ${now.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}`
+    : reportType === "Monthly"
+    ? now.toLocaleDateString("en-IN", { month: "long", year: "numeric" })
+    : `As of ${now.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}`;
 
   const prompt = `
 Generate a formal ${reportType} Environmental Intelligence Report for government authorities.
@@ -1428,17 +1228,11 @@ Return ONLY valid JSON:
       `Average AQI of ${networkStats.avgAqi} across the monitored network`,
       `${networkStats.activeAlerts} environmental alerts currently active`,
       `${networkStats.resolvedComplaints} of ${networkStats.totalComplaints} complaints resolved (${networkStats.resolutionRate}% rate)`,
-      networkStats.worstCity
-        ? `Highest pollution recorded in ${networkStats.worstCity.name} with AQI ${networkStats.worstCity.aqi}`
-        : "Data being collected",
+      networkStats.worstCity ? `Highest pollution recorded in ${networkStats.worstCity.name} with AQI ${networkStats.worstCity.aqi}` : "Data being collected",
     ],
     cityPerformanceHighlights: [
-      networkStats.bestCity
-        ? `${networkStats.bestCity.name} leads network performance with AQI ${networkStats.bestCity.aqi}`
-        : "Performance data updating",
-      networkStats.worstCity
-        ? `${networkStats.worstCity.name} requires immediate environmental intervention`
-        : "Monitoring active",
+      networkStats.bestCity ? `${networkStats.bestCity.name} leads network performance with AQI ${networkStats.bestCity.aqi}` : "Performance data updating",
+      networkStats.worstCity ? `${networkStats.worstCity.name} requires immediate environmental intervention` : "Monitoring active",
       `Overall network EcoScore of ${networkStats.avgEco}/100 reflects current sustainability posture`,
     ],
     actionItems: [
@@ -1452,5 +1246,365 @@ Return ONLY valid JSON:
       "Convene inter-agency task force for cities with AQI consistently above 150",
     ],
     conclusion: `The ${reportType.toLowerCase()} report indicates ${networkStats.avgAqi > 150 ? "urgent action is required" : "continued monitoring is recommended"} across the monitored network. Authorities are advised to prioritise the identified high-risk areas and implement the recommended interventions within the specified timeframes.`,
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PHASE 7 — HELP CENTER AI INTELLIGENCE
+// Reuses existing generate() / parseJSON() helpers and SYSTEM_* personas.
+// All functions are additive — zero changes to existing functions above.
+// ══════════════════════════════════════════════════════════════════════════════
+
+const SYSTEM_HELP_ASSISTANT =
+  "You are GreenGuard Help AI — a friendly, knowledgeable support assistant for the GreenGuard AI platform. " +
+  "Answer questions about platform features, troubleshooting, and environmental monitoring clearly and concisely. " +
+  "If a question is urgent or involves data loss, security, or environmental emergency, flag it. " +
+  "Base answers on the GreenGuard platform context provided. Be helpful, accurate, and conversational.";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface HelpAIMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface HelpAIResponse {
+  answer: string;
+  confidence: "high" | "medium" | "low";
+  escalation: boolean;
+  escalationReason?: string;
+  suggestedQuestions: string[];
+  sources: Array<{ type: "kb" | "tutorial" | "support"; title: string; id: string }>;
+}
+
+export interface ArticleRecommendation {
+  type: "kb" | "tutorial";
+  id: string;
+  title: string;
+  relevanceScore: number;
+  reason: string;
+}
+
+export interface TicketDraft {
+  subject: string;
+  category: string;
+  priority: "low" | "medium" | "high" | "critical";
+  department: string;
+  description: string;
+  expectedResult: string;
+  environment: string;
+  stepsToReproduce: string;
+  possibleCause: string;
+}
+
+export interface ArticleSummary {
+  summary: string;
+  keyTakeaways: string[];
+  estimatedReadingTime: string;
+  difficulty: string;
+  prerequisites: string[];
+}
+
+export interface TextExplanation {
+  explanation: string;
+  simplified: string;
+  expanded: string;
+}
+
+export interface TroubleshootingStep {
+  question: string;
+  options: string[];
+}
+
+export interface TroubleshootingResult {
+  resolved: boolean;
+  recommendation: string;
+  action: "open_kb" | "open_tutorial" | "create_ticket" | "contact_support";
+  articleId?: string;
+}
+
+// ─── 1. Help Assistant — conversational Q&A ───────────────────────────────────
+
+export async function generateHelpAnswer(
+  question: string,
+  history: HelpAIMessage[],
+  context: {
+    kbTitles: string[];
+    tutorialTitles: string[];
+    userRole?: string;
+  }
+): Promise<HelpAIResponse> {
+  const historyText = history.slice(-6).map(m => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`).join("\n");
+
+  const prompt = `
+PLATFORM: GreenGuard AI — environmental monitoring and compliance platform
+USER ROLE: ${context.userRole ?? "citizen"}
+
+AVAILABLE KNOWLEDGE BASE (titles only):
+${context.kbTitles.slice(0, 15).join("\n")}
+
+AVAILABLE TUTORIALS (titles only):
+${context.tutorialTitles.slice(0, 10).join("\n")}
+
+CONVERSATION HISTORY:
+${historyText || "(New conversation)"}
+
+USER QUESTION: ${question}
+
+Instructions:
+- Answer the question helpfully and concisely (2-4 sentences for simple questions, up to 8 for complex ones)
+- Detect if the question indicates urgency/emergency/data loss/security issue
+- Suggest 3 follow-up questions the user might have
+- Reference up to 3 relevant KB articles or tutorials by their exact title from the lists above
+- Set confidence based on how well GreenGuard context covers the question
+
+Return ONLY valid JSON:
+{
+  "answer": "clear, helpful answer to the question",
+  "confidence": "high|medium|low",
+  "escalation": false,
+  "escalationReason": null,
+  "suggestedQuestions": ["question 1?", "question 2?", "question 3?"],
+  "sources": [
+    {"type": "kb", "id": "matching-article-id-if-known", "title": "exact title from the list above"}
+  ]
+}`;
+
+  const text = await generate(prompt, SYSTEM_HELP_ASSISTANT);
+  const parsed = parseJSON<HelpAIResponse>(text, {
+    answer: `I can help you with that. ${question.toLowerCase().includes("complaint") ? "For complaint-related issues, please check the Citizen Portal or submit a new complaint from the sidebar." : "Please check our Knowledge Base or contact our support team for further assistance."}`,
+    confidence: "medium",
+    escalation: false,
+    suggestedQuestions: [
+      "How do I submit a complaint?",
+      "Where can I view my ticket status?",
+      "How do I contact an authority directly?",
+    ],
+    sources: [],
+  });
+
+  // Escalation detection — override if keywords detected
+  const q = question.toLowerCase();
+  if (!parsed.escalation && (
+    q.includes("emergency") || q.includes("urgent") || q.includes("data loss") ||
+    q.includes("security") || q.includes("breach") || q.includes("hack") ||
+    q.includes("critical") || q.includes("disaster")
+  )) {
+    parsed.escalation = true;
+    parsed.escalationReason = "Question may involve urgency, security, or emergency conditions.";
+  }
+
+  return parsed;
+}
+
+// ─── 2. Article Recommendations while typing ──────────────────────────────────
+
+export async function getArticleRecommendations(
+  query: string,
+  kbArticles: Array<{ id: string; title: string; tags: string[] }>,
+  tutorials: Array<{ id: string; title: string; tags: string[] }>
+): Promise<ArticleRecommendation[]> {
+  if (!query.trim() || query.length < 3) return [];
+
+  const kbList  = kbArticles.slice(0, 20).map(a => `KB:${a.id}|${a.title}|${a.tags.join(",")}`).join("\n");
+  const tutList = tutorials.slice(0, 15).map(t => `TUT:${t.id}|${t.title}|${t.tags.join(",")}`).join("\n");
+
+  const prompt = `
+User is typing: "${query}"
+
+KNOWLEDGE BASE ARTICLES:
+${kbList}
+
+TUTORIALS:
+${tutList}
+
+Find the 4 most relevant items based on semantic meaning, not just keywords.
+Return ONLY a JSON array (max 4 items):
+[{
+  "type": "kb|tutorial",
+  "id": "exact id from list",
+  "title": "exact title from list",
+  "relevanceScore": 0.0-1.0,
+  "reason": "one sentence why this is relevant"
+}]`;
+
+  const text = await generate(prompt, SYSTEM_HELP_ASSISTANT);
+  const results = parseJSON<ArticleRecommendation[]>(text, []);
+  return Array.isArray(results) ? results.slice(0, 4) : [];
+}
+
+// ─── 3. AI Ticket Draft Generator ────────────────────────────────────────────
+
+export async function generateTicketDraft(userDescription: string): Promise<TicketDraft> {
+  const prompt = `
+A user typed this support request: "${userDescription}"
+
+Generate a professional support ticket based on their description.
+Infer all fields from context. Be specific and helpful.
+
+Return ONLY valid JSON:
+{
+  "subject": "clear one-line summary (max 100 chars)",
+  "category": "Technical Issue|Bug Report|Access Request|Data Issue|Account & Billing|Feature Request|Other",
+  "priority": "low|medium|high|critical",
+  "department": "Environmental Monitoring|Smart Maps|AI Copilot|Reports & Exports|Platform Administration|Authority Portal|Citizen Portal|Security & Access|Sensor Network|Other",
+  "description": "professional description based on what the user said (2-3 sentences)",
+  "expectedResult": "what the user expects the system to do",
+  "environment": "Production",
+  "stepsToReproduce": "steps to reproduce based on user description",
+  "possibleCause": "likely root cause based on the description"
+}`;
+
+  const text = await generate(prompt, SYSTEM_HELP_ASSISTANT);
+  return parseJSON<TicketDraft>(text, {
+    subject:           userDescription.slice(0, 100),
+    category:          "Technical Issue",
+    priority:          "medium",
+    department:        "Other",
+    description:       userDescription,
+    expectedResult:    "The platform should function as described in the documentation.",
+    environment:       "Production",
+    stepsToReproduce:  "Please describe the steps to reproduce the issue.",
+    possibleCause:     "Unknown — further investigation required.",
+  });
+}
+
+// ─── 4. Duplicate Ticket Detection ───────────────────────────────────────────
+
+export interface DuplicateCheckResult {
+  isDuplicate: boolean;
+  confidence: number;
+  message: string;
+  existingCount: number;
+}
+
+export async function checkDuplicateTicket(
+  newSubject: string,
+  existingTickets: Array<{ subject: string; status: string; category: string }>
+): Promise<DuplicateCheckResult> {
+  if (!existingTickets.length) {
+    return { isDuplicate: false, confidence: 0, message: "", existingCount: 0 };
+  }
+
+  const ticketList = existingTickets.slice(0, 10)
+    .map((t, i) => `${i + 1}. [${t.status}] ${t.subject} (${t.category})`)
+    .join("\n");
+
+  const prompt = `
+New ticket subject: "${newSubject}"
+
+Existing tickets:
+${ticketList}
+
+Is the new ticket a semantic duplicate of any existing ticket?
+Return ONLY valid JSON:
+{
+  "isDuplicate": true|false,
+  "confidence": 0.0-1.0,
+  "message": "brief message if duplicate (e.g. 'Similar issue already reported by other users') or empty string if not",
+  "existingCount": number_of_similar_tickets
+}`;
+
+  const text = await generate(prompt, SYSTEM_HELP_ASSISTANT);
+  return parseJSON<DuplicateCheckResult>(text, {
+    isDuplicate: false, confidence: 0, message: "", existingCount: 0,
+  });
+}
+
+// ─── 5. AI Article Summary ────────────────────────────────────────────────────
+
+export async function generateArticleSummary(
+  title: string,
+  content: string
+): Promise<ArticleSummary> {
+  const prompt = `
+Summarize this GreenGuard Help Center article.
+
+TITLE: ${title}
+CONTENT: ${content.slice(0, 2000)}
+
+Return ONLY valid JSON:
+{
+  "summary": "2-3 sentence plain-language summary",
+  "keyTakeaways": ["takeaway 1", "takeaway 2", "takeaway 3"],
+  "estimatedReadingTime": "e.g. 3 min read",
+  "difficulty": "Beginner|Intermediate|Advanced",
+  "prerequisites": ["prerequisite 1 if any"]
+}`;
+
+  const text = await generate(prompt, SYSTEM_HELP_ASSISTANT);
+  return parseJSON<ArticleSummary>(text, {
+    summary:             `This article covers ${title}.`,
+    keyTakeaways:        ["Read the full article for details."],
+    estimatedReadingTime: "3 min read",
+    difficulty:          "Beginner",
+    prerequisites:       [],
+  });
+}
+
+// ─── 6. AI Explain Selection ──────────────────────────────────────────────────
+
+export async function explainSelection(
+  selectedText: string,
+  mode: "explain" | "simplify" | "expand"
+): Promise<string> {
+  const instruction = {
+    explain:  "Explain this term or concept clearly for a non-expert user in 2-3 sentences.",
+    simplify: "Rewrite this in the simplest possible language (ELI5 style) in 1-2 sentences.",
+    expand:   "Expand on this concept with more detail, context, and examples in 3-4 sentences.",
+  }[mode];
+
+  const prompt = `${instruction}\n\nTEXT: "${selectedText}"`;
+  return generate(prompt, SYSTEM_HELP_ASSISTANT);
+}
+
+// ─── 7. Smart Search — semantic expansion ────────────────────────────────────
+
+export async function expandSearchQuery(query: string): Promise<string[]> {
+  const prompt = `
+For the search query: "${query}"
+
+Generate 6 semantically related alternative search terms that mean the same thing or are closely related.
+Return ONLY a JSON array of strings: ["term1", "term2", "term3", "term4", "term5", "term6"]`;
+
+  const text = await generate(prompt, SYSTEM_HELP_ASSISTANT);
+  const results = parseJSON<string[]>(text, []);
+  return Array.isArray(results) ? results.slice(0, 6) : [];
+}
+
+// ─── 8. AI Insights for Support Dashboard ────────────────────────────────────
+
+export interface HelpInsights {
+  topQuestions: string[];
+  trendingIssues: string[];
+  aiGeneratedInsight: string;
+}
+
+export async function generateHelpInsights(
+  recentQuestions: string[],
+  ticketCategories: string[]
+): Promise<HelpInsights> {
+  const prompt = `
+Based on recent support activity:
+
+RECENT QUESTIONS:
+${recentQuestions.slice(0, 10).join("\n")}
+
+TICKET CATEGORIES (frequency):
+${ticketCategories.slice(0, 8).join(", ")}
+
+Generate support intelligence insights.
+Return ONLY valid JSON:
+{
+  "topQuestions": ["common question 1", "common question 2", "common question 3"],
+  "trendingIssues": ["trending issue 1", "trending issue 2"],
+  "aiGeneratedInsight": "1-2 sentence insight about current support patterns and recommendations"
+}`;
+
+  const text = await generate(prompt, SYSTEM_HELP_ASSISTANT);
+  return parseJSON<HelpInsights>(text, {
+    topQuestions:      ["How do I submit a complaint?", "Why is AQI not updating?", "How do I reset my password?"],
+    trendingIssues:    ["Dashboard loading issues", "Sensor data gaps"],
+    aiGeneratedInsight: "Support volume is within normal range. Dashboard and sensor-related queries are the most common this period.",
   });
 }

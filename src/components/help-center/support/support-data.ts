@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, CSSProperties } from "react";
 import {
   MessageSquare, Mail, Phone, Video, Calendar,
   TicketIcon, Bug, Lightbulb, Star, Users,
@@ -69,7 +69,7 @@ export interface ContactMethod {
   id: string;
   label: string;
   description: string;
-  icon: ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string; style?: CSSProperties }>;
   available: boolean;
   comingSoon?: boolean;
   badge?: string;
@@ -83,7 +83,7 @@ export interface EmergencyType {
   id: string;
   label: string;
   description: string;
-  icon: ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string; style?: CSSProperties }>;
   level: "critical" | "high" | "medium";
   number: string;
   accentColor: string;

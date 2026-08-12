@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Pill } from "@/components/ui-bits";
+import { resolveAssetUrl } from "@/components/profile/profile-utils";
+import { useState } from "react";
 import { humanizeIssueType } from "./issue-type";
 import type {
   ComplaintSeverity,
@@ -77,6 +79,39 @@ function Field({
         <div className="text-sm break-words">{value}</div>
       </div>
     </div>
+  );
+}
+
+// Evidence thumbnail with a clean project-consistent fallback (instead of the
+// raw browser broken-image icon) if the resolved URL 404s or otherwise fails
+// to load — preserves the evidence metadata (index / link) either way.
+function EvidenceThumb({ path, index }: { path: string; index: number }) {
+  const src = resolveAssetUrl(path) ?? path;
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-1 rounded-lg border border-border bg-muted/30 aspect-square text-muted-foreground">
+        <ImageOff className="size-4" />
+        <span className="text-[9px] uppercase tracking-wider">Unavailable</span>
+      </div>
+    );
+  }
+
+  return (
+    <a
+      href={src}
+      target="_blank"
+      rel="noreferrer"
+      className="block rounded-lg overflow-hidden border border-border aspect-square"
+    >
+      <img
+        src={src}
+        alt={`Attachment ${index + 1}`}
+        className="w-full h-full object-cover"
+        onError={() => setFailed(true)}
+      />
+    </a>
   );
 }
 
@@ -204,19 +239,7 @@ export function ComplaintDetailPanel({
                 ) : (
                   <div className="grid grid-cols-3 gap-2">
                     {complaint.images.map((src, i) => (
-                      <a
-                        key={src + i}
-                        href={src}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block rounded-lg overflow-hidden border border-border aspect-square"
-                      >
-                        <img
-                          src={src}
-                          alt={`Attachment ${i + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </a>
+                      <EvidenceThumb key={src + i} path={src} index={i} />
                     ))}
                   </div>
                 )}

@@ -1,37 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppLayout } from "@/components/app-layout";
-import { Panel } from "@/components/ui-bits";
 import { useCity } from "@/lib/city-context";
 import { findAqiBand } from "@/lib/mock-data";
-import { useQuery } from "@tanstack/react-query";
-import { copilotApi } from "@/lib/api/services.api";
 import {
-  Leaf, Wind, Droplets, Zap, Recycle, Sparkles,
-  BarChart3, BotMessageSquare, Brain, Target, Award,
+  Leaf, Wind, Droplets, Zap, Recycle, BotMessageSquare,
 } from "lucide-react";
 import type { Tone } from "@/components/map/intelligence-ui";
 
 // Phase 1 components
 import { SustainabilityBackground }       from "@/components/sustainability/background";
 import { SustainabilityHero }              from "@/components/sustainability/hero";
-import { LiveStatusRibbon }                from "@/components/sustainability/status-ribbon";
 import { ExecutiveKpiStrip, type KpiItem } from "@/components/sustainability/kpi-strip";
 import { SustainabilitySectionHeading }    from "@/components/sustainability/section-heading";
-import { GlassPanelSkeleton }             from "@/components/sustainability/skeleton";
 
 // Phase 2 components
 import { AiExecutiveSummary } from "@/components/sustainability/ai-summary";
+import { EcoScoreBreakdownPanel } from "@/components/sustainability/ecoscore-breakdown";
 
 // Phase 5 components
 import { SustainabilityCopilot } from "@/components/sustainability/copilot-panel";
-
-// Phase 6 components
-import { ForecastDashboard, EnvForecastCards } from "@/components/sustainability/forecast-dashboard";
-import { RiskPredictions, OpportunityCards }  from "@/components/sustainability/risk-opportunity";
-
-// Phase 7 components
-import { EsgScoreCard, EsgPillars, ExecutiveEsgSummary } from "@/components/sustainability/esg-dashboard";
-import { SdgAlignmentCenter, SdgProgressMatrix }         from "@/components/sustainability/sdg-center";
 
 export const Route = createFileRoute("/sustainability")({
   head: () => ({ meta: [{ title: "Sustainability — GreenGuard AI" }] }),
@@ -46,7 +33,13 @@ function bandTone(label: string): Tone {
   return "critical";
 }
 
-function ecoGrade(eco: number) {
+// Grade mapping lives on the backend (backend/src/services/ecoScore.service.ts
+// — gradeForEcoScore), which is the authoritative source whenever a real
+// city.ecoScore is available. This is only the offline/mock-fallback mirror
+// (same thresholds — the project's existing terminology) for the rare case
+// where the backend hasn't supplied a score yet, so the page still renders
+// something sensible while running on static demo data.
+function offlineFallbackGrade(eco: number) {
   if (eco >= 85) return "A+";
   if (eco >= 75) return "A";
   if (eco >= 65) return "B+";
@@ -55,39 +48,60 @@ function ecoGrade(eco: number) {
   return "C";
 }
 
-function kpiStatus(value: number, target: number): KpiItem["status"] {
-  const pct = value / target;
-  if (pct >= 0.95) return { label: "On target",   tone: "good" };
-  if (pct >= 0.7)  return { label: "Near target",  tone: "warning" };
-  return              { label: "Below target", tone: "critical" };
+// Plain-language status for a metric measured against its established
+// project target, instead of the old "+4%"-style fabricated trend arrow
+// (removed in Phase 3 — no real historical data exists yet to justify a
+// change indicator; that's Phase 4's job).
+function targetStatus(value: number, target: number, targetLabel: string): KpiItem["status"] {
+  return value >= target
+    ? { label: `Above the current ${targetLabel} target`, tone: "good" }
+    : { label: "Needs improvement", tone: "warning" };
 }
 
 function Sustainability() {
-  const { city, isApiConnected } = useCity();
+  const { city: rawCity, isApiConnected } = useCity();
 
-  const { data: aiInsightsData, isLoading: aiLoading } = useQuery({
-    queryKey: ["city-ai-insights", city.id],
-    queryFn:  () => copilotApi.cityInsights(city.id).then(r => r.data.insights),
-    staleTime: 30 * 60_000,
-    enabled:   isApiConnected,
-    throwOnError: false,
-  });
+  // Phase 2 — Transparent EcoScore: the backend (getCity/getCities) now
+  // computes a deterministic, explainable EcoScore from this same Phase 1
+  // data (see ecoScore.service.ts) and attaches it as city.ecoScore. To
+  // "ensure the same calculated EcoScore is used throughout Sustainability"
+  // without touching every child component on this page individually, the
+  // page-local `city` used below overrides `eco` with that calculated score
+  // at this single entry point — every downstream component that already
+  // reads city.eco (Hero, AI summary, KPI strip, Copilot) automatically
+  // gets the transparent value with zero changes to those files. Falls back
+  // to the untouched legacy `eco` only when running fully offline (no
+  // fabrication — just the same number this page always showed in that
+  // mode). The global city object from useCity() is left untouched, so
+  // Dashboard and every other module keep using the legacy field exactly
+  // as before.
+  const city = { ...rawCity, eco: rawCity.ecoScore?.score ?? rawCity.eco };
 
-  const renewableShare = city.id === "london" ? 48 : city.id === "singapore" ? 42 : city.id === "tokyo" ? 44 : 38;
-  const greenCover     = city.id === "singapore" ? 46 : city.id === "london" ? 42 : city.id === "tokyo" ? 38 : 27;
+  // Centralized sustainability data — both fields come from the same real
+  // backend reading already used for every other metric on this page
+  // (city.aqi, city.eco, city.water, ...): see EnvironmentalData /
+  // getCity() on the backend and mapBackendToCity() in city-context.tsx.
+  // Falls back to 0 only in the fully-offline state, matching the
+  // no-fabricated-value convention used by EnvironmentalMetrics on the
+  // Environment page.
+  const renewableShare = city.renewableShare ?? 0;
+  const greenCover     = city.greenCover ?? 0;
+  const wasteDiversion = Math.round(50 + city.eco * 0.15);
 
   const band = findAqiBand(city.aqi);
   const tone = bandTone(band.label);
-  const grade = ecoGrade(city.eco);
+  const grade = rawCity.ecoScore?.grade ?? offlineFallbackGrade(city.eco);
 
-  // Simplified Executive KPIs (6 metrics)
+  // Environmental Overview — five current-condition cards. No fake trend
+  // arrows and no progress bars: each card just states the current value
+  // and what it means against the project's real, established targets
+  // (or, for AQI, its real band classification).
   const kpis: KpiItem[] = [
-    { icon: Award,    label: "EcoScore",         value: city.eco, suffix: " pts", accent: "var(--color-primary)", target: 80, targetLabel: "Target 80+ pts", status: kpiStatus(city.eco, 80) },
-    { icon: Leaf,     label: "Green cover",      value: greenCover, suffix: "%", accent: "var(--color-success)", target: 30, targetLabel: "Target 30% urban canopy", trend: { direction: greenCover >= 30 ? "up" : "flat", delta: Math.abs(greenCover - 30), unit: "%" }, status: kpiStatus(greenCover, 30) },
-    { icon: Wind,     label: "Renewable energy", value: renewableShare, suffix: "%", accent: "var(--color-info)", target: 40, targetLabel: "Target 40% renewable mix", trend: { direction: renewableShare >= 40 ? "up" : "down", delta: Math.abs(renewableShare - 40), unit: "%" }, status: kpiStatus(renewableShare, 40) },
-    { icon: Droplets, label: "Water quality",    value: city.water, suffix: "%", accent: "var(--color-info)", target: 75, targetLabel: "Target 75% quality index", trend: { direction: city.water >= 75 ? "up" : "down", delta: Math.abs(city.water - 75), unit: "%" }, status: kpiStatus(city.water, 75) },
-    { icon: Recycle,  label: "Waste diversion",  value: Math.round(50 + city.eco * 0.15), suffix: "%", accent: "var(--color-primary)", target: 60, targetLabel: "Target 60% diversion", trend: { direction: "up", delta: 2, unit: "%" }, status: kpiStatus(Math.round(50 + city.eco * 0.15), 60) },
-    { icon: Zap,      label: "Carbon intensity", value: Number(city.carbon.toFixed(1)), decimals: 1, suffix: " tCO₂", accent: "var(--color-warning)", target: 5, targetLabel: "Target < 5.0 tCO₂", trend: { direction: city.carbon <= 5 ? "down" : "up", delta: 0.3, unit: " tCO₂" }, status: kpiStatus(5, city.carbon) },
+    { icon: Wind,     label: "AQI",              value: city.aqi,       accent: "var(--color-info)",     status: { label: band.label, tone } },
+    { icon: Leaf,     label: "Green cover",      value: greenCover,     suffix: "%", accent: "var(--color-success)", status: targetStatus(greenCover, 30, "30%") },
+    { icon: Zap,      label: "Renewable energy", value: renewableShare, suffix: "%", accent: "var(--color-info)",    status: targetStatus(renewableShare, 40, "40%") },
+    { icon: Droplets, label: "Water quality",    value: city.water,     suffix: "%", accent: "var(--color-info)",    status: targetStatus(city.water, 75, "75%") },
+    { icon: Recycle,  label: "Waste diversion",  value: wasteDiversion, suffix: "%", accent: "var(--color-primary)", status: targetStatus(wasteDiversion, 60, "60%") },
   ];
 
   return (
@@ -95,147 +109,38 @@ function Sustainability() {
       <SustainabilityBackground />
       <div className="relative p-3 sm:p-4 md:p-8 space-y-8 sm:space-y-10 md:space-y-12 max-w-[1600px] mx-auto overflow-hidden">
 
-        {/* ── 1. HERO OVERVIEW & QUICK ACTIONS ─────────────────── */}
+        {/* ── SUSTAINABILITY OVERVIEW ──────────────────────────── */}
         <section id="hero">
-          <SustainabilityHero city={city} isApiConnected={isApiConnected} grade={grade} band={band.label} tone={tone} trendDirection="up" trendValue={2} />
+          <SustainabilityHero city={city} isApiConnected={isApiConnected} grade={grade} band={band.label} tone={tone} />
         </section>
 
-        <LiveStatusRibbon city={city} />
-
-        {/* ── EXECUTIVE SUMMARY ───────────────────────────────── */}
-        <section id="executive-summary">
-          <SustainabilitySectionHeading icon={Sparkles} title="AI Executive Summary" description={`Rule-based sustainability brief for ${city.name}.`} />
-          <AiExecutiveSummary city={city} renewableShare={renewableShare} greenCover={greenCover} />
-        </section>
-
-        {/* ── EXECUTIVE KPIs ─────────────────────────────────── */}
-        <section id="kpis">
-          <SustainabilitySectionHeading icon={BarChart3} title="Executive KPIs" description="Core sustainability metrics for executive overview." />
+        {/* ── ENVIRONMENTAL OVERVIEW ─────────────────────────── */}
+        <section id="environmental-overview">
+          <SustainabilitySectionHeading icon={Leaf} title="Environmental Overview" description={`Current conditions in ${city.name}.`} />
           <ExecutiveKpiStrip items={kpis} />
         </section>
 
-        {/* ── AI SUSTAINABILITY COPILOT ──────────────────────── */}
-        <section id="copilot" aria-labelledby="copilot-heading">
+        {/* ── WHY IS THE ECOSCORE X? (Phase 2 — transparent breakdown) ── */}
+        <section id="ecoscore-breakdown">
+          <EcoScoreBreakdownPanel city={city} />
+        </section>
+
+        {/* ── GREENGUARD AI ───────────────────────────────────── */}
+        <section id="greenguard-ai" aria-labelledby="greenguard-ai-heading">
           <SustainabilitySectionHeading
             icon={BotMessageSquare}
-            title="AI Sustainability Copilot"
-            description={`Ask Gemini anything about ${city.name}'s environmental data, EcoScore, or what to prioritise next.`}
+            title="GreenGuard AI"
+            description={`Ask GreenGuard about ${city.name}'s current environmental performance.`}
             accent="var(--color-primary)"
           />
-          <SustainabilityCopilot
-            city={city}
-            isApiConnected={isApiConnected}
-            renewableShare={renewableShare}
-            greenCover={greenCover}
-          />
-        </section>
-
-        {/* ── PREDICTIVE INTELLIGENCE (ANALYTICS) ─────────────── */}
-        <section id="analytics" aria-labelledby="predictive-heading">
-          <SustainabilitySectionHeading
-            icon={Brain}
-            title="Predictive Sustainability Intelligence"
-            description={`EcoScore forecast and environmental predictions for ${city.name}.`}
-            accent="var(--color-info)"
-          />
-          <div className="grid lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-7">
-              <ForecastDashboard city={city} renewableShare={renewableShare} greenCover={greenCover} />
-            </div>
-            <div className="lg:col-span-5">
-              <EnvForecastCards city={city} renewableShare={renewableShare} />
-            </div>
-          </div>
-        </section>
-
-        {/* ── AI INTELLIGENCE & RECOMMENDATIONS ──────────────── */}
-        <section id="recommendations" aria-labelledby="ai-intelligence-heading">
-          <SustainabilitySectionHeading
-            icon={Sparkles}
-            title="AI Intelligence & Recommendations"
-            description="Unified AI risk predictions, opportunity matrix, and strategic recommendations."
-            accent="var(--color-primary)"
-          />
-          <div className="grid lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-6">
-              <RiskPredictions city={city} renewableShare={renewableShare} greenCover={greenCover} />
-            </div>
-            <div className="lg:col-span-6">
-              <OpportunityCards city={city} renewableShare={renewableShare} greenCover={greenCover} />
-            </div>
-            
-            {/* AI Recommendations */}
-            <div className="lg:col-span-12">
-              {isApiConnected && aiLoading ? (
-                <GlassPanelSkeleton rows={3} />
-              ) : aiInsightsData ? (
-                <Panel eyebrow="AI Strategic Insights" title="AI Recommendations">
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    {(Array.isArray(aiInsightsData) ? aiInsightsData : []).map((insight: { title: string; body: string; tag: string }) => (
-                      <div key={insight.title} className="rounded-xl bg-muted/30 border border-border p-4 hover:border-primary/40 transition-colors">
-                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{insight.tag}</div>
-                        <div className="text-sm sm:text-base font-semibold mt-1">{insight.title}</div>
-                        <div className="text-xs sm:text-sm text-muted-foreground mt-1.5 leading-relaxed">{insight.body}</div>
-                      </div>
-                    ))}
-                  </div>
-                </Panel>
-              ) : (
-                <Panel eyebrow="AI Strategic Insights" title="AI Recommendations">
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="rounded-xl bg-muted/30 border border-border p-4 hover:border-primary/40 transition-colors">
-                      <div className="text-[10px] uppercase tracking-wider text-primary font-semibold">Priority Recommendation</div>
-                      <div className="text-sm sm:text-base font-semibold mt-1">Accelerate Solar & Microgrid Integration</div>
-                      <div className="text-xs sm:text-sm text-muted-foreground mt-1.5 leading-relaxed">
-                        Expand rooftop photovoltaic installations across municipal buildings in {city.name} to push renewable share beyond target thresholds.
-                      </div>
-                    </div>
-                    <div className="rounded-xl bg-muted/30 border border-border p-4 hover:border-primary/40 transition-colors">
-                      <div className="text-[10px] uppercase tracking-wider text-info font-semibold">Urban Planning</div>
-                      <div className="text-sm sm:text-base font-semibold mt-1">Expand Urban Forest & Canopy Cover</div>
-                      <div className="text-xs sm:text-sm text-muted-foreground mt-1.5 leading-relaxed">
-                        Deploy targeted native afforestation in high-density corridors to mitigate urban heat island effects and improve carbon sequestration.
-                      </div>
-                    </div>
-                  </div>
-                </Panel>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* ── ESG INTELLIGENCE ───────────────────────────────── */}
-        <section id="esg" aria-labelledby="esg-heading">
-          <SustainabilitySectionHeading
-            icon={Award}
-            title="ESG Intelligence"
-            description={`Environmental, Social and Governance scoring for ${city.name}.`}
-            accent="var(--color-success)"
-          />
-          <div className="space-y-5">
-            <div className="grid lg:grid-cols-12 gap-5">
-              <div className="lg:col-span-4">
-                <EsgScoreCard city={city} renewableShare={renewableShare} greenCover={greenCover} />
-              </div>
-              <div className="lg:col-span-8">
-                <ExecutiveEsgSummary city={city} renewableShare={renewableShare} greenCover={greenCover} />
-              </div>
-            </div>
-            <EsgPillars city={city} renewableShare={renewableShare} greenCover={greenCover} />
-          </div>
-        </section>
-
-        {/* ── SDG ALIGNMENT ──────────────────────────────────── */}
-        <section id="sdg" aria-labelledby="sdg-heading">
-          <SustainabilitySectionHeading
-            icon={Target}
-            title="SDG Alignment Center"
-            description="UN Sustainable Development Goal alignment across 6 sustainability-relevant goals."
-            accent="oklch(0.62 0.17 220)"
-          />
-          <div className="space-y-5">
-            <SdgAlignmentCenter city={city} renewableShare={renewableShare} greenCover={greenCover} />
-            <SdgProgressMatrix  city={city} renewableShare={renewableShare} greenCover={greenCover} />
+          <div className="space-y-6">
+            <AiExecutiveSummary city={city} renewableShare={renewableShare} greenCover={greenCover} />
+            <SustainabilityCopilot
+              city={city}
+              isApiConnected={isApiConnected}
+              renewableShare={renewableShare}
+              greenCover={greenCover}
+            />
           </div>
         </section>
 

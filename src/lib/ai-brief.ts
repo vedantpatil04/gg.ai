@@ -178,11 +178,15 @@ export function deriveThingsToWatch({
 }): WatchItem[] {
   const items: WatchItem[] = [];
 
-  // 1. Pollution trend — the most actionable watch item
+  // 1. Pollution trend — the most actionable watch item. Worded without a
+  // specific timeframe ("recent readings" rather than "past 7 days"):
+  // getPollutionTrend only guarantees >=2 real data points, not a full
+  // 7-day span, so claiming an exact number of days would overstate what
+  // the data actually supports.
   if (pollutionTrend === "Worsening") {
-    items.push({ icon: "trend-up", label: "AQI is trending upward over the past 7 days." });
+    items.push({ icon: "trend-up", label: "AQI has been trending upward over recent readings." });
   } else if (pollutionTrend === "Improving") {
-    items.push({ icon: "trend-down", label: "AQI has been improving over the past 7 days." });
+    items.push({ icon: "trend-down", label: "AQI has been improving over recent readings." });
   }
 
   // 2. Humidity — high humidity can trap pollutants near ground level
@@ -226,6 +230,112 @@ export function deriveThingsToWatch({
   if (items.length === 0) {
     items.push({ icon: "stable", label: "No significant environmental concerns at this time." });
   }
+
+  return items.slice(0, 3);
+}
+
+// ─── What Matters Now (Phase 1: Dashboard Foundation) ─────────────────────────
+// Replaces the old AI Daily Brief on the Dashboard. Maximum 3 items, built
+// entirely from real/derived metrics already on the page (AQI, its recent
+// trend, one live watch-item, and real active-alert count) — no Gemini call,
+// no confidence score, no "AI" framing. If there's nothing notable, each slot
+// says so plainly rather than being padded with invented content.
+
+export interface MattersItem {
+  id: string;
+  title: string;
+  body: string;
+  tone: "success" | "warning" | "destructive" | "muted";
+}
+
+function watchItemTitle(icon: WatchItem["icon"]): string {
+  switch (icon) {
+    case "trend-up":
+      return "Air quality is trending upward";
+    case "trend-down":
+      return "Air quality is improving";
+    case "humidity":
+      return "Humidity note";
+    case "wind":
+      return "Wind conditions";
+    case "risk":
+      return "Risk score is elevated";
+    case "water":
+      return "Water quality note";
+    default:
+      return "Environmental note";
+  }
+}
+
+export function deriveWhatMattersNow({
+  aqi,
+  band,
+  pollutionTrend,
+  hasHistory,
+  watchItems,
+  activeAlertsCount,
+}: {
+  aqi: number;
+  band: { label: string; color: string };
+  pollutionTrend: PollutionTrend;
+  /** True only when a real multi-point history series backed the trend
+   *  calculation. When false, `pollutionTrend` is "Stable" by default
+   *  rather than a verified observation, so no trend claim is made. */
+  hasHistory: boolean;
+  watchItems: WatchItem[];
+  activeAlertsCount: number;
+}): MattersItem[] {
+  const items: MattersItem[] = [];
+
+  // 1. Headline air-quality status — always present, always real. The
+  // trend clause is only added when real history data actually backs it;
+  // otherwise this is just the current reading, with no implied claim
+  // about recent history.
+  const trendPhrase = !hasHistory
+    ? ""
+    : pollutionTrend === "Improving"
+      ? " and has been improving over recent readings."
+      : pollutionTrend === "Worsening"
+        ? " and has been trending upward over recent readings."
+        : " and has stayed steady over recent readings.";
+  items.push({
+    id: "aqi-status",
+    title: `Air quality is ${band.label.toLowerCase()}`,
+    body: `AQI is ${aqi}${trendPhrase}`,
+    tone: aqi > 150 ? "destructive" : aqi > 100 ? "warning" : "success",
+  });
+
+  // 2. One real watch item, skipping the generic "nothing to report" filler
+  //    (that case is already covered by the alerts line below).
+  const watch = watchItems.find((w) => w.icon !== "stable");
+  if (watch) {
+    items.push({
+      id: "watch",
+      title: watchItemTitle(watch.icon),
+      body: watch.label,
+      tone: watch.icon === "trend-up" || watch.icon === "risk" ? "warning" : "muted",
+    });
+  }
+
+  // 3. Real active-alert status — never fabricated, always the true count.
+  items.push(
+    activeAlertsCount > 0
+      ? {
+          id: "alerts",
+          title:
+            activeAlertsCount === 1
+              ? "1 active environmental alert"
+              : `${activeAlertsCount} active environmental alerts`,
+          body: "See Live Environmental Activity below for details.",
+          tone: "warning",
+        }
+      : {
+          id: "alerts",
+          title: "No major environmental alerts",
+          body: "Nothing currently requires immediate attention.",
+          tone: "success",
+        },
+  );
 
   return items.slice(0, 3);
 }

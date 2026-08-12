@@ -12,6 +12,7 @@
  */
 import { Gauge, Thermometer, Droplets, CloudCog, Waves, Clock } from "lucide-react";
 import type { City } from "@/lib/mock-data";
+import { formatRelativeTime } from "@/lib/format-time";
 
 export function LiveStatusRibbon({ city }: { city: City }) {
   const items = [
@@ -20,7 +21,9 @@ export function LiveStatusRibbon({ city }: { city: City }) {
     { icon: Droplets, label: "Humidity", value: `${city.humidity}%` },
     { icon: CloudCog, label: "CO₂", value: `${city.co2} ppm` },
     { icon: Waves, label: "Water quality", value: `${city.water}%` },
-    { icon: Clock, label: "Updated", value: "just now" },
+    // Real reading timestamp (same field the Environment page and
+    // Dashboard use), not a hardcoded literal — see format-time.ts.
+    { icon: Clock, label: "Updated", value: formatRelativeTime(city.updatedAt) },
   ];
 
   return (

@@ -15,8 +15,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "@/lib/theme";
 import { CityProvider } from "@/lib/city-context";
 import { AuthProvider } from "@/lib/auth-context";
-import { I18nProvider } from "@/lib/i18n-context";
 import { Toaster } from "@/components/ui/sonner";
+import { NavigationTransitionOverlay } from "@/components/shared/navigation-transition";
 
 function NotFoundComponent() {
   return (
@@ -67,54 +67,44 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
-  {
-    head: () => ({
-      meta: [
-        { charSet: "utf-8" },
-        { name: "viewport", content: "width=device-width, initial-scale=1" },
-        { title: "GreenGuard AI — Monitor • Predict • Protect" },
-        {
-          name: "description",
-          content:
-            "Intelligent environmental monitoring and alert system. Real-time air, water, and climate intelligence for cities, authorities, and citizens.",
-        },
-        { name: "theme-color", content: "#0b1220" },
-        { property: "og:title", content: "GreenGuard AI" },
-        {
-          property: "og:description",
-          content: "Monitor • Predict • Protect — environmental intelligence platform.",
-        },
-        { property: "og:type", content: "website" },
-        { name: "twitter:card", content: "summary_large_image" },
-      ],
-      links: [
-        { rel: "stylesheet", href: appCss },
-        { rel: "preconnect", href: "https://fonts.googleapis.com" },
-        {
-          rel: "preconnect",
-          href: "https://fonts.gstatic.com",
-          crossOrigin: "anonymous",
-        },
-        {
-          rel: "stylesheet",
-          href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap",
-        },
-      ],
-    }),
-    shellComponent: RootShell,
-    component: RootComponent,
-    notFoundComponent: NotFoundComponent,
-    errorComponent: ErrorComponent,
-  },
-);
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  head: () => ({
+    meta: [
+      { charSet: "utf-8" },
+      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { title: "GreenGuard AI — Monitor • Predict • Protect" },
+      {
+        name: "description",
+        content:
+          "Intelligent environmental monitoring and alert system. Real-time air, water, and climate intelligence for cities, authorities, and citizens.",
+      },
+      { name: "theme-color", content: "#0b1220" },
+      { property: "og:title", content: "GreenGuard AI" },
+      {
+        property: "og:description",
+        content: "Monitor • Predict • Protect — environmental intelligence platform.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap",
+      },
+    ],
+  }),
+  shellComponent: RootShell,
+  component: RootComponent,
+  notFoundComponent: NotFoundComponent,
+  errorComponent: ErrorComponent,
+});
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    // lang="en" is the SSR default. The i18n module updates this attribute
-    // client-side via document.documentElement.lang in its `languageChanged`
-    // listener (src/i18n/index.ts), so screen readers and browser spell-check
-    // always reflect the active language without a server round-trip.
     <html lang="en" className="dark" style={{ colorScheme: "dark" }}>
       <head>
         <HeadContent />
@@ -134,20 +124,13 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          {/*
-           * I18nProvider sits inside AuthProvider so it can watch auth state
-           * and reconcile the backend-persisted language preference after
-           * login — while still initializing i18next synchronously from
-           * localStorage before any component renders.
-           */}
-          <I18nProvider>
-            <CityProvider>
-              <TooltipProvider delayDuration={150}>
-                <Outlet />
-                <Toaster />
-              </TooltipProvider>
-            </CityProvider>
-          </I18nProvider>
+          <CityProvider>
+            <TooltipProvider delayDuration={150}>
+              <Outlet />
+              <NavigationTransitionOverlay />
+              <Toaster />
+            </TooltipProvider>
+          </CityProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

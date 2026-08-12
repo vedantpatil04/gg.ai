@@ -14,5 +14,34 @@
   "home": "Home",
   "back": "Back",
   "menu": "Menu",
-  "search": "Search"
+  "search": "Search",
+  "environment": "Environmental Overview",
+  "aiCopilot": "AI Copilot",
+  "forecast": "Forecast",
+  "citizenHub": "Citizen Hub",
+  "sustainability": "Sustainability",
+  "simulator": "Policy Sim",
+  "commandCenter": "Command Center",
+  "adminPortal": "Administrator Portal",
+  "helpCenter": "Help Center",
+  "intelligence": "Intelligence",
+  "signIn": "Sign in",
+  "signOut": "Sign out",
+  "groups": {
+    "workspace": "Workspace",
+    "aiIntelligence": "AI Intelligence",
+    "community": "Community",
+    "operations": "Operations",
+    "administration": "Administration",
+    "account": "Account"
+  },
+  "roleLabels": {
+    "citizen": "Citizen",
+    "authority": "Authority",
+    "administrator": "Administrator"
+  },
+  "about": "About",
+  "privacy": "Privacy",
+  "terms": "Terms",
+  "docs": "Docs"
 }

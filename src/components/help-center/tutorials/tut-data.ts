@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, CSSProperties } from "react";
 import {
   User, ShieldCheck, Settings, LayoutDashboard,
   Sparkles, Map, FileText, Shield, BookOpen,
@@ -14,7 +14,7 @@ export interface TutCategory {
   id: string;
   title: string;
   description: string;
-  icon: ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string; style?: CSSProperties }>;
   accentColor: string;
   tutorialCount: number;
   estimatedHours: number;
@@ -70,7 +70,7 @@ export interface LearningPath {
   tutorialIds: string[];
   estimatedHours: number;
   accentColor: string;
-  icon: ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string; style?: CSSProperties }>;
   featured?: boolean;
 }
 
@@ -89,7 +89,7 @@ export const TUT_FORMAT_LABEL: Record<TutFormat, string> = {
   path:        "Learning Path",
 };
 
-export const TUT_FORMAT_ICON: Record<TutFormat, ComponentType<{ className?: string }>> = {
+export const TUT_FORMAT_ICON: Record<TutFormat, ComponentType<{ className?: string; style?: CSSProperties }>> = {
   video:       Play,
   interactive: Zap,
   guide:       List,

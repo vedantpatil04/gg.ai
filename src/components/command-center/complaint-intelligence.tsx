@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -33,6 +33,7 @@ import {
   Shield,
   RotateCcw,
   Lock,
+  ChevronRight,
 } from "lucide-react";
 import { commandApi, type ComplaintIntelligenceData } from "@/lib/api/command.api";
 import { complaintApi } from "@/lib/api/services.api";
@@ -56,6 +57,20 @@ function priorityScore(c: ComplaintRecord): number {
   const sev = { critical: 100, high: 75, medium: 50, low: 25 }[c.severity] ?? 25;
   const hrs = (Date.now() - new Date(c.createdAt).getTime()) / 3_600_000;
   return sev + Math.min(50, (hrs / 24) * 8);
+}
+function queueActionLabel(status: string): string {
+  switch (status) {
+    case "pending":
+      return "Start investigation";
+    case "in-progress":
+      return "Continue investigation";
+    case "rework":
+      return "Review & resubmit";
+    case "resolved":
+      return "View submission";
+    default:
+      return "View details";
+  }
 }
 
 // ─── Queue card ───────────────────────────────────────────────────────────────
@@ -133,12 +148,21 @@ function ComplaintQueueCard({
             <span className="inline-flex items-center text-[10px] text-muted-foreground bg-muted/60 rounded-full px-2 py-0.5">
               {ISSUE_LABELS[complaint.issueType] ?? complaint.issueType}
             </span>
+            {complaint.assignmentSource && (
+              <span className="inline-flex items-center text-[10px] text-muted-foreground bg-muted/60 rounded-full px-2 py-0.5">
+                {complaint.assignmentSource === "automatic" ? "Auto-assigned" : "Manually assigned"}
+              </span>
+            )}
             {complaint.images?.length > 0 && (
               <span className="inline-flex items-center text-[10px] text-muted-foreground bg-muted/60 rounded-full px-2 py-0.5">
                 {complaint.images.length} image{complaint.images.length !== 1 ? "s" : ""}
               </span>
             )}
           </div>
+        </div>
+        <div className="hidden sm:flex items-center gap-1 shrink-0 text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors mt-1">
+          {queueActionLabel(complaint.status)}
+          <ChevronRight className="size-3.5" />
         </div>
       </div>
     </motion.div>
@@ -187,6 +211,12 @@ function AssignedWorkspace({
     .sort((a, b) => priorityScore(b) - priorityScore(a));
   const verification = all.filter((c) => c.status === "resolved");
   const completed = all.filter((c) => c.status === "closed" || c.status === "rejected");
+
+  useEffect(() => {
+    if (active.length === 0 && assigned.length > 0 && tab === "active") {
+      setTab("assigned");
+    }
+  }, [active.length, assigned.length, tab]);
 
   const criticalActive = [...active, ...assigned, ...rework].filter(
     (c) => c.severity === "critical",
@@ -264,10 +294,10 @@ function AssignedWorkspace({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard
           label="Assigned to Me"
-          value={all.length}
+          value={assigned.length}
           accent="primary"
           icon={<ClipboardList className="size-4" />}
-          hint="Total in my queue"
+          hint="Waiting for investigation"
         />
         <StatCard
           label="In Progress"
@@ -358,7 +388,16 @@ function AssignedWorkspace({
           {currentList.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground glass rounded-2xl">
               <CheckCircle2 className="size-8 opacity-40" />
-              <p className="text-sm font-medium">{emptyMessages[tab]}</p>
+              <p className="text-sm font-medium">
+                {tab === "active" && assigned.length > 0
+                  ? "Complaints waiting for investigation"
+                  : emptyMessages[tab]}
+              </p>
+              {tab === "active" && assigned.length > 0 && (
+                <Button variant="outline" size="sm" onClick={() => setTab("assigned")}>
+                  View Assigned Queue
+                </Button>
+              )}
             </div>
           ) : (
             currentList.map((c) => (

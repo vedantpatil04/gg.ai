@@ -17,14 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatCard, Pill } from "@/components/ui-bits";
-import { useAuthorityDashboard, type CapacityLabel } from "./authority-directory-queries";
-
-const CAPACITY_META: Record<CapacityLabel, { label: string; tone: "success" | "warning" | "destructive" | "muted" }> = {
-  free: { label: "Free", tone: "success" },
-  moderate: { label: "Moderate", tone: "warning" },
-  busy: { label: "Busy", tone: "warning" },
-  overloaded: { label: "Overloaded", tone: "destructive" },
-};
+import { useAuthorityDashboard, CAPACITY_META, type CapacityLabel } from "./authority-directory-queries";
 
 function InsightRow({ type, message }: { type: "warning" | "info" | "critical"; message: string }) {
   const meta = {

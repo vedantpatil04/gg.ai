@@ -164,6 +164,12 @@ export interface SubmitComplaintPayload {
   severity: string;
   cityId: string;
   address?: string;
+  /** Phase 12: structured location with GPS coordinates */
+  location?: {
+    address?: string;
+    lat?: number;
+    lng?: number;
+  };
 }
 
 export function useSubmitComplaint() {
@@ -176,7 +182,7 @@ export function useSubmitComplaint() {
         issueType: payload.issueType,
         severity: payload.severity,
         cityId: payload.cityId,
-        location: payload.address ? { address: payload.address } : undefined,
+        location: payload.location ?? (payload.address ? { address: payload.address } : undefined),
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["citizen-complaints"] });

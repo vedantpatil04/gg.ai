@@ -50,6 +50,10 @@ export async function getCityTrend(req: Request, res: Response, next: NextFuncti
     const trend = await EnvironmentalData.find({
       cityId: cityId.toLowerCase(),
       timestamp: { $gte: since },
+      // Phase 3: only genuine ingested readings qualify as historical trend
+      // data — seeded/demo rows (source: "sensor") must never be presented
+      // as verified history.
+      source: "api",
     })
       .sort({ timestamp: 1 })
       .select("timestamp aqi pm25 no2 o3 water temp humidity")
@@ -300,6 +304,9 @@ export async function getCityHistory(
         $match: {
           cityId: cityId.toLowerCase(),
           timestamp: { $gte: since },
+          // Phase 3: exclude seeded/demo readings (source: "sensor") — only
+          // genuine ingested data (source: "api") counts as real history.
+          source: "api",
         },
       },
       {
@@ -355,6 +362,25 @@ export async function getCityHistory(
   }
 }
 
+// ─── Phase 3: minimum genuine readings required before a direction is ────────
+// considered reliable enough to show, and the AQI-point band within which a
+// trend is called "stable" rather than improving/worsening.
+const TREND_MIN_READINGS = 2;
+const TREND_STABLE_BAND = 3;
+
+type TrendDirection = "improving" | "worsening" | "stable" | "insufficient-data";
+
+function resolveDirection(
+  currentAqi: number,
+  avgAqi: number | null,
+  readings: number,
+): TrendDirection {
+  if (avgAqi === null || readings < TREND_MIN_READINGS) return "insufficient-data";
+  const diff = currentAqi - avgAqi;
+  if (Math.abs(diff) <= TREND_STABLE_BAND) return "stable";
+  return diff > 0 ? "worsening" : "improving";
+}
+
 // ─── PHASE 4: AQI trends summary ─────────────────────────────────────────────
 export async function getCityTrends(
   req: Request,
@@ -372,6 +398,9 @@ export async function getCityTrends(
           $match: {
             cityId: id,
             timestamp: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+            // Phase 3: seeded/demo readings must never count toward a
+            // verified trend direction.
+            source: "api",
           },
         },
         {
@@ -389,6 +418,7 @@ export async function getCityTrends(
           $match: {
             cityId: id,
             timestamp: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+            source: "api",
           },
         },
         {
@@ -410,6 +440,8 @@ export async function getCityTrends(
     const currentAqi = latest.aqi;
     const avg7Aqi = trend7 ? Math.round(trend7.avgAqi * 10) / 10 : null;
     const avg30Aqi = trend30 ? Math.round(trend30.avgAqi * 10) / 10 : null;
+    const readings7 = trend7?.count ?? 0;
+    const readings30 = trend30?.count ?? 0;
 
     res.json({
       success: true,
@@ -423,24 +455,26 @@ export async function getCityTrends(
           eco: latest.eco,
           timestamp: latest.timestamp,
         },
-        trend7d: trend7
-          ? {
-              avgAqi: avg7Aqi,
-              avgPm25: Math.round(trend7.avgPm25 * 10) / 10,
-              avgRisk: Math.round(trend7.avgRisk * 10) / 10,
-              direction: avg7Aqi !== null && currentAqi > avg7Aqi ? "worsening" : "improving",
-              readings: trend7.count,
-            }
-          : null,
-        trend30d: trend30
-          ? {
-              avgAqi: avg30Aqi,
-              avgPm25: Math.round(trend30.avgPm25 * 10) / 10,
-              avgRisk: Math.round(trend30.avgRisk * 10) / 10,
-              direction: avg30Aqi !== null && currentAqi > avg30Aqi ? "worsening" : "improving",
-              readings: trend30.count,
-            }
-          : null,
+        // trend7d/trend30d are always present now (never null) so the client
+        // can render an explicit insufficient-data state instead of having
+        // to infer meaning from a missing field. `sufficient` is the single
+        // field the UI should branch on.
+        trend7d: {
+          avgAqi: avg7Aqi,
+          avgPm25: trend7 ? Math.round(trend7.avgPm25 * 10) / 10 : null,
+          avgRisk: trend7 ? Math.round(trend7.avgRisk * 10) / 10 : null,
+          direction: resolveDirection(currentAqi, avg7Aqi, readings7),
+          readings: readings7,
+          sufficient: readings7 >= TREND_MIN_READINGS,
+        },
+        trend30d: {
+          avgAqi: avg30Aqi,
+          avgPm25: trend30 ? Math.round(trend30.avgPm25 * 10) / 10 : null,
+          avgRisk: trend30 ? Math.round(trend30.avgRisk * 10) / 10 : null,
+          direction: resolveDirection(currentAqi, avg30Aqi, readings30),
+          readings: readings30,
+          sufficient: readings30 >= TREND_MIN_READINGS,
+        },
       },
     });
   } catch (err) {

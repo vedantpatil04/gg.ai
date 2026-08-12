@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import {
   LayoutDashboard,
   AlertTriangle,
@@ -55,16 +56,31 @@ import {
   type DashboardPreferences,
   type WidgetId,
   type PinnableCardId,
+  type LandingPageId,
 } from "@/lib/api/dashboard.api";
+
+// LANDING_PAGES ids → the "navigation" namespace key that already carries
+// this page's shared-shell label (added in Phase 2). Presentation-only:
+// the stored `LandingPageId` values are untouched.
+const LANDING_PAGE_LABEL_KEYS: Record<LandingPageId, string> = {
+  dashboard: "dashboard",
+  environment: "environment",
+  map: "map",
+  forecast: "forecast",
+  citizen: "citizenHub",
+  sustainability: "sustainability",
+  copilot: "aiCopilot",
+};
 
 // ─── Shared error state ───────────────────────────────────────────────────────
 function ErrorState({
-  text = "Couldn't load this right now.",
+  text,
   onRetry,
 }: {
   text?: string;
   onRetry: () => void;
 }) {
+  const { t } = useTranslation("settings");
   return (
     <div
       className="flex flex-col items-center justify-center gap-2 py-8 text-center"
@@ -73,12 +89,12 @@ function ErrorState({
       <div className="size-10 rounded-full bg-destructive/10 grid place-items-center">
         <AlertTriangle className="size-4 text-destructive" />
       </div>
-      <p className="text-sm text-muted-foreground">{text}</p>
+      <p className="text-sm text-muted-foreground">{text ?? t("dashboard.couldntLoad")}</p>
       <button
         onClick={onRetry}
         className="text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded px-1"
       >
-        Try again
+        {t("dashboard.retry")}
       </button>
     </div>
   );
@@ -90,6 +106,7 @@ export function DashboardPreferencesPanel() {
   const { cities } = useCity();
   const [cityPickerOpen, setCityPickerOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
+  const { t } = useTranslation(["settings", "navigation"]);
 
   const {
     data: prefs,
@@ -117,17 +134,17 @@ export function DashboardPreferencesPanel() {
     },
     onSuccess: (updated) => {
       qc.setQueryData(["dashboard-preferences"], updated);
-      toast.success("Dashboard preferences updated");
+      toast.success(t("dashboard.updated"));
     },
     onError: (err: unknown, patch, context) => {
       if (context?.previous)
         qc.setQueryData(["dashboard-preferences"], context.previous);
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? "Couldn't save your dashboard preferences.";
-      toast.error("Couldn't save", {
+          ?.message ?? t("dashboard.couldntSave");
+      toast.error(t("dashboard.couldntSaveTitle"), {
         description: message,
-        action: { label: "Retry", onClick: () => mutation.mutate(patch) },
+        action: { label: t("dashboard.retry"), onClick: () => mutation.mutate(patch) },
       });
     },
   });
@@ -137,12 +154,12 @@ export function DashboardPreferencesPanel() {
       dashboardApi.restore().then((r) => r.data.dashboard),
     onSuccess: (defaults) => {
       qc.setQueryData(["dashboard-preferences"], defaults);
-      toast.success("Dashboard preferences restored");
+      toast.success(t("dashboard.restored"));
       setRestoreOpen(false);
     },
     onError: () => {
-      toast.error("Couldn't restore defaults", {
-        description: "Please try again.",
+      toast.error(t("dashboard.couldntRestore"), {
+        description: t("dashboard.pleaseTryAgain"),
       });
     },
   });
@@ -174,21 +191,21 @@ export function DashboardPreferencesPanel() {
 
   return (
     <Panel
-      eyebrow="Dashboard"
+      eyebrow={t("sections.dashboard")}
       title={
         <span className="inline-flex items-center gap-2">
           <LayoutDashboard className="size-4 text-primary" />
-          Dashboard Preferences
+          {t("dashboard.title")}
         </span>
       }
     >
       <p className="text-sm text-muted-foreground -mt-2 mb-4">
-        Customize your dashboard layout and defaults.
+        {t("dashboard.description")}
       </p>
 
       {isError ? (
         <ErrorState
-          text="Couldn't load your dashboard preferences."
+          text={t("dashboard.couldntLoad")}
           onRetry={refetch}
         />
       ) : isLoading || !prefs ? (
@@ -205,7 +222,7 @@ export function DashboardPreferencesPanel() {
           {/* Default Landing Page */}
           <div>
             <div className="text-xs font-medium text-muted-foreground mb-2">
-              Default Landing Page
+              {t("dashboard.landingPage")}
             </div>
             <Select
               value={prefs.defaultLandingPage}
@@ -216,13 +233,13 @@ export function DashboardPreferencesPanel() {
                 )
               }
             >
-              <SelectTrigger aria-label="Default Landing Page">
-                <SelectValue placeholder="Select a page" />
+              <SelectTrigger aria-label={t("dashboard.landingPage")}>
+                <SelectValue placeholder={t("dashboard.selectPage")} />
               </SelectTrigger>
               <SelectContent>
                 {LANDING_PAGES.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {p.label}
+                    {t(LANDING_PAGE_LABEL_KEYS[p.id], { ns: "navigation" })}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -233,7 +250,7 @@ export function DashboardPreferencesPanel() {
           <div>
             <div className="text-xs font-medium text-muted-foreground mb-2 inline-flex items-center gap-1.5">
               <MapPin className="size-3.5" />
-              Default City
+              {t("dashboard.defaultCity")}
             </div>
             <Popover open={cityPickerOpen} onOpenChange={setCityPickerOpen}>
               <PopoverTrigger asChild>
@@ -241,12 +258,12 @@ export function DashboardPreferencesPanel() {
                   type="button"
                   role="combobox"
                   aria-expanded={cityPickerOpen}
-                  aria-label="Default City"
+                  aria-label={t("dashboard.defaultCity")}
                   className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
                 >
                   {selectedCity
                     ? `${selectedCity.name}${selectedCity.country ? `, ${selectedCity.country}` : ""}`
-                    : "Select a city"}
+                    : t("dashboard.selectCity")}
                   <ChevronsUpDown
                     className="size-4 opacity-50"
                     aria-hidden="true"
@@ -255,9 +272,9 @@ export function DashboardPreferencesPanel() {
               </PopoverTrigger>
               <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                 <Command>
-                  <CommandInput placeholder="Search cities…" />
+                  <CommandInput placeholder={t("dashboard.searchCities")} />
                   <CommandList>
-                    <CommandEmpty>No city found.</CommandEmpty>
+                    <CommandEmpty>{t("dashboard.noCityFound")}</CommandEmpty>
                     <CommandGroup>
                       {cities.map((c) => (
                         <CommandItem
@@ -291,22 +308,25 @@ export function DashboardPreferencesPanel() {
           {/* Widget Visibility */}
           <div>
             <div className="text-xs font-medium text-muted-foreground mb-2">
-              Widget Visibility
+              {t("dashboard.widgetVisibility")}
             </div>
             <div className="space-y-1">
-              {DASHBOARD_WIDGETS.map((w) => (
-                <label
-                  key={w.id}
-                  className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors cursor-pointer text-sm"
-                >
-                  <Checkbox
-                    checked={prefs.visibleWidgets.includes(w.id)}
-                    onCheckedChange={() => toggleWidget(w.id)}
-                    aria-label={`Show ${w.label} widget`}
-                  />
-                  {w.label}
-                </label>
-              ))}
+              {DASHBOARD_WIDGETS.map((w) => {
+                const label = t(`dashboard.widgets.${w.id}`);
+                return (
+                  <label
+                    key={w.id}
+                    className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors cursor-pointer text-sm"
+                  >
+                    <Checkbox
+                      checked={prefs.visibleWidgets.includes(w.id)}
+                      onCheckedChange={() => toggleWidget(w.id)}
+                      aria-label={t("dashboard.showWidgetAria", { label })}
+                    />
+                    {label}
+                  </label>
+                );
+              })}
             </div>
           </div>
 
@@ -314,29 +334,32 @@ export function DashboardPreferencesPanel() {
           <div>
             <div className="text-xs font-medium text-muted-foreground mb-2 inline-flex items-center gap-1.5">
               <Pin className="size-3.5" />
-              Pinned Cards
+              {t("dashboard.pinnedCards")}
             </div>
             <div className="space-y-1">
-              {PINNABLE_CARDS.map((c) => (
-                <label
-                  key={c.id}
-                  className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors cursor-pointer text-sm"
-                >
-                  <Checkbox
-                    checked={prefs.pinnedCards.includes(c.id)}
-                    onCheckedChange={() => togglePinned(c.id)}
-                    aria-label={`Pin ${c.label}`}
-                  />
-                  {c.label}
-                </label>
-              ))}
+              {PINNABLE_CARDS.map((c) => {
+                const label = t(`dashboard.pinnable.${c.id}`);
+                return (
+                  <label
+                    key={c.id}
+                    className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors cursor-pointer text-sm"
+                  >
+                    <Checkbox
+                      checked={prefs.pinnedCards.includes(c.id)}
+                      onCheckedChange={() => togglePinned(c.id)}
+                      aria-label={t("dashboard.pinCardAria", { label })}
+                    />
+                    {label}
+                  </label>
+                );
+              })}
             </div>
           </div>
         </div>
       )}
 
       <div className="h-5 mt-3 text-xs text-muted-foreground inline-flex items-center gap-1.5">
-        {mutation.isPending && <>Saving…</>}
+        {mutation.isPending && <>{t("saving", { ns: "common" })}</>}
       </div>
 
       {/* Restore Defaults */}
@@ -349,21 +372,20 @@ export function DashboardPreferencesPanel() {
                 className="inline-flex items-center gap-1.5 text-xs font-medium rounded-md border border-input px-3 py-1.5 hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               >
                 <RotateCcw className="size-3.5" aria-hidden="true" />
-                Restore Defaults
+                {t("dashboard.restoreDefaults")}
               </button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  Restore dashboard preferences?
+                  {t("dashboard.restoreTitle")}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will reset widget visibility, default landing page,
-                  default city, and pinned cards to their default values.
+                  {t("dashboard.restoreDescription")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t("dashboard.cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() => restoreMutation.mutate()}
                   disabled={restoreMutation.isPending}
@@ -371,7 +393,7 @@ export function DashboardPreferencesPanel() {
                   {restoreMutation.isPending && (
                     <CheckCircle className="size-3.5 mr-1.5 animate-pulse" />
                   )}
-                  Restore
+                  {t("dashboard.restore")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

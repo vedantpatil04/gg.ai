@@ -339,7 +339,9 @@ export function CitizenComplaintWorkspace({
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {complaint.status === "pending" &&
-                        "Your complaint has been received and is awaiting assignment to an authority."}
+                        (assignedAuth
+                          ? "Your complaint has been assigned to an authority and is awaiting investigation."
+                          : "Your complaint has been received and is awaiting assignment to an authority.")}
                       {complaint.status === "in-progress" &&
                         "An authority is currently investigating your complaint."}
                       {complaint.status === "rework" &&

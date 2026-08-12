@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getCitizenStats } from "../controllers/citizen.controller";
+import { getCitizenStats, getNearbyComplaints } from "../controllers/citizen.controller";
 import { authenticate, authorize } from "../middleware/auth";
 
 const router = Router();
@@ -9,5 +9,8 @@ const router = Router();
 router.use(authenticate, authorize("citizen"));
 
 router.get("/stats", getCitizenStats);
+
+// Phase 12 — Duplicate complaint detection
+router.get("/nearby-complaints", getNearbyComplaints);
 
 export default router;

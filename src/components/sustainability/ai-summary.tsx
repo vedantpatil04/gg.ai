@@ -73,9 +73,9 @@ function buildSummary(city: City, renewableShare: number, greenCover: number): A
   if (city.humidity > 75 && city.aqi > 100) actions.push("Deploy misting stations in high-footfall zones during humid, high-AQI periods to reduce perceived heat stress.");
 
   return [
-    { id: "health",       icon: HeartPulse,    title: "Environmental Health",  color: "var(--color-primary)",     body: health },
-    { id: "improvements", icon: CheckCircle2,  title: "Key Improvements",      color: "var(--color-success)",     body: improvements.join(" ") },
-    { id: "concerns",     icon: AlertTriangle, title: "Areas of Concern",      color: "var(--color-warning)",     body: concerns.join(" ") },
+    { id: "health",       icon: HeartPulse,    title: "Current Environmental Health", color: "var(--color-primary)", body: health },
+    { id: "improvements", icon: CheckCircle2,  title: "What's Going Well",    color: "var(--color-success)",     body: improvements.join(" ") },
+    { id: "concerns",     icon: AlertTriangle, title: "Needs Attention",       color: "var(--color-warning)",     body: concerns.join(" ") },
     { id: "actions",      icon: Lightbulb,     title: "Recommended Actions",   color: "var(--color-info)",        body: actions.join("\n") },
   ];
 }
@@ -120,10 +120,10 @@ function TypingText({ text, active, delay = 0 }: { text: string; active: boolean
 // ─── insight chips ────────────────────────────────────────────────────────────
 
 const CHIPS = [
-  { icon: Leaf,     label: "Improve Green Cover",     section: "kpis" },
-  { icon: Recycle,  label: "Increase Recycling",       section: "kpis" },
-  { icon: Sun,      label: "Expand Solar Adoption",    section: "kpis" },
-  { icon: Droplets, label: "Reduce Water Consumption", section: "kpis" },
+  { icon: Leaf,     label: "Improve Green Cover",     section: "environmental-overview" },
+  { icon: Recycle,  label: "Increase Recycling",       section: "environmental-overview" },
+  { icon: Sun,      label: "Expand Solar Adoption",    section: "environmental-overview" },
+  { icon: Droplets, label: "Reduce Water Consumption", section: "environmental-overview" },
 ];
 
 function InsightChip({ icon: Icon, label, section }: { icon: typeof Leaf; label: string; section: string }) {
@@ -202,7 +202,7 @@ export function AiExecutiveSummary({
         <div>
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">GreenGuard AI</div>
           <h2 className="text-base font-semibold tracking-tight flex items-center gap-1.5">
-            Executive Sustainability Brief
+            Sustainability Brief
             <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
           </h2>
         </div>

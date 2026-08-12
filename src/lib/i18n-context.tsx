@@ -1,25 +1,24 @@
 /**
- * GreenGuard AI — i18n Phase 1: I18nProvider
+ * GreenGuard AI — i18n: I18nProvider
  *
- * This provider has two jobs:
+ * Two responsibilities:
  *
- *   1. Initialize   — imports `@/i18n` (which runs synchronously at module
- *                     load time), so i18next is ready before this component
- *                     mounts. No loading state, no flicker.
+ *   1. INITIALIZE  — Importing `@/i18n` runs its module-level code, which
+ *                    calls i18next.init() synchronously before React renders.
+ *                    No loading screen, no flicker.
  *
- *   2. Sync         — once the user is authenticated, fetches the backend-
- *                     persisted language preference and applies it if it
- *                     differs from the cached localStorage value. This ensures
- *                     a consistent experience across devices and browsers.
+ *   2. SYNC        — Once the user is authenticated, the provider fetches the
+ *                    backend-persisted language preference and applies it if it
+ *                    differs from the localStorage cache.  This handles the
+ *                    "new device / new browser" case silently.
  *
- * PLACEMENT in the provider tree (see src/routes/__root.tsx):
- *   QueryClientProvider → ThemeProvider → AuthProvider → I18nProvider → ...
+ * Provider tree position (src/routes/__root.tsx):
+ *   QueryClientProvider → ThemeProvider → AuthProvider
+ *     → I18nProvider          ← here
+ *       → CityProvider → TooltipProvider → Outlet
  *
- * WHY inside AuthProvider?
- *   The backend sync needs `useAuth()` to know when a user is logged in,
- *   and which user's preference to fetch. The synchronous language init
- *   (from localStorage) still runs immediately via the module import — auth
- *   state only gates the backend reconciliation step.
+ * Placed inside AuthProvider so it can call useAuth() to know when a user
+ * is logged in and whose language preference to fetch.
  */
 
 import {
@@ -30,8 +29,8 @@ import {
   type ReactNode,
 } from "react";
 
-// Importing the i18n module here triggers initialization (synchronous).
-// Must be a side-effect import so tree-shaking doesn't remove it.
+// Importing the i18n module triggers its synchronous initialization.
+// This must remain a side-effect import — do not tree-shake it away.
 import { i18n } from "@/i18n";
 
 import { useAuth } from "@/lib/auth-context";
@@ -43,32 +42,38 @@ import {
   type Language,
 } from "@/i18n/config";
 
-// ─── Context shape ────────────────────────────────────────────────────────────
+// ─── Context ──────────────────────────────────────────────────────────────────
 
 interface I18nContextValue {
-  /** The currently active i18next language code. */
+  /** Currently active BCP 47 language code. */
   language: Language;
-  /** Programmatically switch language — updates i18next, localStorage, and
-   *  the DOM `<html lang>` attribute. Does NOT call the backend (the Settings
-   *  panel is responsible for persisting via the API). */
+  /**
+   * Switch language immediately.
+   * - Updates i18next (triggers re-render of all useTranslation consumers).
+   * - Persists to localStorage via the `languageChanged` listener in index.ts.
+   * - Updates `<html lang>` for screen readers.
+   * - Does NOT call the backend — the Settings panel owns that responsibility.
+   */
   changeLanguage: (lang: Language) => void;
-  /** Whether the initial backend reconciliation is still in flight.
-   *  UI code rarely needs this — the language is already set from localStorage
-   *  before the fetch completes, so there is no visible loading state. */
+  /**
+   * True while the initial backend language reconciliation is in flight.
+   * In practice the language is already set from localStorage before the
+   * fetch completes, so no visible loading state is necessary.
+   */
   isSyncing: boolean;
 }
 
 const I18nContext = createContext<I18nContextValue>({
-  language: "en",
+  language:       "en",
   changeLanguage: () => {},
-  isSyncing: false,
+  isSyncing:      false,
 });
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  // Mirror i18next's active language in React state so consumers re-render
-  // when the language changes (i18next is not observable by React on its own).
+  // Mirror i18next's language in React state so downstream consumers
+  // re-render on language changes (i18next is not a React observable by itself).
   const [language, setLanguage] = useState<Language>(
     () => (i18n.language as Language) ?? "en",
   );
@@ -84,16 +89,17 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       }
     };
     i18n.on("languageChanged", handler);
-    return () => {
-      i18n.off("languageChanged", handler);
-    };
+    return () => { i18n.off("languageChanged", handler); };
   }, []);
 
   // ── Backend reconciliation ─────────────────────────────────────────────────
-  // Once auth resolves and the user is logged in, fetch their persisted
-  // language preference and apply it if it differs from the local cache.
-  // This handles the "new device" case: the user's saved preference wins
-  // over the browser default.
+  // Runs once after authentication resolves.  Fetches the server-persisted
+  // language preference and applies it if it differs from the cached value.
+  //
+  // `languageRegionApi.get()` resolves to:
+  //   { success: boolean; data: { languageRegion: LanguageRegionPreferences } }
+  //
+  // (The API already unwraps the Axios response via `.then((r) => r.data)`.)
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;
 
@@ -104,11 +110,12 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       .get()
       .then((res) => {
         if (cancelled) return;
-        const backendLang = res.data.languageRegion.language;
 
-        // Only switch if the backend value is a supported language that
-        // differs from what's already active — avoids an unnecessary re-render
-        // and the accompanying localStorage write.
+        const backendLang = res.data.languageRegion.language as string;
+
+        // Only switch when the backend value is supported and differs from
+        // the active language — avoids a redundant re-render + localStorage
+        // write on every mount for users whose preference already matches.
         if (
           backendLang &&
           SUPPORTED_LANGUAGES.includes(backendLang as Language) &&
@@ -116,29 +123,27 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         ) {
           void i18n.changeLanguage(backendLang);
           // writeStoredLanguage is also called by the languageChanged listener
-          // in src/i18n/index.ts, but we call it here too as a safety net in
-          // case the event fires before the listener is registered.
+          // in index.ts, but calling it here too is a safety net for race
+          // conditions where the event fires before the listener is attached.
           writeStoredLanguage(backendLang as Language);
         }
       })
       .catch(() => {
-        // Silently ignore — the localStorage language is already applied and
-        // the user can always change it via Settings.
+        // Silently ignore — the localStorage language is already active and
+        // the user can always correct it via Settings.
       })
       .finally(() => {
         if (!cancelled) setIsSyncing(false);
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [isAuthenticated, authLoading]);
 
-  // ── Public changeLanguage ──────────────────────────────────────────────────
+  // ── Public API ─────────────────────────────────────────────────────────────
   const changeLanguage = (lang: Language) => {
     void i18n.changeLanguage(lang);
-    // The languageChanged listener in index.ts handles writeStoredLanguage
-    // and document.documentElement.lang updates.
+    // The languageChanged listener in index.ts handles:
+    //   writeStoredLanguage(lang) and document.documentElement.lang = lang
   };
 
   return (
@@ -150,21 +155,19 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
-/** Primary hook — use in any component that needs to read or change the
- *  active language, or show a syncing indicator. */
+/** Full context — language, changeLanguage, isSyncing. */
 export function useI18n(): I18nContextValue {
   return useContext(I18nContext);
 }
 
-/** Convenience hook — just the active language code.
+/** Just the active language code.
  *  @example const lang = useLanguage(); // "en" | "hi" | "kn" | "mr" */
 export function useLanguage(): Language {
   return useContext(I18nContext).language;
 }
 
-/** Returns the display metadata for the currently active language.
+/** Native + English display name for the active language.
  *  @example const { native } = useLanguageName(); // "हिन्दी" */
 export function useLanguageName() {
-  const lang = useLanguage();
-  return LANGUAGE_NAMES[lang];
+  return LANGUAGE_NAMES[useLanguage()];
 }

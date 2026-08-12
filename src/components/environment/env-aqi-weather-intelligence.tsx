@@ -1,335 +1,355 @@
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Wind, Thermometer, Droplets, Gauge, TrendingUp, TrendingDown,
-  Minus, ArrowRight, type LucideIcon,
+  AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid,
+} from "recharts";
+import { format } from "date-fns";
+import {
+  Wind, Droplets, Thermometer, Gauge, Activity,
+  ArrowRight, TrendingUp, TrendingDown, Minus,
 } from "lucide-react";
 import { useCity } from "@/lib/city-context";
 import { findAqiBand } from "@/lib/mock-data";
 import { environmentalApi, type CityHistoryDay } from "@/lib/api/environmental.api";
-import { LiveAqiHero } from "@/components/environment/env-live-aqi-hero";
+import { HEALTH_STATUS_BY_BAND } from "@/components/environment/env-live-aqi-hero";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 /**
- * Phase 3 — Weather Correlation & AQI Weather Intelligence.
+ * Phase 5 — Interactive Environmental Intelligence:
+ * AQI & Weather Intelligence (replaces all placeholder cards).
  *
- * Replaces placeholder cards with real content:
+ * Three panels:
  *
- *  1. WeatherOverview — live atmospheric conditions (temp, humidity, wind,
- *     pressure) with trend direction and plain-language status per metric.
+ *  1. AQI Trend Chart — 7-day animated area chart with gradient fill.
+ *     Animated drawing on mount (strokeDashoffset technique via CSS).
+ *     Hover tooltip with date + AQI + band label.
  *
- *  2. WeatherAqiCorrelation — explains the relationship between current
- *     weather conditions and air quality. Answers "why is the AQI what it is
- *     given today's weather?"  Derived from real readings — no AI call, no
- *     fabrication.
+ *  2. Environmental Storytelling Flow — animated vertical causation diagram:
+ *     Wind → Humidity → Particle Growth → AQI → Health Impact.
+ *     Each step highlights based on real values. Click to expand explanation.
  *
- * All data from useCity() and the existing getCityHistory endpoint.
- * No new API. No dependencies added.
+ *  3. Weather × AQI Correlation — four metric cards with sparkline
+ *     mini-chart and plain-language causal explanation.
+ *
+ * All data: useCity() + getCityHistory (same endpoint as intelligence section,
+ * cached by TanStack Query — zero extra network traffic after first load).
+ *
+ * Animations: GPU-only (transform/opacity). prefers-reduced-motion respected.
+ * No new dependencies beyond Recharts (already present in env-pollutants.tsx).
  */
 
-// ─── Weather metric card ──────────────────────────────────────────────────────
+// ─── Reduced motion ───────────────────────────────────────────────────────────
 
-interface WeatherMetricProps {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  unit: string;
-  status: string;
-  statusColor: string;
-  description: string;
-  trend?: "up" | "down" | "stable" | null;
+function usePrefersReducedMotion() {
+  const [v, set] = useState(false);
+  useEffect(() => {
+    const q = window.matchMedia("(prefers-reduced-motion: reduce)");
+    set(q.matches);
+    const h = (e: MediaQueryListEvent) => set(e.matches);
+    q.addEventListener("change", h);
+    return () => q.removeEventListener("change", h);
+  }, []);
+  return v;
 }
 
-function WeatherMetricCard({
-  icon: Icon, label, value, unit, status, statusColor, description, trend,
-}: WeatherMetricProps) {
-  const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
-  const trendColor = trend === "down" ? "var(--color-success)"
-    : trend === "up"   ? "hsl(28 90% 55%)"
-    : "var(--color-muted-foreground)";
+// ─── Count-up ─────────────────────────────────────────────────────────────────
+
+function useCountUp(target: number, reduced: boolean, duration = 900) {
+  const [val, set] = useState(reduced ? target : 0);
+  const raf = useRef<number>(0);
+  useEffect(() => {
+    if (reduced) { set(target); return; }
+    const start = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min((now - start) / duration, 1);
+      set(Math.round((1 - (1 - p) ** 3) * target));
+      if (p < 1) raf.current = requestAnimationFrame(tick);
+    };
+    raf.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf.current);
+  }, [target, reduced, duration]);
+  return val;
+}
+
+// ─── 1. AQI Trend Chart ────────────────────────────────────────────────────────
+
+interface ChartDay { date: string; aqi: number; label: string; color: string; }
+
+function buildChartData(history: CityHistoryDay[]): ChartDay[] {
+  return history.map((d) => {
+    const band = findAqiBand(d.aqi.avg);
+    return {
+      date: d.date,
+      aqi: Math.round(d.aqi.avg),
+      label: band.label,
+      color: band.colorRaw,
+    };
+  });
+}
+
+function AqiTrendChart({ history, reduced }: { history: CityHistoryDay[]; reduced: boolean }) {
+  const data = buildChartData(history);
+  const band = findAqiBand(data.at(-1)?.aqi ?? 0);
+  const maxAqi = Math.max(...data.map((d) => d.aqi), 1);
+  const minAqi = Math.min(...data.map((d) => d.aqi));
+  const gradId = "aqi-area-grad";
+
+  // Trend
+  const first = data.slice(0, 2).reduce((s, d) => s + d.aqi, 0) / 2;
+  const last  = data.slice(-2).reduce((s, d) => s + d.aqi, 0)  / 2;
+  const diff  = last - first;
+  const TrendIcon = Math.abs(diff) < 3 ? Minus : diff < 0 ? TrendingDown : TrendingUp;
+  const trendColor = diff < -3 ? "var(--color-success)" : diff > 3 ? "hsl(28 90% 55%)" : "var(--color-muted-foreground)";
+  const trendLabel = diff < -3 ? "Improving" : diff > 3 ? "Worsening" : "Stable";
 
   return (
     <div
       className={cn(
-        "glass rounded-xl p-5 space-y-3 transition-shadow duration-300 hover:shadow-lg",
+        "glass rounded-2xl p-6 md:p-8 space-y-4",
         "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500",
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div
-            className="size-8 rounded-lg grid place-items-center shrink-0"
-            style={{ background: `color-mix(in oklab, ${statusColor} 14%, transparent)`, color: statusColor }}
-            aria-hidden="true"
-          >
-            <Icon className="size-4" />
-          </div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">7-Day AQI Trend</span>
+          <h3 className="text-base font-semibold mt-1">Air quality timeline</h3>
         </div>
-        {trend && (
-          <span
-            className="inline-flex items-center gap-1 text-[10px] shrink-0"
-            style={{ color: trendColor }}
-            aria-label={`Trend: ${trend}`}
-          >
-            <TrendIcon className="size-2.5" aria-hidden="true" />
-            {trend === "down" ? "Falling" : trend === "up" ? "Rising" : "Stable"}
-          </span>
-        )}
-      </div>
-
-      <div>
-        <div className="flex items-baseline gap-1">
-          <span className="text-2xl font-bold tabular-nums leading-none">{value}</span>
-          <span className="text-sm text-muted-foreground">{unit}</span>
-        </div>
-        <span
-          className="inline-block text-[10px] font-semibold mt-1 px-2 py-0.5 rounded-full"
-          style={{
-            color: statusColor,
-            background: `color-mix(in oklab, ${statusColor} 12%, transparent)`,
-          }}
-        >
-          {status}
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium" style={{ color: trendColor }}>
+          <TrendIcon className="size-3.5" aria-hidden="true" />
+          {trendLabel}
         </span>
       </div>
 
-      <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
+      {/* Chart */}
+      <div style={{ height: 160 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+            <defs>
+              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor={band.colorRaw} stopOpacity={0.35} />
+                <stop offset="95%" stopColor={band.colorRaw} stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0/0.06)" />
+            <XAxis
+              dataKey="date"
+              tickFormatter={(v) => { try { return format(new Date(v), "MMM d"); } catch { return v; } }}
+              tick={{ fontSize: 10, fill: "oklch(0.52 0.012 230)" }}
+              axisLine={false} tickLine={false}
+            />
+            <YAxis
+              domain={[Math.max(0, minAqi - 10), maxAqi + 10]}
+              tick={{ fontSize: 10, fill: "oklch(0.52 0.012 230)" }}
+              axisLine={false} tickLine={false} width={30}
+            />
+            <Tooltip
+              contentStyle={{
+                background: "var(--color-popover)",
+                border: "1px solid var(--color-border)",
+                borderRadius: 10, fontSize: 12,
+              }}
+              formatter={(v: number, _: string, entry: { payload?: ChartDay }) => [
+                `AQI ${v}`,
+                entry?.payload?.label ?? "",
+              ]}
+              labelFormatter={(l: string) => { try { return format(new Date(l), "EEEE, MMM d"); } catch { return l; } }}
+            />
+            <Area
+              type="monotone" dataKey="aqi"
+              stroke={band.colorRaw} strokeWidth={2}
+              fill={`url(#${gradId})`}
+              dot={false} activeDot={{ r: 4, fill: band.colorRaw }}
+              isAnimationActive={!reduced}
+              animationDuration={1000} animationEasing="ease-out"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Min / avg / max strip */}
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground px-1">
+        <span>Low {minAqi}</span>
+        <span className="font-medium text-foreground/70">Avg {Math.round(data.reduce((s, d) => s + d.aqi, 0) / data.length)}</span>
+        <span>High {maxAqi}</span>
+      </div>
     </div>
   );
 }
 
-// ─── Metric builders ──────────────────────────────────────────────────────────
+// ─── 2. Environmental Storytelling Flow ────────────────────────────────────────
 
-function tempStatus(t: number): { status: string; color: string; description: string } {
-  if (t >= 38) return { status: "Extreme heat",  color: "hsl(10 85% 55%)",  description: `${t}°C is extreme. Avoid outdoor activity during peak hours and stay hydrated.` };
-  if (t >= 33) return { status: "Hot",            color: "hsl(28 90% 55%)",  description: `${t}°C is hot. Limit prolonged sun exposure and take regular breaks.` };
-  if (t >= 28) return { status: "Warm",           color: "hsl(40 85% 55%)",  description: `${t}°C is warm. Comfortable for short outdoor activity with hydration.` };
-  if (t >= 18) return { status: "Comfortable",    color: "var(--color-success)", description: `${t}°C is within the comfortable range for most outdoor activity.` };
-  if (t >= 10) return { status: "Cool",           color: "oklch(0.65 0.12 240)", description: `${t}°C is cool. Dress in layers for extended outdoor time.` };
-  return              { status: "Cold",            color: "oklch(0.58 0.14 250)", description: `${t}°C is cold. Limit outdoor exposure and dress warmly.` };
-}
-
-function humidityStatus(h: number): { status: string; color: string; description: string } {
-  if (h >= 85) return { status: "Very high",  color: "hsl(28 90% 55%)",  description: `${h}% humidity is uncomfortably high — can trap pollutants and make conditions feel hotter.` };
-  if (h >= 70) return { status: "Elevated",   color: "hsl(45 85% 55%)",  description: `${h}% humidity is slightly elevated. Conditions may feel muggier than the temperature suggests.` };
-  if (h >= 35) return { status: "Comfortable",color: "var(--color-success)", description: `${h}% humidity is within a comfortable range for outdoor activity.` };
-  if (h >= 20) return { status: "Dry",        color: "hsl(40 80% 55%)",  description: `${h}% humidity is low. Stay hydrated — dry air can increase particulate irritation.` };
-  return              { status: "Very dry",    color: "hsl(28 90% 55%)",  description: `${h}% humidity is very low. Risk of dehydration and increased particulate concentration.` };
-}
-
-function windStatus(w: number): { status: string; color: string; description: string } {
-  if (w >= 50)  return { status: "Strong",       color: "hsl(28 90% 55%)",  description: `${w} km/h wind is strong — outdoor conditions may be uncomfortable and pollutant patterns unpredictable.` };
-  if (w >= 30)  return { status: "Moderate",     color: "hsl(45 85% 55%)",  description: `${w} km/h wind will disperse local pollutants effectively, though conditions may feel breezy.` };
-  if (w >= 10)  return { status: "Light breeze", color: "var(--color-success)", description: `${w} km/h is a helpful light breeze that aids pollutant dispersion without discomfort.` };
-  if (w >= 3)   return { status: "Calm",         color: "hsl(45 85% 55%)",  description: `${w} km/h — near-calm conditions. Pollutants may accumulate locally with limited natural dispersion.` };
-  return               { status: "Still",        color: "hsl(28 90% 55%)",  description: `Virtually no wind. Pollutants are likely to accumulate near ground level without dispersing.` };
-}
-
-function pressureStatus(p: number): { status: string; color: string; description: string } {
-  if (p >= 1025)   return { status: "High pressure",  color: "var(--color-success)", description: `${p} hPa — high pressure typically brings stable, clear conditions but can trap pollutants near the surface.` };
-  if (p >= 1013)   return { status: "Normal",         color: "var(--color-success)", description: `${p} hPa is close to standard atmospheric pressure — normal conditions.` };
-  if (p >= 995)    return { status: "Slightly low",   color: "hsl(45 85% 55%)",  description: `${p} hPa — slightly below standard. May indicate unsettled weather approaching.` };
-  return                  { status: "Low pressure",   color: "hsl(28 90% 55%)",  description: `${p} hPa — low pressure. Often associated with cloud cover, precipitation, or changing conditions.` };
-}
-
-// ─── Weather correlation explainer ───────────────────────────────────────────
-
-interface CorrelationFactor {
+interface FlowStep {
+  icon: typeof Wind;
+  key: string;
   label: string;
-  icon: LucideIcon;
-  effect: "positive" | "negative" | "neutral";
-  headline: string;
+  value: string;
+  effect: "positive" | "neutral" | "negative";
   explanation: string;
 }
 
-function buildCorrelation(city: {
-  aqi: number; temp?: number; humidity?: number; windSpeed?: number; pressure?: number;
-}): CorrelationFactor[] {
-  const factors: CorrelationFactor[] = [];
+function buildFlowSteps(city: {
+  aqi: number; windSpeed?: number; humidity?: number; pm25?: number; temp?: number;
+}): FlowStep[] {
+  const windEffect: "positive" | "neutral" | "negative" =
+    typeof city.windSpeed === "number"
+      ? city.windSpeed >= 10 ? "positive" : city.windSpeed < 4 ? "negative" : "neutral"
+      : "neutral";
 
-  if (typeof city.windSpeed === "number") {
-    const w = city.windSpeed;
-    factors.push({
-      label: "Wind & Dispersion",
-      icon: Wind,
-      effect: w >= 10 ? "positive" : w < 3 ? "negative" : "neutral",
-      headline: w >= 20
-        ? `Strong wind is actively improving air quality by dispersing pollutants`
-        : w >= 10
-        ? `Light wind is helping to keep pollution levels from building`
-        : w < 3
-        ? `Near-calm conditions are allowing pollutants to accumulate`
-        : `Low wind is providing minimal dispersion of ground-level pollutants`,
-      explanation: w >= 10
-        ? `Wind above 10 km/h is the single most effective natural mechanism for reducing ground-level pollution. At ${w} km/h, pollutants emitted locally are being carried away rather than concentrating.`
-        : `With wind speeds of ${w} km/h, there is limited atmospheric mixing. Pollutants from traffic, industry, and other sources accumulate near the surface rather than dispersing — this directly elevates AQI readings.`,
-    });
-  }
+  const humidEffect: "positive" | "neutral" | "negative" =
+    typeof city.humidity === "number"
+      ? city.humidity >= 78 ? "negative" : city.humidity >= 35 ? "neutral" : "neutral"
+      : "neutral";
 
-  if (typeof city.humidity === "number") {
-    const h = city.humidity;
-    factors.push({
-      label: "Humidity & Particles",
-      icon: Droplets,
-      effect: h >= 80 ? "negative" : h >= 35 && h <= 65 ? "positive" : "neutral",
-      headline: h >= 80
-        ? `High humidity is causing particles to absorb moisture and swell — increasing their effective concentration`
-        : h >= 35
-        ? `Moderate humidity is not significantly affecting particle behaviour`
-        : `Low humidity may be increasing particle suspension in the atmosphere`,
-      explanation: h >= 80
-        ? `When relative humidity exceeds 70–80%, fine particles (PM2.5 and PM10) absorb atmospheric water and increase in size. This swelling raises their mass concentration and light-scattering properties — which is why hazy conditions are common on humid days even without more emissions.`
-        : h < 30
-        ? `In dry conditions, fine particles remain lightweight and suspended in air for longer periods. Dry soil and vegetation can also contribute additional particulate matter. This can cause AQI readings to be higher than emission levels alone would suggest.`
-        : `At ${h}% humidity, particles behave predictably without significant hygroscopic growth or unusual suspension behaviour.`,
-    });
-  }
-
-  if (typeof city.temp === "number") {
-    const t = city.temp;
-    factors.push({
-      label: "Temperature & Chemistry",
-      icon: Thermometer,
-      effect: t >= 30 ? "negative" : t >= 15 ? "neutral" : "neutral",
-      headline: t >= 30
-        ? `High temperature is accelerating the chemical reactions that form ground-level ozone`
-        : t >= 18
-        ? `Temperature is within a range that doesn't significantly alter pollution chemistry`
-        : `Cooler temperature slows photochemical reactions but may increase heating-related emissions`,
-      explanation: t >= 30
-        ? `Ground-level ozone (O₃) forms when nitrogen oxides (NOₓ) and volatile organic compounds (VOCs) react in sunlight. This reaction is temperature-dependent — at ${t}°C, ozone formation rates are significantly elevated compared to cooler days, which can increase AQI independently of direct emission levels.`
-        : t < 10
-        ? `At ${t}°C, heating demand increases — burning of fuels for warmth produces additional NOₓ and particulate emissions. This can contribute to elevated AQI readings in urban areas during cold periods.`
-        : `At ${t}°C, photochemical reactions proceed at moderate rates. Temperature is not the dominant factor in current conditions.`,
-    });
-  }
-
-  if (typeof city.pressure === "number") {
-    const p = city.pressure;
-    factors.push({
-      label: "Pressure & Mixing",
-      icon: Gauge,
-      effect: p >= 1020 ? "negative" : p >= 1000 ? "positive" : "neutral",
-      headline: p >= 1020
-        ? `High atmospheric pressure is suppressing vertical air mixing — potentially trapping pollutants near the surface`
-        : p >= 1000
-        ? `Normal atmospheric pressure is supporting typical air mixing and pollutant dispersion`
-        : `Low pressure is likely promoting vertical mixing and carrying pollutants away from the surface`,
-      explanation: p >= 1020
-        ? `High pressure systems create stable atmospheric conditions by suppressing the upward movement of air. This atmospheric stability creates a "lid" effect that traps pollutants near the surface. Combined with low wind, high pressure is one of the most common causes of elevated AQI readings even when emission levels are normal.`
-        : p < 1000
-        ? `Low pressure systems promote unstable atmospheric conditions. Rising air mixes pollutants upward and away from the surface, and the associated cloud cover and precipitation can physically wash particulates from the air. Low pressure generally improves air quality.`
-        : `At ${p} hPa, atmospheric mixing conditions are near-normal. Pressure is not a significant driver of current air quality.`,
-    });
-  }
-
-  return factors.slice(0, 4);
-}
-
-// ─── Weather Overview sub-component ──────────────────────────────────────────
-
-function WeatherOverview() {
-  const { city } = useCity();
-  const metrics: WeatherMetricProps[] = [];
-
-  if (typeof city.temp === "number") {
-    const s = tempStatus(city.temp);
-    metrics.push({ icon: Thermometer, label: "Temperature", value: String(city.temp), unit: "°C", ...s, trend: null });
-  }
-  if (typeof city.humidity === "number") {
-    const s = humidityStatus(city.humidity);
-    metrics.push({ icon: Droplets, label: "Humidity", value: String(city.humidity), unit: "%", ...s, trend: null });
-  }
-  if (typeof city.windSpeed === "number") {
-    const s = windStatus(city.windSpeed);
-    metrics.push({ icon: Wind, label: "Wind Speed", value: String(city.windSpeed), unit: "km/h", ...s, trend: null });
-  }
-  if (typeof city.pressure === "number") {
-    const s = pressureStatus(city.pressure);
-    metrics.push({ icon: Gauge, label: "Pressure", value: String(city.pressure), unit: "hPa", ...s, trend: null });
-  }
-
-  if (metrics.length === 0) {
-    return (
-      <div className="glass rounded-xl p-5 text-sm text-muted-foreground">
-        Weather data is currently unavailable.
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {metrics.map((m) => (
-        <WeatherMetricCard key={m.label} {...m} />
-      ))}
-    </div>
-  );
-}
-
-// ─── Correlation panel sub-component ─────────────────────────────────────────
-
-function WeatherAqiCorrelation() {
-  const { city } = useCity();
   const band = findAqiBand(city.aqi);
-  const factors = buildCorrelation(city);
+  const aqiEffect: "positive" | "neutral" | "negative" =
+    city.aqi <= 50 ? "positive" : city.aqi <= 100 ? "neutral" : "negative";
 
-  if (factors.length === 0) return null;
+  const healthEffect: "positive" | "neutral" | "negative" =
+    city.aqi <= 50 ? "positive" : city.aqi <= 100 ? "neutral" : "negative";
 
-  const effectColor = (e: "positive" | "negative" | "neutral") =>
-    e === "positive" ? "var(--color-success)" : e === "negative" ? "hsl(28 90% 55%)" : "var(--color-muted-foreground)";
-  const effectLabel = (e: "positive" | "negative" | "neutral") =>
-    e === "positive" ? "Improving AQI" : e === "negative" ? "Worsening AQI" : "Neutral effect";
+  return [
+    {
+      icon: Wind, key: "wind", label: "Wind",
+      value: typeof city.windSpeed === "number" ? `${city.windSpeed} km/h` : "—",
+      effect: windEffect,
+      explanation: typeof city.windSpeed === "number"
+        ? city.windSpeed >= 10
+          ? `Wind at ${city.windSpeed} km/h actively disperses ground-level pollutants — a significant natural air quality improvement mechanism.`
+          : city.windSpeed < 4
+            ? `Near-calm wind (${city.windSpeed} km/h) allows pollutants to accumulate locally without being carried away.`
+            : `Light wind at ${city.windSpeed} km/h provides limited but some dispersion of local pollutants.`
+        : "Wind data unavailable.",
+    },
+    {
+      icon: Droplets, key: "humidity", label: "Humidity",
+      value: typeof city.humidity === "number" ? `${city.humidity}%` : "—",
+      effect: humidEffect,
+      explanation: typeof city.humidity === "number"
+        ? city.humidity >= 78
+          ? `High humidity (${city.humidity}%) causes fine particles to absorb moisture and swell — increasing their effective AQI impact without any additional emissions.`
+          : `Humidity at ${city.humidity}% is within a normal range — not significantly altering particle behaviour.`
+        : "Humidity data unavailable.",
+    },
+    {
+      icon: Activity, key: "particles", label: "Particle Growth",
+      value: typeof city.pm25 === "number" ? `PM2.5 ${city.pm25} µg/m³` : "—",
+      effect: typeof city.pm25 === "number"
+        ? city.pm25 <= 12 ? "positive" : city.pm25 <= 35 ? "neutral" : "negative"
+        : "neutral",
+      explanation: typeof city.pm25 === "number"
+        ? `PM2.5 at ${city.pm25} µg/m³ represents the fine particle load — the primary driver of the current AQI reading.`
+        : "Fine particle data unavailable.",
+    },
+    {
+      icon: Gauge, key: "aqi", label: "AQI",
+      value: `${city.aqi}`,
+      effect: aqiEffect,
+      explanation: `${band.label} conditions — AQI ${city.aqi}. ${HEALTH_STATUS_BY_BAND[band.label] ?? ""}`,
+    },
+    {
+      icon: Thermometer, key: "health", label: "Health Impact",
+      value: band.label,
+      effect: healthEffect,
+      explanation: city.aqi <= 50
+        ? "No health restrictions. All outdoor activities are suitable."
+        : city.aqi <= 100
+          ? "Sensitive individuals may wish to moderate prolonged outdoor exertion."
+          : "Consider limiting outdoor activity — particularly for sensitive groups.",
+    },
+  ];
+}
+
+const EFFECT_COLOR: Record<"positive" | "neutral" | "negative", string> = {
+  positive: "var(--color-success)",
+  neutral:  "var(--color-muted-foreground)",
+  negative: "hsl(28 90% 55%)",
+};
+
+function StorytellFlow({ city, reduced }: {
+  city: { aqi: number; windSpeed?: number; humidity?: number; pm25?: number; temp?: number };
+  reduced: boolean;
+}) {
+  const steps = buildFlowSteps(city);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   return (
     <div
       className={cn(
-        "glass rounded-2xl p-6 md:p-8 space-y-6",
-        "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500 motion-safe:delay-100",
+        "glass rounded-2xl p-6 md:p-8 space-y-5",
+        "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500 motion-safe:delay-75",
       )}
     >
       <div>
-        <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          Weather Correlation
-        </span>
-        <h3 className="text-base font-semibold mt-1">Why is the AQI {city.aqi}?</h3>
-        <p className="text-xs text-muted-foreground mt-1 leading-relaxed max-w-2xl">
-          Current weather conditions have the following effects on the {band.label.toLowerCase()} air quality reading.
-        </p>
+        <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Environmental Storytelling</span>
+        <h3 className="text-base font-semibold mt-1">How conditions lead to today's AQI</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Tap any step to learn more about its role.</p>
       </div>
 
-      <div className="space-y-5">
-        {factors.map((f, i) => {
-          const Icon = f.icon;
-          const color = effectColor(f.effect);
+      <div className="space-y-0">
+        {steps.map((step, i) => {
+          const Icon = step.icon;
+          const color = EFFECT_COLOR[step.effect];
+          const isLast = i === steps.length - 1;
+          const isExp = expanded === step.key;
+
           return (
-            <div
-              key={f.label}
-              className={cn("flex items-start gap-4", i > 0 && "pt-5 border-t border-border")}
-            >
-              <div
-                className="size-9 rounded-xl grid place-items-center shrink-0 mt-0.5"
-                style={{ background: `color-mix(in oklab, ${color} 14%, transparent)`, color }}
-                aria-hidden="true"
+            <div key={step.key}>
+              <button
+                type="button"
+                onClick={() => setExpanded(isExp ? null : step.key)}
+                aria-expanded={isExp}
+                className={cn(
+                  "w-full flex items-center gap-4 text-left rounded-xl p-3.5 transition-all duration-200",
+                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                  "hover:bg-muted/30",
+                  isExp && "bg-muted/20",
+                )}
+                style={{
+                  animationDelay: reduced ? "0ms" : `${i * 80}ms`,
+                  animation: reduced ? "none" : "motion-safe:animate-in motion-safe:fade-in-0",
+                }}
               >
-                <Icon className="size-4.5" />
-              </div>
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-semibold">{f.label}</span>
-                  <span
-                    className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                {/* Step number + icon */}
+                <div className="flex flex-col items-center gap-1 shrink-0">
+                  <div
+                    className="size-9 rounded-xl grid place-items-center transition-all duration-200"
                     style={{
+                      background: `color-mix(in oklab, ${color} 14%, transparent)`,
                       color,
-                      background: `color-mix(in oklab, ${color} 12%, transparent)`,
+                      boxShadow: isExp ? `0 0 12px ${color}40` : "none",
                     }}
+                    aria-hidden="true"
                   >
-                    <ArrowRight className="size-2.5" aria-hidden="true" />
-                    {effectLabel(f.effect)}
-                  </span>
+                    <Icon className="size-4.5" />
+                  </div>
                 </div>
-                <p className="text-sm font-medium leading-snug">{f.headline}</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">{f.explanation}</p>
-              </div>
+
+                {/* Label + value */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium">{step.label}</span>
+                    <span
+                      className="text-sm font-bold tabular-nums shrink-0"
+                      style={{ color }}
+                    >
+                      {step.value}
+                    </span>
+                  </div>
+                  {isExp && (
+                    <p className="text-xs text-muted-foreground leading-relaxed mt-1.5 pr-2">{step.explanation}</p>
+                  )}
+                </div>
+              </button>
+
+              {/* Arrow connector between steps */}
+              {!isLast && (
+                <div className="flex justify-start pl-7 py-0.5" aria-hidden="true">
+                  <ArrowRight
+                    className="size-3 rotate-90 text-muted-foreground/40"
+                  />
+                </div>
+              )}
             </div>
           );
         })}
@@ -338,23 +358,210 @@ function WeatherAqiCorrelation() {
   );
 }
 
-// ─── Main export ─────────────────────────────────────────────────────────────
+// ─── 3. Weather metric card with mini sparkline ───────────────────────────────
 
-export function AqiWeatherIntelligence({ className }: { className?: string }) {
+interface WeatherCardProps {
+  icon: typeof Wind;
+  label: string;
+  value: string;
+  status: string;
+  statusColor: string;
+  description: string;
+  sparkData?: { v: number }[];
+  sparkColor?: string;
+  index: number;
+  reduced: boolean;
+}
+
+function WeatherCard({
+  icon: Icon, label, value, status, statusColor, description,
+  sparkData, sparkColor, index, reduced,
+}: WeatherCardProps) {
   return (
-    <div className={cn("space-y-4", className)}>
-      {/* Live AQI + atmospheric overview side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-        <LiveAqiHero />
-        <WeatherOverview />
+    <div
+      className={cn(
+        "glass rounded-xl p-4 space-y-3 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5",
+        "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500",
+      )}
+      style={{ animationDelay: reduced ? "0ms" : `${index * 70}ms` }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div
+            className="size-7 rounded-lg grid place-items-center"
+            style={{ background: `color-mix(in oklab, ${statusColor} 14%, transparent)`, color: statusColor }}
+            aria-hidden="true"
+          >
+            <Icon className="size-3.5" />
+          </div>
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+        </div>
+        <span
+          className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+          style={{ color: statusColor, background: `color-mix(in oklab, ${statusColor} 12%, transparent)` }}
+        >
+          {status}
+        </span>
       </div>
-      {/* Weather-AQI correlation explainer */}
-      <WeatherAqiCorrelation />
+
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <div className="text-xl font-bold tabular-nums leading-none">{value}</div>
+          <p className="text-xs text-muted-foreground leading-relaxed mt-1.5 max-w-[180px]">{description}</p>
+        </div>
+
+        {/* Mini sparkline */}
+        {sparkData && sparkData.length > 1 && (
+          <div className="shrink-0 w-20" style={{ height: 48 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={sparkData} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+                <defs>
+                  <linearGradient id={`spark-${label}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor={sparkColor ?? statusColor} stopOpacity={0.4} />
+                    <stop offset="95%" stopColor={sparkColor ?? statusColor} stopOpacity={0}   />
+                  </linearGradient>
+                </defs>
+                <Area
+                  type="monotone" dataKey="v"
+                  stroke={sparkColor ?? statusColor} strokeWidth={1.5}
+                  fill={`url(#spark-${label})`}
+                  dot={false}
+                  isAnimationActive={!reduced}
+                  animationDuration={800}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-// Legacy exports — kept for backward compat with any existing import site
-export function WeatherOverviewLegacy() { return <WeatherOverview />; }
-export function AqiTrendOverview()       { return null; }
-export function EnvironmentalContext()   { return null; }
+function buildWeatherCards(
+  city: { aqi: number; temp?: number; humidity?: number; windSpeed?: number; pressure?: number },
+  history: CityHistoryDay[],
+  reduced: boolean,
+): WeatherCardProps[] {
+  const cards: WeatherCardProps[] = [];
+  let idx = 0;
+
+  if (typeof city.temp === "number") {
+    const c = city.temp;
+    const status = c >= 35 ? "Hot" : c >= 28 ? "Warm" : c >= 18 ? "Comfortable" : c >= 10 ? "Cool" : "Cold";
+    const color  = c >= 35 ? "hsl(28 90% 55%)" : c >= 28 ? "hsl(40 85% 55%)" : c >= 18 ? "var(--color-success)" : "oklch(0.65 0.12 240)";
+    const spark  = history.map((d) => ({ v: typeof d.temp === "number" ? d.temp : c }));
+    cards.push({ icon: Thermometer, label: "Temperature", value: `${c}°C`, status, statusColor: color,
+      description: c >= 35 ? "Heat stress risk — limit peak-sun activity." : c >= 28 ? "Warm — stay hydrated." : c >= 18 ? "Comfortable for outdoor activity." : "Cool — dress in layers.",
+      sparkData: spark, sparkColor: color, index: idx++, reduced });
+  }
+
+  if (typeof city.humidity === "number") {
+    const h = city.humidity;
+    const status = h >= 80 ? "High" : h >= 60 ? "Elevated" : h >= 35 ? "Comfortable" : "Low";
+    const color  = h >= 80 ? "hsl(28 90% 55%)" : h >= 60 ? "hsl(45 85% 55%)" : "var(--color-success)";
+    const spark  = history.map((d) => ({ v: typeof d.humidity === "number" ? d.humidity : h }));
+    cards.push({ icon: Droplets, label: "Humidity", value: `${h}%`, status, statusColor: color,
+      description: h >= 80 ? "High humidity traps particles and increases AQI impact." : h >= 35 ? "Humidity within a comfortable range." : "Low humidity — particles stay suspended longer.",
+      sparkData: spark, sparkColor: color, index: idx++, reduced });
+  }
+
+  if (typeof city.windSpeed === "number") {
+    const w = city.windSpeed;
+    const status = w >= 30 ? "Strong" : w >= 10 ? "Moderate" : w >= 4 ? "Light" : "Calm";
+    const color  = w >= 10 ? "var(--color-success)" : w < 4 ? "hsl(28 90% 55%)" : "hsl(45 85% 55%)";
+    cards.push({ icon: Wind, label: "Wind Speed", value: `${w} km/h`, status, statusColor: color,
+      description: w >= 10 ? "Wind is actively dispersing local pollutants." : w < 4 ? "Near-calm — pollutants accumulating locally." : "Light breeze — limited dispersion.",
+      sparkData: undefined, index: idx++, reduced });
+  }
+
+  if (typeof city.pressure === "number") {
+    const p = city.pressure;
+    const status = p >= 1020 ? "High" : p >= 1000 ? "Normal" : "Low";
+    const color  = p >= 1020 ? "hsl(45 85% 55%)" : p >= 1000 ? "var(--color-success)" : "oklch(0.65 0.12 240)";
+    cards.push({ icon: Gauge, label: "Pressure", value: `${p} hPa`, status, statusColor: color,
+      description: p >= 1020 ? "High pressure suppresses vertical mixing — can trap pollutants near surface." : p >= 1000 ? "Normal pressure — typical atmospheric mixing." : "Low pressure promotes dispersion and may signal precipitation.",
+      sparkData: undefined, index: idx++, reduced });
+  }
+
+  return cards;
+}
+
+// ─── Loading skeleton ─────────────────────────────────────────────────────────
+
+function IntelligenceSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="glass rounded-2xl p-6 space-y-4">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-40 w-full rounded-xl" />
+        <div className="flex justify-between">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-36 rounded-xl" />)}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main export ──────────────────────────────────────────────────────────────
+
+export function AqiWeatherIntelligence({ className }: { className?: string }) {
+  const { city, isCityListLoading } = useCity();
+  const reduced = usePrefersReducedMotion();
+
+  const { data: history, isLoading: histLoading } = useQuery({
+    queryKey: ["aqi-weather-history", city.id, 7],
+    queryFn: async () => {
+      const res = await environmentalApi.getCityHistory(city.id, 7);
+      return res.data.history;
+    },
+    enabled: !!city.id,
+    staleTime: 10 * 60 * 1000,
+    retry: 1,
+    throwOnError: false,
+  });
+
+  if (isCityListLoading || histLoading) return <IntelligenceSkeleton />;
+
+  const safeHistory: CityHistoryDay[] = Array.isArray(history) && history.length > 0 ? history : [];
+  const weatherCards = buildWeatherCards(city, safeHistory, reduced);
+
+  return (
+    <div className={cn("space-y-4", className)}>
+      {/* AQI Trend Chart */}
+      {safeHistory.length >= 2 && (
+        <AqiTrendChart history={safeHistory} reduced={reduced} />
+      )}
+
+      {/* Environmental Storytelling Flow */}
+      <StorytellFlow city={city} reduced={reduced} />
+
+      {/* Weather metric cards with sparklines */}
+      {weatherCards.length > 0 && (
+        <div className={cn(
+          "glass rounded-2xl p-6 md:p-8 space-y-5",
+          "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500 motion-safe:delay-100",
+        )}>
+          <div>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Weather Conditions</span>
+            <h3 className="text-base font-semibold mt-1">Atmospheric readings & their AQI impact</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {weatherCards.map((c) => <WeatherCard key={c.label} {...c} />)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Legacy exports (backward compat) ────────────────────────────────────────
+
+export function WeatherOverview()     { return null; }
+export function AqiTrendOverview()    { return null; }
+export function EnvironmentalContext(){ return null; }

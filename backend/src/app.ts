@@ -7,34 +7,37 @@ import mongoose from "mongoose";
 import path from "path";
 import rateLimit from "express-rate-limit";
 
-import { connectDB } from "./database/connection";
-import { logger } from "./utils/logger";
+import { connectDB }    from "./database/connection";
+import { logger }       from "./utils/logger";
 import { errorHandler } from "./middleware/errorHandler";
-import { notFound } from "./middleware/notFound";
+import { notFound }     from "./middleware/notFound";
 
-import authRoutes from "./routes/auth.routes";
-import userRoutes from "./routes/user.routes";
+import authRoutes          from "./routes/auth.routes";
+import userRoutes          from "./routes/user.routes";
 import environmentalRoutes from "./routes/environmental.routes";
-import forecastRoutes from "./routes/forecast.routes";
-import complaintRoutes from "./routes/complaint.routes";
-import reportRoutes from "./routes/report.routes";
-import profileRoutes from "./routes/profile.routes";
-import alertRoutes from "./routes/alert.routes";
-import simulatorRoutes from "./routes/simulator.routes";
-import adminRoutes from "./routes/admin.routes";
-import authorityRoutes from "./routes/authority.routes";
-import citizenRoutes from "./routes/citizen.routes";
-import copilotRoutes from "./routes/copilot.routes";
-import intelligenceRoutes from "./routes/intelligence.routes";
-import commandRoutes from "./routes/command.routes";
-import securityRoutes from "./routes/security.routes";
+import forecastRoutes      from "./routes/forecast.routes";
+import complaintRoutes     from "./routes/complaint.routes";
+import reportRoutes        from "./routes/report.routes";
+import profileRoutes       from "./routes/profile.routes";
+import alertRoutes         from "./routes/alert.routes";
+import simulatorRoutes     from "./routes/simulator.routes";
+import adminRoutes         from "./routes/admin.routes";
+import authorityRoutes     from "./routes/authority.routes";
+import citizenRoutes       from "./routes/citizen.routes";
+import copilotRoutes       from "./routes/copilot.routes";
+import intelligenceRoutes  from "./routes/intelligence.routes";
+import commandRoutes       from "./routes/command.routes";
+import securityRoutes      from "./routes/security.routes";
 import platformAdminRoutes from "./routes/platform-admin.routes";
-import notificationRoutes from "./routes/notification.routes";
-import settingsRoutes from "./routes/settings.routes";
-import { getCityAIInsights } from "./controllers/copilot.controller";
-import { startScheduler, getSchedulerStatus } from "./jobs/scheduler";
+import notificationRoutes  from "./routes/notification.routes";
+import settingsRoutes      from "./routes/settings.routes";
+import supportRoutes       from "./routes/support.routes";
+import helpAiRoutes        from "./routes/help-ai.routes";
 
-const app = express();
+import { getCityAIInsights }                   from "./controllers/copilot.controller";
+import { startScheduler, getSchedulerStatus }  from "./jobs/scheduler";
+
+const app  = express();
 const PORT = process.env.PORT || 5000;
 
 // ─── Security & Core Middleware ───────────────────────────────────────────────
@@ -71,7 +74,10 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 if (process.env.NODE_ENV !== "production") app.use(morgan("dev"));
 
-// Serve uploaded profile pictures statically
+// Phase 4 — Profile Picture Management. LocalStorageProvider writes here;
+// this just makes those files reachable over HTTP. Swapping to a cloud
+// storage provider later removes the need for this line entirely (the
+// provider would return its own CDN URL instead).
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // ─── Rate Limiters ────────────────────────────────────────────────────────────
@@ -98,27 +104,29 @@ const aiLimiter = rateLimit({
 app.use("/api", limiter);
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
-app.use("/api/auth", authLimiter, authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/environmental", environmentalRoutes);
-app.use("/api/forecast", forecastRoutes);
-app.use("/api/complaints", complaintRoutes);
-app.use("/api/reports", reportRoutes);
-app.use("/api/profile", profileRoutes);
-app.use("/api/alerts", alertRoutes);
-app.use("/api/simulator", simulatorRoutes);
-app.use("/api/admin", adminRoutes);
+app.use("/api/auth",           authLimiter, authRoutes);
+app.use("/api/users",          userRoutes);
+app.use("/api/environmental",  environmentalRoutes);
+app.use("/api/forecast",       forecastRoutes);
+app.use("/api/complaints",     complaintRoutes);
+app.use("/api/reports",        reportRoutes);
+app.use("/api/profile",        profileRoutes);
+app.use("/api/alerts",         alertRoutes);
+app.use("/api/simulator",      simulatorRoutes);
+app.use("/api/admin",          adminRoutes);
 app.use("/api/admin/authorities", authorityRoutes);
-app.use("/api/citizen", citizenRoutes);
-app.use("/api/copilot", aiLimiter, copilotRoutes);
-app.use("/api/intelligence", aiLimiter, intelligenceRoutes);
-app.use("/api/command", aiLimiter, commandRoutes);
-app.use("/api/security", securityRoutes);
+app.use("/api/citizen",        citizenRoutes);
+app.use("/api/copilot",        aiLimiter, copilotRoutes);
+app.use("/api/intelligence",   aiLimiter, intelligenceRoutes);
+app.use("/api/command",        aiLimiter, commandRoutes);
+app.use("/api/security",       securityRoutes);
 app.use("/api/platform-admin", platformAdminRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api/settings", settingsRoutes);
+app.use("/api/notifications",  notificationRoutes);
+app.use("/api/settings",       settingsRoutes);
+app.use("/api/support",        supportRoutes);
+app.use("/api/help-ai",        helpAiRoutes);
 
-// Direct City AI Insights route
+// Phase 3 — GET /api/cities/:city/ai-insights  (spec-required top-level path)
 app.get("/api/cities/:city/ai-insights", aiLimiter, getCityAIInsights);
 
 // ─── Health Checks ────────────────────────────────────────────────────────────
@@ -146,7 +154,7 @@ const handleHealthCheck = (_req: express.Request, res: express.Response) => {
   });
 };
 
-app.get("/health", handleHealthCheck);
+app.get("/health",     handleHealthCheck);
 app.get("/api/health", handleHealthCheck);
 
 // ─── Error Handling ───────────────────────────────────────────────────────────

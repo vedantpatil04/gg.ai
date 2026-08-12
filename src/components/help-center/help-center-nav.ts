@@ -50,7 +50,6 @@ export const HELP_NAV_ITEMS: HelpNavItem[] = [
     label: "Feedback",
     icon: MessageSquarePlus,
     to: "/help/feedback",
-    comingSoon: true,
   },
   {
     id: "community",

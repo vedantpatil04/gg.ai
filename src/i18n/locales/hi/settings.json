@@ -56,7 +56,17 @@
     "measurementUnits": "Measurement Units",
     "metric": "Metric",
     "imperial": "Imperial",
-    "updated": "Language & Region preferences updated"
+    "updated": "Language & Region preferences updated",
+    "hour24": "24 घंटे",
+    "hour12": "12 घंटे",
+    "selectTimezone": "एक टाइमज़ोन चुनें",
+    "saving": "सहेजा जा रहा है…",
+    "couldntLoad": "आपकी भाषा और क्षेत्र प्राथमिकताएं लोड नहीं हो सकीं।",
+    "tryAgain": "पुनः प्रयास करें",
+    "couldntSave": "आपकी भाषा और क्षेत्र प्राथमिकताएं सहेजी नहीं जा सकीं।",
+    "couldntSaveTitle": "सहेजा नहीं जा सका",
+    "retry": "पुनः प्रयास करें",
+    "otherTimezoneRegion": "अन्य"
   },
   "dashboard": {
     "title": "Dashboard Preferences",
@@ -69,7 +79,38 @@
     "restoreTitle": "Restore dashboard preferences?",
     "restoreDescription": "This will reset widget visibility, default landing page, default city, and pinned cards to their default values.",
     "updated": "Dashboard preferences updated",
-    "restored": "Dashboard preferences restored"
+    "restored": "Dashboard preferences restored",
+    "selectPage": "एक पेज चुनें",
+    "searchCities": "शहर खोजें…",
+    "noCityFound": "कोई शहर नहीं मिला।",
+    "selectCity": "एक शहर चुनें",
+    "showWidgetAria": "{{label}} विजेट दिखाएं",
+    "pinCardAria": "{{label}} पिन करें",
+    "cancel": "रद्द करें",
+    "restore": "पुनर्स्थापित करें",
+    "couldntLoad": "आपकी डैशबोर्ड प्राथमिकताएं लोड नहीं हो सकीं।",
+    "couldntSave": "आपकी डैशबोर्ड प्राथमिकताएं सहेजी नहीं जा सकीं।",
+    "couldntSaveTitle": "सहेजा नहीं जा सका",
+    "couldntRestore": "डिफ़ॉल्ट पुनर्स्थापित नहीं किया जा सका",
+    "pleaseTryAgain": "कृपया पुनः प्रयास करें।",
+    "retry": "पुनः प्रयास करें",
+    "widgets": {
+      "aqi": "वायु गुणवत्ता सूचकांक",
+      "weather": "मौसम सारांश",
+      "trends": "प्रदूषण रुझान",
+      "complaints": "हाल की शिकायतें",
+      "alerts": "पर्यावरण अलर्ट",
+      "reports": "रिपोर्ट अवलोकन",
+      "quickActions": "त्वरित कार्रवाई"
+    },
+    "pinnable": {
+      "aqi": "AQI",
+      "forecast": "पूर्वानुमान",
+      "map": "स्मार्ट मैप",
+      "complaints": "शिकायत स्थिति",
+      "weather": "मौसम",
+      "reports": "रिपोर्ट"
+    }
   },
   "maps": {
     "title": "Map Preferences",
@@ -130,5 +171,7 @@
     "terms": "Terms of Service",
     "privacyPolicy": "Privacy Policy",
     "support": "Support"
-  }
+  },
+  "ariaSections": "सेटिंग्स अनुभाग",
+  "ariaNav": "सेटिंग्स नेविगेशन"
 }

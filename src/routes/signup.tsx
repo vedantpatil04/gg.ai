@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { getRoleLandingPage } from "@/components/protected-route";
 import { Pill } from "@/components/ui-bits";
+import { AUTHORITY_DEPARTMENTS, AUTHORITY_DEPARTMENT_LABELS } from "@/lib/authority-departments";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({ meta: [{ title: "Create account — GreenGuard AI" }] }),
@@ -67,6 +68,9 @@ function SignupPage() {
     organization: "",
     phone: "",
     password: "",
+    // Only collected/required when role === "authority" — see the
+    // Department field below. Citizen registration never sends this.
+    department: "",
   });
   const [agree, setAgree] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -98,13 +102,27 @@ function SignupPage() {
     return <AuthorityRequestSubmitted />;
   }
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((v) => ({ ...v, [k]: e.target.value }));
+  const set =
+    (k: keyof typeof form) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setForm((v) => ({ ...v, [k]: e.target.value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.password) {
       setError("Please fill in required fields.");
+      return;
+    }
+    // Organization/Board and Department are only required for Authority
+    // registration — Citizen registration is unaffected. The backend
+    // re-validates both regardless (see auth.validator.ts), this is just
+    // for a fast, friendly client-side error.
+    if (role === "authority" && !form.organization.trim()) {
+      setError("Organization/Board is required for Authority registration.");
+      return;
+    }
+    if (role === "authority" && !form.department) {
+      setError("Please select a Department for Authority registration.");
       return;
     }
     if (!agree) {
@@ -199,11 +217,30 @@ function SignupPage() {
               onChange={set("email")}
             />
             <Field
-              label="Organization"
+              label={role === "authority" ? "Organization / Board *" : "Organization"}
               placeholder="City Pollution Control Board"
               value={form.organization}
               onChange={set("organization")}
             />
+            {role === "authority" && (
+              <label className="block">
+                <span className="text-xs text-muted-foreground">Department *</span>
+                <select
+                  value={form.department}
+                  onChange={set("department")}
+                  className="mt-1.5 w-full rounded-lg border border-input bg-background/40 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="" disabled>
+                    Select a department
+                  </option>
+                  {AUTHORITY_DEPARTMENTS.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {AUTHORITY_DEPARTMENT_LABELS[dept]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <Field
               label="Phone"
               placeholder="+91 98xxxxxx"

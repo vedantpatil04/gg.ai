@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CITIES, type City } from "./mock-data";
+import { CITIES, type City, type EcoScoreBreakdown } from "./mock-data";
 import { environmentalApi } from "./api/environmental.api";
 
 // ─── Shape mapper: backend → City ─────────────────────────────────────────────
@@ -36,6 +36,7 @@ function mapBackendToCity(d: Record<string, unknown>): City {
     windDirection: (d.windDirection as number | undefined) ?? undefined,
     updatedAt:
       (d.timestamp as string | undefined) ?? (d.updatedAt as string | undefined) ?? undefined,
+    ecoScore: d.ecoScore as EcoScoreBreakdown | undefined,
   };
 }
 

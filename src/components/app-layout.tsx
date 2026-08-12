@@ -36,12 +36,16 @@ import {
   ChevronRight,
   LogOut,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { NotificationBell } from "@/components/notifications/notification-center";
 import { LocationIntelligenceButton, ensureDefaultCity } from "@/components/location/location-intelligence";
 import { CommandPaletteProvider, useCommandPalette } from "@/components/command-palette/command-palette";
 import { PlatformStatusBar } from "@/components/status-bar/platform-status-bar";
 import { useTheme } from "@/lib/theme";
 import { useAuth, type UserRole } from "@/lib/auth-context";
+import { i18n } from "@/i18n";
+import { SUPPORTED_LANGUAGES } from "@/i18n/config";
+import { languageRegionApi } from "@/lib/api/language-region.api";
 import { AUTHORITY_ROLES } from "@/components/protected-route";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
@@ -63,6 +67,8 @@ const COLLAPSE_DELAY_MS = 180;  // small grace period before collapse
 // Each group is rendered as a labelled section when expanded,
 // or as an icon block when collapsed (group dividers become thin separators).
 
+// `label` holds an i18n key resolved against the "navigation" namespace
+// (via `useNavGroups()` below) — never rendered directly.
 export interface NavItem {
   to: string;
   label: string;
@@ -81,28 +87,28 @@ export interface NavGroup {
 const NAV_GROUPS: NavGroup[] = [
   {
     id: "workspace",
-    label: "Workspace",
+    label: "groups.workspace",
     items: [
-      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/environment", label: "Environmental Overview", icon: Globe, public: true },
-      { to: "/map", label: "Smart Map", icon: Map, public: true },
+      { to: "/dashboard", label: "dashboard", icon: LayoutDashboard },
+      { to: "/environment", label: "environment", icon: Globe, public: true },
+      { to: "/map", label: "map", icon: Map, public: true },
     ],
   },
   {
     id: "ai",
-    label: "AI Intelligence",
+    label: "groups.aiIntelligence",
     items: [
-      { to: "/copilot", label: "AI Copilot", icon: Sparkles, public: true },
-      { to: "/forecast", label: "Forecast", icon: CloudSun, public: true },
+      { to: "/copilot", label: "aiCopilot", icon: Sparkles, public: true },
+      { to: "/forecast", label: "forecast", icon: CloudSun, public: true },
     ],
   },
   {
     id: "community",
-    label: "Community",
+    label: "groups.community",
     items: [
-      { to: "/citizen", label: "Citizen Hub", icon: Megaphone, public: true },
-      { to: "/sustainability", label: "Sustainability", icon: Leaf, public: true },
-      { to: "/simulator", label: "Policy Sim", icon: SlidersHorizontal, public: true },
+      { to: "/citizen", label: "citizenHub", icon: Megaphone, public: true },
+      { to: "/sustainability", label: "sustainability", icon: Leaf, public: true },
+      { to: "/simulator", label: "simulator", icon: SlidersHorizontal, public: true },
     ],
   },
 ];
@@ -110,41 +116,63 @@ const NAV_GROUPS: NavGroup[] = [
 // Authority/admin groups — only shown when role permits
 const AUTHORITY_GROUP: NavGroup = {
   id: "authority",
-  label: "Operations",
+  label: "groups.operations",
   items: [
-    { to: "/reports", label: "Reports", icon: FileText, roles: AUTHORITY_ROLES },
-    { to: "/command-center", label: "Command Center", icon: Shield, roles: AUTHORITY_ROLES },
+    { to: "/reports", label: "reports", icon: FileText, roles: AUTHORITY_ROLES },
+    { to: "/command-center", label: "commandCenter", icon: Shield, roles: AUTHORITY_ROLES },
   ],
 };
 
 const ADMIN_GROUP: NavGroup = {
   id: "admin",
-  label: "Administration",
+  label: "groups.administration",
   items: [
-    { to: "/admin", label: "Administrator Portal", icon: LayoutGrid, roles: ["administrator"] },
+    { to: "/admin", label: "adminPortal", icon: LayoutGrid, roles: ["administrator"] },
   ],
 };
 
 // Account nav — secondary, rendered below a divider
 const ACCOUNT_GROUP: NavGroup = {
   id: "account",
-  label: "Account",
+  label: "groups.account",
   items: [
-    { to: "/profile", label: "Profile", icon: User },
-    { to: "/settings", label: "Settings", icon: Settings },
-    { to: "/security", label: "Security", icon: Shield },
-    { to: "/help", label: "Help Center", icon: HelpCircle, public: true },
+    { to: "/profile", label: "profile", icon: User },
+    { to: "/settings", label: "settings", icon: Settings },
+    { to: "/security", label: "security", icon: Shield },
+    { to: "/help", label: "helpCenter", icon: HelpCircle, public: true },
   ],
 };
 
-// ALL_NAV_GROUPS — exported for the Command Palette (Phase 6).
-// Single source of truth: sidebar and palette consume the same data.
+// ALL_NAV_GROUPS — raw (untranslated-key) data, still exported for anything
+// that only needs routes/icons/permissions, not display text.
 export const ALL_NAV_GROUPS: NavGroup[] = [
   ...NAV_GROUPS,
   AUTHORITY_GROUP,
   ADMIN_GROUP,
   ACCOUNT_GROUP,
 ];
+
+/**
+ * useNavGroups — single source of truth for translated sidebar/command-palette
+ * data. Resolves every `label` key above against the "navigation" namespace
+ * so the sidebar, breadcrumbs, and command palette never drift out of sync
+ * and always render in the active language.
+ */
+export function useNavGroups() {
+  const { t } = useTranslation("navigation");
+  const translate = (group: NavGroup): NavGroup => ({
+    ...group,
+    label: t(group.label as never),
+    items: group.items.map((item) => ({ ...item, label: t(item.label as never) })),
+  });
+  return {
+    NAV_GROUPS: NAV_GROUPS.map(translate),
+    AUTHORITY_GROUP: translate(AUTHORITY_GROUP),
+    ADMIN_GROUP: translate(ADMIN_GROUP),
+    ACCOUNT_GROUP: translate(ACCOUNT_GROUP),
+    ALL_NAV_GROUPS: [...NAV_GROUPS, AUTHORITY_GROUP, ADMIN_GROUP, ACCOUNT_GROUP].map(translate),
+  };
+}
 
 function isNavItemVisible(
   item: NavItem,
@@ -350,6 +378,8 @@ function FloatingSidebar({ mobileOpen, onMobileClose }: FloatingSidebarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, isAuthenticated } = useAuth();
   const prefersReduced = useReducedMotion();
+  const { t } = useTranslation(["common", "navigation"]);
+  const { NAV_GROUPS, AUTHORITY_GROUP, ADMIN_GROUP, ACCOUNT_GROUP } = useNavGroups();
 
   // ── Pin state — persisted to localStorage ──────────────────────────────────
   const [pinned, setPinned] = useState<boolean>(() => {
@@ -441,7 +471,7 @@ function FloatingSidebar({ mobileOpen, onMobileClose }: FloatingSidebarProps) {
                 GreenGuard AI
               </div>
               <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground whitespace-nowrap leading-tight">
-                Env. Intelligence
+                {t("tagline")}
               </div>
             </motion.div>
           )}
@@ -462,8 +492,8 @@ function FloatingSidebar({ mobileOpen, onMobileClose }: FloatingSidebarProps) {
                 "text-muted-foreground/60 hover:text-foreground hover:bg-sidebar-accent",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
               )}
-              aria-label={pinned ? "Unpin sidebar" : "Pin sidebar open"}
-              title={pinned ? "Unpin sidebar" : "Pin sidebar open"}
+              aria-label={pinned ? t("unpinSidebar") : t("pinSidebar")}
+              title={pinned ? t("unpinSidebar") : t("pinSidebar")}
             >
               {pinned
                 ? <PinOff className="size-3.5" />
@@ -478,7 +508,7 @@ function FloatingSidebar({ mobileOpen, onMobileClose }: FloatingSidebarProps) {
           <button
             onClick={onMobileClose}
             className="size-7 rounded-lg grid place-items-center text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
-            aria-label="Close navigation"
+            aria-label={t("closeNavigation")}
           >
             <X className="size-4" />
           </button>
@@ -493,7 +523,7 @@ function FloatingSidebar({ mobileOpen, onMobileClose }: FloatingSidebarProps) {
           "scrollbar-thin scrollbar-track-transparent scrollbar-thumb-sidebar-border/60",
           expanded || isMobile ? "px-2" : "px-1.5",
         )}
-        aria-label="Primary navigation"
+        aria-label={t("primaryNavigation")}
       >
         {/* Primary groups */}
         {primaryGroups.map((group, i) => (
@@ -568,7 +598,7 @@ function FloatingSidebar({ mobileOpen, onMobileClose }: FloatingSidebarProps) {
                 className="overflow-hidden"
               >
                 <div className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/50 select-none">
-                  Account
+                  {t("groups.account", { ns: "navigation" })}
                 </div>
               </motion.div>
             )}
@@ -603,10 +633,10 @@ function FloatingSidebar({ mobileOpen, onMobileClose }: FloatingSidebarProps) {
               <div className="glass rounded-xl p-3 text-xs">
                 <div className="flex items-center gap-2">
                   <span className="size-2 rounded-full bg-[var(--color-success)] pulse-dot shrink-0" />
-                  <span className="text-muted-foreground">All systems nominal</span>
+                  <span className="text-muted-foreground">{t("allSystemsNominal")}</span>
                 </div>
                 <div className="mt-1.5 text-[10px] text-muted-foreground/70">
-                  Live · v2.4.1 · Environmental APIs connected
+                  {t("live")} · v2.4.1 · {t("environmentalApisConnected")}
                 </div>
               </div>
             </div>
@@ -641,7 +671,7 @@ function FloatingSidebar({ mobileOpen, onMobileClose }: FloatingSidebarProps) {
             "dark:shadow-[0_8px_32px_-4px_oklch(0_0_0/0.55),0_2px_8px_oklch(0_0_0/0.35),0_0_0_1px_oklch(1_0_0/0.05)_inset]",
           )}
           style={{ minWidth: SIDEBAR_COLLAPSED_W }}
-          aria-label="Main navigation"
+          aria-label={t("mainNavigation")}
         >
           {sidebarContent(false)}
         </motion.aside>
@@ -679,7 +709,7 @@ function FloatingSidebar({ mobileOpen, onMobileClose }: FloatingSidebarProps) {
                 "shadow-[4px_0_24px_oklch(0_0_0/0.18)]",
                 "dark:shadow-[4px_0_24px_oklch(0_0_0/0.55)]",
               )}
-              aria-label="Mobile navigation"
+              aria-label={t("mobileNavigation")}
             >
               {sidebarContent(true)}
             </motion.aside>
@@ -710,6 +740,39 @@ function FloatingSidebar({ mobileOpen, onMobileClose }: FloatingSidebarProps) {
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { isAuthenticated } = useAuth();
+
+  // ── Sync active locale with the server-persisted preference ──────────────
+  // detectInitialLanguage() (src/i18n/language-detector.ts) only knows
+  // localStorage + the browser's Accept-Language hint, so a fresh device or
+  // a cleared browser profile would otherwise render in the wrong language
+  // even though the user has a saved preference server-side. Once auth
+  // resolves, reconcile once: if the saved language differs from the active
+  // one, switch — i18next's `languageChanged` listener (src/i18n/index.ts)
+  // then persists it back to localStorage for the next visit.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    languageRegionApi
+      .get()
+      .then(({ data }) => {
+        const serverLanguage = data.languageRegion.language;
+        if (
+          !cancelled &&
+          SUPPORTED_LANGUAGES.includes(serverLanguage) &&
+          serverLanguage !== i18n.language
+        ) {
+          void i18n.changeLanguage(serverLanguage);
+        }
+      })
+      .catch(() => {
+        // Non-fatal — the app still renders in whatever language
+        // detectInitialLanguage() already resolved.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   // Page-enter animation key
   const enterKeyRef = useRef(0);
@@ -774,29 +837,33 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
 interface BreadcrumbEntry {
   label: string;
+  /** Optional key into the "navigation" i18n namespace — shared-shell pages
+   *  only. Feature-module pages (admin sub-pages, help sub-pages, etc.) are
+   *  out of scope for Phase 2 and keep their static `label`. */
+  labelKey?: string;
   parent?: string;
 }
 
 const BREADCRUMB_MAP: Record<string, BreadcrumbEntry> = {
   // ── Top-level workspace ───────────────────────────────────────────────────
-  "/dashboard":      { label: "Dashboard" },
-  "/environment":    { label: "Environmental Overview" },
-  "/map":            { label: "Smart Map" },
-  "/copilot":        { label: "AI Copilot" },
-  "/forecast":       { label: "Forecast" },
-  "/citizen":        { label: "Citizen Hub" },
-  "/reports":        { label: "Reports" },
-  "/sustainability": { label: "Sustainability" },
-  "/simulator":      { label: "Policy Sim" },
-  "/intelligence":   { label: "Intelligence" },
-  "/command-center": { label: "Command Center" },
+  "/dashboard":      { label: "Dashboard", labelKey: "dashboard" },
+  "/environment":    { label: "Environmental Overview", labelKey: "environment" },
+  "/map":            { label: "Smart Map", labelKey: "map" },
+  "/copilot":        { label: "AI Copilot", labelKey: "aiCopilot" },
+  "/forecast":       { label: "Forecast", labelKey: "forecast" },
+  "/citizen":        { label: "Citizen Hub", labelKey: "citizenHub" },
+  "/reports":        { label: "Reports", labelKey: "reports" },
+  "/sustainability": { label: "Sustainability", labelKey: "sustainability" },
+  "/simulator":      { label: "Policy Sim", labelKey: "simulator" },
+  "/intelligence":   { label: "Intelligence", labelKey: "intelligence" },
+  "/command-center": { label: "Command Center", labelKey: "commandCenter" },
   // ── Account ───────────────────────────────────────────────────────────────
-  "/profile":        { label: "Profile" },
-  "/settings":       { label: "Settings" },
-  "/security":       { label: "Security" },
+  "/profile":        { label: "Profile", labelKey: "profile" },
+  "/settings":       { label: "Settings", labelKey: "settings" },
+  "/security":       { label: "Security", labelKey: "security" },
   // ── Admin portal ──────────────────────────────────────────────────────────
-  "/admin":                          { label: "Admin Portal" },
-  "/admin/":                         { label: "Admin Portal" },
+  "/admin":                          { label: "Admin Portal", labelKey: "adminPortal" },
+  "/admin/":                         { label: "Admin Portal", labelKey: "adminPortal" },
   "/admin/analytics":                { label: "Analytics",               parent: "/admin" },
   "/admin/authorities":              { label: "Authorities",             parent: "/admin" },
   "/admin/authority-management":     { label: "Authority Management",    parent: "/admin" },
@@ -816,8 +883,8 @@ const BREADCRUMB_MAP: Record<string, BreadcrumbEntry> = {
   "/admin/user-management":          { label: "User Management",         parent: "/admin" },
   "/admin/users":                    { label: "Users",                   parent: "/admin" },
   // ── Help center ───────────────────────────────────────────────────────────
-  "/help":                  { label: "Help Center" },
-  "/help/":                 { label: "Help Center" },
+  "/help":                  { label: "Help Center", labelKey: "helpCenter" },
+  "/help/":                 { label: "Help Center", labelKey: "helpCenter" },
   "/help/knowledge-base":   { label: "Knowledge Base",  parent: "/help" },
   "/help/tutorials":        { label: "Tutorials",       parent: "/help" },
   "/help/support":          { label: "Support",         parent: "/help" },
@@ -828,8 +895,18 @@ const BREADCRUMB_MAP: Record<string, BreadcrumbEntry> = {
   "/help/whats-new":        { label: "What's New",      parent: "/help" },
 };
 
+/** Resolve an entry's display label — translated when a `labelKey` exists
+ *  (shared-shell pages), otherwise the static fallback (feature-module pages,
+ *  out of scope for Phase 2). */
+function breadcrumbLabel(entry: BreadcrumbEntry, t: (key: string) => string): string {
+  return entry.labelKey ? t(entry.labelKey) : entry.label;
+}
+
 /** Build an ordered [parent?, current] pair for a given pathname */
-function resolveBreadcrumbs(pathname: string): Array<{ label: string; href: string }> {
+function resolveBreadcrumbs(
+  pathname: string,
+  t: (key: string) => string,
+): Array<{ label: string; href: string }> {
   const entry = BREADCRUMB_MAP[pathname];
   if (!entry) {
     // Unknown route — show a single title-cased segment
@@ -840,19 +917,15 @@ function resolveBreadcrumbs(pathname: string): Array<{ label: string; href: stri
   if (entry.parent) {
     const parentEntry = BREADCRUMB_MAP[entry.parent];
     return [
-      { label: parentEntry?.label ?? entry.parent, href: entry.parent },
-      { label: entry.label, href: pathname },
+      {
+        label: parentEntry ? breadcrumbLabel(parentEntry, t) : entry.parent,
+        href: entry.parent,
+      },
+      { label: breadcrumbLabel(entry, t), href: pathname },
     ];
   }
-  return [{ label: entry.label, href: pathname }];
+  return [{ label: breadcrumbLabel(entry, t), href: pathname }];
 }
-
-// ─── ROLE DISPLAY MAP ────────────────────────────────────────────────────────
-const ROLE_LABEL: Record<string, string> = {
-  citizen:       "Citizen",
-  authority:     "Authority",
-  administrator: "Administrator",
-};
 
 // ─── TopBar / Enterprise Navbar ───────────────────────────────────────────────
 //
@@ -883,6 +956,7 @@ const ROLE_LABEL: Record<string, string> = {
 function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { theme, toggle } = useTheme();
+  const { t } = useTranslation(["common", "navigation"]);
 
   const { user, isAuthenticated } = useAuth();
   const prefersReduced = useReducedMotion();
@@ -898,7 +972,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
   const [scrolled, setScrolled] = useState(false);
 
   const profileRef = useRef<HTMLDivElement>(null);
-  const breadcrumbs = resolveBreadcrumbs(pathname);
+  const breadcrumbs = resolveBreadcrumbs(pathname, (key) => t(key, { ns: "navigation" }));
 
   // ── Scroll elevation ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -945,15 +1019,17 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
       .slice(0, 2)
       .toUpperCase() ?? "?";
 
-  const roleLabel = user?.role ? (ROLE_LABEL[user.role] ?? user.role) : null;
+  const roleLabel = user?.role
+    ? t(`roleLabels.${user.role}`, { ns: "navigation", defaultValue: user.role })
+    : null;
 
   // Search placeholder varies by active section
   const searchPlaceholder = (() => {
-    if (pathname.startsWith("/admin")) return "Search portal...";
-    if (pathname.startsWith("/help"))  return "Search help...";
-    if (pathname === "/map")           return "Search locations...";
-    if (pathname === "/copilot")       return "Ask AI Copilot...";
-    return "Search GreenGuard...";
+    if (pathname.startsWith("/admin")) return t("searchAdmin");
+    if (pathname.startsWith("/help"))  return t("searchHelp");
+    if (pathname === "/map")           return t("searchMap");
+    if (pathname === "/copilot")       return t("searchCopilot");
+    return t("searchDefault");
   })();
 
   // ── Keyboard shortcut hint ────────────────────────────────────────────────
@@ -974,7 +1050,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
         <button
           onClick={onMenu}
           className="lg:hidden shrink-0 size-9 grid place-items-center rounded-xl hover:bg-muted transition-colors"
-          aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
+          aria-label={mobileOpen ? t("closeNavigation") : t("openNavigation")}
         >
           {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>
@@ -984,7 +1060,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
 
           {/* Breadcrumbs */}
           <nav
-            aria-label="Breadcrumb"
+            aria-label={t("breadcrumb")}
             className="flex items-center gap-1 min-w-0 shrink-0 max-w-[220px] xl:max-w-[280px]"
           >
             <AnimatePresence mode="wait" initial={false}>
@@ -1038,7 +1114,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
               onClick={openPalette}
               role="button"
               tabIndex={0}
-              aria-label={`Search — press ${kbdHint} to open command palette`}
+              aria-label={t("searchDefault") + ` — ${kbdHint}`}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
@@ -1060,7 +1136,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
           <div className="hidden xl:flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/40 px-2.5 py-1 shrink-0 ml-2">
             <span className="size-1.5 rounded-full bg-[var(--color-success)] pulse-dot shrink-0" />
             <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">
-              Platform Online
+              {t("platformOnline")}
             </span>
           </div>
         </div>
@@ -1087,7 +1163,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
               <button
                 onClick={toggle}
                 className="size-9 grid place-items-center rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-150 hover:scale-105"
-                aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                aria-label={theme === "dark" ? t("switchToLight") : t("switchToDark")}
               >
                 {theme === "dark"
                   ? <Sun className="size-4" />
@@ -1095,7 +1171,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-xs">
-              {theme === "dark" ? "Light mode" : "Dark mode"}
+              {theme === "dark" ? t("lightMode") : t("darkMode")}
             </TooltipContent>
           </Tooltip>
 
@@ -1105,7 +1181,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
               <button
                 onClick={toggleFullscreen}
                 className="hidden lg:grid size-9 place-items-center rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-150 hover:scale-105"
-                aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                aria-label={isFullscreen ? t("exitFullscreen") : t("enterFullscreen")}
               >
                 {isFullscreen
                   ? <Minimize2 className="size-4" />
@@ -1113,7 +1189,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-xs">
-              {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+              {isFullscreen ? t("exitFullscreen") : t("fullscreen")}
             </TooltipContent>
           </Tooltip>
 
@@ -1135,7 +1211,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
                   "hover:bg-muted transition-colors duration-150",
                   profileOpen && "bg-muted",
                 )}
-                aria-label="Open user menu"
+                aria-label={t("openUserMenu")}
                 aria-expanded={profileOpen}
               >
                 {/* Avatar */}
@@ -1189,7 +1265,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
                         className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm hover:bg-muted transition-colors"
                       >
                         <User className="size-4 text-muted-foreground" />
-                        <span>Profile</span>
+                        <span>{t("profile", { ns: "navigation" })}</span>
                       </Link>
                       <Link
                         to="/settings"
@@ -1197,7 +1273,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
                         className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm hover:bg-muted transition-colors"
                       >
                         <Settings className="size-4 text-muted-foreground" />
-                        <span>Settings</span>
+                        <span>{t("settings", { ns: "navigation" })}</span>
                       </Link>
                       <Link
                         to="/security"
@@ -1205,7 +1281,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
                         className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm hover:bg-muted transition-colors"
                       >
                         <Shield className="size-4 text-muted-foreground" />
-                        <span>Security</span>
+                        <span>{t("security", { ns: "navigation" })}</span>
                       </Link>
                     </div>
 
@@ -1217,7 +1293,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
                         className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                       >
                         <LogOut className="size-4" />
-                        <span>Sign out</span>
+                        <span>{t("signOut", { ns: "navigation" })}</span>
                       </Link>
                     </div>
                   </motion.div>
@@ -1235,7 +1311,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
               )}
             >
               <LogIn className="size-4" />
-              <span className="hidden sm:inline">Sign in</span>
+              <span className="hidden sm:inline">{t("signIn", { ns: "navigation" })}</span>
             </Link>
           )}
 
