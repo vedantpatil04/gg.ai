@@ -1,6 +1,15 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-export const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000/api";
+function getApiBase(): string {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (!envUrl) {
+    return "http://localhost:5000/api";
+  }
+  const trimmed = envUrl.trim().replace(/\/+$/, "");
+  return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
+}
+
+export const API_BASE = getApiBase();
 
 const client = axios.create({
   baseURL: API_BASE,

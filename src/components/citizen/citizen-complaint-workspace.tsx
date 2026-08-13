@@ -41,6 +41,7 @@ import {
   humanizeIssueType,
   humanizeEventType,
 } from "./citizen-status-utils";
+import { API_BASE } from "@/lib/api/client";
 import type { CitizenComplaint, ComplaintEvent } from "./citizen-queries";
 
 // ─── Evidence gallery ─────────────────────────────────────────────────────────
@@ -57,7 +58,7 @@ function EvidenceGallery({ images }: { images: string[] }) {
     );
   }
 
-  const apiBase = import.meta.env.VITE_API_URL?.replace("/api", "") ?? "http://localhost:5000";
+  const apiBase = API_BASE.replace(/\/api\/?$/, "");
   const fullUrl = (url: string) =>
     url.startsWith("http") ? url : `${apiBase}${url}`;
 
