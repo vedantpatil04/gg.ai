@@ -41,6 +41,9 @@ import { startScheduler, getSchedulerStatus }  from "./jobs/scheduler";
 const app  = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust first proxy hop (Render, Vercel, Cloudflare, load balancers) so req.ip reflects the real client IP
+app.set("trust proxy", 1);
+
 // ─── Security & Core Middleware ───────────────────────────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 
@@ -87,18 +90,22 @@ const limiter = rateLimit({
   max: Number(process.env.RATE_LIMIT_MAX) || 1000,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message: "Too many requests." },
+  message: { success: false, message: "Too many requests. Please try again later." },
 });
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 1000,
-  message: { success: false, message: "Too many auth attempts." },
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Too many authentication attempts. Please try again later." },
 });
 
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { success: false, message: "AI rate limit reached. Please wait a moment." },
 });
 

@@ -34,7 +34,7 @@ client.interceptors.response.use(
   async (error: AxiosError) => {
     const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    if (error.response?.status === 401 && !original._retry) {
+    if (error.response?.status === 401 && !original._retry && !original.url?.startsWith("/auth/")) {
       const refreshToken = localStorage.getItem("gg_refresh_token");
       if (!refreshToken) {
         clearTokens();

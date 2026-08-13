@@ -389,6 +389,7 @@ function LoginPage() {
   // ── Login submit ────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     if (!email || !password) {
       setError("Please fill in all fields.");
       return;
