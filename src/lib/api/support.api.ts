@@ -144,3 +144,35 @@ export const feedbackApi = {
   }) =>
     client.post<{ success: true; data: { feedback: unknown } }>("/support/feedback", input).then(r => r.data),
 };
+
+// ─── Bug Report (Phase 7 additions) ───────────────────────────────────────────
+
+export type BugStatus   = "open" | "acknowledged" | "fixed" | "wontfix";
+export type BugSeverity = "minor" | "major" | "critical" | "blocker";
+
+export interface BugReportDTO {
+  _id:         string;
+  title:       string;
+  category:    string;
+  severity:    BugSeverity;
+  platform?:   string;
+  browser?:    string;
+  device?:     string;
+  steps:       string;
+  expected:    string;
+  actual:      string;
+  submittedBy: string;
+  status:      BugStatus;
+  createdAt:   string;
+  updatedAt:   string;
+}
+
+export const bugListApi = {
+  getAll: (params?: { status?: BugStatus; severity?: BugSeverity; page?: number; limit?: number }) =>
+    client.get<{ success: true; data: { reports: BugReportDTO[]; total: number; page: number; pages: number } }>(
+      "/support/bugs", { params },
+    ).then(r => r.data.data),
+
+  getOne: (id: string) =>
+    client.get<{ success: true; data: { report: BugReportDTO } }>(`/support/bugs/${id}`).then(r => r.data.data.report),
+};

@@ -48,6 +48,7 @@ const STATUS_OPTIONS = [
   { value: "", label: "All Statuses" },
   { value: "pending", label: "Pending" },
   { value: "in-progress", label: "In Progress" },
+  { value: "awaiting_citizen_review", label: "Ready for Review" },
   { value: "resolved", label: "Awaiting Verification" },
   { value: "closed", label: "Closed" },
   { value: "rejected", label: "Rejected" },

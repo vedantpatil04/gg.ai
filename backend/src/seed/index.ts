@@ -5,6 +5,7 @@ import { Alert } from "../models/Alert";
 import { Report } from "../models/Report";
 import { User } from "../models/User";
 import { City } from "../models/City";
+import { CommunityPost } from "../models/CommunityPost";
 import { logger } from "../utils/logger";
 import { seedMapData } from "./mapLocations.seed";
 
@@ -693,6 +694,46 @@ async function seed() {
     logger.info("Seeding Smart Map...");
     await seedMapData();
     logger.info("✅ Smart Map seeded");
+
+    // Seed community posts (only if none exist)
+    const communityCount = await CommunityPost.countDocuments();
+    if (communityCount === 0) {
+      logger.info("Seeding Community posts...");
+      const posts = [
+        {
+          type: "discussion",
+          title: "Community Action: Local Urban Greenery Drive",
+          body: "We are organizing a weekend urban tree planting drive in central wards. Join us to help improve localized air quality and canopy cover!",
+          category: "Sustainability",
+          tags: ["greenery", "community", "belagavi"],
+          authorId: admin._id,
+          authorName: admin.name ?? "Administrator",
+          status: "open",
+          replies: [],
+          replyCount: 0,
+          views: 12,
+          hasBestAnswer: false,
+        },
+        {
+          type: "question",
+          title: "How are real-time AQI spike notifications calculated?",
+          body: "I noticed a rapid increase in AQI readings during morning peak hours near industrial zones. How does GreenGuard AI filter out sensor noise vs genuine emission events?",
+          category: "Environmental Monitoring",
+          tags: ["aqi", "sensors", "alerts"],
+          authorId: admin._id,
+          authorName: admin.name ?? "Administrator",
+          status: "open",
+          replies: [],
+          replyCount: 0,
+          views: 28,
+          hasBestAnswer: false,
+        },
+      ];
+      await CommunityPost.insertMany(posts);
+      logger.info(`✅ Seeded ${posts.length} community posts`);
+    } else {
+      logger.info(`Community posts already exist (${communityCount}), skipping`);
+    }
 
     logger.info("🌱 Database seeding complete!");
     logger.info("──────────────────────────────────────────");

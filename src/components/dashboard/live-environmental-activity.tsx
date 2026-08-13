@@ -1,5 +1,6 @@
 /**
  * LiveEnvironmentalActivity — Phase 1: Dashboard Foundation & Realism
+ * Phase 2: Production UI & Information Hierarchy
  *
  * Replaces the old `LiveActivityFeed`, which fabricated random events on a
  * timer. This version is built exclusively from real data:
@@ -9,6 +10,12 @@
  *
  * If neither exists, it says so plainly instead of inventing activity to
  * look busy.
+ *
+ * Phase 2 change (UI only, same data/props): rows now sit on a thin
+ * connecting rail — this is a real chronological log, so a timeline is
+ * structurally honest, not decorative. Critical rows get a touch more
+ * visual weight (bigger marker, tinted row) so they don't read at the
+ * same priority as a routine reading update.
  */
 
 import { useReducedMotion, motion } from "framer-motion";
@@ -17,6 +24,7 @@ import { CardSkeleton } from "@/components/dashboard/dashboard-skeletons";
 import { STAGGER, FADE_UP } from "@/lib/motion";
 import { formatRelativeTime } from "@/lib/format-time";
 import type { DashboardAlert } from "@/components/dashboard/alerts-card";
+import { cn } from "@/lib/utils";
 import { Activity, AlertTriangle } from "lucide-react";
 
 interface ActivityRow {
@@ -93,7 +101,7 @@ export function LiveEnvironmentalActivity({
   const rows = buildActivityRows({ alerts, cityName, updatedAt });
 
   return (
-    <Panel title="Live Environmental Activity">
+    <Panel title="Live Environmental Activity" surface="card">
       {isLoading ? (
         <CardSkeleton rows={3} />
       ) : rows.length === 0 ? (
@@ -103,32 +111,53 @@ export function LiveEnvironmentalActivity({
         />
       ) : (
         <motion.div
-          className="space-y-3"
+          className="relative space-y-3.5"
           variants={STAGGER(0.06)}
           initial={prefersReduced ? false : "hidden"}
           animate="show"
         >
-          {rows.map((row) => (
-            <motion.div key={row.id} variants={FADE_UP} className="flex items-start gap-3 text-sm">
-              <span className="w-14 shrink-0 text-right text-xs text-muted-foreground tabular-nums pt-px">
-                {row.timeLabel}
-              </span>
-              <span
-                aria-hidden
-                className="mt-1.5 size-1.5 rounded-full shrink-0"
-                style={{ background: TONE_COLOR[row.tone] }}
-              />
-              <div className="min-w-0">
-                <div className="font-medium leading-snug flex items-center gap-1.5">
-                  {row.tone === "critical" && (
-                    <AlertTriangle className="size-3.5 text-[var(--color-destructive)] shrink-0" />
-                  )}
-                  {row.title}
+          {/* Connecting rail — this is a real chronological sequence, so the
+              line encodes something true about the data rather than decorating it. */}
+          {rows.length > 1 && (
+            <div aria-hidden className="absolute top-2 bottom-2 left-[71px] w-px bg-border" />
+          )}
+
+          {rows.map((row) => {
+            const critical = row.tone === "critical";
+            return (
+              <motion.div
+                key={row.id}
+                variants={FADE_UP}
+                className={cn(
+                  "relative flex items-start gap-3 text-sm rounded-lg",
+                  critical && "-mx-2 px-2 py-1.5",
+                )}
+                style={
+                  critical
+                    ? { background: `color-mix(in oklab, ${TONE_COLOR.critical} 7%, transparent)` }
+                    : undefined
+                }
+              >
+                <span className="w-14 shrink-0 text-right text-xs text-muted-foreground tabular-nums pt-px">
+                  {row.timeLabel}
+                </span>
+                <span
+                  aria-hidden
+                  className={cn("relative rounded-full shrink-0", critical ? "size-2 mt-1.5" : "size-1.5 mt-1.5")}
+                  style={{ background: TONE_COLOR[row.tone] }}
+                />
+                <div className="min-w-0">
+                  <div className="font-medium leading-snug flex items-center gap-1.5">
+                    {critical && (
+                      <AlertTriangle className="size-3.5 text-[var(--color-destructive)] shrink-0" />
+                    )}
+                    {row.title}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">{row.detail}</div>
                 </div>
-                <div className="text-xs text-muted-foreground mt-0.5">{row.detail}</div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </motion.div>
       )}
     </Panel>

@@ -1,4 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
+const BugReportPage = lazy(() =>
+  import("../bug-reports/bug-report-page").then(m => ({ default: m.BugReportPage }))
+);
 import { motion, AnimatePresence } from "framer-motion";
 import {
   HeadphonesIcon, Search, Clock, CheckCircle2, Star,
@@ -1336,7 +1339,11 @@ export function SupportCenterPage() {
                   )}
                   {activeTab === "emergency" && <EmergencyAssistance />}
                   {activeTab === "authority" && <AuthorityDirectory />}
-                  {activeTab === "bug"       && <BugReportForm />}
+                  {activeTab === "bug"       && (
+                    <Suspense fallback={<div className="flex items-center justify-center py-16"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>}>
+                      <BugReportPage />
+                    </Suspense>
+                  )}
                   {activeTab === "feature"   && <FeatureRequestsSection />}
                   {activeTab === "feedback"  && <FeedbackCenter />}
                   {activeTab === "analytics" && <SupportAnalytics />}

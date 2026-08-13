@@ -49,7 +49,7 @@ export interface ProfileCompletionResult {
 
 // ─── Internal helpers ──────────────────────────────────────────────────────
 
-function isFilled(value?: string | null): boolean {
+function isFilled(value?: unknown): boolean {
   return typeof value === "string" && value.trim().length > 0;
 }
 
@@ -68,7 +68,7 @@ function deriveStatus(pct: number): { status: CompletionStatus; statusLabel: str
  * field that hasn't been added to IUser yet, which is the right
  * failure mode.
  */
-type CompletionSource = Pick<
+export type CompletionSource = Pick<
   IUser,
   | "role"
   | "avatar"
@@ -86,6 +86,7 @@ type CompletionSource = Pick<
   | "pinCode"
   | "isVerified"
   | "organization"
+  | "department"
 >;
 
 interface FieldRule {
@@ -231,18 +232,13 @@ const FIELD_RULES: FieldRule[] = [
     action: "Add your department",
     weight: 5,
     roles: ["authority", "administrator"],
-    // `department` is not yet a stored field in Phase 7; its absence means
-    // this rule always resolves to incomplete for authority/admin and acts
-    // as a forward-looking placeholder that will resolve once the field is
-    // added in a future phase.  Wrapped in a safe accessor so this file
-    // doesn't break if the property appears in a future IUser version.
-    check: (_u) => false,
+    check: (u) => isFilled(u.department),
   },
 ];
 
 // ─── Public API ────────────────────────────────────────────────────────────
 
-export function computeProfileCompletion(user: CompletionSource): ProfileCompletionResult {
+export function computeProfileCompletion(user: CompletionSource | IUser): ProfileCompletionResult {
   // 1. Filter to rules that apply to this user's role.
   const applicableRules = FIELD_RULES.filter(
     (rule) => !rule.roles || rule.roles.includes(user.role),

@@ -160,7 +160,11 @@ export async function getComplaint(req: AuthRequest, res: Response, next: NextFu
   try {
     const complaint = await Complaint.findById(req.params.id)
       .populate("submittedBy", "name email role")
-      .populate("assignedTo",  "name email")
+      // Citizen Review — phone is included here (detail view only, not the
+      // list view) so the citizen's Call Authority action has real data to
+      // work with. Never fabricated: the frontend must disable/hide the
+      // action when phone is absent, not invent one.
+      .populate("assignedTo",  "name email phone")
       .populate("assignedBy",  "name email");
 
     if (!complaint) return next(new AppError("Complaint not found", 404));
@@ -223,8 +227,26 @@ export async function updateComplaint(req: AuthRequest, res: Response, next: Nex
 
     // ── Status transition ─────────────────────────────────────────────────────
     if (status && status !== complaint.status) {
-      complaint.status = status;
-      if (status === "resolved") {
+      // Citizen Review fork: an authority always requests "resolved" here,
+      // exactly as before Citizen Review existed — the frontend is
+      // unchanged. The backend alone decides where that resolution actually
+      // goes: reworkCount === 0 means this is the authority's FIRST
+      // resolution on this complaint, so it must go to the citizen first
+      // (Citizen Review), not straight to admin verification. Once a
+      // complaint has been through rework at least once (reworkCount > 0),
+      // a resubmitted resolution keeps going to "resolved" for
+      // administrator verification exactly as it always has — that
+      // existing path is untouched.
+      const effectiveStatus: typeof status =
+        status === "resolved" && (complaint.reworkCount ?? 0) === 0
+          ? "awaiting_citizen_review"
+          : status;
+
+      complaint.status = effectiveStatus;
+      if (effectiveStatus === "awaiting_citizen_review") {
+        complaint.resolvedAt = new Date();
+        appendEvent(complaint, "resolved", "Resolution submitted — your complaint is ready for review", actor);
+      } else if (effectiveStatus === "resolved") {
         complaint.resolvedAt = new Date();
         appendEvent(complaint, "resolved", "Resolution submitted — awaiting administrator verification", actor);
       } else if (status === "rejected") {
@@ -460,6 +482,84 @@ export async function requestRework(req: AuthRequest, res: Response, next: NextF
     await complaint.populate([
       { path: "submittedBy", select: "name email role" },
       { path: "assignedTo",  select: "name email" },
+    ]);
+    res.json({ success: true, data: { complaint } });
+  } catch (err) { next(err); }
+}
+
+// ─── Citizen Review — accept resolution ───────────────────────────────────────
+// Citizen-only counterpart to verifyResolution. Accepts the authority's FIRST
+// resolution and closes the complaint directly — no administrator step for
+// the normal automatic path. Only valid from "awaiting_citizen_review", and
+// only for the citizen who submitted the complaint.
+export async function acceptResolution(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) return next(new AppError("Not authenticated", 401));
+
+    const complaint = await Complaint.findById(req.params.id);
+    if (!complaint) return next(new AppError("Complaint not found", 404));
+
+    if (complaint.submittedBy.toString() !== req.user._id.toString()) {
+      return next(new AppError("Access denied", 403));
+    }
+    if (complaint.status !== "awaiting_citizen_review") {
+      return next(new AppError("Only a complaint awaiting your review can be accepted", 400));
+    }
+
+    const actor = { _id: req.user._id as mongoose.Types.ObjectId, name: req.user.name };
+
+    complaint.status = "closed";
+    appendEvent(complaint, "citizen_accepted", `Resolution accepted by ${actor.name}`, actor);
+    appendEvent(complaint, "closed", "Complaint closed", actor);
+
+    await complaint.save();
+    await complaint.populate([
+      { path: "submittedBy", select: "name email role" },
+      { path: "assignedTo",  select: "name email phone" },
+    ]);
+    res.json({ success: true, data: { complaint } });
+  } catch (err) { next(err); }
+}
+
+// ─── Citizen Review — request rework ──────────────────────────────────────────
+// Citizen-only counterpart to the administrator's requestRework. The citizen
+// rejects the authority's FIRST resolution and sends it to the
+// administrator's rework queue for manual assignment. Only valid from
+// "awaiting_citizen_review", and only for the citizen who submitted the
+// complaint. Reuses the same reworkReason/reworkComments/reworkCount fields
+// and "rework" status as the existing admin-triggered rework path — no
+// duplicate rework system.
+export async function citizenRequestRework(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) return next(new AppError("Not authenticated", 401));
+
+    const { reason, comments } = req.body as { reason?: string; comments?: string };
+    if (!reason || !reason.trim() || reason.trim().length < 10) {
+      return next(new AppError("A rework reason of at least 10 characters is required", 400));
+    }
+
+    const complaint = await Complaint.findById(req.params.id);
+    if (!complaint) return next(new AppError("Complaint not found", 404));
+
+    if (complaint.submittedBy.toString() !== req.user._id.toString()) {
+      return next(new AppError("Access denied", 403));
+    }
+    if (complaint.status !== "awaiting_citizen_review") {
+      return next(new AppError("Only a complaint awaiting your review can be sent back for rework", 400));
+    }
+
+    const actor = { _id: req.user._id as mongoose.Types.ObjectId, name: req.user.name };
+
+    complaint.status          = "rework";
+    complaint.reworkReason    = reason.trim();
+    complaint.reworkComments  = comments?.trim() || undefined;
+    complaint.reworkCount     = (complaint.reworkCount ?? 0) + 1;
+    appendEvent(complaint, "rework_requested", `Rework requested by ${actor.name}: ${reason.trim()}`, actor);
+
+    await complaint.save();
+    await complaint.populate([
+      { path: "submittedBy", select: "name email role" },
+      { path: "assignedTo",  select: "name email phone" },
     ]);
     res.json({ success: true, data: { complaint } });
   } catch (err) { next(err); }

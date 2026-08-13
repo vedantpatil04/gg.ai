@@ -13,6 +13,8 @@ import {
   getComplaintRouting,
   verifyResolution,
   requestRework,
+  acceptResolution,
+  citizenRequestRework,
 } from "../controllers/complaint.controller";
 import { authenticate, authorize, AUTHORITY_ROLES } from "../middleware/auth";
 import { validate }        from "../middleware/validate";
@@ -73,6 +75,21 @@ router.post(
   "/:id/rework",
   authorize("administrator"),
   requestRework
+);
+
+// ─── Citizen Review (citizen only) ────────────────────────────────────────────
+// Counterpart to the admin verification pair above, scoped to the citizen's
+// OWN complaint (enforced in the controller). Distinct routes from the admin
+// pair — a citizen can never reach /verify or /rework.
+router.post(
+  "/:id/accept",
+  authorize("citizen"),
+  acceptResolution
+);
+router.post(
+  "/:id/request-rework",
+  authorize("citizen"),
+  citizenRequestRework
 );
 
 // ─── Automation 1 — Own ML Complaint Intelligence (read-only) ────────────────

@@ -7,6 +7,7 @@ import {
   getInsights,
   getCityAIInsights,
   getConversation,
+  environmentInsight,
 } from "../controllers/copilot.controller";
 import { authenticate, authorize, AUTHORITY_ROLES } from "../middleware/auth";
 
@@ -31,6 +32,14 @@ router.get(
   authenticate,
   authorize("citizen", ...AUTHORITY_ROLES),
   getConversation,
+);
+
+// Phase 5 — Environmental Overview grounded assistant (same access as /chat).
+router.post(
+  "/environment-insight",
+  authenticate,
+  authorize("citizen", ...AUTHORITY_ROLES),
+  environmentInsight,
 );
 
 // Public: powers the public Sustainability page — must stay unauthenticated.

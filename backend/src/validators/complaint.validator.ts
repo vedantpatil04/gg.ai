@@ -27,7 +27,13 @@ export const updateComplaintValidator = [
 export const complaintQueryValidator = [
   query("page").optional().isInt({ min: 1 }),
   query("limit").optional().isInt({ min: 1, max: 200 }),
-  query("status").optional().isIn(["pending","in-progress","resolved","rejected"]),
+  // Pre-existing gap fixed here: "rework" and "closed" were missing even
+  // though the admin governance queue and authority queue already filter by
+  // them — those tab queries were failing validation before this fix.
+  // "awaiting_citizen_review" added for Citizen Review.
+  query("status").optional().isIn([
+    "pending","in-progress","awaiting_citizen_review","resolved","rejected","rework","closed",
+  ]),
   query("severity").optional().isIn(["low","medium","high","critical"]),
   query("cityId").optional().trim(),
   query("issueType").optional().isIn(["air_pollution","water_contamination","open_burning","noise","waste_dumping","chemical_spill","other"]),

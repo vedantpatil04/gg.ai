@@ -96,6 +96,16 @@ export const reportApi = {
 };
 
 // ─── AI Copilot ───────────────────────────────────────────────────────────────
+export interface EnvironmentInsightResponse {
+  question: string;
+  answer: string;
+  cityId: string;
+  cityName: string;
+  hasVerifiedTrend: boolean;
+  hasLocationContext: boolean;
+  timestamp: string;
+}
+
 export const copilotApi = {
   chat: (question: string, cityId: string, sessionId?: string) =>
     client.post("/copilot/chat", { question, cityId, sessionId }).then((r) => r.data),
@@ -109,6 +119,16 @@ export const copilotApi = {
     client.get("/copilot/recommendations", { params: { cityId } }).then((r) => r.data),
   getInsights: (cityId: string) =>
     client.get("/copilot/insights", { params: { cityId } }).then((r) => r.data),
+  // Phase 5 — Environmental Overview grounded assistant. Deliberately not a
+  // conversation thread: one question in, one grounded answer out.
+  environmentInsight: (
+    question: string,
+    cityId: string,
+    locationId?: string,
+  ): Promise<{ success: boolean; data: EnvironmentInsightResponse }> =>
+    client
+      .post("/copilot/environment-insight", { question, cityId, locationId })
+      .then((r) => r.data),
 };
 
 // ─── Policy Simulator ─────────────────────────────────────────────────────────
@@ -166,8 +186,7 @@ export const adminApi = {
 // ─── Phase 4 — Enterprise Authority Management API ────────────────────────────
 export const authorityMgmtApi = {
   // Intelligence dashboard
-  getDashboard: () =>
-    client.get("/admin/authorities/dashboard").then((r) => r.data),
+  getDashboard: () => client.get("/admin/authorities/dashboard").then((r) => r.data),
 
   // Directory
   list: (params?: {

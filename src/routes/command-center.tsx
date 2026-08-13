@@ -90,7 +90,7 @@ const TOP_TABS = [
   },
   {
     id: "environmental",
-    label: "Environmental Monitoring",
+    label: "Monitoring",
     subtitle: "Live Intelligence",
     icon: Radar,
     subTabs: [
@@ -198,6 +198,14 @@ function CommandCenterContent() {
     icon: t.icon,
   }));
 
+  // Lets Mission Control's clickable metrics hand off to the existing
+  // tab-switching mechanism instead of faking navigation — reuses the same
+  // setActiveTop/setActiveSub pair Quick Actions already calls above.
+  const handleMissionControlNavigate = (topTabId: string, subTabId?: string) => {
+    setActiveTop(topTabId as TopTabId);
+    if (subTabId) setActiveSub(subTabId);
+  };
+
   return (
     <CommandCenterLayout
       header={
@@ -222,7 +230,11 @@ function CommandCenterContent() {
       quickActions={activeTop === "overview" ? <QuickActions actions={quickActions} /> : undefined}
     >
       <Suspense fallback={<TabFallback />}>
-        <ActiveComponent />
+        {activeTop === "overview" ? (
+          <ExecutiveOverview onNavigate={handleMissionControlNavigate} />
+        ) : (
+          <ActiveComponent />
+        )}
       </Suspense>
     </CommandCenterLayout>
   );

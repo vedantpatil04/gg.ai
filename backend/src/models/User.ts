@@ -433,7 +433,6 @@ export function isAccountLocked(user: Pick<IUser, "accountLockedUntil">): boolea
   return !!user.accountLockedUntil && user.accountLockedUntil.getTime() > Date.now();
 }
 
-UserSchema.index({ email: 1 });
 UserSchema.index({ role: 1 });
 UserSchema.index({ city: 1 });
 UserSchema.index({ role: 1, approvalStatus: 1 });

@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
  *   EnvAISummarySkeleton          → env-ai-summary
  *   EnvUnderstandingSkeleton      → env-understanding (Phase 2)
  *   EnvTrendsSkeleton              → env-trends (Phase 3)
+ *   EnvExploreSkeleton             → env-explore (Phase 4)
+ *   EnvInsightSkeleton              → env-insight (Phase 5)
  */
 
 export function EnvCityContextSkeleton({ className }: { className?: string }) {
@@ -213,6 +215,41 @@ export function EnvTrendsSkeleton({ className }: { className?: string }) {
         </div>
         <Skeleton className="h-48 w-full rounded-xl" />
         <Skeleton className="h-14 w-full rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+export function EnvExploreSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("space-y-4", className)}>
+      <Skeleton className="h-3 w-44" />
+      <div className="rounded-2xl border border-border p-5 md:p-6 space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="h-7 w-28 rounded-full" />
+        </div>
+        <Skeleton className="h-64 w-full rounded-xl" />
+        <div className="space-y-2">
+          <Skeleton className="h-10 w-full rounded-lg" />
+          <Skeleton className="h-10 w-full rounded-lg" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function EnvInsightSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("space-y-4", className)}>
+      <Skeleton className="h-3 w-40" />
+      <div className="rounded-2xl border border-border p-5 md:p-6 space-y-4">
+        <Skeleton className="h-4 w-56" />
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-8 w-40 rounded-full" />
+          <Skeleton className="h-8 w-36 rounded-full" />
+          <Skeleton className="h-8 w-32 rounded-full" />
+        </div>
       </div>
     </div>
   );

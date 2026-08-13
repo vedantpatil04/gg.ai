@@ -53,12 +53,14 @@ export function startScheduler(): void {
 }
 
 // ─── Status for the platform health endpoint (Phase 2.2) ────────────────────
-export function getSchedulerStatus(): {
+export interface SchedulerStatus {
   enabled: boolean;
   running: boolean;
   lastRunAt: Date | null;
   lastRunResult: { success: number; failed: number; total: number } | null;
-} {
+}
+
+export function getSchedulerStatus(): SchedulerStatus {
   return { enabled: isEnabled, running: isRunning, lastRunAt, lastRunResult };
 }
 

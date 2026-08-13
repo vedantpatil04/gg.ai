@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -21,6 +21,7 @@ import {
   Loader2,
   ClipboardList,
   AlertOctagon,
+  AlertTriangle,
   CheckCircle2,
   TrendingDown,
   MapPin,
@@ -29,15 +30,19 @@ import {
   Settings2,
   Play,
   Clock,
-  CheckSquare,
   Shield,
   RotateCcw,
   Lock,
   ChevronRight,
+  Inbox,
+  Search,
+  SlidersHorizontal,
+  X,
+  ArrowUpDown,
 } from "lucide-react";
 import { commandApi, type ComplaintIntelligenceData } from "@/lib/api/command.api";
 import { complaintApi } from "@/lib/api/services.api";
-import { Panel, StatCard, Pill, SectionTitle, WorkspaceHeader } from "@/components/ui-bits";
+import { Panel, StatCard, Pill, SectionTitle, WorkspaceHeader, EmptyState } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InvestigationWorkspace, type ComplaintRecord } from "./investigation-workspace";
@@ -66,259 +71,408 @@ function queueActionLabel(status: string): string {
       return "Continue investigation";
     case "rework":
       return "Review & resubmit";
+    case "awaiting_citizen_review":
+      return "View submission";
     case "resolved":
       return "View submission";
+    case "closed":
+      return "View details";
     default:
       return "View details";
   }
 }
+function refCode(id: string): string {
+  return `GG-${id.slice(-6).toUpperCase()}`;
+}
+const SEVERITY_ORDER: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
 
-// ─── Queue card ───────────────────────────────────────────────────────────────
-function ComplaintQueueCard({
+// ─── Queue row — compact enterprise list row (no glass/glow) ─────────────────
+function ComplaintQueueRow({
   complaint,
   onClick,
 }: {
   complaint: ComplaintRecord;
   onClick: () => void;
 }) {
-  const age = ageLabel(complaint.createdAt);
+  const age = ageLabel(complaint.updatedAt || complaint.createdAt);
   const isRework = complaint.status === "rework";
+  const severityColor =
+    SEVERITY_TONE[complaint.severity] === "destructive"
+      ? "var(--color-destructive)"
+      : SEVERITY_TONE[complaint.severity] === "warning"
+        ? "var(--color-warning)"
+        : "var(--color-success)";
+
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -6 }}
-      whileHover={{ y: -1 }}
-      transition={{ duration: 0.15 }}
+      exit={{ opacity: 0, y: -4 }}
+      transition={{ duration: 0.12 }}
       onClick={onClick}
       className={cn(
-        "group glass rounded-xl p-4 cursor-pointer border transition-all hover:shadow-[var(--shadow-elev)] hover:border-primary/30",
-        complaint.severity === "critical" && "border-destructive/20",
-        isRework && "border-destructive/30 bg-destructive/4",
+        "group flex items-start sm:items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-3 cursor-pointer transition-colors hover:border-primary/40 hover:bg-muted/30",
+        isRework && "border-destructive/30 bg-destructive/[0.03]",
       )}
     >
-      <div className="flex items-start gap-3">
-        <div
-          className="size-2.5 rounded-full mt-1.5 shrink-0"
-          style={{
-            background: isRework
-              ? "var(--color-destructive)"
-              : complaint.severity === "critical"
-                ? "var(--color-destructive)"
-                : complaint.severity === "high"
-                  ? "#f97316"
-                  : complaint.severity === "medium"
-                    ? "var(--color-warning)"
-                    : "var(--color-success)",
-          }}
-        />
-        <div className="min-w-0 flex-1">
-          <p className="font-medium text-sm leading-snug group-hover:text-primary transition-colors line-clamp-2 mb-1.5">
+      <div
+        className="size-2 rounded-full mt-1.5 sm:mt-0 shrink-0"
+        style={{ background: severityColor }}
+        aria-hidden
+      />
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-medium text-sm leading-snug group-hover:text-primary transition-colors truncate max-w-full">
             {complaint.title}
           </p>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1 capitalize">
-              <MapPin className="size-3" />
-              {complaint.cityId}
-            </span>
-            <span className="flex items-center gap-1">
-              <Clock
-                className={cn(
-                  "size-3",
-                  age.critical && "text-destructive",
-                  age.urgent && !age.critical && "text-warning",
-                )}
-              />
-              <span
-                className={cn(
-                  age.critical ? "text-destructive font-medium" : age.urgent ? "text-warning" : "",
-                )}
-              >
-                {age.text}
-                {age.critical && " — overdue"}
-              </span>
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            <Pill tone={SEVERITY_TONE[complaint.severity] ?? "muted"}>{complaint.severity}</Pill>
-            <Pill tone={STATUS_TONE[complaint.status] ?? "muted"}>
-              {STATUS_LABEL[complaint.status] ?? complaint.status}
-            </Pill>
+          <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+            {refCode(complaint._id)}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5 text-xs text-muted-foreground">
+          <span>{ISSUE_LABELS[complaint.issueType] ?? complaint.issueType}</span>
+          <span className="opacity-50">·</span>
+          <span className="flex items-center gap-1 capitalize">
+            <MapPin className="size-3" />
+            {complaint.location?.address || complaint.cityId}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+          <Pill tone={SEVERITY_TONE[complaint.severity] ?? "muted"}>{complaint.severity}</Pill>
+          <Pill tone={STATUS_TONE[complaint.status] ?? "muted"}>
+            {STATUS_LABEL[complaint.status] ?? complaint.status}
+          </Pill>
+          {complaint.assignmentSource && (
             <span className="inline-flex items-center text-[10px] text-muted-foreground bg-muted/60 rounded-full px-2 py-0.5">
-              {ISSUE_LABELS[complaint.issueType] ?? complaint.issueType}
+              {complaint.assignmentSource === "automatic" ? "Auto-assigned" : "Manually assigned"}
             </span>
-            {complaint.assignmentSource && (
-              <span className="inline-flex items-center text-[10px] text-muted-foreground bg-muted/60 rounded-full px-2 py-0.5">
-                {complaint.assignmentSource === "automatic" ? "Auto-assigned" : "Manually assigned"}
-              </span>
+          )}
+          {complaint.images?.length > 0 && (
+            <span className="inline-flex items-center text-[10px] text-muted-foreground bg-muted/60 rounded-full px-2 py-0.5">
+              {complaint.images.length} image{complaint.images.length !== 1 ? "s" : ""}
+            </span>
+          )}
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 text-[10px]",
+              age.critical ? "text-destructive font-medium" : age.urgent ? "text-warning" : "text-muted-foreground",
             )}
-            {complaint.images?.length > 0 && (
-              <span className="inline-flex items-center text-[10px] text-muted-foreground bg-muted/60 rounded-full px-2 py-0.5">
-                {complaint.images.length} image{complaint.images.length !== 1 ? "s" : ""}
-              </span>
-            )}
-          </div>
+          >
+            <Clock className="size-2.5" />
+            {age.text}
+            {age.critical && " — overdue"}
+          </span>
         </div>
-        <div className="hidden sm:flex items-center gap-1 shrink-0 text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors mt-1">
-          {queueActionLabel(complaint.status)}
-          <ChevronRight className="size-3.5" />
-        </div>
+      </div>
+
+      <div className="hidden sm:flex items-center gap-1 shrink-0 text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors">
+        {queueActionLabel(complaint.status)}
+        <ChevronRight className="size-3.5" />
       </div>
     </motion.div>
   );
 }
 
-// ─── Phase 3C: Assigned Workspace — 5-tab queue ───────────────────────────────
+// ─── Compact, non-glow summary tile ───────────────────────────────────────────
+function QueueStat({
+  label,
+  value,
+  icon: Icon,
+  tone,
+  active,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  icon: React.ElementType;
+  tone?: "warning" | "info" | "destructive" | "success";
+  active?: boolean;
+  onClick?: () => void;
+}) {
+  const toneVar: Record<string, string> = {
+    warning: "var(--color-warning)",
+    info: "var(--color-info)",
+    destructive: "var(--color-destructive)",
+    success: "var(--color-success)",
+  };
+  const accent = tone ? toneVar[tone] : "var(--color-muted-foreground)";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-xl border bg-card p-3.5 text-left transition-colors",
+        active ? "border-primary/50 ring-1 ring-primary/30" : "border-border hover:border-primary/30",
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
+        <Icon className="size-3.5" style={{ color: accent }} />
+      </div>
+      <div className="text-xl font-semibold tabular-nums tracking-tight mt-1">{value}</div>
+    </button>
+  );
+}
+
+// ─── Assigned Workspace — Phase 3: enterprise Work Queue ──────────────────────
 // Tabs:
-//   Active       → in-progress   (actively investigating)
-//   Assigned     → pending       (assigned but not started)
-//   Rework       → rework        (Phase 3C: returned by admin — needs resubmission)
-//   Verification → resolved      (submitted, awaiting admin approval)
-//   Completed    → closed + rejected
+//   My Queue  → everything not yet finalized (pending, in-progress, rework,
+//               awaiting_citizen_review, resolved)
+//   Active    → in-progress
+//   Assigned  → pending
+//   Rework    → rework
+//   Completed → closed + rejected
+//
+// "Awaiting Citizen Review" and "Awaiting Verification" (resolved) are real,
+// distinct workflow states, but the locked roadmap explicitly avoids adding
+// Administrator-only verification concepts as their own tabs — they remain
+// visible inside "My Queue" with a clear status pill, and the "Awaiting
+// Citizen Review" summary tile filters directly to them without needing a
+// dedicated tab.
+type QueueTab = "all" | "active" | "assigned" | "rework" | "completed";
+type SortKey = "priority" | "newest" | "oldest" | "updated" | "severity-desc" | "severity-asc";
+
 function AssignedWorkspace({
-  currentUser,
+  complaints: all,
+  isLoading,
+  isError,
+  refetch,
   onSelectComplaint,
 }: {
-  currentUser: NonNullable<ReturnType<typeof useAuth>["user"]>;
+  complaints: ComplaintRecord[];
+  isLoading: boolean;
+  isError: boolean;
+  refetch: () => void;
   onSelectComplaint: (id: string) => void;
 }) {
-  const [tab, setTab] = useState<"active" | "assigned" | "rework" | "verification" | "completed">(
-    "active",
+  const [tab, setTab] = useState<QueueTab>("all");
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [severityFilter, setSeverityFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [cityFilter, setCityFilter] = useState<string>("all");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [sort, setSort] = useState<SortKey>("priority");
+  const [showFilters, setShowFilters] = useState(false);
+
+  const active = useMemo(() => all.filter((c) => c.status === "in-progress"), [all]);
+  const assigned = useMemo(() => all.filter((c) => c.status === "pending"), [all]);
+  const rework = useMemo(() => all.filter((c) => c.status === "rework"), [all]);
+  const awaitingReview = useMemo(
+    () => all.filter((c) => c.status === "awaiting_citizen_review"),
+    [all],
+  );
+  const completed = useMemo(
+    () => all.filter((c) => c.status === "closed" || c.status === "rejected"),
+    [all],
+  );
+  // The full working set — everything still in flight, one way or another.
+  const myQueue = useMemo(
+    () =>
+      all.filter(
+        (c) =>
+          c.status === "pending" ||
+          c.status === "in-progress" ||
+          c.status === "rework" ||
+          c.status === "awaiting_citizen_review" ||
+          c.status === "resolved",
+      ),
+    [all],
   );
 
-  const {
-    data: res,
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ["my-assigned-complaints", currentUser._id],
-    queryFn: () => complaintApi.getAssigned({ limit: 200 }),
-    staleTime: 30_000,
-  });
-
-  const all: ComplaintRecord[] =
-    (res as unknown as { data?: { complaints?: ComplaintRecord[] } })?.data?.complaints ?? [];
-
-  const active = all
-    .filter((c) => c.status === "in-progress")
-    .sort((a, b) => priorityScore(b) - priorityScore(a));
-  const assigned = all
-    .filter((c) => c.status === "pending")
-    .sort((a, b) => priorityScore(b) - priorityScore(a));
-  const rework = all
-    .filter((c) => c.status === "rework")
-    .sort((a, b) => priorityScore(b) - priorityScore(a));
-  const verification = all.filter((c) => c.status === "resolved");
-  const completed = all.filter((c) => c.status === "closed" || c.status === "rejected");
-
   useEffect(() => {
-    if (active.length === 0 && assigned.length > 0 && tab === "active") {
+    if (tab === "active" && active.length === 0 && assigned.length > 0) {
       setTab("assigned");
     }
   }, [active.length, assigned.length, tab]);
 
-  const criticalActive = [...active, ...assigned, ...rework].filter(
-    (c) => c.severity === "critical",
-  ).length;
+  const cityOptions = useMemo(
+    () => Array.from(new Set(all.map((c) => c.cityId))).sort(),
+    [all],
+  );
+  const categoryOptions = useMemo(
+    () => Array.from(new Set(all.map((c) => c.issueType))).sort(),
+    [all],
+  );
+
+  const TABS: { key: QueueTab; label: string; icon: React.ElementType; count: number; urgent?: boolean }[] = [
+    { key: "all", label: "My Queue", icon: Inbox, count: myQueue.length },
+    { key: "active", label: "Active", icon: Play, count: active.length },
+    { key: "assigned", label: "Assigned", icon: Shield, count: assigned.length },
+    { key: "rework", label: "Rework", icon: RotateCcw, count: rework.length, urgent: rework.length > 0 },
+    { key: "completed", label: "Completed", icon: Lock, count: completed.length },
+  ];
+
+  const baseList: ComplaintRecord[] =
+    tab === "all"
+      ? myQueue
+      : tab === "active"
+        ? active
+        : tab === "assigned"
+          ? assigned
+          : tab === "rework"
+            ? rework
+            : completed;
+
+  const filtered = useMemo(() => {
+    let list = statusFilter ? baseList.filter((c) => c.status === statusFilter) : baseList;
+
+    if (severityFilter !== "all") list = list.filter((c) => c.severity === severityFilter);
+    if (categoryFilter !== "all") list = list.filter((c) => c.issueType === categoryFilter);
+    if (cityFilter !== "all") list = list.filter((c) => c.cityId === cityFilter);
+    if (sourceFilter !== "all") list = list.filter((c) => (c.assignmentSource ?? "manual") === sourceFilter);
+
+    const q = search.trim().toLowerCase();
+    if (q) {
+      list = list.filter((c) => {
+        const haystack = [
+          c.title,
+          refCode(c._id),
+          ISSUE_LABELS[c.issueType] ?? c.issueType,
+          c.cityId,
+          c.location?.address ?? "",
+        ]
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(q);
+      });
+    }
+
+    const sorted = [...list];
+    switch (sort) {
+      case "newest":
+        sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        break;
+      case "oldest":
+        sorted.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        break;
+      case "updated":
+        sorted.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        break;
+      case "severity-desc":
+        sorted.sort((a, b) => (SEVERITY_ORDER[b.severity] ?? 0) - (SEVERITY_ORDER[a.severity] ?? 0));
+        break;
+      case "severity-asc":
+        sorted.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 0) - (SEVERITY_ORDER[b.severity] ?? 0));
+        break;
+      default:
+        sorted.sort((a, b) => priorityScore(b) - priorityScore(a));
+    }
+    return sorted;
+  }, [baseList, statusFilter, severityFilter, categoryFilter, cityFilter, sourceFilter, search, sort]);
+
+  const filtersActive =
+    severityFilter !== "all" ||
+    categoryFilter !== "all" ||
+    cityFilter !== "all" ||
+    sourceFilter !== "all" ||
+    statusFilter !== null ||
+    search.trim() !== "";
+
+  const clearFilters = () => {
+    setSeverityFilter("all");
+    setCategoryFilter("all");
+    setCityFilter("all");
+    setSourceFilter("all");
+    setStatusFilter(null);
+    setSearch("");
+  };
+
+  const selectTab = (key: QueueTab) => {
+    setTab(key);
+    setStatusFilter(null);
+  };
 
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-2xl" />
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-[70px] rounded-xl" />
           ))}
         </div>
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-28 rounded-xl" />
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-[92px] rounded-lg" />
         ))}
       </div>
     );
   }
 
-  const TABS = [
-    { key: "active" as const, label: "Active", icon: Play, count: active.length, urgent: false },
-    {
-      key: "assigned" as const,
-      label: "Assigned",
-      icon: Shield,
-      count: assigned.length,
-      urgent: false,
-    },
-    {
-      key: "rework" as const,
-      label: "Rework",
-      icon: RotateCcw,
-      count: rework.length,
-      urgent: rework.length > 0,
-    },
-    {
-      key: "verification" as const,
-      label: "Verification",
-      icon: CheckSquare,
-      count: verification.length,
-      urgent: false,
-    },
-    {
-      key: "completed" as const,
-      label: "Completed",
-      icon: Lock,
-      count: completed.length,
-      urgent: false,
-    },
-  ];
+  if (isError) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-8">
+        <EmptyState
+          icon={<AlertTriangle className="size-4" />}
+          title="We couldn't load your work queue"
+          description="Check your connection and try again."
+          action={
+            <Button size="sm" variant="outline" onClick={refetch} className="mt-1">
+              <RefreshCw className="size-3.5 mr-1.5" />
+              Retry
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
 
-  const currentList: ComplaintRecord[] =
-    tab === "active"
-      ? active
-      : tab === "assigned"
-        ? assigned
-        : tab === "rework"
-          ? rework
-          : tab === "verification"
-            ? verification
-            : completed;
-
-  const emptyMessages: Record<typeof tab, string> = {
-    active: "No active investigations — open an assigned complaint to start.",
-    assigned: "No complaints awaiting your attention.",
-    rework: "No complaints returned for rework.",
-    verification: "No complaints awaiting administrator verification.",
+  const emptyMessages: Record<QueueTab, string> = {
+    all: "Your queue is empty. Complaint assignments are managed by your administrator.",
+    assigned: "No complaints are waiting to be started.",
+    active: "No active investigations.",
+    rework: "No complaints have been returned for rework.",
     completed: "No completed complaints yet.",
   };
 
   return (
-    <div className="space-y-5">
-      {/* Workload summary — Phase 3C adds Rework and Closed */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard
-          label="Assigned to Me"
+    <div className="space-y-4">
+      {/* Summary — real, authority-scoped counts, act as filters */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <QueueStat
+          label="Assigned"
           value={assigned.length}
-          accent="primary"
-          icon={<ClipboardList className="size-4" />}
-          hint="Waiting for investigation"
+          icon={Shield}
+          tone={assigned.length > 0 ? "info" : undefined}
+          active={tab === "assigned" && !statusFilter}
+          onClick={() => selectTab("assigned")}
         />
-        <StatCard
+        <QueueStat
           label="In Progress"
           value={active.length}
-          accent="info"
-          icon={<Play className="size-4" />}
-          hint="Active investigations"
+          icon={Play}
+          tone={active.length > 0 ? "info" : undefined}
+          active={tab === "active" && !statusFilter}
+          onClick={() => selectTab("active")}
         />
-        <StatCard
+        <QueueStat
           label="Rework"
           value={rework.length}
-          accent={rework.length > 0 ? "destructive" : "success"}
-          icon={<RotateCcw className="size-4" />}
-          hint="Returned by administrator"
+          icon={RotateCcw}
+          tone={rework.length > 0 ? "destructive" : undefined}
+          active={tab === "rework" && !statusFilter}
+          onClick={() => selectTab("rework")}
         />
-        <StatCard
-          label="Closed"
-          value={completed.filter((c) => c.status === "closed").length}
-          accent="success"
-          icon={<Lock className="size-4" />}
-          hint="Verified and closed"
+        <QueueStat
+          label="Awaiting Citizen Review"
+          value={awaitingReview.length}
+          icon={Clock}
+          tone={awaitingReview.length > 0 ? "warning" : undefined}
+          active={tab === "all" && statusFilter === "awaiting_citizen_review"}
+          onClick={() => {
+            setTab("all");
+            setStatusFilter("awaiting_citizen_review");
+          }}
+        />
+        <QueueStat
+          label="Completed"
+          value={completed.length}
+          icon={Lock}
+          tone={undefined}
+          active={tab === "completed" && !statusFilter}
+          onClick={() => selectTab("completed")}
         />
       </div>
 
@@ -328,7 +482,7 @@ function AssignedWorkspace({
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/8 px-4 py-2.5 cursor-pointer"
-          onClick={() => setTab("rework")}
+          onClick={() => selectTab("rework")}
         >
           <RotateCcw className="size-4 text-destructive shrink-0" />
           <p className="text-sm font-medium">
@@ -343,10 +497,10 @@ function AssignedWorkspace({
         {TABS.map((t) => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => selectTab(t.key)}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-              tab === t.key
+              tab === t.key && !statusFilter
                 ? "bg-card shadow-sm text-foreground"
                 : "text-muted-foreground hover:text-foreground",
             )}
@@ -357,7 +511,7 @@ function AssignedWorkspace({
               <span
                 className={cn(
                   "inline-flex items-center justify-center rounded-full min-w-[18px] h-[18px] px-1 text-[10px] font-bold",
-                  tab === t.key
+                  tab === t.key && !statusFilter
                     ? "bg-primary/15 text-primary"
                     : t.urgent
                       ? "bg-destructive/15 text-destructive"
@@ -369,61 +523,170 @@ function AssignedWorkspace({
             )}
           </button>
         ))}
-        <Button variant="ghost" size="sm" className="ml-1 h-7 text-xs" onClick={() => refetch()}>
+      </div>
+
+      {/* Search + sort + filter toggle */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search title, ref, category, location…"
+            className="w-full h-8 pl-8 pr-3 text-xs rounded-lg border border-border bg-card focus:outline-none focus:ring-1 focus:ring-primary/40"
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5 text-xs">
+          <ArrowUpDown className="size-3.5 text-muted-foreground" />
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="h-8 rounded-lg border border-border bg-card px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary/40"
+          >
+            <option value="priority">Priority (default)</option>
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="updated">Last updated</option>
+            <option value="severity-desc">Highest severity</option>
+            <option value="severity-asc">Lowest severity</option>
+          </select>
+        </div>
+
+        <Button
+          variant={showFilters ? "default" : "outline"}
+          size="sm"
+          className="h-8 text-xs"
+          onClick={() => setShowFilters((v) => !v)}
+        >
+          <SlidersHorizontal className="size-3.5 mr-1.5" />
+          Filters
+        </Button>
+
+        {filtersActive && (
+          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={clearFilters}>
+            <X className="size-3.5 mr-1" />
+            Clear filters
+          </Button>
+        )}
+
+        <Button variant="ghost" size="sm" className="h-8 text-xs ml-auto" onClick={() => refetch()}>
           <RefreshCw className="size-3 mr-1" />
           Refresh
         </Button>
       </div>
 
+      {showFilters && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3">
+          <select
+            value={severityFilter}
+            onChange={(e) => setSeverityFilter(e.target.value)}
+            className="h-8 rounded-lg border border-border bg-card px-2 text-xs"
+          >
+            <option value="all">All severities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="h-8 rounded-lg border border-border bg-card px-2 text-xs"
+          >
+            <option value="all">All categories</option>
+            {categoryOptions.map((c) => (
+              <option key={c} value={c}>
+                {ISSUE_LABELS[c] ?? c}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={cityFilter}
+            onChange={(e) => setCityFilter(e.target.value)}
+            className="h-8 rounded-lg border border-border bg-card px-2 text-xs capitalize"
+          >
+            <option value="all">All cities</option>
+            {cityOptions.map((c) => (
+              <option key={c} value={c} className="capitalize">
+                {c}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={sourceFilter}
+            onChange={(e) => setSourceFilter(e.target.value)}
+            className="h-8 rounded-lg border border-border bg-card px-2 text-xs"
+          >
+            <option value="all">All assignment sources</option>
+            <option value="automatic">Auto-assigned</option>
+            <option value="manual">Manually assigned</option>
+          </select>
+        </div>
+      )}
+
+      {statusFilter && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          Showing:{" "}
+          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-medium text-foreground">
+            {STATUS_LABEL[statusFilter] ?? statusFilter}
+            <button onClick={() => setStatusFilter(null)} aria-label="Clear status filter">
+              <X className="size-3" />
+            </button>
+          </span>
+        </div>
+      )}
+
       {/* Queue list */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={tab}
+          key={`${tab}-${statusFilter ?? ""}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.12 }}
-          className="space-y-3"
+          className="space-y-2"
         >
-          {currentList.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground glass rounded-2xl">
-              <CheckCircle2 className="size-8 opacity-40" />
-              <p className="text-sm font-medium">
-                {tab === "active" && assigned.length > 0
-                  ? "Complaints waiting for investigation"
-                  : emptyMessages[tab]}
-              </p>
-              {tab === "active" && assigned.length > 0 && (
-                <Button variant="outline" size="sm" onClick={() => setTab("assigned")}>
-                  View Assigned Queue
-                </Button>
-              )}
+          {filtered.length === 0 ? (
+            <div className="rounded-xl border border-border bg-card p-8">
+              <EmptyState
+                icon={<CheckCircle2 className="size-4" />}
+                title={
+                  filtersActive
+                    ? "No complaints match these filters"
+                    : tab === "active" && assigned.length > 0
+                      ? "Complaints waiting for investigation"
+                      : emptyMessages[tab]
+                }
+                description={filtersActive ? "Try clearing filters or search." : undefined}
+                action={
+                  filtersActive ? (
+                    <Button variant="outline" size="sm" onClick={clearFilters} className="mt-1">
+                      Clear filters
+                    </Button>
+                  ) : tab === "active" && assigned.length > 0 ? (
+                    <Button variant="outline" size="sm" onClick={() => selectTab("assigned")} className="mt-1">
+                      View Assigned Queue
+                    </Button>
+                  ) : undefined
+                }
+              />
             </div>
           ) : (
-            currentList.map((c) => (
-              <ComplaintQueueCard
-                key={c._id}
-                complaint={c}
-                onClick={() => onSelectComplaint(c._id)}
-              />
+            filtered.map((c) => (
+              <ComplaintQueueRow key={c._id} complaint={c} onClick={() => onSelectComplaint(c._id)} />
             ))
           )}
         </motion.div>
       </AnimatePresence>
-
-      {all.length === 0 && (
-        <div className="glass rounded-xl p-4 flex items-start gap-3 border border-border/60">
-          <Shield className="size-5 text-muted-foreground shrink-0 mt-0.5" />
-          <p className="text-sm text-muted-foreground">
-            Your queue is empty. Complaint assignments are managed by your administrator.
-          </p>
-        </div>
-      )}
     </div>
   );
 }
 
-// ─── Analytics ────────────────────────────────────────────────────────────────
+// ─── Analytics (unchanged — Phase 3 scope is the queue, not analytics) ───────
 function ComplaintAnalytics({ d, refetch }: { d: ComplaintIntelligenceData; refetch: () => void }) {
   const tooltipStyle = {
     contentStyle: {
@@ -709,21 +972,34 @@ export function ComplaintIntelligence() {
   const [view, setView] = useState<View>("operations");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // Real, authority-scoped complaint data — single source shared by the
+  // summary tiles and the queue list. The backend hard-scopes this to the
+  // authenticated authority's own assignedTo complaints.
+  const {
+    data: myComplaintsRes,
+    isLoading: complaintsLoading,
+    isError: complaintsError,
+    refetch: refetchComplaints,
+  } = useQuery({
+    queryKey: ["my-assigned-complaints", user?._id],
+    queryFn: () => complaintApi.getAssigned({ limit: 200 }),
+    staleTime: 30_000,
+    enabled: !!user,
+  });
+  const myComplaints: ComplaintRecord[] = myComplaintsRes?.data?.complaints ?? [];
+
+  // Network-wide complaint intelligence — used only by the separate
+  // Analytics tab, which is intentionally broader than "my queue".
   const {
     data: res,
-    isLoading,
-    refetch,
+    isLoading: analyticsLoading,
+    refetch: refetchAnalytics,
   } = useQuery({
     queryKey: ["command-complaint-intelligence"],
     queryFn: () => commandApi.getComplaintIntelligence(),
     staleTime: 5 * 60 * 1000,
   });
   const d = res?.data as ComplaintIntelligenceData | undefined;
-
-  const pendingCount = d?.byStatus?.find((s) => s.status === "pending")?.count ?? 0;
-  const inProgressCount = d?.byStatus?.find((s) => s.status === "in-progress")?.count ?? 0;
-  const criticalCount = d?.bySeverity?.find((s) => s.severity === "critical")?.count ?? 0;
-  const reworkCount = d?.byStatus?.find((s) => s.status === "rework")?.count ?? 0;
 
   return (
     <div className="space-y-5">
@@ -748,35 +1024,19 @@ export function ComplaintIntelligence() {
               eyebrow="WORK QUEUE · COMPLAINT OPERATIONS"
               title="Complaint Operations"
               description="Manage and resolve environmental complaints assigned to you."
-              stats={
-                d
-                  ? [
-                      {
-                        label: "Pending",
-                        value: pendingCount,
-                        tone: pendingCount > 0 ? "warning" : "muted",
-                      },
-                      {
-                        label: "In Progress",
-                        value: inProgressCount,
-                        tone: inProgressCount > 0 ? "info" : "muted",
-                      },
-                      {
-                        label: "Critical",
-                        value: criticalCount,
-                        tone: criticalCount > 0 ? "destructive" : "muted",
-                      },
-                      {
-                        label: "Rework",
-                        value: reworkCount,
-                        tone: reworkCount > 0 ? "destructive" : "muted",
-                      },
-                    ]
-                  : undefined
-              }
               action={
-                <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
-                  <RefreshCw className={cn("size-3.5 mr-1.5", isLoading && "animate-spin")} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => (view === "operations" ? refetchComplaints() : refetchAnalytics())}
+                  disabled={view === "operations" ? complaintsLoading : analyticsLoading}
+                >
+                  <RefreshCw
+                    className={cn(
+                      "size-3.5 mr-1.5",
+                      (view === "operations" ? complaintsLoading : analyticsLoading) && "animate-spin",
+                    )}
+                  />
                   Refresh
                 </Button>
               }
@@ -807,17 +1067,23 @@ export function ComplaintIntelligence() {
                 Analytics
               </button>
             </div>
-            {view === "operations" && user && (
-              <AssignedWorkspace currentUser={user} onSelectComplaint={setSelectedId} />
+            {view === "operations" && (
+              <AssignedWorkspace
+                complaints={myComplaints}
+                isLoading={complaintsLoading}
+                isError={complaintsError}
+                refetch={refetchComplaints}
+                onSelectComplaint={setSelectedId}
+              />
             )}
             {view === "analytics" &&
-              (isLoading ? (
+              (analyticsLoading ? (
                 <div className="flex items-center justify-center h-64">
                   <Loader2 className="size-6 animate-spin text-muted-foreground" />
                   <span className="ml-2 text-sm text-muted-foreground">Loading…</span>
                 </div>
               ) : d ? (
-                <ComplaintAnalytics d={d} refetch={refetch} />
+                <ComplaintAnalytics d={d} refetch={refetchAnalytics} />
               ) : null)}
           </motion.div>
         )}

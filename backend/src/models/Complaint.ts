@@ -3,10 +3,11 @@ import mongoose, { Document, Schema } from "mongoose";
 export type ComplaintStatus =
   | "pending" // submitted, not yet assigned
   | "in-progress" // authority investigating
-  | "resolved" // authority submitted resolution — awaiting admin verification
+  | "awaiting_citizen_review" // authority submitted its FIRST resolution — citizen must accept or request rework
+  | "resolved" // authority submitted a REVISED (post-rework) resolution — awaiting admin verification
   | "rejected" // admin or system rejected
-  | "rework" // admin returned to authority for rework
-  | "closed"; // admin verified and closed — terminal
+  | "rework" // returned to authority for rework (by citizen on their first resolution, or by admin on a revised one)
+  | "closed"; // citizen accepted (normal path) or admin verified (rework path) — terminal
 
 export type ComplaintPriority = "low" | "medium" | "high" | "critical";
 
@@ -34,9 +35,10 @@ export type ComplaintEventType =
   | "resolved"
   | "rejected"
   | "verified"
-  | "closed" // Phase 3C — admin approved
-  | "rework_requested"
-  | "resubmitted"; // Phase 3C — admin rejected / authority resubmitted
+  | "closed" // Phase 3C — admin approved, OR citizen accepted (Citizen Review)
+  | "rework_requested" // by citizen (Citizen Review) or by admin (Phase 3C)
+  | "resubmitted" // Phase 3C — admin rejected / authority resubmitted
+  | "citizen_accepted"; // Citizen Review — citizen accepted the authority's resolution
 
 export interface IComplaintEvent {
   type: ComplaintEventType;
@@ -119,7 +121,15 @@ const ComplaintSchema = new Schema<IComplaint>(
     severity: { type: String, enum: ["low", "medium", "high", "critical"], default: "medium" },
     status: {
       type: String,
-      enum: ["pending", "in-progress", "resolved", "rejected", "rework", "closed"],
+      enum: [
+        "pending",
+        "in-progress",
+        "awaiting_citizen_review",
+        "resolved",
+        "rejected",
+        "rework",
+        "closed",
+      ],
       default: "pending",
     },
     cityId: { type: String, required: true, lowercase: true, index: true },

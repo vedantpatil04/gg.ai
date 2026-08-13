@@ -1,14 +1,17 @@
 /**
- * DashboardHeader — Phase 2: Cinematic Hero upgrade
+ * DashboardHeader
  *
- * Phase 2 changes (UI-only, all existing props preserved):
- *  - Telemetry row: animated gradient border on the "Live" indicator
- *  - AQI pill gets a color-matched glow shadow on hover
- *  - Refresh button: spinner ring uses stroke-dashoffset animation
- *  - "Issue advisory" CTA gets a pulsing glow ring on hover
- *  - City name fades in with subtle x-shift (FADE_UP already handled it,
- *    now also has a per-letter stagger on lg+)
- *  - All new effects respect prefers-reduced-motion
+ * Phase 2: Production UI & Information Hierarchy — restraint pass (UI-only,
+ * all existing props/exports preserved):
+ *  - Removed the unused "--pill-glow" custom property and its dead "group"
+ *    wrapper on the AQI pill (it had no visual effect; nothing consumed it)
+ *  - Removed the blurred, scaling glow-ring layer behind "Issue advisory" —
+ *    the aurora CTA now signals "primary action" through fill + a plain
+ *    opacity hover rather than a pulsing halo, per the dashboard's calmer
+ *    Phase 2 visual direction
+ *  - Refresh/Export stay on the existing glass secondary-button treatment;
+ *    Issue advisory remains the one clearly primary action
+ *  - All motion still respects prefers-reduced-motion
  *
  * Backward compatible: same props, same exports, same route import.
  */
@@ -71,14 +74,8 @@ export function DashboardHeader({
             </Pill>
           </motion.div>
 
-          {/* AQI pill with hover glow */}
-          <motion.div
-            whileHover={prefersReduced ? undefined : HOVER_LIFT_SM}
-            style={prefersReduced ? undefined : {
-              "--pill-glow": `color-mix(in oklab, ${band.color} 35%, transparent)`,
-            } as React.CSSProperties}
-            className="group"
-          >
+          {/* AQI pill */}
+          <motion.div whileHover={prefersReduced ? undefined : HOVER_LIFT_SM}>
             <Pill tone={aqiTone}>
               <span className="size-1.5 rounded-full" style={{ background: band.color }} />
               {" AQI "}
@@ -170,29 +167,19 @@ export function DashboardHeader({
           Export
         </motion.button>
 
-        {/* Issue Advisory — Phase 2: pulsing glow ring on hover */}
-        <div className="relative group">
-          {/* Glow ring layer */}
-          {!prefersReduced && (
-            <div
-              aria-hidden
-              className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-300 pointer-events-none"
-              style={{ background: "var(--color-primary)", transform: "scale(1.15)" }}
-            />
+        {/* Issue Advisory — the one clearly-primary action in this row */}
+        <motion.button
+          whileTap={prefersReduced ? undefined : TAP_PRESS}
+          onClick={onAdvisory}
+          className={cn(
+            "aurora text-primary-foreground rounded-xl px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium",
+            "hover:opacity-88 transition-opacity duration-150",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
           )}
-          <motion.button
-            whileTap={prefersReduced ? undefined : TAP_PRESS}
-            onClick={onAdvisory}
-            className={cn(
-              "relative aurora text-primary-foreground rounded-xl px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium",
-              "hover:opacity-88 transition-opacity duration-150",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
-            )}
-          >
-            <Megaphone className="size-3.5" />
-            Issue advisory
-          </motion.button>
-        </div>
+        >
+          <Megaphone className="size-3.5" />
+          Issue advisory
+        </motion.button>
       </div>
     </motion.header>
   );

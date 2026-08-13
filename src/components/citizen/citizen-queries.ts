@@ -10,6 +10,7 @@ import client from "@/lib/api/client";
 export type ComplaintStatus =
   | "pending"
   | "in-progress"
+  | "awaiting_citizen_review"
   | "resolved"
   | "rework"
   | "rejected"
@@ -29,6 +30,8 @@ export interface PopulatedUser {
   _id: string;
   name: string;
   email: string;
+  /** Only present on the assigned authority, and only when they've set one. */
+  phone?: string;
 }
 
 export interface CitizenComplaint {
@@ -210,5 +213,46 @@ export function useUploadComplaintImages() {
       toast("Evidence uploaded successfully.");
     },
     onError: () => toast("Failed to upload images. Please try again."),
+  });
+}
+
+// ─── Citizen Review — accept resolution ───────────────────────────────────────
+
+export function useAcceptResolution() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => complaintApi.acceptResolution(id),
+    onSuccess: (_res, id) => {
+      qc.invalidateQueries({ queryKey: CITIZEN_KEYS.complaint(id) });
+      qc.invalidateQueries({ queryKey: ["citizen-complaints"] });
+      qc.invalidateQueries({ queryKey: CITIZEN_KEYS.stats });
+      toast("Resolution accepted — complaint closed.");
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast(msg ?? "Failed to accept resolution. Please try again.");
+    },
+  });
+}
+
+// ─── Citizen Review — request rework ──────────────────────────────────────────
+
+export function useCitizenRequestRework() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason, comments }: { id: string; reason: string; comments?: string }) =>
+      complaintApi.citizenRequestRework(id, { reason, comments }),
+    onSuccess: (_res, vars) => {
+      qc.invalidateQueries({ queryKey: CITIZEN_KEYS.complaint(vars.id) });
+      qc.invalidateQueries({ queryKey: ["citizen-complaints"] });
+      qc.invalidateQueries({ queryKey: CITIZEN_KEYS.stats });
+      toast("Rework requested — an administrator will review it.");
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast(msg ?? "Failed to request rework. Please try again.");
+    },
   });
 }

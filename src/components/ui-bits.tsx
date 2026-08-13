@@ -90,6 +90,7 @@ export function Panel({
   eyebrow,
   action,
   id,
+  surface = "glass",
 }: {
   children: ReactNode;
   className?: string;
@@ -97,9 +98,20 @@ export function Panel({
   eyebrow?: string;
   action?: ReactNode;
   id?: string;
+  /**
+   * Visual treatment of the panel surface.
+   * - "glass" (default): the original heavy-blur glassmorphism surface used
+   *   across the app. Unchanged — every existing caller keeps this look.
+   * - "card": calmer, less-transparent surface (reuses the existing
+   *   `glass-card` utility — the same tier already used inside the locked
+   *   Hero's own cards) with no backdrop blur. Opt-in only, used by the
+   *   Phase 2 dashboard sections so they read as one cohesive monitoring
+   *   workspace instead of a stack of independent glowing widgets.
+   */
+  surface?: "glass" | "card";
 }) {
   return (
-    <div id={id} className={cn("glass rounded-2xl p-5", className)}>
+    <div id={id} className={cn(surface === "card" ? "glass-card" : "glass", "rounded-2xl p-5", className)}>
       {(title || action) && (
         <div className="flex items-start justify-between mb-4 gap-3">
           <div>

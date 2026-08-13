@@ -1,9 +1,12 @@
 /**
- * QuickActions — Phase 7
+ * QuickActions — renders the "Explore GreenGuard" navigation cards.
  *
- * Premium navigation tiles. Phase 5 added Framer Motion but kept the
- * icon badge as a simple gradient div. Phase 7 upgrades to:
- *  - Hover: gradient reveal that sweeps across the tile, icon lifts + glows
+ * Phase 2: Production UI & Information Hierarchy — restraint pass:
+ *  - Dropped the extra box-shadow glow ring on the icon badge; the badge's
+ *    own hover scale + shadow already reads as an affordance without a
+ *    second glow layer on top of it
+ *  - Softened the hover gradient sweep so it reads as a light surface
+ *    lift rather than a colored bloom
  *  - Press: coordinated spring sink (icon + tile together via shared variants)
  *  - Uses shared HOVER_LIFT / TAP_PRESS from motion.ts so it stays in sync
  *    with the rest of the design system
@@ -50,17 +53,17 @@ function ActionTile({ action }: { action: QuickAction }) {
       whileHover={prefersReduced ? undefined : HOVER_LIFT}
       whileTap={prefersReduced ? undefined : TAP_PRESS}
       className={cn(
-        "glass rounded-2xl p-4 flex flex-col items-center justify-center gap-3 text-center",
+        "glass-card rounded-2xl p-4 flex flex-col items-center justify-center gap-3 text-center",
         "min-w-[110px] shrink-0 sm:min-w-0 sm:shrink cursor-pointer group",
         "border border-border/70 relative overflow-hidden",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
       )}
     >
-      {/* Hover gradient sweep — GPU opacity only */}
+      {/* Hover surface lift — GPU opacity only, kept subtle */}
       <div
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"
         style={{
-          background: `radial-gradient(ellipse 80% 60% at 50% 0%, color-mix(in oklab, ${action.accent} 12%, transparent), transparent)`,
+          background: `radial-gradient(ellipse 70% 50% at 50% 0%, color-mix(in oklab, ${action.accent} 7%, transparent), transparent)`,
         }}
       />
 
@@ -76,12 +79,6 @@ function ActionTile({ action }: { action: QuickAction }) {
         }}
       >
         <action.icon className="size-[18px] transition-transform duration-200 group-hover:scale-110" />
-
-        {/* Glow ring on hover */}
-        <div
-          className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-          style={{ boxShadow: `0 0 16px color-mix(in oklab, ${action.accent} 55%, transparent)` }}
-        />
       </div>
 
       <div className="relative">
@@ -103,7 +100,7 @@ export function QuickActions({ showReports: _showReports }: { showReports: boole
 
   return (
     <motion.div
-      className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 sm:overflow-visible"
+      className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible"
       variants={STAGGER(0.06)}
       initial={prefersReduced ? false : "hidden"}
       animate="show"

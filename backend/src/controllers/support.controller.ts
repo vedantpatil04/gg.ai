@@ -274,3 +274,43 @@ export async function createFeedback(req: AuthRequest, res: Response, next: Next
     res.status(201).json({ success: true, data: { feedback } });
   } catch (err) { next(err); }
 }
+
+// ─── Bug Report List / Detail (added Phase 7) ─────────────────────────────────
+
+export async function getBugReports(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) return next(new AppError("Not authenticated", 401));
+
+    const page  = Math.max(1, Number(req.query.page)  || 1);
+    const limit = Math.min(100, Number(req.query.limit) || 20);
+    const skip  = (page - 1) * limit;
+
+    const filter: Record<string, unknown> = { submittedBy: req.user._id };
+    // Admins can see all
+    if (req.user.role === "administrator") delete filter.submittedBy;
+
+    if (req.query.status)   filter.status   = req.query.status;
+    if (req.query.severity) filter.severity  = req.query.severity;
+    if (req.query.category) filter.category  = req.query.category;
+
+    const [reports, total] = await Promise.all([
+      BugReport.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      BugReport.countDocuments(filter),
+    ]);
+
+    res.json({ success: true, data: { reports, total, page, pages: Math.ceil(total / limit) } });
+  } catch (err) { next(err); }
+}
+
+export async function getBugReport(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) return next(new AppError("Not authenticated", 401));
+    const report = await BugReport.findById(req.params.id).lean();
+    if (!report) return next(new AppError("Bug report not found", 404));
+
+    const isOwner = report.submittedBy.toString() === (req.user._id as mongoose.Types.ObjectId).toString();
+    if (!isOwner && req.user.role !== "administrator") return next(new AppError("Not authorised", 403));
+
+    res.json({ success: true, data: { report } });
+  } catch (err) { next(err); }
+}

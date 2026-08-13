@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useReducedMotion } from "framer-motion";
 import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useCity } from "@/lib/city-context";
@@ -166,6 +167,7 @@ function SectionHeader() {
 }
 
 export function EnvironmentalTrend({ className }: { className?: string }) {
+  const prefersReducedMotion = useReducedMotion();
   const { city } = useCity();
   const cityId = city?.id;
 
@@ -317,7 +319,7 @@ export function EnvironmentalTrend({ className }: { className?: string }) {
                         stroke: "var(--color-background)",
                         strokeWidth: 2,
                       }}
-                      isAnimationActive
+                      isAnimationActive={!prefersReducedMotion}
                       animationDuration={700}
                     />
                   </AreaChart>

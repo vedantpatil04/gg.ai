@@ -3,10 +3,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   supportTicketApi,
   bugReportApi,
+  bugListApi,
   featureRequestApi,
   feedbackApi,
   type TicketStatus,
   type TicketPriority,
+  type BugStatus,
+  type BugSeverity,
   type SupportTicketDTO,
   type FeatureRequestDTO,
   type TicketStats,
@@ -238,4 +241,28 @@ export function useFeedback() {
     submitFeedback,
     reset,
   };
+}
+
+// ─── Bug Report List (Phase 7) ────────────────────────────────────────────────
+
+export const bugKeys = {
+  list:   (filters?: object) => ["bugs", "list", filters] as const,
+  detail: (id: string)       => ["bugs", "detail", id]    as const,
+};
+
+export function useBugList(filters?: { status?: BugStatus; severity?: BugSeverity; page?: number }) {
+  return useQuery({
+    queryKey: bugKeys.list(filters),
+    queryFn:  () => bugListApi.getAll(filters),
+    staleTime: 20_000,
+  });
+}
+
+export function useBugDetail(id: string | null) {
+  return useQuery({
+    queryKey: bugKeys.detail(id ?? ""),
+    queryFn:  () => bugListApi.getOne(id!),
+    enabled:  !!id,
+    staleTime: 30_000,
+  });
 }

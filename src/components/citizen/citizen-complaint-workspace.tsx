@@ -14,6 +14,9 @@ import {
   ChevronRight,
   Loader2,
   ZoomIn,
+  Phone,
+  Mail,
+  RotateCcw,
 } from "lucide-react";
 import {
   Sheet,
@@ -24,9 +27,14 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Pill } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
-import { useCitizenComplaint } from "./citizen-queries";
+import {
+  useCitizenComplaint,
+  useAcceptResolution,
+  useCitizenRequestRework,
+} from "./citizen-queries";
 import {
   getStatusMeta,
   getSeverityMeta,
@@ -197,6 +205,101 @@ function WorkspaceSkeleton() {
   );
 }
 
+// ─── Citizen Review — Accept / Request Rework ─────────────────────────────────
+
+function ReviewResolutionPanel({ complaintId }: { complaintId: string }) {
+  const [mode, setMode] = useState<"idle" | "rework">("idle");
+  const [reason, setReason] = useState("");
+  const accept = useAcceptResolution();
+  const requestRework = useCitizenRequestRework();
+
+  const reasonTooShort = reason.trim().length > 0 && reason.trim().length < 10;
+
+  return (
+    <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-4">
+      <div>
+        <h4 className="text-sm font-semibold">Review Resolution</h4>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Was your complaint resolved satisfactorily?
+        </p>
+      </div>
+
+      {mode === "idle" ? (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            onClick={() => accept.mutate(complaintId)}
+            disabled={accept.isPending || requestRework.isPending}
+          >
+            {accept.isPending ? (
+              <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <CheckCircle2 className="size-3.5 mr-1.5" />
+            )}
+            Accept Resolution
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setMode("rework")}
+            disabled={accept.isPending || requestRework.isPending}
+          >
+            <RotateCcw className="size-3.5 mr-1.5" />
+            Request Rework
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          <label className="text-xs font-medium text-muted-foreground" htmlFor="rework-reason">
+            What still needs to be addressed? (minimum 10 characters)
+          </label>
+          <Textarea
+            id="rework-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Describe what wasn't resolved..."
+            rows={3}
+          />
+          {reasonTooShort && (
+            <p className="text-[11px] text-destructive">
+              Please provide at least 10 characters.
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={reason.trim().length < 10 || requestRework.isPending}
+              onClick={() =>
+                requestRework.mutate(
+                  { id: complaintId, reason: reason.trim() },
+                  { onSuccess: () => setMode("idle") },
+                )
+              }
+            >
+              {requestRework.isPending && (
+                <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+              )}
+              Submit Rework Request
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setMode("idle");
+                setReason("");
+              }}
+              disabled={requestRework.isPending}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Workspace ────────────────────────────────────────────────────────────────
 
 interface CitizenComplaintWorkspaceProps {
@@ -213,7 +316,9 @@ export function CitizenComplaintWorkspace({
 
   const statusMeta = complaint ? getStatusMeta(complaint.status) : null;
   const severityMeta = complaint ? getSeverityMeta(complaint.severity) : null;
-  const assignedAuth = complaint?.assignedTo as { name?: string; email?: string } | null;
+  const assignedAuth = complaint?.assignedTo as
+    | { name?: string; email?: string; phone?: string }
+    | null;
   const verifiedByUser = complaint?.verifiedBy as { name?: string } | null;
 
   // Images are only shown when there are any and the status allows it
@@ -221,7 +326,9 @@ export function CitizenComplaintWorkspace({
   const canShowEvidence =
     complaint &&
     complaint.images.length > 0 &&
-    ["in-progress", "resolved", "closed", "rework"].includes(complaint.status);
+    ["in-progress", "awaiting_citizen_review", "resolved", "closed", "rework"].includes(
+      complaint.status,
+    );
 
   return (
     <Sheet open={!!complaintId} onOpenChange={(open) => !open && onClose()}>
@@ -265,7 +372,10 @@ export function CitizenComplaintWorkspace({
                     { value: "timeline", label: "Timeline" },
                     { value: "investigation", label: "Investigation" },
                     { value: "evidence", label: `Evidence (${complaint.images.length})` },
-                    ...(complaint.status === "closed" || complaint.resolution
+                    ...(complaint.status === "closed" ||
+                    complaint.status === "awaiting_citizen_review" ||
+                    complaint.status === "resolved" ||
+                    complaint.resolution
                       ? [{ value: "resolution", label: "Resolution" }]
                       : []),
                   ].map((t) => (
@@ -326,6 +436,25 @@ export function CitizenComplaintWorkspace({
                   </div>
 
                   {/* Status explainer */}
+                  {complaint.status === "awaiting_citizen_review" ? (
+                    <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Clock className="size-4 text-primary shrink-0" />
+                        <span className="text-sm font-semibold">Ready for Review</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        The authority has submitted a resolution. Please review the response
+                        and let us know whether the issue has been resolved.
+                      </p>
+                      <Button
+                        size="sm"
+                        onClick={() => setTab("resolution")}
+                        className="w-full sm:w-auto"
+                      >
+                        Review Resolution
+                      </Button>
+                    </div>
+                  ) : (
                   <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-1.5">
                     <div className="flex items-center gap-2">
                       {complaint.status === "closed" ? (
@@ -347,13 +476,14 @@ export function CitizenComplaintWorkspace({
                       {complaint.status === "rework" &&
                         "An authority is continuing to investigate your complaint."}
                       {complaint.status === "resolved" &&
-                        "The authority has submitted a resolution. An administrator is reviewing it."}
+                        "A revised resolution has been submitted. An administrator is reviewing it."}
                       {complaint.status === "closed" &&
                         "Your complaint has been resolved and verified. Thank you for reporting."}
                       {complaint.status === "rejected" &&
                         "This complaint was not approved for investigation."}
                     </p>
                   </div>
+                  )}
                 </TabsContent>
 
                 {/* ── Timeline ── */}
@@ -400,6 +530,48 @@ export function CitizenComplaintWorkspace({
                             )}
                           </div>
                         </div>
+
+                        {/* Never fabricate contact data — disabled when absent. */}
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!assignedAuth.phone}
+                            asChild={!!assignedAuth.phone}
+                          >
+                            {assignedAuth.phone ? (
+                              <a
+                                href={`tel:${assignedAuth.phone.replace(/[^\d+]/g, "")}`}
+                                aria-label={`Call ${assignedAuth.name}`}
+                              >
+                                <Phone className="size-3.5" aria-hidden="true" /> Call Authority
+                              </a>
+                            ) : (
+                              <span>
+                                <Phone className="size-3.5" aria-hidden="true" /> Call Authority
+                              </span>
+                            )}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!assignedAuth.email}
+                            asChild={!!assignedAuth.email}
+                          >
+                            {assignedAuth.email ? (
+                              <a
+                                href={`mailto:${assignedAuth.email}`}
+                                aria-label={`Email ${assignedAuth.name}`}
+                              >
+                                <Mail className="size-3.5" aria-hidden="true" /> Email Authority
+                              </a>
+                            ) : (
+                              <span>
+                                <Mail className="size-3.5" aria-hidden="true" /> Email Authority
+                              </span>
+                            )}
+                          </Button>
+                        </div>
                       </div>
 
                       {complaint.resolvedAt && (
@@ -430,7 +602,10 @@ export function CitizenComplaintWorkspace({
                 </TabsContent>
 
                 {/* ── Resolution ── */}
-                {(complaint.status === "closed" || complaint.resolution) && (
+                {(complaint.status === "closed" ||
+                  complaint.status === "awaiting_citizen_review" ||
+                  complaint.status === "resolved" ||
+                  complaint.resolution) && (
                   <TabsContent value="resolution" className="mt-0 space-y-5">
                     {complaint.resolution ? (
                       <div className="space-y-3">
@@ -444,6 +619,10 @@ export function CitizenComplaintWorkspace({
                         </div>
                       </div>
                     ) : null}
+
+                    {complaint.status === "awaiting_citizen_review" && (
+                      <ReviewResolutionPanel complaintId={complaint._id} />
+                    )}
 
                     <div className="space-y-3">
                       {complaint.resolvedAt && (

@@ -1,11 +1,18 @@
 /**
  * AroundYou — Phase 1: Dashboard Foundation & Realism
+ * Phase 2: Production UI & Information Hierarchy
  *
  * Compact local comparison — the current city plus its 3 nearest
  * neighbours by straight-line distance, from the same city list already
  * used app-wide (live API list when connected, the existing offline
  * fallback list otherwise). No sparklines, no artificial rankings, no
  * invented cities or readings.
+ *
+ * Phase 2 change (UI only, same data/props): stronger AQI/name hierarchy,
+ * tighter row rhythm, and a subtle hover state on the comparison rows.
+ * Rows remain non-interactive display data (no navigation exists today),
+ * so no focus/keyboard affordance was added — that would be a false
+ * signal without a real action behind it.
  */
 
 import { Panel } from "@/components/ui-bits";
@@ -41,8 +48,8 @@ export function AroundYou({
   const rows = [currentCity, ...nearby];
 
   return (
-    <Panel title="Around You">
-      <div className="divide-y divide-border">
+    <Panel title="Around You" surface="card">
+      <div className="divide-y divide-border/70">
         {rows.map((c, i) => {
           const band = aqiBand(c.aqi);
           const isCurrent = i === 0;
@@ -50,20 +57,20 @@ export function AroundYou({
             <div
               key={c.id}
               className={cn(
-                "flex items-center justify-between py-2.5 px-2 -mx-2 rounded-lg text-sm",
-                isCurrent && "bg-muted/40",
+                "flex items-center justify-between gap-3 py-3 px-2.5 -mx-2.5 rounded-lg text-sm transition-colors",
+                isCurrent ? "bg-muted/40" : "hover:bg-muted/25",
               )}
             >
-              <span className="font-medium flex items-center gap-2">
-                {c.name}
+              <span className="font-medium flex items-center gap-2 min-w-0">
+                <span className="truncate">{c.name}</span>
                 {isCurrent && (
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                  <span className="shrink-0 text-[10px] font-normal text-muted-foreground uppercase tracking-wider">
                     You
                   </span>
                 )}
               </span>
-              <span className="flex items-center gap-2">
-                <span className="tabular-nums font-semibold" style={{ color: band.color }}>
+              <span className="flex items-baseline gap-1.5 shrink-0">
+                <span className="tabular-nums font-semibold text-base" style={{ color: band.color }}>
                   {c.aqi}
                 </span>
                 <span className="text-xs" style={{ color: band.color }}>

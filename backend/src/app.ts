@@ -33,6 +33,7 @@ import notificationRoutes  from "./routes/notification.routes";
 import settingsRoutes      from "./routes/settings.routes";
 import supportRoutes       from "./routes/support.routes";
 import helpAiRoutes        from "./routes/help-ai.routes";
+import communityRoutes     from "./routes/community.routes";
 
 import { getCityAIInsights }                   from "./controllers/copilot.controller";
 import { startScheduler, getSchedulerStatus }  from "./jobs/scheduler";
@@ -104,27 +105,28 @@ const aiLimiter = rateLimit({
 app.use("/api", limiter);
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
-app.use("/api/auth",           authLimiter, authRoutes);
-app.use("/api/users",          userRoutes);
-app.use("/api/environmental",  environmentalRoutes);
-app.use("/api/forecast",       forecastRoutes);
-app.use("/api/complaints",     complaintRoutes);
-app.use("/api/reports",        reportRoutes);
-app.use("/api/profile",        profileRoutes);
-app.use("/api/alerts",         alertRoutes);
-app.use("/api/simulator",      simulatorRoutes);
-app.use("/api/admin",          adminRoutes);
+app.use("/api/auth",             authLimiter, authRoutes);
+app.use("/api/users",            userRoutes);
+app.use("/api/environmental",    environmentalRoutes);
+app.use("/api/forecast",         forecastRoutes);
+app.use("/api/complaints",       complaintRoutes);
+app.use("/api/reports",          reportRoutes);
+app.use("/api/profile",          profileRoutes);
+app.use("/api/alerts",           alertRoutes);
+app.use("/api/simulator",        simulatorRoutes);
+app.use("/api/admin",            adminRoutes);
 app.use("/api/admin/authorities", authorityRoutes);
-app.use("/api/citizen",        citizenRoutes);
-app.use("/api/copilot",        aiLimiter, copilotRoutes);
-app.use("/api/intelligence",   aiLimiter, intelligenceRoutes);
-app.use("/api/command",        aiLimiter, commandRoutes);
-app.use("/api/security",       securityRoutes);
-app.use("/api/platform-admin", platformAdminRoutes);
-app.use("/api/notifications",  notificationRoutes);
-app.use("/api/settings",       settingsRoutes);
-app.use("/api/support",        supportRoutes);
-app.use("/api/help-ai",        helpAiRoutes);
+app.use("/api/citizen",          citizenRoutes);
+app.use("/api/copilot",          aiLimiter, copilotRoutes);
+app.use("/api/intelligence",     aiLimiter, intelligenceRoutes);
+app.use("/api/command",          aiLimiter, commandRoutes);
+app.use("/api/security",         securityRoutes);
+app.use("/api/platform-admin",   platformAdminRoutes);
+app.use("/api/notifications",    notificationRoutes);
+app.use("/api/settings",         settingsRoutes);
+app.use("/api/support",          supportRoutes);
+app.use("/api/help-ai",          helpAiRoutes);
+app.use("/api/community",        communityRoutes);
 
 // Phase 3 — GET /api/cities/:city/ai-insights  (spec-required top-level path)
 app.get("/api/cities/:city/ai-insights", aiLimiter, getCityAIInsights);

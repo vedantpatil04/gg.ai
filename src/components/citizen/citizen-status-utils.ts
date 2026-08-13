@@ -31,6 +31,9 @@ export const STATUS_META: Record<
   // assignedTo; this entry is the fallback when assignment info isn't known.
   pending: { label: "Pending", tone: "warning" },
   "in-progress": { label: "In Progress", tone: "info" },
+  // Authority's first resolution — the citizen is the next actor.
+  awaiting_citizen_review: { label: "Ready for Review", tone: "primary" },
+  // Only reached after a rework resubmission — genuinely awaiting the admin.
   resolved: { label: "Awaiting Verification", tone: "primary" },
   rework: { label: "In Progress", tone: "info" }, // citizen sees rework as in-progress
   rejected: { label: "Rejected", tone: "destructive" },
@@ -98,8 +101,9 @@ const EVENT_LABELS: Record<string, string> = {
   rejected: "Complaint Rejected",
   verified: "Resolution Verified",
   closed: "Complaint Closed",
-  rework_requested: "Returned for Review",
+  rework_requested: "Returned for Rework",
   resubmitted: "Resolution Resubmitted",
+  citizen_accepted: "Resolution Accepted",
 };
 
 export function humanizeEventType(eventType: string): string {

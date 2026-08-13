@@ -102,6 +102,108 @@ Answer in 3–5 sentences. Cite specific metric values. If the question is about
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// FEATURE 1b — ENVIRONMENTAL OVERVIEW GROUNDED ASSISTANT (Phase 5)
+// ══════════════════════════════════════════════════════════════════════════════
+// Distinct persona from SYSTEM_ENV_ANALYST (the internal Copilot page's
+// "professional analyst" voice) — this one speaks directly to a citizen on
+// the public Environmental Overview page, and is explicitly constrained to
+// only the data it's handed. Reuses the same client/generate()/error-fallback
+// plumbing as every other Gemini feature in this file — no second provider.
+const SYSTEM_ENV_OVERVIEW_ASSISTANT =
+  "You are GreenGuard AI's Environmental Overview assistant, speaking directly to a citizen viewing " +
+  "their city's environmental dashboard. Be calm, concise, citizen-friendly, and non-alarmist — avoid " +
+  "technical jargon. Structure the answer in short labeled sections chosen from: 'What I see', 'What " +
+  "stands out', 'What this means' — use only the sections you actually have something grounded to say " +
+  "for. Only reference environmental values, locations, or historical trends that are explicitly present " +
+  "in the CONTEXT block below — never invent measurements, events, monitoring stations, timestamps, or " +
+  "scientific studies, and never fill in a value that is missing from CONTEXT. Where CONTEXT marks a " +
+  "value as an estimate (modeled from city-wide readings and location type, not a direct on-site " +
+  "measurement), describe it as an estimate — never call it a 'reading' or 'measurement'. Never state or " +
+  "imply causation (e.g. 'wind caused X', 'this is worse because it's industrial') unless CONTEXT " +
+  "explicitly supports that conclusion — describe correlated observations instead (e.g. 'PM2.5 was lower " +
+  "during the period when AQI improved'). Never diagnose a person or give personalized medical advice — " +
+  "only general, cautious, non-alarmist interpretation appropriate to the AQI band in CONTEXT, and note " +
+  "that people with existing health conditions should consult a doctor for personal guidance. If CONTEXT " +
+  "does not contain enough information to answer the question, say so plainly rather than guessing. Keep " +
+  "the entire answer under 140 words.";
+
+export interface EnvironmentalInsightContext {
+  cityName: string;
+  aqi: number;
+  pm25: number;
+  pm10: number;
+  o3?: number | null;
+  no2?: number | null;
+  co?: number | null;
+  so2?: number | null;
+  temp: number;
+  humidity: number;
+  windSpeed?: number | null;
+  pressure?: number | null;
+  timestamp: string;
+  /** Verified (source: "api") 7-day trend — omitted entirely when there isn't
+   *  enough genuine history to compute one; never backfilled with seed data. */
+  trend?: { direction: string; avgAqi7d: number; readings7d: number } | null;
+  /** A selected Phase 4 monitored location, when the citizen asked about one.
+   *  `isEstimate` is always true today (per-location values are a modeled
+   *  estimate derived from the city baseline + location category, not an
+   *  independent live sensor reading) — carried explicitly so the model
+   *  never describes it as measured. */
+  location?: {
+    name: string;
+    category: string;
+    estimatedAqi: number;
+    isEstimate: boolean;
+    description?: string;
+  } | null;
+}
+
+export async function generateEnvironmentalInsight(
+  question: string,
+  context: EnvironmentalInsightContext,
+): Promise<string> {
+  const lines: string[] = [
+    `CITY: ${context.cityName}`,
+    `TIMESTAMP: ${context.timestamp}`,
+    `AQI: ${context.aqi}`,
+    `PM2.5: ${context.pm25} µg/m³`,
+    `PM10: ${context.pm10} µg/m³`,
+  ];
+  if (context.o3 != null) lines.push(`O3: ${context.o3} ppb`);
+  if (context.no2 != null) lines.push(`NO2: ${context.no2} ppb`);
+  if (context.co != null) lines.push(`CO: ${context.co} ppm`);
+  if (context.so2 != null) lines.push(`SO2: ${context.so2} ppb`);
+  lines.push(`Temperature: ${context.temp}°C`, `Humidity: ${context.humidity}%`);
+  if (context.windSpeed != null) lines.push(`Wind speed: ${context.windSpeed} km/h`);
+  if (context.pressure != null) lines.push(`Pressure: ${context.pressure} hPa`);
+
+  if (context.trend) {
+    lines.push(
+      "",
+      "VERIFIED 7-DAY TREND (genuine ingested readings only):",
+      `Direction: ${context.trend.direction}`,
+      `7-day average AQI: ${context.trend.avgAqi7d} (from ${context.trend.readings7d} verified readings)`,
+    );
+  } else {
+    lines.push("", "VERIFIED 7-DAY TREND: not available — insufficient verified historical readings.");
+  }
+
+  if (context.location) {
+    lines.push(
+      "",
+      "SELECTED LOCATION:",
+      `Name: ${context.location.name}`,
+      `Type: ${context.location.category}`,
+      `Estimated AQI: ${context.location.estimatedAqi}${context.location.isEstimate ? " (modeled estimate, not a direct on-site sensor reading)" : ""}`,
+    );
+    if (context.location.description) lines.push(`Notes: ${context.location.description}`);
+  }
+
+  const prompt = `CONTEXT:\n${lines.join("\n")}\n\nQUESTION: ${question}`;
+  return generate(prompt, SYSTEM_ENV_OVERVIEW_ASSISTANT);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // FEATURE 2 — AI HEALTH ADVISOR
 // ══════════════════════════════════════════════════════════════════════════════
 export interface HealthAdvice {

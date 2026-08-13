@@ -17,6 +17,9 @@ import { SustainabilitySectionHeading }    from "@/components/sustainability/sec
 import { AiExecutiveSummary } from "@/components/sustainability/ai-summary";
 import { EcoScoreBreakdownPanel } from "@/components/sustainability/ecoscore-breakdown";
 
+// Phase 4 component
+import { SustainabilityHistoryChart } from "@/components/sustainability/history-chart";
+
 // Phase 5 components
 import { SustainabilityCopilot } from "@/components/sustainability/copilot-panel";
 
@@ -118,6 +121,11 @@ function Sustainability() {
         <section id="environmental-overview">
           <SustainabilitySectionHeading icon={Leaf} title="Environmental Overview" description={`Current conditions in ${city.name}.`} />
           <ExecutiveKpiStrip items={kpis} />
+        </section>
+
+        {/* ── ENVIRONMENTAL HISTORY (Phase 4 — real historical trend) ── */}
+        <section id="environmental-history">
+          <SustainabilityHistoryChart cityId={city.id} cityName={city.name} />
         </section>
 
         {/* ── WHY IS THE ECOSCORE X? (Phase 2 — transparent breakdown) ── */}

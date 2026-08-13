@@ -33,6 +33,7 @@ import { complaintApi } from "@/lib/api/services.api";
 import { Panel, Pill, WorkspaceHeader } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { resolveAssetUrl } from "@/components/profile/profile-utils";
 import type { AuthUser } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
@@ -98,6 +99,7 @@ export const STATUS_TONE: Record<string, "warning" | "info" | "success" | "muted
   {
     pending: "warning",
     "in-progress": "info",
+    awaiting_citizen_review: "info", // authority's work is done — citizen's turn
     resolved: "info", // awaiting verification
     rework: "destructive",
     rejected: "muted",
@@ -106,6 +108,7 @@ export const STATUS_TONE: Record<string, "warning" | "info" | "success" | "muted
 export const STATUS_LABEL: Record<string, string> = {
   pending: "Pending",
   "in-progress": "In Progress",
+  awaiting_citizen_review: "Resolution Submitted — Awaiting Citizen Review",
   resolved: "Awaiting Verification",
   rework: "Returned for Rework",
   rejected: "Rejected",
@@ -574,7 +577,11 @@ function InternalNotesPanel({
 }
 
 // ─── Investigation checklist ──────────────────────────────────────────────────
-function InvestigationChecklist({ complaintId }: { complaintId: string }) {
+// State lives in the parent workspace (useInvestigationChecklist) so the
+// overall progress can also be surfaced next to the "Investigation" tab
+// label — same localStorage-backed model as before, just lifted one level so
+// it has a single source of truth instead of being read twice.
+function useInvestigationChecklist(complaintId: string) {
   const key = `investigation-checklist-${complaintId}`;
   const [checked, setChecked] = useState<number[]>(() => {
     try {
@@ -583,15 +590,30 @@ function InvestigationChecklist({ complaintId }: { complaintId: string }) {
       return [];
     }
   });
-  const toggle = (i: number) => {
-    const next = checked.includes(i) ? checked.filter((x) => x !== i) : [...checked, i];
-    setChecked(next);
-    try {
-      localStorage.setItem(key, JSON.stringify(next));
-    } catch {
-      /* quota */
-    }
-  };
+  const toggle = useCallback(
+    (i: number) => {
+      setChecked((prev) => {
+        const next = prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i];
+        try {
+          localStorage.setItem(key, JSON.stringify(next));
+        } catch {
+          /* quota */
+        }
+        return next;
+      });
+    },
+    [key],
+  );
+  return { checked, toggle };
+}
+
+function InvestigationChecklist({
+  checked,
+  toggle,
+}: {
+  checked: number[];
+  toggle: (i: number) => void;
+}) {
   const pct = Math.round((checked.length / CHECKLIST_ITEMS.length) * 100);
   return (
     <Panel eyebrow="Investigation Checklist" title="Standard Operating Procedure">
@@ -743,7 +765,8 @@ function ActionPanel({
                   ? "var(--color-success)"
                   : complaint.status === "rework"
                     ? "var(--color-destructive)"
-                    : complaint.status === "resolved"
+                    : complaint.status === "resolved" ||
+                        complaint.status === "awaiting_citizen_review"
                       ? "var(--color-info)"
                       : complaint.status === "in-progress"
                         ? "var(--color-info)"
@@ -821,6 +844,12 @@ function ActionPanel({
             Submitted — awaiting administrator verification.
           </div>
         )}
+        {complaint.status === "awaiting_citizen_review" && (
+          <div className="rounded-lg bg-info/10 px-3 py-2 text-sm flex items-center gap-2 text-info">
+            <CheckCircle2 className="size-4 shrink-0" />
+            Submitted — awaiting citizen review.
+          </div>
+        )}
       </Panel>
 
       {/* Assignment — Phase 3B: read-only, shows ownership metadata */}
@@ -839,6 +868,11 @@ function ActionPanel({
               </div>
               {isAssigned && <Pill tone="primary">You</Pill>}
             </div>
+            {complaint.assignmentSource && (
+              <span className="inline-flex items-center text-[10px] text-muted-foreground bg-muted/60 rounded-full px-2 py-0.5">
+                {complaint.assignmentSource === "automatic" ? "Auto-assigned" : "Manually assigned"}
+              </span>
+            )}
             {(complaint.assignedByName || complaint.assignedAt) && (
               <div className="pt-2 border-t border-border/50 text-xs text-muted-foreground space-y-1">
                 {complaint.assignedByName && (
@@ -960,6 +994,7 @@ export function InvestigationWorkspace({
     !["resolved", "rejected", "closed"].includes(complaint?.status ?? "");
 
   const age = complaint ? ageLabel(complaint.createdAt) : null;
+  const checklist = useInvestigationChecklist(complaintId);
 
   return (
     <motion.div
@@ -1035,6 +1070,7 @@ export function InvestigationWorkspace({
                 tone: age?.critical ? "destructive" : age?.urgent ? "warning" : "muted",
               },
               { label: "Images", value: complaint.images?.length ?? 0, tone: "info" },
+              { label: "Updated", value: timeAgo(complaint.updatedAt), tone: "muted" },
               ...(complaint.reworkCount
                 ? [
                     {
@@ -1048,43 +1084,80 @@ export function InvestigationWorkspace({
           />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            <div className="lg:col-span-2 space-y-4">
-              <Panel eyebrow="Complaint Details" title="Filed Information">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-                  {[
-                    {
-                      label: "Issue Type",
-                      value: ISSUE_LABELS[complaint.issueType] ?? complaint.issueType,
-                    },
-                    { label: "Severity", value: complaint.severity },
-                    { label: "Status", value: STATUS_LABEL[complaint.status] },
-                    { label: "City", value: complaint.cityId },
-                    { label: "Location", value: complaint.location?.address ?? "Not specified" },
-                    { label: "Filed", value: new Date(complaint.createdAt).toLocaleDateString() },
-                  ].map((f) => (
-                    <div key={f.label} className="space-y-0.5">
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        {f.label}
-                      </div>
-                      <div className="font-medium capitalize truncate">{f.value}</div>
-                    </div>
-                  ))}
+            <div className="lg:col-span-2">
+              <Tabs defaultValue="overview">
+                <div className="overflow-x-auto -mx-1 px-1 pb-1">
+                  <TabsList className="w-max min-w-full sm:w-auto">
+                    <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="investigation" className="gap-1.5">
+                      Investigation
+                      <span className="text-[10px] tabular-nums opacity-70">
+                        {checklist.checked.length}/{CHECKLIST_ITEMS.length}
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="evidence" className="gap-1.5">
+                      Evidence
+                      {complaint.images?.length > 0 && (
+                        <span className="text-[10px] tabular-nums opacity-70">
+                          {complaint.images.length}
+                        </span>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                  </TabsList>
                 </div>
-                {complaint.location?.address && (
-                  <div className="mt-4 pt-3 border-t border-border/50 flex items-start gap-2 text-sm text-muted-foreground">
-                    <MapPin className="size-4 shrink-0 mt-0.5 text-primary" />
-                    {complaint.location.address}
-                  </div>
-                )}
-              </Panel>
-              <EvidencePanel complaint={complaint} canEdit={canEdit} onRefetch={() => refetch()} />
-              <InvestigationChecklist complaintId={complaintId} />
-              <InternalNotesPanel
-                complaint={complaint}
-                canEdit={canEdit}
-                onSaved={() => refetch()}
-              />
-              <ActivityTimeline complaint={complaint} />
+
+                <TabsContent value="overview" className="space-y-4 mt-4">
+                  <Panel eyebrow="Complaint Details" title="Filed Information">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                      {[
+                        {
+                          label: "Issue Type",
+                          value: ISSUE_LABELS[complaint.issueType] ?? complaint.issueType,
+                        },
+                        { label: "Severity", value: complaint.severity },
+                        { label: "Status", value: STATUS_LABEL[complaint.status] },
+                        { label: "City", value: complaint.cityId },
+                        {
+                          label: "Location",
+                          value: complaint.location?.address ?? "Not specified",
+                        },
+                        { label: "Filed", value: new Date(complaint.createdAt).toLocaleDateString() },
+                      ].map((f) => (
+                        <div key={f.label} className="space-y-0.5">
+                          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                            {f.label}
+                          </div>
+                          <div className="font-medium capitalize truncate">{f.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {complaint.location?.address && (
+                      <div className="mt-4 pt-3 border-t border-border/50 flex items-start gap-2 text-sm text-muted-foreground">
+                        <MapPin className="size-4 shrink-0 mt-0.5 text-primary" />
+                        {complaint.location.address}
+                      </div>
+                    )}
+                  </Panel>
+                </TabsContent>
+
+                <TabsContent value="investigation" className="space-y-4 mt-4">
+                  <InvestigationChecklist checked={checklist.checked} toggle={checklist.toggle} />
+                  <InternalNotesPanel
+                    complaint={complaint}
+                    canEdit={canEdit}
+                    onSaved={() => refetch()}
+                  />
+                </TabsContent>
+
+                <TabsContent value="evidence" className="mt-4">
+                  <EvidencePanel complaint={complaint} canEdit={canEdit} onRefetch={() => refetch()} />
+                </TabsContent>
+
+                <TabsContent value="timeline" className="mt-4">
+                  <ActivityTimeline complaint={complaint} />
+                </TabsContent>
+              </Tabs>
             </div>
             <div className="lg:col-span-1">
               <div className="sticky top-[8.5rem] space-y-4">
