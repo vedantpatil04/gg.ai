@@ -324,6 +324,36 @@ export async function notifyReworkRequested(
   });
 }
 
+/**
+ * Called when a citizen or authority sends a complaint-scoped message
+ * (Phase 6). Notifies only the other participant — never the sender.
+ */
+export async function notifyNewMessage(
+  recipientId: mongoose.Types.ObjectId,
+  recipientRole: NotificationRecipientRole,
+  senderName: string,
+  complaintId: string,
+  complaintTitle: string,
+  complaintCityId: string,
+): Promise<void> {
+  const link =
+    recipientRole === "citizen"
+      ? `/citizen?tab=complaints&id=${complaintId}&panel=messages`
+      : `/command-center?tab=investigation&id=${complaintId}&panel=messages`;
+
+  await createNotification({
+    userId: recipientId,
+    recipientRole,
+    title: `New message from ${senderName}`,
+    summary: `${complaintTitle} — ${complaintCityId}`,
+    category: "complaints",
+    priority: "medium",
+    link,
+    entityId: complaintId,
+    entityType: "complaint",
+  });
+}
+
 // ─── Authority account notifications ─────────────────────────────────────────
 
 export async function notifyAuthorityRegistrationRequest(

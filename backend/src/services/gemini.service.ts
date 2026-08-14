@@ -102,110 +102,131 @@ Answer in 3–5 sentences. Cite specific metric values. If the question is about
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// FEATURE 1b — ENVIRONMENTAL OVERVIEW GROUNDED ASSISTANT (Phase 5)
+// FEATURE 1B — GREENGUARD INTELLIGENCE CENTER (Sustainability, Phase 5)
 // ══════════════════════════════════════════════════════════════════════════════
-// Distinct persona from SYSTEM_ENV_ANALYST (the internal Copilot page's
-// "professional analyst" voice) — this one speaks directly to a citizen on
-// the public Environmental Overview page, and is explicitly constrained to
-// only the data it's handed. Reuses the same client/generate()/error-fallback
-// plumbing as every other Gemini feature in this file — no second provider.
-const SYSTEM_ENV_OVERVIEW_ASSISTANT =
-  "You are GreenGuard AI's Environmental Overview assistant, speaking directly to a citizen viewing " +
-  "their city's environmental dashboard. Be calm, concise, citizen-friendly, and non-alarmist — avoid " +
-  "technical jargon. Structure the answer in short labeled sections chosen from: 'What I see', 'What " +
-  "stands out', 'What this means' — use only the sections you actually have something grounded to say " +
-  "for. Only reference environmental values, locations, or historical trends that are explicitly present " +
-  "in the CONTEXT block below — never invent measurements, events, monitoring stations, timestamps, or " +
-  "scientific studies, and never fill in a value that is missing from CONTEXT. Where CONTEXT marks a " +
-  "value as an estimate (modeled from city-wide readings and location type, not a direct on-site " +
-  "measurement), describe it as an estimate — never call it a 'reading' or 'measurement'. Never state or " +
-  "imply causation (e.g. 'wind caused X', 'this is worse because it's industrial') unless CONTEXT " +
-  "explicitly supports that conclusion — describe correlated observations instead (e.g. 'PM2.5 was lower " +
-  "during the period when AQI improved'). Never diagnose a person or give personalized medical advice — " +
-  "only general, cautious, non-alarmist interpretation appropriate to the AQI band in CONTEXT, and note " +
-  "that people with existing health conditions should consult a doctor for personal guidance. If CONTEXT " +
-  "does not contain enough information to answer the question, say so plainly rather than guessing. Keep " +
-  "the entire answer under 140 words.";
+// A dedicated, strictly-grounded system prompt and response function for the
+// Sustainability page's "GreenGuard Intelligence Center" — kept separate
+// from generateCopilotResponse/SYSTEM_ENV_ANALYST above (Feature 1), which
+// is shared by the Dashboard, Map, Forecast, Intelligence, and Copilot
+// pages and must not change behavior for any of them.
+//
+// The context this receives is built entirely by the caller
+// (copilot.controller.ts) from the SAME real Phase 1/2/4 data pipeline the
+// Sustainability page itself renders from (including the Phase 2
+// computeEcoScore() result) — never a separate or independently-fetched
+// value — so the AI's answer can never disagree with what's on screen.
+const SYSTEM_SUSTAINABILITY_INTELLIGENCE = `
+ROLE: You are GreenGuard Intelligence, an environmental sustainability analyst embedded in the GreenGuard Intelligence Center for a specific city's Sustainability page.
 
-export interface EnvironmentalInsightContext {
+DATA RULE: Use ONLY the GreenGuard data supplied to you in this prompt for any quantitative claim (scores, percentages, readings, comparisons). Every number you cite must come from the supplied context.
+
+ACCURACY RULE: Never invent environmental readings, historical values, percentages, confidence scores, probabilities, rankings, regional comparisons, or policy outcomes. Never claim a metric exists or has a value when the supplied context marks it unavailable. Never present an assumption as a measured fact.
+
+COMMUNICATION STYLE: Human, concise, clear, practical. Prefer "EcoScore improved by 5 points" over "environmental intelligence trajectory demonstrates positive momentum." Avoid buzzwords and exaggerated language. Keep answers under 120 words unless the question genuinely needs more.
+
+RECOMMENDATION RULE: Any recommendation must be directly connected to a specific supplied metric or breakdown value. Clearly distinguish stated facts from recommendations/opinions — do not blend them into one unlabeled claim.
+
+LIMITATION RULE: When the supplied context does not contain what's needed to answer (a metric is unavailable, no historical data was supplied, the question is out of scope), say so plainly instead of guessing — for example "GreenGuard does not currently have enough data to answer that reliably." This is expected and correct behavior, not a failure.
+
+PREDICTION RULE: Do not provide future predictions or forecasts (e.g. "EcoScore in 30 days") — GreenGuard does not currently have a validated prediction model. If asked, state that plainly rather than inventing a number.
+`.trim();
+
+export interface SustainabilityAIContext {
   cityName: string;
+  updatedAt?: string;
+  ecoScore: number;
+  ecoScoreGrade: string;
+  ecoScoreDataComplete: boolean;
+  ecoScoreMissingMetrics: string[];
+  ecoScoreBreakdown: Array<{ metric: string; normalizedScore: number | null; weight: number; available: boolean }>;
   aqi: number;
-  pm25: number;
-  pm10: number;
-  o3?: number | null;
-  no2?: number | null;
-  co?: number | null;
-  so2?: number | null;
-  temp: number;
-  humidity: number;
-  windSpeed?: number | null;
-  pressure?: number | null;
-  timestamp: string;
-  /** Verified (source: "api") 7-day trend — omitted entirely when there isn't
-   *  enough genuine history to compute one; never backfilled with seed data. */
-  trend?: { direction: string; avgAqi7d: number; readings7d: number } | null;
-  /** A selected Phase 4 monitored location, when the citizen asked about one.
-   *  `isEstimate` is always true today (per-location values are a modeled
-   *  estimate derived from the city baseline + location category, not an
-   *  independent live sensor reading) — carried explicitly so the model
-   *  never describes it as measured. */
-  location?: {
-    name: string;
-    category: string;
-    estimatedAqi: number;
-    isEstimate: boolean;
-    description?: string;
-  } | null;
+  temp?: number;
+  humidity?: number;
+  co2?: number;
+  greenCover?: number;
+  renewableShare?: number;
+  water: number;
+  carbon?: number;
+  /** Compact 7-day summary built from the same real history pipeline as
+   *  Phase 4 (fetchCityHistoryDays) — omitted entirely when there isn't
+   *  enough real history to summarize honestly. */
+  historicalSummary?: {
+    rangeDays: number;
+    daysWithData: number;
+    ecoScore?: { previous: number; current: number };
+    aqi?: { previous: number; current: number };
+    water?: { previous: number; current: number };
+    renewableShare?: { previous: number; current: number };
+  };
 }
 
-export async function generateEnvironmentalInsight(
-  question: string,
-  context: EnvironmentalInsightContext,
-): Promise<string> {
+function formatContextForPrompt(ctx: SustainabilityAIContext): string {
   const lines: string[] = [
-    `CITY: ${context.cityName}`,
-    `TIMESTAMP: ${context.timestamp}`,
-    `AQI: ${context.aqi}`,
-    `PM2.5: ${context.pm25} µg/m³`,
-    `PM10: ${context.pm10} µg/m³`,
+    `CITY: ${ctx.cityName}`,
+    ctx.updatedAt ? `DATA AS OF: ${ctx.updatedAt}` : `DATA FRESHNESS: unavailable`,
+    `ECOSCORE: ${ctx.ecoScore}/100 (Grade ${ctx.ecoScoreGrade})`,
   ];
-  if (context.o3 != null) lines.push(`O3: ${context.o3} ppb`);
-  if (context.no2 != null) lines.push(`NO2: ${context.no2} ppb`);
-  if (context.co != null) lines.push(`CO: ${context.co} ppm`);
-  if (context.so2 != null) lines.push(`SO2: ${context.so2} ppb`);
-  lines.push(`Temperature: ${context.temp}°C`, `Humidity: ${context.humidity}%`);
-  if (context.windSpeed != null) lines.push(`Wind speed: ${context.windSpeed} km/h`);
-  if (context.pressure != null) lines.push(`Pressure: ${context.pressure} hPa`);
 
-  if (context.trend) {
+  if (!ctx.ecoScoreDataComplete && ctx.ecoScoreMissingMetrics.length) {
+    lines.push(`ECOSCORE NOTE: not all methodology inputs are available yet — missing: ${ctx.ecoScoreMissingMetrics.join(", ")}. The score above already accounts for this (remaining weights were proportionally redistributed); do not describe it as incomplete or wrong, just note the missing input(s) if relevant to the question.`);
+  }
+
+  lines.push("ECOSCORE BREAKDOWN (normalized 0-100, higher = better contribution):");
+  for (const m of ctx.ecoScoreBreakdown) {
     lines.push(
-      "",
-      "VERIFIED 7-DAY TREND (genuine ingested readings only):",
-      `Direction: ${context.trend.direction}`,
-      `7-day average AQI: ${context.trend.avgAqi7d} (from ${context.trend.readings7d} verified readings)`,
+      m.available
+        ? `  - ${m.metric}: ${m.normalizedScore}/100 (weight ${(m.weight * 100).toFixed(0)}%)`
+        : `  - ${m.metric}: unavailable (no supported data source yet)`,
     );
+  }
+
+  lines.push("CURRENT CONDITIONS:");
+  lines.push(`  AQI: ${ctx.aqi}`);
+  if (ctx.temp != null) lines.push(`  Temperature: ${ctx.temp}°C`);
+  if (ctx.humidity != null) lines.push(`  Humidity: ${ctx.humidity}%`);
+  if (ctx.co2 != null) lines.push(`  CO2: ${ctx.co2} ppm`);
+  lines.push(`  Water Quality: ${ctx.water}%`);
+  if (ctx.greenCover != null) lines.push(`  Green Cover: ${ctx.greenCover}%`);
+  if (ctx.renewableShare != null) lines.push(`  Renewable Energy Share: ${ctx.renewableShare}%`);
+  if (ctx.carbon != null) lines.push(`  Carbon Intensity: ${ctx.carbon} tCO2/capita`);
+
+  if (ctx.historicalSummary) {
+    const h = ctx.historicalSummary;
+    lines.push(`HISTORICAL DATA (last ${h.rangeDays} days, ${h.daysWithData} of ${h.rangeDays} days have recorded data):`);
+    if (h.ecoScore) lines.push(`  EcoScore: ${h.ecoScore.previous} -> ${h.ecoScore.current}`);
+    if (h.aqi) lines.push(`  AQI: ${h.aqi.previous} -> ${h.aqi.current}`);
+    if (h.water) lines.push(`  Water Quality: ${h.water.previous}% -> ${h.water.current}%`);
+    if (h.renewableShare) lines.push(`  Renewable Energy: ${h.renewableShare.previous}% -> ${h.renewableShare.current}%`);
   } else {
-    lines.push("", "VERIFIED 7-DAY TREND: not available — insufficient verified historical readings.");
+    lines.push("HISTORICAL DATA: not supplied for this question — do not make historical/trend claims unless the user's question is only about current conditions.");
   }
 
-  if (context.location) {
-    lines.push(
-      "",
-      "SELECTED LOCATION:",
-      `Name: ${context.location.name}`,
-      `Type: ${context.location.category}`,
-      `Estimated AQI: ${context.location.estimatedAqi}${context.location.isEstimate ? " (modeled estimate, not a direct on-site sensor reading)" : ""}`,
-    );
-    if (context.location.description) lines.push(`Notes: ${context.location.description}`);
-  }
-
-  const prompt = `CONTEXT:\n${lines.join("\n")}\n\nQUESTION: ${question}`;
-  return generate(prompt, SYSTEM_ENV_OVERVIEW_ASSISTANT);
+  return lines.join("\n");
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// FEATURE 2 — AI HEALTH ADVISOR
-// ══════════════════════════════════════════════════════════════════════════════
+export async function generateSustainabilityIntelligenceResponse(
+  question: string,
+  context: SustainabilityAIContext,
+  history: Array<{ role: "user" | "assistant"; content: string }> = [],
+): Promise<string> {
+  const recentHistory = history.slice(-6); // last few turns only — enough for "why?"-style follow-ups
+  const historyBlock = recentHistory.length
+    ? `\nRECENT CONVERSATION (for context on follow-up questions like "why?"):\n${recentHistory
+        .map((m) => `${m.role === "user" ? "User" : "GreenGuard Intelligence"}: ${m.content}`)
+        .join("\n")}\n`
+    : "";
+
+  const prompt = `
+${formatContextForPrompt(context)}
+${historyBlock}
+QUESTION: ${question}
+
+Answer using only the data above. If the question asks for something not covered by the data above (e.g. a future prediction, an external comparison, a metric marked unavailable), say plainly that GreenGuard does not currently have enough data to answer that reliably, rather than guessing.`;
+
+  return generate(prompt, SYSTEM_SUSTAINABILITY_INTELLIGENCE);
+}
+
+
 export interface HealthAdvice {
   riskLevel: "Low" | "Moderate" | "High" | "Severe";
   summary: string;

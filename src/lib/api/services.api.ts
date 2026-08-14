@@ -95,7 +95,6 @@ export const reportApi = {
     client.get(`/reports/${id}/download`, { responseType: "blob" }).then((r) => r.data as Blob),
 };
 
-// ─── AI Copilot ───────────────────────────────────────────────────────────────
 export interface EnvironmentInsightResponse {
   question: string;
   answer: string;
@@ -109,6 +108,14 @@ export interface EnvironmentInsightResponse {
 export const copilotApi = {
   chat: (question: string, cityId: string, sessionId?: string) =>
     client.post("/copilot/chat", { question, cityId, sessionId }).then((r) => r.data),
+  // PHASE 5 — GreenGuard Intelligence Center: Sustainability-page-only chat.
+  // Hits a dedicated backend route/handler grounded in the same transparent
+  // EcoScore engine and Phase 4 historical data the page renders from — see
+  // sustainabilityChat in copilot.controller.ts. The generic chat() above is
+  // left untouched for its other callers (Dashboard, Map, Forecast,
+  // Intelligence, the standalone Copilot page).
+  sustainabilityChat: (question: string, cityId: string, sessionId?: string) =>
+    client.post("/copilot/sustainability-chat", { question, cityId, sessionId }).then((r) => r.data),
   healthAdvice: (cityId: string) =>
     client.post("/copilot/health-advice", { cityId }).then((r) => r.data),
   cityInsights: (city: string) =>
@@ -119,8 +126,6 @@ export const copilotApi = {
     client.get("/copilot/recommendations", { params: { cityId } }).then((r) => r.data),
   getInsights: (cityId: string) =>
     client.get("/copilot/insights", { params: { cityId } }).then((r) => r.data),
-  // Phase 5 — Environmental Overview grounded assistant. Deliberately not a
-  // conversation thread: one question in, one grounded answer out.
   environmentInsight: (
     question: string,
     cityId: string,
@@ -186,7 +191,8 @@ export const adminApi = {
 // ─── Phase 4 — Enterprise Authority Management API ────────────────────────────
 export const authorityMgmtApi = {
   // Intelligence dashboard
-  getDashboard: () => client.get("/admin/authorities/dashboard").then((r) => r.data),
+  getDashboard: () =>
+    client.get("/admin/authorities/dashboard").then((r) => r.data),
 
   // Directory
   list: (params?: {
@@ -246,3 +252,6 @@ export const authorityMgmtApi = {
 export const healthApi = {
   check: () => client.get("/health").then((r) => r.data),
 };
+
+// ─── Messages (Complaint-scoped) ─────────────────────────────────────────────
+export { messageApi, type MessageRecord } from "./message.api";

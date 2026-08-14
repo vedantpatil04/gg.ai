@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppLayout } from "@/components/app-layout";
 import { useCity } from "@/lib/city-context";
-import { findAqiBand } from "@/lib/mock-data";
+import { findAqiBand, ecoGradeFallback } from "@/lib/mock-data";
 import {
   Leaf, Wind, Droplets, Zap, Recycle, BotMessageSquare,
 } from "lucide-react";
@@ -38,18 +38,9 @@ function bandTone(label: string): Tone {
 
 // Grade mapping lives on the backend (backend/src/services/ecoScore.service.ts
 // — gradeForEcoScore), which is the authoritative source whenever a real
-// city.ecoScore is available. This is only the offline/mock-fallback mirror
-// (same thresholds — the project's existing terminology) for the rare case
-// where the backend hasn't supplied a score yet, so the page still renders
-// something sensible while running on static demo data.
-function offlineFallbackGrade(eco: number) {
-  if (eco >= 85) return "A+";
-  if (eco >= 75) return "A";
-  if (eco >= 65) return "B+";
-  if (eco >= 55) return "B";
-  if (eco >= 45) return "C+";
-  return "C";
-}
+// city.ecoScore is available. ecoGradeFallback() (mock-data.ts) mirrors the
+// same thresholds only for the fully-offline demo state — shared with
+// copilot-panel.tsx so the fallback can't drift between the two.
 
 // Plain-language status for a metric measured against its established
 // project target, instead of the old "+4%"-style fabricated trend arrow
@@ -93,7 +84,7 @@ function Sustainability() {
 
   const band = findAqiBand(city.aqi);
   const tone = bandTone(band.label);
-  const grade = rawCity.ecoScore?.grade ?? offlineFallbackGrade(city.eco);
+  const grade = rawCity.ecoScore?.grade ?? ecoGradeFallback(city.eco);
 
   // Environmental Overview — five current-condition cards. No fake trend
   // arrows and no progress bars: each card just states the current value
@@ -137,7 +128,7 @@ function Sustainability() {
         <section id="greenguard-ai" aria-labelledby="greenguard-ai-heading">
           <SustainabilitySectionHeading
             icon={BotMessageSquare}
-            title="GreenGuard AI"
+            title="GreenGuard Intelligence Center"
             description={`Ask GreenGuard about ${city.name}'s current environmental performance.`}
             accent="var(--color-primary)"
           />

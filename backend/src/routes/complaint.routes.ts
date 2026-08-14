@@ -16,6 +16,13 @@ import {
   acceptResolution,
   citizenRequestRework,
 } from "../controllers/complaint.controller";
+import {
+  getComplaintMessages,
+  sendComplaintMessage,
+  markComplaintMessagesRead,
+  getComplaintUnreadCount,
+  getMyComplaintUnreadCounts,
+} from "../controllers/message.controller";
 import { authenticate, authorize, AUTHORITY_ROLES } from "../middleware/auth";
 import { validate }        from "../middleware/validate";
 import { uploadEvidence }  from "../middleware/uploadPhoto";
@@ -104,6 +111,38 @@ router.get(
   "/:id/routing",
   authorize(...AUTHORITY_ROLES),
   getComplaintRouting
+);
+
+// ─── Phase 6 — Citizen ↔ Authority messaging (complaint-scoped) ─────────────
+// Bulk unread-counts is registered before the "/:id/..." routes below so it
+// reads clearly as its own resource, though Express would not actually
+// confuse the two (different path depth: "/messages/unread-counts" is two
+// segments, "/:id/messages" is two segments starting with an id — no
+// pattern overlap either way).
+router.get(
+  "/messages/unread-counts",
+  authorize("citizen", ...AUTHORITY_ROLES),
+  getMyComplaintUnreadCounts
+);
+router.get(
+  "/:id/messages",
+  authorize("citizen", ...AUTHORITY_ROLES),
+  getComplaintMessages
+);
+router.post(
+  "/:id/messages",
+  authorize("citizen", ...AUTHORITY_ROLES),
+  sendComplaintMessage
+);
+router.patch(
+  "/:id/messages/read",
+  authorize("citizen", ...AUTHORITY_ROLES),
+  markComplaintMessagesRead
+);
+router.get(
+  "/:id/messages/unread-count",
+  authorize("citizen", ...AUTHORITY_ROLES),
+  getComplaintUnreadCount
 );
 
 export default router;

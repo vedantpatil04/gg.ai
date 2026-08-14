@@ -435,6 +435,23 @@ export function aqiBand(aqi: number) {
   return { label: b.label, color: b.color };
 }
 
+// ─── EcoScore grade — offline-fallback mirror ─────────────────────────────────
+// The authoritative grade mapping lives on the backend
+// (backend/src/services/ecoScore.service.ts — gradeForEcoScore) and is
+// returned as city.ecoScore.grade whenever real data is available. This is
+// only the same thresholds mirrored client-side for the fully-offline demo
+// state, where no city.ecoScore exists to explain. Used by both
+// sustainability.tsx and copilot-panel.tsx so the fallback grade can't
+// drift between the two.
+export function ecoGradeFallback(eco: number): string {
+  if (eco >= 85) return "A+";
+  if (eco >= 75) return "A";
+  if (eco >= 65) return "B+";
+  if (eco >= 55) return "B";
+  if (eco >= 45) return "C+";
+  return "C";
+}
+
 // Deterministic pseudo-random
 function rng(seed: number) {
   let s = seed;

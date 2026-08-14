@@ -200,7 +200,7 @@ export function AiExecutiveSummary({
           </motion.div>
         </div>
         <div>
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">GreenGuard AI</div>
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">GreenGuard Intelligence Center</div>
           <h2 className="text-base font-semibold tracking-tight flex items-center gap-1.5">
             Sustainability Brief
             <Sparkles className="size-3.5 text-primary" aria-hidden="true" />

@@ -32,9 +32,15 @@ let queue: Array<(token: string) => void> = [];
 client.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
-    const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const isAuthBypass =
+      original.url?.startsWith("/auth/login") ||
+      original.url?.startsWith("/auth/refresh") ||
+      original.url?.startsWith("/auth/signup") ||
+      original.url?.startsWith("/auth/forgot-password") ||
+      original.url?.startsWith("/auth/reset-password") ||
+      original.url?.startsWith("/auth/2fa-challenge");
 
-    if (error.response?.status === 401 && !original._retry && !original.url?.startsWith("/auth/")) {
+    if (error.response?.status === 401 && !original._retry && !isAuthBypass) {
       const refreshToken = localStorage.getItem("gg_refresh_token");
       if (!refreshToken) {
         clearTokens();

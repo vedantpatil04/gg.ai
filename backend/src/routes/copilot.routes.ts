@@ -7,7 +7,7 @@ import {
   getInsights,
   getCityAIInsights,
   getConversation,
-  environmentInsight,
+  sustainabilityChat,
 } from "../controllers/copilot.controller";
 import { authenticate, authorize, AUTHORITY_ROLES } from "../middleware/auth";
 
@@ -34,12 +34,16 @@ router.get(
   getConversation,
 );
 
-// Phase 5 — Environmental Overview grounded assistant (same access as /chat).
+// PHASE 5 — GreenGuard Intelligence Center: Sustainability-page-only chat,
+// grounded in the same transparent EcoScore engine and Phase 4 historical
+// data the page itself renders from. Same access as the generic /chat
+// above; kept as a separate route/handler so the shared /chat endpoint's
+// behavior for Dashboard/Map/Forecast/Intelligence/Copilot is untouched.
 router.post(
-  "/environment-insight",
+  "/sustainability-chat",
   authenticate,
   authorize("citizen", ...AUTHORITY_ROLES),
-  environmentInsight,
+  sustainabilityChat,
 );
 
 // Public: powers the public Sustainability page — must stay unauthenticated.

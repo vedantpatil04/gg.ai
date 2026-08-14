@@ -5,6 +5,7 @@ import { CityMapConfig } from "../models/CityMapConfig";
 import { Complaint } from "../models/Complaint";
 import { AppError } from "../middleware/errorHandler";
 import { computeLocationProfile } from "../services/locationEnvironment.service";
+import { computeEcoScore } from "../services/ecoScore.service";
 
 // ─── Get all cities (latest reading per city) ────────────────────────────────
 export async function getCities(_req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -20,7 +21,21 @@ export async function getCities(_req: Request, res: Response, next: NextFunction
       { $replaceRoot: { newRoot: "$doc" } },
       { $sort: { cityName: 1 } },
     ]);
-    res.json({ success: true, data: { cities } });
+
+    // Same transparent EcoScore engine as getCity() below — kept consistent
+    // so the city list/switcher never briefly shows a different EcoScore
+    // than the single-city view for the same city.
+    const citiesWithEcoScore = cities.map((c) => ({
+      ...c,
+      ecoScore: computeEcoScore({
+        aqi: c.aqi,
+        water: c.water,
+        greenCover: c.greenCover,
+        renewableShare: c.renewableShare,
+      }),
+    }));
+
+    res.json({ success: true, data: { cities: citiesWithEcoScore } });
   } catch (err) {
     next(err);
   }
@@ -34,30 +49,63 @@ export async function getCity(req: Request, res: Response, next: NextFunction): 
       timestamp: -1,
     });
     if (!data) return next(new AppError("City not found", 404));
-    res.json({ success: true, data: { city: data } });
+
+    // Phase 2 — Transparent EcoScore: computed on demand from this same
+    // reading's Phase 1 sustainability fields (aqi, water, greenCover,
+    // renewableShare), never stored, always deterministic. Attached
+    // alongside the existing document fields — the legacy `eco` field
+    // above is untouched so Dashboard/Gemini/PDF export/simulation
+    // (which all still read it) keep working exactly as before.
+    const city = {
+      ...data.toObject(),
+      ecoScore: computeEcoScore({
+        aqi: data.aqi,
+        water: data.water,
+        greenCover: data.greenCover,
+        renewableShare: data.renewableShare,
+      }),
+    };
+
+    res.json({ success: true, data: { city } });
   } catch (err) {
     next(err);
   }
 }
 
 // ─── Get city trend (last N readings) ───────────────────────────────────────
+// Phase 4 — Historical Intelligence: this is the "24 Hours" data source for
+// the Sustainability history chart (raw/hourly readings — daily aggregation
+// in getCityHistory below is too coarse for a 24h view). Extended to also
+// carry the raw inputs the Phase 2 EcoScore engine needs (co2, carbon,
+// renewableShare, greenCover) and to attach a per-reading `ecoScore`
+// computed the exact same way as the live/current score, so the chart's
+// EcoScore line is never a different methodology than what's shown
+// elsewhere on the page. Existing consumers (Dashboard's 24h AQI chart)
+// only ever read `timestamp`/`aqi` from this endpoint, so these additions
+// are purely additive — nothing existing changes shape or meaning.
 export async function getCityTrend(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { cityId } = req.params;
     const hours = Math.min(Number(req.query.hours) || 24, 168);
 
     const since = new Date(Date.now() - hours * 60 * 60 * 1000);
-    const trend = await EnvironmentalData.find({
+    const rawTrend = await EnvironmentalData.find({
       cityId: cityId.toLowerCase(),
       timestamp: { $gte: since },
-      // Phase 3: only genuine ingested readings qualify as historical trend
-      // data — seeded/demo rows (source: "sensor") must never be presented
-      // as verified history.
-      source: "api",
     })
       .sort({ timestamp: 1 })
-      .select("timestamp aqi pm25 no2 o3 water temp humidity")
+      .select("timestamp aqi pm25 no2 o3 water temp humidity eco co2 carbon renewableShare greenCover")
       .lean();
+
+    const trend = rawTrend.map((reading) => ({
+      ...reading,
+      ecoScore: computeEcoScore({
+        aqi: reading.aqi,
+        water: reading.water,
+        greenCover: reading.greenCover,
+        renewableShare: reading.renewableShare,
+      }).score,
+    }));
 
     res.json({ success: true, data: { trend, hours } });
   } catch (err) {
@@ -289,6 +337,99 @@ export async function getDashboardStats(
 }
 
 // ─── PHASE 4: Historical analytics — GET /environmental/history/:cityId ──────
+// Extended for Historical Intelligence to also average renewableShare,
+// greenCover, and carbon per day (previously only AQI/PM/water/eco were
+// aggregated), and to compute a per-day EcoScore with the exact same
+// computeEcoScore() engine used for the live score — so a day in the
+// history chart is never explainable by a different methodology than
+// "today" is. The legacy per-reading `eco` field is still averaged and
+// returned unchanged as `eco` for any existing caller relying on it.
+// ─── PHASE 4: Historical analytics — shared aggregation helper ───────────────
+// Extracted so both the /history/:cityId route below AND Phase 5's
+// GreenGuard Intelligence Center (copilot.controller.ts) can reuse the exact
+// same real aggregation and EcoScore methodology instead of a second,
+// competing implementation. Averages renewableShare, greenCover, and carbon
+// per day (previously only AQI/PM/water/eco were aggregated), and computes
+// a per-day EcoScore with the exact same computeEcoScore() engine used for
+// the live score — so a day in the history chart (or in an AI answer about
+// history) is never explainable by a different methodology than "today" is.
+// The legacy per-reading `eco` field is still averaged and returned
+// unchanged as `eco` for any existing caller relying on it.
+export async function fetchCityHistoryDays(cityId: string, days: number) {
+  const boundedDays = Math.min(Math.max(days, 1), 90);
+  const since = new Date(Date.now() - boundedDays * 24 * 60 * 60 * 1000);
+
+  const rawHistory = await EnvironmentalData.aggregate([
+    {
+      $match: {
+        cityId: cityId.toLowerCase(),
+        timestamp: { $gte: since },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          year: { $year: "$timestamp" },
+          month: { $month: "$timestamp" },
+          day: { $dayOfMonth: "$timestamp" },
+        },
+        date: { $first: { $dateToString: { format: "%Y-%m-%d", date: "$timestamp" } } },
+        avgAqi: { $avg: "$aqi" },
+        maxAqi: { $max: "$aqi" },
+        minAqi: { $min: "$aqi" },
+        avgPm25: { $avg: "$pm25" },
+        avgPm10: { $avg: "$pm10" },
+        avgNo2: { $avg: "$no2" },
+        avgO3: { $avg: "$o3" },
+        avgTemp: { $avg: "$temp" },
+        avgHumidity: { $avg: "$humidity" },
+        avgWater: { $avg: "$water" },
+        avgRisk: { $avg: "$risk" },
+        avgEco: { $avg: "$eco" },
+        avgRenewableShare: { $avg: "$renewableShare" },
+        avgGreenCover: { $avg: "$greenCover" },
+        avgCarbon: { $avg: "$carbon" },
+        readings: { $sum: 1 },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        date: 1,
+        aqi: {
+          avg: { $round: ["$avgAqi", 1] },
+          max: { $round: ["$maxAqi", 0] },
+          min: { $round: ["$minAqi", 0] },
+        },
+        pm25: { $round: ["$avgPm25", 1] },
+        pm10: { $round: ["$avgPm10", 1] },
+        no2: { $round: ["$avgNo2", 1] },
+        o3: { $round: ["$avgO3", 1] },
+        temp: { $round: ["$avgTemp", 1] },
+        humidity: { $round: ["$avgHumidity", 0] },
+        water: { $round: ["$avgWater", 1] },
+        risk: { $round: ["$avgRisk", 1] },
+        eco: { $round: ["$avgEco", 1] },
+        renewableShare: { $round: ["$avgRenewableShare", 1] },
+        greenCover: { $round: ["$avgGreenCover", 1] },
+        carbon: { $round: ["$avgCarbon", 2] },
+        readings: 1,
+      },
+    },
+    { $sort: { date: 1 } },
+  ]);
+
+  return rawHistory.map((day) => ({
+    ...day,
+    ecoScore: computeEcoScore({
+      aqi: day.aqi.avg,
+      water: day.water,
+      greenCover: day.greenCover,
+      renewableShare: day.renewableShare,
+    }).score,
+  }));
+}
+
 export async function getCityHistory(
   req: Request,
   res: Response,
@@ -297,91 +438,11 @@ export async function getCityHistory(
   try {
     const { cityId } = req.params;
     const days = Math.min(Math.max(Number(req.query.days) || 7, 1), 90);
-    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-
-    const history = await EnvironmentalData.aggregate([
-      {
-        $match: {
-          cityId: cityId.toLowerCase(),
-          timestamp: { $gte: since },
-          // Phase 3: exclude seeded/demo readings (source: "sensor") — only
-          // genuine ingested data (source: "api") counts as real history.
-          source: "api",
-        },
-      },
-      {
-        $group: {
-          _id: {
-            year: { $year: "$timestamp" },
-            month: { $month: "$timestamp" },
-            day: { $dayOfMonth: "$timestamp" },
-          },
-          date: { $first: { $dateToString: { format: "%Y-%m-%d", date: "$timestamp" } } },
-          avgAqi: { $avg: "$aqi" },
-          maxAqi: { $max: "$aqi" },
-          minAqi: { $min: "$aqi" },
-          avgPm25: { $avg: "$pm25" },
-          avgPm10: { $avg: "$pm10" },
-          avgNo2: { $avg: "$no2" },
-          avgO3: { $avg: "$o3" },
-          avgTemp: { $avg: "$temp" },
-          avgHumidity: { $avg: "$humidity" },
-          avgWater: { $avg: "$water" },
-          avgRisk: { $avg: "$risk" },
-          avgEco: { $avg: "$eco" },
-          readings: { $sum: 1 },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          date: 1,
-          aqi: {
-            avg: { $round: ["$avgAqi", 1] },
-            max: { $round: ["$maxAqi", 0] },
-            min: { $round: ["$minAqi", 0] },
-          },
-          pm25: { $round: ["$avgPm25", 1] },
-          pm10: { $round: ["$avgPm10", 1] },
-          no2: { $round: ["$avgNo2", 1] },
-          o3: { $round: ["$avgO3", 1] },
-          temp: { $round: ["$avgTemp", 1] },
-          humidity: { $round: ["$avgHumidity", 0] },
-          water: { $round: ["$avgWater", 1] },
-          risk: { $round: ["$avgRisk", 1] },
-          eco: { $round: ["$avgEco", 1] },
-          readings: 1,
-        },
-      },
-      { $sort: { date: 1 } },
-    ]);
-
+    const history = await fetchCityHistoryDays(cityId, days);
     res.json({ success: true, data: { cityId, days, history } });
   } catch (err) {
     next(err);
   }
-}
-
-// ─── Phase 3: minimum genuine readings required before a direction is ────────
-// considered reliable enough to show, and the AQI-point band within which a
-// trend is called "stable" rather than improving/worsening.
-// Exported so Phase 5's AI grounding (copilot.controller.ts) can reuse the
-// exact same verified-history thresholds/logic rather than reimplementing
-// them — one definition of "sufficient" and "stable" for the whole app.
-export const TREND_MIN_READINGS = 2;
-export const TREND_STABLE_BAND = 3;
-
-export type TrendDirection = "improving" | "worsening" | "stable" | "insufficient-data";
-
-export function resolveDirection(
-  currentAqi: number,
-  avgAqi: number | null,
-  readings: number,
-): TrendDirection {
-  if (avgAqi === null || readings < TREND_MIN_READINGS) return "insufficient-data";
-  const diff = currentAqi - avgAqi;
-  if (Math.abs(diff) <= TREND_STABLE_BAND) return "stable";
-  return diff > 0 ? "worsening" : "improving";
 }
 
 // ─── PHASE 4: AQI trends summary ─────────────────────────────────────────────
@@ -401,9 +462,6 @@ export async function getCityTrends(
           $match: {
             cityId: id,
             timestamp: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-            // Phase 3: seeded/demo readings must never count toward a
-            // verified trend direction.
-            source: "api",
           },
         },
         {
@@ -421,7 +479,6 @@ export async function getCityTrends(
           $match: {
             cityId: id,
             timestamp: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-            source: "api",
           },
         },
         {
@@ -443,8 +500,6 @@ export async function getCityTrends(
     const currentAqi = latest.aqi;
     const avg7Aqi = trend7 ? Math.round(trend7.avgAqi * 10) / 10 : null;
     const avg30Aqi = trend30 ? Math.round(trend30.avgAqi * 10) / 10 : null;
-    const readings7 = trend7?.count ?? 0;
-    const readings30 = trend30?.count ?? 0;
 
     res.json({
       success: true,
@@ -458,26 +513,24 @@ export async function getCityTrends(
           eco: latest.eco,
           timestamp: latest.timestamp,
         },
-        // trend7d/trend30d are always present now (never null) so the client
-        // can render an explicit insufficient-data state instead of having
-        // to infer meaning from a missing field. `sufficient` is the single
-        // field the UI should branch on.
-        trend7d: {
-          avgAqi: avg7Aqi,
-          avgPm25: trend7 ? Math.round(trend7.avgPm25 * 10) / 10 : null,
-          avgRisk: trend7 ? Math.round(trend7.avgRisk * 10) / 10 : null,
-          direction: resolveDirection(currentAqi, avg7Aqi, readings7),
-          readings: readings7,
-          sufficient: readings7 >= TREND_MIN_READINGS,
-        },
-        trend30d: {
-          avgAqi: avg30Aqi,
-          avgPm25: trend30 ? Math.round(trend30.avgPm25 * 10) / 10 : null,
-          avgRisk: trend30 ? Math.round(trend30.avgRisk * 10) / 10 : null,
-          direction: resolveDirection(currentAqi, avg30Aqi, readings30),
-          readings: readings30,
-          sufficient: readings30 >= TREND_MIN_READINGS,
-        },
+        trend7d: trend7
+          ? {
+              avgAqi: avg7Aqi,
+              avgPm25: Math.round(trend7.avgPm25 * 10) / 10,
+              avgRisk: Math.round(trend7.avgRisk * 10) / 10,
+              direction: avg7Aqi !== null && currentAqi > avg7Aqi ? "worsening" : "improving",
+              readings: trend7.count,
+            }
+          : null,
+        trend30d: trend30
+          ? {
+              avgAqi: avg30Aqi,
+              avgPm25: Math.round(trend30.avgPm25 * 10) / 10,
+              avgRisk: Math.round(trend30.avgRisk * 10) / 10,
+              direction: avg30Aqi !== null && currentAqi > avg30Aqi ? "worsening" : "improving",
+              readings: trend30.count,
+            }
+          : null,
       },
     });
   } catch (err) {

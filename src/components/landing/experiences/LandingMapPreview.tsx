@@ -3,11 +3,9 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useNavigate } from "@tanstack/react-router";
 import { RotateCw } from "lucide-react";
-import { useCity } from "@/lib/city-context";
-import { useTheme } from "@/lib/theme";
+import { CITIES } from "@/lib/mock-data";
 import { aqiColor } from "@/lib/map/map-visuals";
-import { OSM_DARK_STYLE, OSM_LIGHT_STYLE } from "@/lib/map/base-map-config";
-import type { City } from "@/lib/mock-data";
+import { OSM_DARK_STYLE } from "@/lib/map/base-map-config";
 
 type MapState = "loading" | "ready" | "error";
 
@@ -15,14 +13,10 @@ const LOAD_TIMEOUT_MS = 12_000;
 
 /**
  * A real, live MapLibre GL instance — not a static image standing in for
- * one. It reuses the production map's exact tile styles (`OSM_DARK_STYLE` /
- * `OSM_LIGHT_STYLE` from the same `base-map-config` the production `/map`
- * page reads), the same live-first city data (`useCity()` — the real API
- * when connected, the app's own offline fallback otherwise, never a
- * separate landing-only dataset), and the real `aqiColor` scale, scoped
- * down to what a landing preview actually needs: markers, pan, zoom, hover
- * popups. No layer toolbar, clustering, or search — that's the full
- * `/map` page.
+ * one. It reuses the production map's exact tile style (`OSM_DARK_STYLE`),
+ * the real `CITIES` dataset, and the real `aqiColor` scale, scoped down to
+ * what a landing preview actually needs: markers, pan, zoom, hover popups.
+ * No layer toolbar, clustering, or search — that's the full `/map` page.
  *
  * Scroll-zoom is intentionally disabled so hovering the map doesn't hijack
  * page scrolling; the on-screen zoom control and drag-to-pan still work.
@@ -34,156 +28,183 @@ const LOAD_TIMEOUT_MS = 12_000;
 export function LandingMapPreview() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<maplibregl.Marker[]>([]);
-  const hasFitBoundsRef = useRef(false);
   const [state, setState] = useState<MapState>("loading");
   const [attempt, setAttempt] = useState(0);
 
-  const { cities } = useCity();
-  const { resolvedTheme } = useTheme();
-  // Tracks which theme the map's current style actually reflects, so the
-  // theme-swap effect below can skip a redundant `setStyle` call right
-  // after mount (the map is still loading its *initial* style at that
-  // point — reissuing the same style then can race with that first load).
-  const appliedThemeRef = useRef(resolvedTheme);
-
-  // Read through a ref so a marker click always calls the latest
-  // `navigate` without making it a dependency of the mount-once effect
-  // below (an earlier version depended on `navigate` directly, which tore
-  // the map down and rebuilt it in a loop right as it finished loading).
+  // The map-init effect below intentionally runs once per `attempt`, not on
+  // every render. `navigate` is read through a ref so a marker click always
+  // calls the latest version without making it an effect dependency — an
+  // earlier version depended on `navigate` directly, which (since `load`
+  // triggers a state update, which triggers a re-render, which can hand
+  // back a new `navigate` reference) tore the map down and rebuilt it in a
+  // loop right as it finished loading, so it never got to paint. This is
+  // the actual fix for that.
   const navigate = useNavigate();
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
 
-  /** (Re)place city markers on the given map instance, clearing any prior set first. Safe to call repeatedly as live data refreshes. */
-  const placeMarkers = (map: maplibregl.Map, list: City[]) => {
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
-
-    const bounds = new maplibregl.LngLatBounds();
-    const validCities = list.filter((c) => Number.isFinite(c.lat) && Number.isFinite(c.lng));
-
-    validCities.forEach((city) => {
-      const color = aqiColor(city.aqi);
-
-      const el = document.createElement("button");
-      el.type = "button";
-      el.setAttribute("aria-label", `${city.name} — AQI ${city.aqi}, open Smart Map`);
-      Object.assign(el.style, {
-        width: "13px",
-        height: "13px",
-        borderRadius: "9999px",
-        border: "2px solid rgba(255,255,255,0.9)",
-        background: color,
-        boxShadow: `0 0 0 6px ${color}33`,
-        cursor: "pointer",
-        padding: "0",
-      });
-
-      const popup = new maplibregl.Popup({ offset: 14, closeButton: false, closeOnClick: false }).setHTML(
-        `<div style="font:600 12px/1.3 system-ui;color:#0f172a">${city.name}</div>` +
-          `<div style="font:11px/1.3 system-ui;color:#475569;margin-top:2px">AQI ${city.aqi} · PM2.5 ${city.pm25} µg/m³</div>`,
-      );
-
-      el.addEventListener("mouseenter", () => popup.setLngLat([city.lng, city.lat]).addTo(map));
-      el.addEventListener("mouseleave", () => popup.remove());
-      el.addEventListener("click", () => navigateRef.current({ to: "/map" }));
-
-      const marker = new maplibregl.Marker({ element: el }).setLngLat([city.lng, city.lat]).addTo(map);
-      markersRef.current.push(marker);
-      bounds.extend([city.lng, city.lat]);
-    });
-
-    // Only fit the camera to the data once — a live refresh shouldn't
-    // reset pan/zoom the visitor may already have adjusted.
-    if (!hasFitBoundsRef.current && !bounds.isEmpty()) {
-      map.fitBounds(bounds, { padding: 64, maxZoom: 3, duration: 0 });
-      hasFitBoundsRef.current = true;
-    }
-  };
+  // Guards against constructing a second MapLibre instance on the same
+  // container element (React 18 dev double-invoke, or a stray re-run).
+  const mapInitiatedRef = useRef(false);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    const container = containerRef.current;
+    if (!container) return;
     setState("loading");
-    hasFitBoundsRef.current = false;
-    appliedThemeRef.current = resolvedTheme;
-
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: resolvedTheme === "light" ? OSM_LIGHT_STYLE : OSM_DARK_STYLE,
-      center: [20, 20],
-      zoom: 1.3,
-      attributionControl: false,
-    });
-    mapRef.current = map;
+    mapInitiatedRef.current = false;
 
     let settled = false;
-    const timeout = window.setTimeout(() => {
-      if (!settled) {
+    let loadTimeoutId: ReturnType<typeof window.setTimeout> | undefined;
+    let sizeObserver: ResizeObserver | null = null;
+    let sizeTimeoutId: ReturnType<typeof window.setTimeout> | undefined;
+
+    // Build the actual MapLibre instance — same tile style, same real
+    // CITIES dataset, same aqiColor scale used by the production /map
+    // route. Only called once the container has a non-zero measured size:
+    // constructing MapLibre against a 0×0 container (common on first paint
+    // inside a flex/grid layout, before layout has settled) leaves the GL
+    // canvas permanently 0×0 even after the container is later sized —
+    // exactly the "blank map" failure mode. This mirrors the same
+    // size-gated init SmartMapCanvas.tsx uses on the production Smart Map.
+    const buildMap = () => {
+      if (mapInitiatedRef.current) return;
+      mapInitiatedRef.current = true;
+
+      const map = new maplibregl.Map({
+        container,
+        style: OSM_DARK_STYLE,
+        center: [20, 20],
+        zoom: 1.3,
+        attributionControl: false,
+      });
+      mapRef.current = map;
+
+      loadTimeoutId = window.setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          setState("error");
+        }
+      }, LOAD_TIMEOUT_MS);
+
+      map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
+      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+      map.scrollZoom.disable();
+
+      map.on("error", () => {
+        if (settled) return;
         settled = true;
+        window.clearTimeout(loadTimeoutId);
         setState("error");
-      }
-    }, LOAD_TIMEOUT_MS);
+      });
 
-    map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
-    map.scrollZoom.disable();
+      map.on("load", () => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(loadTimeoutId);
+        // Ensure the GL canvas matches the container's final measured size —
+        // cheap no-op if it already does, but resolves any late layout shift
+        // that happened between mount and the style finishing its load.
+        map.resize();
 
-    map.on("error", () => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timeout);
-      setState("error");
-    });
+        try {
+          const bounds = new maplibregl.LngLatBounds();
 
-    map.on("load", () => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timeout);
+          CITIES.forEach((city) => {
+            const color = aqiColor(city.aqi);
 
-      try {
-        placeMarkers(map, cities);
-        setState("ready");
-      } catch {
-        // Marker setup failing shouldn't leave the loading spinner stuck
-        // forever — the map style still loaded, so fall back to "ready"
-        // (a bare but genuinely rendered map) rather than "error".
-        setState("ready");
-      }
-    });
+            const el = document.createElement("button");
+            el.type = "button";
+            el.setAttribute("aria-label", `${city.name} — AQI ${city.aqi}, open Smart Map`);
+            Object.assign(el.style, {
+              width: "13px",
+              height: "13px",
+              borderRadius: "9999px",
+              border: "2px solid rgba(255,255,255,0.9)",
+              background: color,
+              boxShadow: `0 0 0 6px ${color}33`,
+              cursor: "pointer",
+              padding: "0",
+            });
+
+            const popup = new maplibregl.Popup({
+              offset: 14,
+              closeButton: false,
+              closeOnClick: false,
+            }).setHTML(
+              `<div style="font:600 12px/1.3 system-ui;color:#0f172a">${city.name}</div>` +
+                `<div style="font:11px/1.3 system-ui;color:#475569;margin-top:2px">AQI ${city.aqi} · PM2.5 ${city.pm25} µg/m³</div>`,
+            );
+
+            el.addEventListener("mouseenter", () =>
+              popup.setLngLat([city.lng, city.lat]).addTo(map),
+            );
+            el.addEventListener("mouseleave", () => popup.remove());
+            el.addEventListener("click", () => navigateRef.current({ to: "/map" }));
+
+            new maplibregl.Marker({ element: el }).setLngLat([city.lng, city.lat]).addTo(map);
+            bounds.extend([city.lng, city.lat]);
+          });
+
+          map.fitBounds(bounds, { padding: 64, maxZoom: 3, duration: 0 });
+          setState("ready");
+        } catch {
+          // Marker setup failing shouldn't leave the loading spinner stuck
+          // forever — the map style still loaded, so fall back to "ready"
+          // (a bare but genuinely rendered map) rather than "error".
+          setState("ready");
+        }
+      });
+    };
+
+    // Try immediately in case the container is already sized (typical when
+    // this section is already in the DOM at first paint).
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    if (w > 0 && h > 0) {
+      buildMap();
+    } else if (typeof ResizeObserver !== "undefined") {
+      // Not sized yet — wait for the first non-zero measurement instead of
+      // constructing MapLibre blind. Hard-timeout to a labeled error state
+      // so a genuine layout bug never leaves a silent blank rectangle.
+      sizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect;
+          if (width > 0 && height > 0 && !mapInitiatedRef.current) {
+            sizeObserver?.disconnect();
+            sizeObserver = null;
+            window.clearTimeout(sizeTimeoutId);
+            buildMap();
+            break;
+          }
+        }
+      });
+      sizeObserver.observe(container);
+      sizeTimeoutId = window.setTimeout(() => {
+        if (!mapInitiatedRef.current) {
+          sizeObserver?.disconnect();
+          sizeObserver = null;
+          settled = true;
+          setState("error");
+        }
+      }, LOAD_TIMEOUT_MS);
+    } else {
+      // No ResizeObserver support — fall back to the previous behavior.
+      buildMap();
+    }
 
     return () => {
-      window.clearTimeout(timeout);
-      markersRef.current.forEach((m) => m.remove());
-      markersRef.current = [];
-      map.remove();
+      window.clearTimeout(loadTimeoutId);
+      window.clearTimeout(sizeTimeoutId);
+      sizeObserver?.disconnect();
+      mapRef.current?.remove();
       mapRef.current = null;
+      mapInitiatedRef.current = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally mount-once per `attempt`; live city updates and theme changes are handled by the effects below instead of a full remount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally mount-once per `attempt`; see comment above.
   }, [attempt]);
 
-  // Theme switch: swap the base-map style in place — same `setStyle`
-  // pattern the production Smart Map uses — rather than tearing down and
-  // rebuilding the whole map. DOM-based markers survive a style swap.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || appliedThemeRef.current === resolvedTheme) return;
-    appliedThemeRef.current = resolvedTheme;
-    map.setStyle(resolvedTheme === "light" ? OSM_LIGHT_STYLE : OSM_DARK_STYLE);
-  }, [resolvedTheme]);
-
-  // Live data refresh: re-place markers in-place (no remount, no map
-  // flicker, camera position preserved) whenever the underlying city list
-  // changes — e.g. the 60s polling refresh in `useCity()`.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || state !== "ready") return;
-    placeMarkers(map, cities);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `placeMarkers` reads only from its args + refs, so it's stable in intent; re-declaring it every render shouldn't re-run this effect on its own.
-  }, [cities, state]);
-
   return (
-    <div className="relative h-[420px] w-full overflow-hidden rounded-3xl sm:h-[480px] lg:h-[72vh] lg:min-h-[560px] lg:max-h-[820px]">
+    <div className="relative h-[460px] w-full overflow-hidden rounded-3xl lg:h-[72vh] lg:min-h-[560px] lg:max-h-[820px]">
       <div ref={containerRef} className="absolute inset-0" />
 
       {state === "loading" && (

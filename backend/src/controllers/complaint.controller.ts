@@ -52,7 +52,7 @@ function appendEvent(
 // Returns true when the current authority user is allowed to act on this
 // complaint. Administrators always pass. Citizens are NOT checked here (use
 // the citizen guard in each handler instead).
-function authorityOwns(complaint: InstanceType<typeof Complaint>, user: AuthRequest["user"]): boolean {
+export function authorityOwns(complaint: InstanceType<typeof Complaint>, user: AuthRequest["user"]): boolean {
   if (!user) return false;
   if (user.role === "administrator") return true;
   if (user.role !== "authority") return false;

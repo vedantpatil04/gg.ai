@@ -39,9 +39,10 @@ import {
   SlidersHorizontal,
   X,
   ArrowUpDown,
+  MessageSquare,
 } from "lucide-react";
 import { commandApi, type ComplaintIntelligenceData } from "@/lib/api/command.api";
-import { complaintApi } from "@/lib/api/services.api";
+import { complaintApi, messageApi } from "@/lib/api/services.api";
 import { Panel, StatCard, Pill, SectionTitle, WorkspaceHeader, EmptyState } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -89,9 +90,11 @@ const SEVERITY_ORDER: Record<string, number> = { critical: 4, high: 3, medium: 2
 // ─── Queue row — compact enterprise list row (no glass/glow) ─────────────────
 function ComplaintQueueRow({
   complaint,
+  unreadMessages = 0,
   onClick,
 }: {
   complaint: ComplaintRecord;
+  unreadMessages?: number;
   onClick: () => void;
 }) {
   const age = ageLabel(complaint.updatedAt || complaint.createdAt);
@@ -152,6 +155,12 @@ function ComplaintQueueRow({
           {complaint.images?.length > 0 && (
             <span className="inline-flex items-center text-[10px] text-muted-foreground bg-muted/60 rounded-full px-2 py-0.5">
               {complaint.images.length} image{complaint.images.length !== 1 ? "s" : ""}
+            </span>
+          )}
+          {unreadMessages > 0 && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/10 rounded-full px-2 py-0.5">
+              <MessageSquare className="size-2.5" />
+              {unreadMessages} unread
             </span>
           )}
           <span
@@ -257,6 +266,18 @@ function AssignedWorkspace({
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [sort, setSort] = useState<SortKey>("priority");
   const [showFilters, setShowFilters] = useState(false);
+
+  // Phase 6 §18 — unread-message badge per row. One bulk query for the
+  // whole queue instead of one per complaint.
+  const { data: unreadCountsData } = useQuery({
+    queryKey: ["complaint-unread-counts"],
+    queryFn: () => messageApi.getUnreadCounts(),
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+  });
+  const unreadCounts: Record<string, number> =
+    (unreadCountsData as unknown as { data?: { counts?: Record<string, number> } })?.data
+      ?.counts ?? {};
 
   const active = useMemo(() => all.filter((c) => c.status === "in-progress"), [all]);
   const assigned = useMemo(() => all.filter((c) => c.status === "pending"), [all]);
@@ -677,7 +698,12 @@ function AssignedWorkspace({
             </div>
           ) : (
             filtered.map((c) => (
-              <ComplaintQueueRow key={c._id} complaint={c} onClick={() => onSelectComplaint(c._id)} />
+              <ComplaintQueueRow
+                key={c._id}
+                complaint={c}
+                unreadMessages={unreadCounts[c._id] ?? 0}
+                onClick={() => onSelectComplaint(c._id)}
+              />
             ))
           )}
         </motion.div>

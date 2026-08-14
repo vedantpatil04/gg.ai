@@ -1,21 +1,21 @@
 import { Request, Response, NextFunction } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { EnvironmentalData } from "../models/EnvironmentalData";
-import { MapLocation } from "../models/MapLocation";
 import { AIConversation } from "../models/AIConversation";
 import { AIInsight } from "../models/AIInsight";
 import { AppError } from "../middleware/errorHandler";
 import { AuthRequest } from "../middleware/auth";
-import { computeLocationProfile } from "../services/locationEnvironment.service";
-import { resolveDirection, TREND_MIN_READINGS } from "./environmental.controller";
 import {
   generateCopilotResponse,
   generateHealthAdvice,
   generateRecommendations,
   getInsightsFromData,
   generateCityInsights,
-  generateEnvironmentalInsight,
+  generateSustainabilityIntelligenceResponse,
+  type SustainabilityAIContext,
 } from "../services/gemini.service";
+import { computeEcoScore, ECO_SCORE_WEIGHTS } from "../services/ecoScore.service";
+import { fetchCityHistoryDays } from "./environmental.controller";
 
 // ─── Helper: get city data ────────────────────────────────────────────────────
 async function getCityData(cityId: string) {
@@ -90,110 +90,6 @@ export async function chat(req: AuthRequest, res: Response, next: NextFunction):
 
 // ─── Backward-compat alias for POST /api/copilot/ask ─────────────────────────
 export const askCopilot = chat;
-
-// ═══════════════════════════════════════════════════════════════════════════
-// PHASE 5 — Environmental Overview grounded assistant
-// ═══════════════════════════════════════════════════════════════════════════
-// POST /api/copilot/environment-insight
-//
-// Deliberately does NOT persist to AIConversation — this is a lightweight,
-// one-off contextual question from the public Environmental Overview page
-// (per the Phase 5 spec, section 18), not a saved conversation thread like
-// the full Copilot page's /chat. Same auth, same Gemini client, same
-// city-data fetch pattern as /chat — no second AI provider, no second
-// conversation model.
-export async function environmentInsight(
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
-  try {
-    const { question, cityId, locationId } = req.body;
-    if (!question?.trim()) return next(new AppError("Question is required", 400));
-
-    const city = (cityId || "belagavi").toLowerCase();
-    const cityData = await getCityData(city);
-    if (!cityData) return next(new AppError("City data not found", 404));
-
-    // ── Verified (source: "api") 7-day trend — identical rule/thresholds to
-    // Phase 3's getCityTrends, reused via the exported helper rather than
-    // reimplemented, so seeded/demo readings can never surface here either.
-    let trend: { direction: string; avgAqi7d: number; readings7d: number } | null = null;
-    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const agg = await EnvironmentalData.aggregate([
-      { $match: { cityId: city, timestamp: { $gte: since }, source: "api" } },
-      { $group: { _id: null, avgAqi: { $avg: "$aqi" }, count: { $sum: 1 } } },
-    ]);
-    const readings7d = agg[0]?.count ?? 0;
-    if (readings7d >= TREND_MIN_READINGS) {
-      const avgAqi7d = Math.round(agg[0].avgAqi * 10) / 10;
-      trend = {
-        direction: resolveDirection(cityData.aqi, avgAqi7d, readings7d),
-        avgAqi7d,
-        readings7d,
-      };
-    }
-
-    // ── Optional Phase 4 spatial context — only when the citizen actually
-    // selected a monitored location. Explicitly flagged as an estimate: the
-    // per-location value is a modeled figure (city baseline × category
-    // profile), not an independent live sensor reading, and the AI is told
-    // that plainly so it never describes it as "measured".
-    let location: {
-      name: string;
-      category: string;
-      estimatedAqi: number;
-      isEstimate: boolean;
-      description?: string;
-    } | null = null;
-    if (locationId) {
-      const loc = await MapLocation.findOne({ cityId: city, locationId }).lean();
-      if (loc) {
-        const profile = computeLocationProfile(loc, cityData);
-        location = {
-          name: loc.name,
-          category: loc.category,
-          estimatedAqi: profile.level,
-          isEstimate: true,
-          description: loc.description,
-        };
-      }
-    }
-
-    const answer = await generateEnvironmentalInsight(question, {
-      cityName: cityData.cityName,
-      aqi: cityData.aqi,
-      pm25: cityData.pm25,
-      pm10: cityData.pm10,
-      o3: cityData.o3 ?? null,
-      no2: cityData.no2 ?? null,
-      co: cityData.co ?? null,
-      so2: cityData.so2 ?? null,
-      temp: cityData.temp,
-      humidity: cityData.humidity,
-      windSpeed: cityData.windSpeed ?? null,
-      pressure: cityData.pressure ?? null,
-      timestamp: (cityData.timestamp as Date)?.toISOString?.() ?? new Date().toISOString(),
-      trend,
-      location,
-    });
-
-    res.json({
-      success: true,
-      data: {
-        question,
-        answer,
-        cityId: cityData.cityId,
-        cityName: cityData.cityName,
-        hasVerifiedTrend: !!trend,
-        hasLocationContext: !!location,
-        timestamp: new Date().toISOString(),
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-}
 
 // ─── POST /api/copilot/health-advice ─────────────────────────────────────────
 export async function healthAdvice(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -304,6 +200,159 @@ export async function getCityAIInsights(
     res.json({
       success: true,
       data: { insights, cityId: cityData.cityId, cityName: cityData.cityName },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ─── PHASE 5: GreenGuard Intelligence Center — POST /copilot/sustainability-chat ──
+// Sustainability-exclusive: only src/components/sustainability/copilot-panel.tsx
+// calls this. The generic /copilot/chat endpoint above (Feature 1) is left
+// completely untouched since it's shared by Dashboard, Map, Forecast,
+// Intelligence, and the standalone Copilot page.
+//
+// The critical fix here vs. the generic chat(): that handler builds its
+// Gemini context from the RAW EnvironmentalData document (cityData.eco —
+// the legacy, ingestion-time score). This handler instead runs the exact
+// same computeEcoScore() engine the Sustainability page itself uses, so
+// the Intelligence Center's EcoScore can never disagree with the Hero/
+// breakdown shown on the page — the "EcoScore 71 vs 79" class of bug this
+// phase is required to permanently eliminate.
+const BREAKDOWN_LABELS: Record<keyof typeof ECO_SCORE_WEIGHTS, string> = {
+  airQuality: "Air Quality",
+  greenCover: "Green Cover",
+  renewableEnergy: "Renewable Energy",
+  waterQuality: "Water Quality",
+  wasteDiversion: "Waste Diversion",
+};
+
+export async function sustainabilityChat(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { question, cityId, sessionId } = req.body;
+    if (!question?.trim()) return next(new AppError("Question is required", 400));
+
+    const city = cityId || "belagavi";
+    const cityData = await getCityData(city);
+    if (!cityData) return next(new AppError("City data not found", 404));
+
+    const ecoScore = computeEcoScore({
+      aqi: cityData.aqi,
+      water: cityData.water,
+      greenCover: cityData.greenCover,
+      renewableShare: cityData.renewableShare,
+    });
+
+    // Light, honest 7-day historical summary — reuses the exact same
+    // aggregation and EcoScore methodology as Phase 4's chart (no second
+    // implementation), and is simply omitted if there isn't enough real
+    // data to summarize.
+    let historicalSummary: SustainabilityAIContext["historicalSummary"];
+    try {
+      const days = await fetchCityHistoryDays(cityData.cityId, 7);
+      if (days.length >= 2) {
+        const first = days[0];
+        const last = days[days.length - 1];
+        historicalSummary = {
+          rangeDays: 7,
+          daysWithData: days.length,
+          ecoScore: { previous: first.ecoScore, current: last.ecoScore },
+          aqi: { previous: first.aqi.avg, current: last.aqi.avg },
+          water: { previous: first.water, current: last.water },
+          renewableShare:
+            first.renewableShare != null && last.renewableShare != null
+              ? { previous: first.renewableShare, current: last.renewableShare }
+              : undefined,
+        };
+      }
+    } catch {
+      // Historical summary is a nice-to-have for grounding — if it fails
+      // for any reason, continue with current-conditions-only context
+      // rather than failing the whole request.
+      historicalSummary = undefined;
+    }
+
+    const context: SustainabilityAIContext = {
+      cityName: cityData.cityName,
+      updatedAt: cityData.timestamp ? new Date(cityData.timestamp).toISOString() : undefined,
+      ecoScore: ecoScore.score,
+      ecoScoreGrade: ecoScore.grade,
+      ecoScoreDataComplete: ecoScore.dataComplete,
+      ecoScoreMissingMetrics: ecoScore.missingMetrics.map((m) => BREAKDOWN_LABELS[m]),
+      ecoScoreBreakdown: (Object.keys(ecoScore.breakdown) as Array<keyof typeof ECO_SCORE_WEIGHTS>).map((k) => ({
+        metric: BREAKDOWN_LABELS[k],
+        normalizedScore: ecoScore.breakdown[k].normalizedScore,
+        weight: ecoScore.breakdown[k].weight,
+        available: ecoScore.breakdown[k].available,
+      })),
+      aqi: cityData.aqi,
+      temp: cityData.temp,
+      humidity: cityData.humidity,
+      co2: cityData.co2,
+      greenCover: cityData.greenCover,
+      renewableShare: cityData.renewableShare,
+      water: cityData.water,
+      carbon: cityData.carbon,
+      historicalSummary,
+    };
+
+    // Load recent conversation turns for this session (if any) so
+    // follow-ups like "why?" resolve correctly — reuses the existing
+    // AIConversation model/collection, no new conversation architecture.
+    const sid = sessionId || uuidv4();
+    const existing = sessionId ? await AIConversation.findOne({ sessionId }).lean() : null;
+    const priorMessages = (existing?.messages ?? []).map((m) => ({
+      role: m.role === "user" ? ("user" as const) : ("assistant" as const),
+      content: m.content,
+    }));
+
+    const answer = await generateSustainabilityIntelligenceResponse(question, context, priorMessages);
+
+    await AIConversation.findOneAndUpdate(
+      { sessionId: sid },
+      {
+        $setOnInsert: {
+          cityId: cityData.cityId,
+          cityName: cityData.cityName,
+          sessionId: sid,
+          userId: req.user?._id,
+        },
+        $push: {
+          messages: {
+            $each: [
+              { role: "user", content: question, timestamp: new Date() },
+              { role: "assistant", content: answer, timestamp: new Date() },
+            ],
+          },
+        },
+      },
+      { upsert: true },
+    );
+
+    res.json({
+      success: true,
+      data: {
+        sessionId: sid,
+        question,
+        answer,
+        cityId: cityData.cityId,
+        cityName: cityData.cityName,
+        // Echo back the exact authoritative values the answer was
+        // grounded in, so the frontend can display them if useful —
+        // always the same values as the rest of the Sustainability page.
+        context: {
+          ecoScore: ecoScore.score,
+          ecoScoreGrade: ecoScore.grade,
+          aqi: cityData.aqi,
+          water: cityData.water,
+          historicalSummaryIncluded: !!historicalSummary,
+        },
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (err) {
     next(err);

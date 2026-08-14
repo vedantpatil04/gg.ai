@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -28,8 +28,9 @@ import {
   Lock,
   CheckSquare,
   ImageOff,
+  Send,
 } from "lucide-react";
-import { complaintApi } from "@/lib/api/services.api";
+import { complaintApi, messageApi } from "@/lib/api/services.api";
 import { Panel, Pill, WorkspaceHeader } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -77,6 +78,19 @@ export interface ComplaintRecord {
   reworkReason?: string;
   reworkComments?: string;
   reworkCount?: number;
+}
+
+// Phase 6 — complaint-scoped Citizen ↔ Authority message.
+export interface MessageRecord {
+  _id: string;
+  complaintId: string;
+  senderId: string;
+  senderRole: "citizen" | "authority";
+  senderName: string;
+  body: string;
+  attachments: string[];
+  readBy: string[];
+  createdAt: string;
 }
 
 // ─── Constant maps ────────────────────────────────────────────────────────────
@@ -662,6 +676,169 @@ function InvestigationChecklist({
   );
 }
 
+// ─── Messages (Phase 6 — complaint-scoped Citizen ↔ Authority) ──────────────
+function MessagesPanel({
+  complaint,
+  currentUser,
+}: {
+  complaint: ComplaintRecord;
+  currentUser: AuthUser;
+}) {
+  const qc = useQueryClient();
+  const [draft, setDraft] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["complaint-messages", complaint._id],
+    queryFn: () => messageApi.getMessages(complaint._id),
+    // Lightweight polling in place of websockets (none exist in this
+    // project) — only runs while this tab is mounted, since Radix Tabs
+    // unmounts inactive TabsContent by default.
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
+  });
+
+  const messages: MessageRecord[] =
+    (data as unknown as { data?: { messages?: MessageRecord[] } })?.data?.messages ?? [];
+
+  const markReadMutation = useMutation({
+    mutationFn: () => messageApi.markRead(complaint._id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["complaint-unread-count", complaint._id] });
+      qc.invalidateQueries({ queryKey: ["complaint-unread-counts"] });
+    },
+  });
+
+  // Opening the conversation marks the citizen's messages read (spec §13).
+  useEffect(() => {
+    if (messages.length > 0) markReadMutation.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [complaint._id, messages.length]);
+
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages.length]);
+
+  const sendMutation = useMutation({
+    mutationFn: (body: string) => messageApi.sendMessage(complaint._id, body),
+    onSuccess: () => {
+      setDraft("");
+      qc.invalidateQueries({ queryKey: ["complaint-messages", complaint._id] });
+    },
+  });
+
+  const canSend = complaint.status !== "closed" && complaint.status !== "rejected" && !!complaint.assignedTo;
+
+  const handleSend = () => {
+    const body = draft.trim();
+    if (!body || sendMutation.isPending) return;
+    sendMutation.mutate(body);
+  };
+
+  return (
+    <Panel eyebrow="Citizen Communication" title="Messages">
+      {isLoading ? (
+        <div className="space-y-3">
+          <Skeleton className="h-12 w-2/3 rounded-2xl" />
+          <Skeleton className="h-12 w-1/2 rounded-2xl ml-auto" />
+          <Skeleton className="h-12 w-3/5 rounded-2xl" />
+        </div>
+      ) : isError ? (
+        <div className="flex items-center gap-2 text-sm text-destructive py-4">
+          <AlertTriangle className="size-4 shrink-0" />
+          We couldn't load this conversation.
+        </div>
+      ) : messages.length === 0 ? (
+        <div className="text-sm text-muted-foreground text-center py-8">
+          No messages yet. Start a conversation with the citizen.
+        </div>
+      ) : (
+        <div ref={listRef} className="max-h-[420px] overflow-y-auto space-y-3 pr-1 -mr-1">
+          {messages.map((m) => {
+            const fromAuthority = m.senderRole === "authority";
+            return (
+              <div
+                key={m._id}
+                className={cn("flex flex-col max-w-[80%]", fromAuthority ? "ml-auto items-end" : "items-start")}
+              >
+                <div className="flex items-center gap-1.5 mb-1 px-1">
+                  <span className="text-[10px] font-medium text-muted-foreground">
+                    {fromAuthority ? "You (Authority)" : m.senderName || "Citizen"}
+                  </span>
+                </div>
+                <div
+                  className={cn(
+                    "rounded-2xl px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words",
+                    fromAuthority
+                      ? "bg-primary text-primary-foreground rounded-tr-sm"
+                      : "bg-muted rounded-tl-sm",
+                  )}
+                >
+                  {m.body}
+                </div>
+                <span className="text-[10px] text-muted-foreground mt-1 px-1">
+                  {new Date(m.createdAt).toLocaleString(undefined, {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  })}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {!canSend ? (
+        <div className="mt-4 pt-3 border-t border-border/50 flex items-center gap-2 text-xs text-muted-foreground">
+          <Lock className="size-3.5" />
+          {complaint.assignedTo
+            ? "This conversation is closed and read-only."
+            : "Messaging opens once this complaint is assigned to an authority."}
+        </div>
+      ) : (
+        <div className="mt-4 pt-3 border-t border-border/50 space-y-2">
+          <textarea
+            rows={2}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            maxLength={2000}
+            placeholder="Message the citizen…"
+            className="w-full rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-sm resize-none outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+          />
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-destructive">
+              {sendMutation.isError ? "Message could not be sent. Try again." : ""}
+            </span>
+            <Button
+              size="sm"
+              onClick={handleSend}
+              disabled={!draft.trim() || sendMutation.isPending}
+            >
+              {sendMutation.isPending ? (
+                <>
+                  <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+                  Sending…
+                </>
+              ) : (
+                <>
+                  <Send className="size-3.5 mr-1.5" />
+                  Send
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
 // ─── Activity timeline ────────────────────────────────────────────────────────
 function ActivityTimeline({ complaint }: { complaint: ComplaintRecord }) {
   type Entry = { type: string; message: string; userName?: string; ts: string };
@@ -998,6 +1175,20 @@ export function InvestigationWorkspace({
   const age = complaint ? ageLabel(complaint.createdAt) : null;
   const checklist = useInvestigationChecklist(complaintId);
 
+  // Phase 6 — lightweight unread-message badge for the Messages tab. Only
+  // meaningful for authority/administrator viewers of an assigned complaint;
+  // polling is intentionally slow (single small count query) since this is
+  // the one query that must run regardless of which tab is active.
+  const { data: unreadData } = useQuery({
+    queryKey: ["complaint-unread-count", complaintId],
+    queryFn: () => messageApi.getUnreadCount(complaintId),
+    enabled: !!complaint?.assignedTo,
+    refetchInterval: 20_000,
+    refetchOnWindowFocus: true,
+  });
+  const unreadMessages =
+    (unreadData as unknown as { data?: { count?: number } })?.data?.count ?? 0;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -1106,6 +1297,14 @@ export function InvestigationWorkspace({
                       )}
                     </TabsTrigger>
                     <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                    <TabsTrigger value="messages" className="gap-1.5">
+                      Messages
+                      {unreadMessages > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-medium tabular-nums">
+                          {unreadMessages}
+                        </span>
+                      )}
+                    </TabsTrigger>
                   </TabsList>
                 </div>
 
@@ -1158,6 +1357,10 @@ export function InvestigationWorkspace({
 
                 <TabsContent value="timeline" className="mt-4">
                   <ActivityTimeline complaint={complaint} />
+                </TabsContent>
+
+                <TabsContent value="messages" className="mt-4">
+                  <MessagesPanel complaint={complaint} currentUser={currentUser} />
                 </TabsContent>
               </Tabs>
             </div>

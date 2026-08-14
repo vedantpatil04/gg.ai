@@ -160,7 +160,7 @@ export function MiniDashboard() {
               {[
                 { c: "destructive", t: "PM2.5 spike — Whitefield", s: "2m" },
                 { c: "warning", t: "Rain forecast — drainage risk", s: "11m" },
-                { c: "info", t: "Data feed delayed — Indiranagar zone", s: "24m" },
+                { c: "info", t: "Data feed interrupted — Indiranagar zone", s: "24m" },
                 { c: "success", t: "AQI improving — Jayanagar", s: "1h" },
               ].map((a, i) => (
                 <motion.li
@@ -220,7 +220,7 @@ export function MiniDashboard() {
           <div className="col-span-12 md:col-span-7 rounded-xl border border-border/60 bg-gradient-to-br from-[color:var(--color-primary)]/10 to-transparent p-3">
             <div className="flex items-center gap-2 mb-2">
               <Brain className="size-3.5 text-[color:var(--color-primary)]" />
-              <div className="text-xs font-medium">GreenGuard Intelligence Insight</div>
+              <div className="text-xs font-medium">Intelligence Center Insight</div>
               <span className="ml-auto text-[10px] font-mono text-[color:var(--color-primary)]">
                 95% conf.
               </span>

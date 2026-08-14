@@ -6,7 +6,7 @@ const cols = [
     title: "Platform",
     links: [
       { to: "/dashboard", label: "Dashboard" },
-      { to: "/intelligence", label: "GreenGuard Intelligence Center" },
+      { to: "/copilot", label: "GreenGuard Intelligence Center" },
       { to: "/forecast", label: "Forecast" },
       { to: "/reports", label: "Reports" },
       { to: "/map", label: "Smart Map" },
@@ -41,7 +41,7 @@ export function LandingFooter() {
   return (
     <footer className="border-t border-border/60 bg-background">
       <div className="mx-auto max-w-[1440px] px-6 lg:px-10 py-16">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
+        <div className="grid gap-10 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
           <div>
             <Link to="/" className="flex items-center gap-2.5">
               <div className="grid size-8 place-items-center rounded-lg bg-gradient-to-br from-[color:var(--color-primary)] to-[color:var(--color-info)] text-primary-foreground">

@@ -1,38 +1,51 @@
 /**
- * copilot-panel.tsx — Phase 5 AI Sustainability Copilot
+ * copilot-panel.tsx — GreenGuard Intelligence Center (Phase 5)
  *
- * Self-contained copilot panel embedded in the Sustainability page.
+ * The Sustainability page's single AI intelligence experience — previously
+ * presented as the "AI Sustainability Copilot," now presented to users as
+ * the "GreenGuard Intelligence Center." The component/file name and the
+ * shared `copilotApi` object are left as-is (used by several other pages
+ * too); only the user-facing presentation changed.
+ *
  * Reuses:
- *   copilotApi.chat()            — Gemini backend (same as /copilot route)
- *   copilotApi.getRecommendations()
- *   RECOMMENDATIONS / INSIGHTS  — existing mock fallbacks
+ *   copilotApi.sustainabilityChat() — dedicated backend route/handler
+ *     grounded in the same transparent EcoScore engine (Phase 2) and
+ *     Phase 4 historical data the page itself renders from. NOT the
+ *     generic copilotApi.chat() used by Dashboard/Map/Forecast/
+ *     Intelligence/the standalone Copilot page — that stays untouched.
  *
- * No new backend endpoints are added. The `sessionId` is scoped to this
- * component's lifetime (session memory), not persisted to the backend.
+ * No new backend endpoints beyond that one dedicated route. The `sessionId`
+ * is scoped to this component's lifetime for the frontend; the backend
+ * additionally persists it via the existing AIConversation model so
+ * follow-up questions ("Why?") have real context.
  *
  * Architecture: three tabs — Chat | Insights | Actions
- *   Chat:    full conversation history, contextual prompt chips,
- *            streaming-style typing cursor, error / empty / loading states
- *   Insights: explainability cards (expandable), AI priority classification
- *   Actions:  recommendations with confidence bars and priority badges
+ *   Chat:      full conversation history, contextual prompt chips,
+ *              streaming-style typing cursor, error / empty / loading states
+ *   Insights:  explainability cards (expandable), grounded entirely in the
+ *              real city/EcoScore-breakdown data already shown elsewhere
+ *              on the page — no fabricated composite indices
+ *   Actions:   2-3 recommendations ranked directly from the real EcoScore
+ *              breakdown (weakest/strongest tracked metric) — no AI
+ *              confidence score, since no validated confidence model exists
  */
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import {
   Sparkles, Send, Loader2, MessageCircle, Lightbulb,
-  BarChart3, ChevronDown, ChevronUp, RefreshCw, AlertTriangle,
-  Leaf, Wind, Droplets, Factory, Zap, TreePine, Bug,
-  CheckCircle2, AlertCircle, Info,
+  BarChart3, ChevronDown, ChevronUp, AlertTriangle,
+  Leaf, Wind, Droplets, Factory, Zap, TreePine,
+  CheckCircle2, AlertCircle, Info, ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { copilotApi } from "@/lib/api/services.api";
-import { RECOMMENDATIONS, INSIGHTS } from "@/lib/mock-data";
-import type { City } from "@/lib/mock-data";
+import { ecoGradeFallback } from "@/lib/mock-data";
+import type { City, EcoScoreMetricKey } from "@/lib/mock-data";
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
-type ChatMsg = { role: "user" | "ai"; text: string; metrics?: Record<string, unknown> };
+type ChatMsg = { role: "user" | "ai"; text: string };
 type Priority = "critical" | "high" | "medium" | "low";
 type Tab = "chat" | "insights" | "actions";
 
@@ -68,20 +81,16 @@ function PriorityBadge({ priority }: { priority: Priority }) {
 }
 
 // ─── contextual prompt chips ──────────────────────────────────────────────────
-
-function buildPrompts(city: City, renewableShare: number, greenCover: number): string[] {
-  const base = [
-    `Summarise ${city.name}'s sustainability performance.`,
-    `Explain today's EcoScore of ${city.eco}/100.`,
-    `Why is the AQI at ${city.aqi}?`,
+// A small, focused set — not a wall of chips. Matches the GreenGuard
+// Intelligence Center's EXPLAIN / ANALYZE / RECOMMEND categories.
+function buildPrompts(city: City): string[] {
+  return [
+    `Why is the EcoScore ${city.eco}?`,
+    "What changed this week?",
+    "What needs attention?",
+    "Which metric is strongest?",
     `What should ${city.name} improve first?`,
   ];
-  if (city.carbon > 6) base.push(`Explain the carbon intensity of ${city.carbon} tCO₂/cap.`);
-  if (city.water < 70) base.push("How can water quality be improved?");
-  if (renewableShare < 35) base.push(`How can ${city.name} close the renewable energy gap?`);
-  if (greenCover < 30)    base.push("What are the fastest ways to increase green cover?");
-  if (city.aqi > 100)    base.unshift("Is it safe to exercise outside today?");
-  return base.slice(0, 6);
 }
 
 // ─── typing animation (mirrors Phase 2 ai-summary but scoped to one message) ──
@@ -119,15 +128,6 @@ function Bubble({ msg, isLast, isPending }: { msg: ChatMsg; isLast: boolean; isP
       >
         {msg.text}
         {isAi && isLast && isPending && <TypingCursor />}
-        {msg.metrics && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {Object.entries(msg.metrics as Record<string, number>).map(([k, v]) => (
-              <span key={k} className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-mono">
-                {k}:{v}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
     </motion.div>
   );
@@ -188,6 +188,29 @@ function ExplainCardRow({ card }: { card: ExplainCard }) {
 
 // ─── main copilot panel ───────────────────────────────────────────────────────
 
+// ─── EcoScore breakdown helpers — reused, not recomputed ─────────────────────
+// Reads the exact same Phase 2 breakdown shown in EcoScoreBreakdownPanel;
+// never recalculates a score or grade of its own.
+const METRIC_LABEL: Record<EcoScoreMetricKey, string> = {
+  airQuality: "air quality",
+  greenCover: "green cover",
+  renewableEnergy: "renewable energy",
+  waterQuality: "water quality",
+  wasteDiversion: "waste diversion",
+};
+
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function availableMetricsByScore(city: City): EcoScoreMetricKey[] {
+  const breakdown = city.ecoScore?.breakdown;
+  if (!breakdown) return [];
+  return (Object.keys(breakdown) as EcoScoreMetricKey[])
+    .filter((k) => breakdown[k].available)
+    .sort((a, b) => breakdown[a].normalizedScore! - breakdown[b].normalizedScore!);
+}
+
 export function SustainabilityCopilot({
   city, isApiConnected, renewableShare, greenCover,
 }: {
@@ -201,14 +224,15 @@ export function SustainabilityCopilot({
   const [sessionId, setSessionId] = useState<string | undefined>();
   const [messages, setMessages] = useState<ChatMsg[]>(() => [{
     role: "ai",
-    text: `Hello! I'm your GreenGuard Sustainability Copilot. Ask me anything about ${city.name}'s environmental performance — EcoScore, carbon, water, renewables, or what to prioritise next.`,
+    text: `Hello! I'm GreenGuard Intelligence. Ask me anything about ${city.name}'s environmental performance — EcoScore, carbon, water, renewables, or what to prioritise next.`,
   }]);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
-  // Reset conversation when city changes
+  // Reset conversation when city changes — no stale AI memory from the
+  // previous city carries over.
   useEffect(() => {
     setMessages([{
       role: "ai",
@@ -218,27 +242,26 @@ export function SustainabilityCopilot({
     setError(null);
   }, [city.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const prompts = useMemo(
-    () => buildPrompts(city, renewableShare, greenCover),
-    [city, renewableShare, greenCover],
-  );
+  const prompts = useMemo(() => buildPrompts(city), [city]);
 
-  // AI chat mutation — same API call as /copilot route
+  // AI chat mutation — dedicated Sustainability-only route, grounded in the
+  // same transparent EcoScore this page already displays (see
+  // sustainabilityChat in copilot.controller.ts). Not the generic
+  // copilotApi.chat() used by other pages.
   const chatMutation = useMutation({
-    mutationFn: (q: string) => copilotApi.chat(q, city.id, sessionId),
+    mutationFn: (q: string) => copilotApi.sustainabilityChat(q, city.id, sessionId),
     onSuccess: (resp) => {
       const data = resp?.data ?? resp as Record<string, unknown>;
       if (data?.sessionId) setSessionId(data.sessionId as string);
       const answer = (data?.answer ?? data?.text ?? "No response.") as string;
-      const metrics = data?.metrics as Record<string, unknown> | undefined;
-      setMessages(h => [...h, { role: "ai", text: answer, metrics }]);
+      setMessages(h => [...h, { role: "ai", text: answer }]);
       setError(null);
     },
     onError: () => {
-      setError("AI service unavailable. Check that the backend is running and GEMINI_API_KEY is set.");
+      setError("GreenGuard Intelligence is temporarily unavailable. Your environmental dashboard is still using the latest available data.");
       setMessages(h => [...h, {
         role: "ai",
-        text: "I couldn't reach the AI service. Please check your backend connection.",
+        text: "GreenGuard Intelligence is temporarily unavailable. Your environmental dashboard is still using the latest available data.",
       }]);
     },
   });
@@ -252,7 +275,7 @@ export function SustainabilityCopilot({
     if (!isApiConnected) {
       setMessages(h => [...h, {
         role: "ai",
-        text: "AI Copilot requires the backend API. Start the backend server and set GEMINI_API_KEY to enable live responses.",
+        text: "GreenGuard Intelligence requires the backend API. Start the backend server and set GEMINI_API_KEY to enable live responses.",
       }]);
       return;
     }
@@ -263,69 +286,82 @@ export function SustainabilityCopilot({
     setQuestion(p);
   }, []);
 
-  // Recommendations query — same as /copilot route
-  const { data: recData, isLoading: recLoading, refetch: refetchRec } = useQuery({
-    queryKey:  ["recommendations", city.id],
-    queryFn:   () => copilotApi.getRecommendations(city.id).then(r => r.data?.recommendations ?? r.data),
-    staleTime: 5 * 60_000,
-    enabled:   isApiConnected,
-    throwOnError: false,
-  });
+  // Explainability cards — derived entirely from live city data (including
+  // the real EcoScore breakdown), no separate API call and no invented
+  // composite indices.
+  const weakestFirst = useMemo(() => availableMetricsByScore(city), [city]);
+  const primaryDragLabel = weakestFirst.length ? METRIC_LABEL[weakestFirst[0]] : "renewable energy";
 
-  const recommendations = (Array.isArray(recData) ? recData : null) ?? RECOMMENDATIONS;
-
-  // Explainability cards — derived from live city data, no new API
   const explainCards: ExplainCard[] = useMemo(() => [
     {
       id: "ecoscore",
       icon: BarChart3, label: "EcoScore", color: "var(--color-primary)",
       priority: city.eco < 50 ? "critical" : city.eco < 70 ? "high" : "low",
-      summary: `${city.eco}/100 — Grade ${city.eco >= 85 ? "A+" : city.eco >= 75 ? "A" : city.eco >= 65 ? "B+" : city.eco >= 55 ? "B" : "C"}`,
-      detail:  `The EcoScore is a composite index blending air quality (AQI ${city.aqi}), water sustainability (${city.water}%), renewable energy share (${renewableShare}%), green cover (${greenCover}%), and carbon intensity (${city.carbon} tCO₂/cap). A score of ${city.eco} reflects ${city.eco >= 70 ? "strong" : city.eco >= 50 ? "moderate" : "weak"} overall environmental management. The primary drag is ${city.aqi > 130 ? "air quality" : city.water < 65 ? "water quality" : city.carbon > 7 ? "carbon intensity" : "renewable energy gap"}.`,
+      summary: `${city.eco}/100 — Grade ${city.ecoScore?.grade ?? ecoGradeFallback(city.eco)}`,
+      detail:  `The EcoScore is a weighted composite of air quality (AQI ${city.aqi}), green cover (${greenCover}%), renewable energy share (${renewableShare}%), and water quality (${city.water}%)${city.ecoScore && !city.ecoScore.dataComplete ? " — waste diversion isn't included yet as no supported data source exists" : ""}. A score of ${city.eco} reflects ${city.eco >= 70 ? "strong" : city.eco >= 50 ? "moderate" : "weak"} overall environmental management. The primary drag is currently ${primaryDragLabel}.`,
     },
     {
       id: "carbon",
       icon: Factory, label: "Carbon Intelligence", color: "var(--color-destructive)",
       priority: city.carbon > 9 ? "critical" : city.carbon > 6 ? "high" : city.carbon > 4 ? "medium" : "low",
       summary:  `${city.carbon} tCO₂ per capita — ${city.carbon > 7 ? "above" : "below"} the 7 t high-risk threshold`,
-      detail:   `Per-capita carbon intensity of ${city.carbon} tCO₂ is ${city.carbon > 7 ? `${((city.carbon / 7 - 1) * 100).toFixed(0)}% above the regional high-risk mark of 7 t. Transport and industrial sectors are the primary contributors based on current AQI (${city.aqi}) and PM2.5 (${city.pm25} µg/m³) readings.` : "within an acceptable range. Continued monitoring of industrial clusters and transport corridors is recommended to maintain this position."}`,
+      detail:   `Per-capita carbon intensity of ${city.carbon} tCO₂ is ${city.carbon > 7 ? `above the regional high-risk mark of 7 t.` : "within an acceptable range."} Current AQI (${city.aqi}) and PM2.5 (${city.pm25} µg/m³) readings are the closest related indicators GreenGuard tracks.`,
     },
     {
       id: "renewable",
       icon: Zap, label: "Renewable Energy", color: "var(--color-warning)",
       priority: renewableShare < 25 ? "critical" : renewableShare < 35 ? "high" : renewableShare < 40 ? "medium" : "low",
       summary:  `${renewableShare}% renewable mix — ${renewableShare >= 40 ? "target met" : `${40 - renewableShare}% below 40% target`}`,
-      detail:   `The current generation mix is ${renewableShare}% renewable (solar + wind + hydro). ${renewableShare >= 40 ? "The 40% clean energy target has been achieved." : `Closing the ${40 - renewableShare}% gap requires accelerating solar rooftop installation and grid-scale wind procurement. The estimated grid carbon intensity is ~${Math.round(city.carbon * 82)} gCO₂/kWh.`}`,
+      detail:   `The current generation mix is ${renewableShare}% renewable. ${renewableShare >= 40 ? "The 40% clean energy target has been achieved." : `Closing the ${40 - renewableShare}% gap is the fastest lever to raise renewable energy's contribution to the EcoScore.`}`,
     },
     {
       id: "water",
       icon: Droplets, label: "Water Intelligence", color: "var(--color-info)",
       priority: city.water < 50 ? "critical" : city.water < 65 ? "high" : city.water < 75 ? "medium" : "low",
       summary:  `Water quality index ${city.water}% — ${city.water >= 75 ? "excellent" : city.water >= 60 ? "moderate" : "poor"}`,
-      detail:   `A water sustainability index of ${city.water}% ${city.water >= 75 ? "exceeds the 75% healthy threshold, indicating effective treatment and reuse infrastructure." : city.water >= 60 ? "is approaching the 75% target. Scaling decentralised grey-water reuse and auditing treatment capacity are the recommended next steps." : "is below the 60% sustainability floor. Urgent infrastructure investment in water treatment and distribution is required."} Estimated reuse rate: ~${Math.round(city.water * 0.56)}%.`,
+      detail:   `A water sustainability index of ${city.water}% ${city.water >= 75 ? "exceeds the 75% healthy threshold, indicating effective treatment and reuse infrastructure." : city.water >= 60 ? "is approaching the 75% target." : "is below the 60% sustainability floor and is the current priority for infrastructure investment."}`,
     },
     {
       id: "air",
       icon: Wind, label: "Air Quality", color: "var(--color-primary)",
       priority: city.aqi > 200 ? "critical" : city.aqi > 150 ? "high" : city.aqi > 100 ? "medium" : "low",
       summary:  `AQI ${city.aqi} · PM2.5 ${city.pm25} µg/m³`,
-      detail:   `Current AQI of ${city.aqi} places ${city.name} in the "${city.aqi < 50 ? "Good" : city.aqi < 100 ? "Moderate" : city.aqi < 150 ? "Unhealthy for Sensitive Groups" : city.aqi < 200 ? "Unhealthy" : "Very Unhealthy"}" band. PM2.5 at ${city.pm25} µg/m³ is ${city.pm25 > 35 ? "above" : "within"} the WHO 24h advisory of 35 µg/m³. Humidity at ${city.humidity}% ${city.humidity > 70 ? "is amplifying particulate binding, worsening effective exposure." : "has a neutral effect on dispersion."}`,
+      detail:   `Current AQI of ${city.aqi} places ${city.name} in the "${city.aqi < 50 ? "Good" : city.aqi < 100 ? "Moderate" : city.aqi < 150 ? "Unhealthy for Sensitive Groups" : city.aqi < 200 ? "Unhealthy" : "Very Unhealthy"}" band. PM2.5 at ${city.pm25} µg/m³ is ${city.pm25 > 35 ? "above" : "within"} the WHO 24h advisory of 35 µg/m³.`,
     },
     {
       id: "green",
       icon: TreePine, label: "Green Cover", color: "var(--color-success)",
       priority: greenCover < 15 ? "critical" : greenCover < 25 ? "high" : greenCover < 30 ? "medium" : "low",
       summary:  `${greenCover}% urban canopy — ${greenCover >= 30 ? "target met" : `${30 - greenCover}% below 30% target`}`,
-      detail:   `Urban green cover of ${greenCover}% ${greenCover >= 30 ? "meets the 30% canopy target" : `falls short of the 30% target by ${30 - greenCover}%`}. Current sequestration capacity: ~${Math.round(greenCover * 3)} ktCO₂/yr. Vegetation health score: ${Math.min(100, Math.round(city.eco * 0.7 + (40 - city.temp) * 0.6))}%. Each percentage point of canopy added sequesters an estimated ${Math.round(greenCover * 0.09)} ktCO₂/yr additional.`,
+      detail:   `Urban green cover of ${greenCover}% ${greenCover >= 30 ? "meets the 30% canopy target." : `falls short of the 30% target by ${30 - greenCover} percentage points.`}`,
     },
-    {
-      id: "biodiversity",
-      icon: Bug, label: "Biodiversity", color: "oklch(0.62 0.17 145)",
-      priority: greenCover < 20 ? "high" : city.eco < 55 ? "medium" : "low",
-      summary:  `Ecological health: ${Math.min(100, Math.round(city.eco * 0.5 + city.water * 0.3 + (100 - city.aqi * 0.15) * 0.2))}%`,
-      detail:   `Ecological health is a composite of green cover density (${greenCover}%), water quality (${city.water}%), and air quality pressure (AQI ${city.aqi}). Tree density index: ~${Math.min(100, Math.round(greenCover * 1.9))}%. Habitat score: ~${Math.min(100, Math.round(greenCover * 1.2 + city.water * 0.25))}%. Urban biodiversity is most sensitive to green cover loss and water quality degradation.`,
-    },
-  ], [city, renewableShare, greenCover]);
+  ], [city, renewableShare, greenCover, primaryDragLabel]);
+
+  // Actions tab — 2-3 recommendations ranked directly from the real
+  // EcoScore breakdown (weakest / next-weakest / strongest tracked
+  // metric). Deterministic, not Gemini-generated: no confidence score is
+  // shown because no validated confidence model exists for these.
+  const priorities = useMemo(() => {
+    if (weakestFirst.length < 2) return [];
+    const strongest = weakestFirst[weakestFirst.length - 1];
+    const items: { title: string; reason: string }[] = [
+      {
+        title: `Improve ${METRIC_LABEL[weakestFirst[0]]}`,
+        reason: `${cap(METRIC_LABEL[weakestFirst[0]])} is currently the weakest tracked sustainability indicator for ${city.name}, scoring ${city.ecoScore!.breakdown[weakestFirst[0]].normalizedScore}/100 in the EcoScore breakdown.`,
+      },
+    ];
+    if (weakestFirst.length > 2 && weakestFirst[1] !== strongest) {
+      items.push({
+        title: `Address ${METRIC_LABEL[weakestFirst[1]]}`,
+        reason: `${cap(METRIC_LABEL[weakestFirst[1]])} is also below the other tracked dimensions, scoring ${city.ecoScore!.breakdown[weakestFirst[1]].normalizedScore}/100.`,
+      });
+    }
+    items.push({
+      title: `Maintain strong ${METRIC_LABEL[strongest]} performance`,
+      reason: `${cap(METRIC_LABEL[strongest])} is currently ${city.name}'s strongest tracked dimension, scoring ${city.ecoScore!.breakdown[strongest].normalizedScore}/100.`,
+    });
+    return items.slice(0, 3);
+  }, [city, weakestFirst]);
 
   // Priority-sort for insights tab
   const sortedCards = useMemo(() => {
@@ -352,10 +388,12 @@ export function SustainabilityCopilot({
           <Sparkles className="size-4" aria-hidden="true" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">GreenGuard AI</div>
-          <div className="text-sm font-semibold">Sustainability Copilot · {city.name}</div>
+          <div className="text-sm font-semibold">GreenGuard Intelligence Center</div>
+          <div className="text-[11px] text-muted-foreground truncate">
+            Understand {city.name}'s environmental data, EcoScore and recent changes.
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 text-[10px]">
+        <div className="flex items-center gap-1.5 text-[10px] shrink-0">
           <span
             className="size-1.5 rounded-full inline-block"
             style={{ background: isApiConnected ? "var(--color-success)" : "var(--color-warning)" }}
@@ -363,6 +401,12 @@ export function SustainabilityCopilot({
           />
           <span className="text-muted-foreground">{isApiConnected ? "Gemini · live" : "Mock mode"}</span>
         </div>
+      </div>
+
+      {/* Source transparency — small, unobtrusive */}
+      <div className="flex items-center gap-1.5 px-5 pt-3 text-[10px] text-muted-foreground">
+        <ShieldCheck className="size-3 shrink-0" aria-hidden="true" />
+        <span>Based on current GreenGuard environmental data for {city.name}.</span>
       </div>
 
       {/* Tab bar */}
@@ -526,75 +570,30 @@ export function SustainabilityCopilot({
               transition={{ duration: 0.2 }}
               className="space-y-3"
             >
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">
-                  {isApiConnected ? "Gemini-generated recommendations" : "Rule-based fallback recommendations"}
-                </p>
-                {isApiConnected && (
-                  <button
-                    onClick={() => refetchRec()}
-                    disabled={recLoading}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    aria-label="Refresh recommendations"
-                  >
-                    <RefreshCw className={cn("size-3", recLoading && "animate-spin")} aria-hidden="true" />
-                    Refresh
-                  </button>
-                )}
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Ranked directly from {city.name}'s current EcoScore breakdown — no AI confidence score, since GreenGuard doesn't have a validated model for one.
+              </p>
 
-              {recLoading ? (
-                <div className="space-y-2">
-                  {[1,2,3].map(i => (
-                    <div key={i} className="glass rounded-xl p-4 relative overflow-hidden">
-                      <div className="absolute inset-0 shimmer" />
-                    </div>
-                  ))}
+              {priorities.length === 0 ? (
+                <div className="rounded-xl border border-border p-4 text-xs text-muted-foreground">
+                  Not enough live EcoScore data to generate grounded recommendations right now.
                 </div>
               ) : (
-                <div className="grid sm:grid-cols-2 gap-3 max-h-[480px] overflow-y-auto pr-1">
-                  {recommendations.map((r: { title: string; impact: string; effort: string; confidence: number }, i: number) => {
-                    const conf = Math.round((r.confidence ?? 0.75) * 100);
-                    const confColor = conf >= 85 ? "var(--color-success)" : conf >= 70 ? "var(--color-warning)" : "var(--color-muted-foreground)";
-                    return (
-                      <motion.div
-                        key={r.title}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: i * 0.05 }}
-                        whileHover={{ y: -2 }}
-                        className="rounded-xl border border-border p-4 hover:border-primary/30 transition-colors duration-200"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Action</span>
-                          <span className="text-[10px] tabular-nums" style={{ color: confColor }}>
-                            {conf}% conf.
-                          </span>
-                        </div>
-                        <p className="text-xs font-medium mt-1.5 leading-snug">{r.title}</p>
-                        {/* Confidence bar */}
-                        <div className="mt-2.5 h-1 rounded-full bg-muted overflow-hidden">
-                          <motion.div
-                            className="h-full rounded-full"
-                            style={{ background: confColor }}
-                            initial={{ width: 0 }}
-                            animate={{ width: `${conf}%` }}
-                            transition={{ duration: 0.7, delay: 0.1 + i * 0.05, ease: "easeOut" }}
-                          />
-                        </div>
-                        <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
-                          <div className="rounded-lg bg-muted/40 px-2 py-1.5">
-                            <div className="text-muted-foreground">Impact</div>
-                            <div className="font-semibold mt-0.5">{r.impact}</div>
-                          </div>
-                          <div className="rounded-lg bg-muted/40 px-2 py-1.5">
-                            <div className="text-muted-foreground">Effort</div>
-                            <div className="font-semibold mt-0.5">{r.effort}</div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {priorities.map((p, i) => (
+                    <motion.div
+                      key={p.title}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: i * 0.05 }}
+                      whileHover={{ y: -2 }}
+                      className="rounded-xl border border-border p-4 hover:border-primary/30 transition-colors duration-200"
+                    >
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Priority {i + 1}</span>
+                      <p className="text-xs font-medium mt-1.5 leading-snug">{p.title}</p>
+                      <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">{p.reason}</p>
+                    </motion.div>
+                  ))}
                 </div>
               )}
             </motion.div>
