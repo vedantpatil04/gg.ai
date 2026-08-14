@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * Shared building blocks for the Phase 2 "platform experience" sections
- * (Environmental Overview, Smart Map, Forecast Intelligence, AI Copilot).
+ * (Environmental Overview, Smart Map, Forecast Intelligence, GreenGuard Intelligence Center).
  * Each section gets its own background and layout, but the heading
  * treatment and the single-CTA pattern stay consistent — imported from
  * here rather than re-declared four times.

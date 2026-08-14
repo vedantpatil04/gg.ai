@@ -41,7 +41,6 @@ import {
   humanizeIssueType,
   humanizeEventType,
 } from "./citizen-status-utils";
-import { API_BASE } from "@/lib/api/client";
 import type { CitizenComplaint, ComplaintEvent } from "./citizen-queries";
 
 // ─── Evidence gallery ─────────────────────────────────────────────────────────
@@ -58,7 +57,7 @@ function EvidenceGallery({ images }: { images: string[] }) {
     );
   }
 
-  const apiBase = API_BASE.replace(/\/api\/?$/, "");
+  const apiBase = import.meta.env.VITE_API_URL?.replace("/api", "") ?? "http://localhost:5000";
   const fullUrl = (url: string) =>
     url.startsWith("http") ? url : `${apiBase}${url}`;
 
@@ -475,7 +474,7 @@ export function CitizenComplaintWorkspace({
                       {complaint.status === "in-progress" &&
                         "An authority is currently investigating your complaint."}
                       {complaint.status === "rework" &&
-                        "An authority is continuing to investigate your complaint."}
+                        "Rework requested — administrator is reviewing your request."}
                       {complaint.status === "resolved" &&
                         "A revised resolution has been submitted. An administrator is reviewing it."}
                       {complaint.status === "closed" &&

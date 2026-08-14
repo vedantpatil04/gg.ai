@@ -305,9 +305,18 @@ export function deriveWhatMattersNow({
     tone: aqi > 150 ? "destructive" : aqi > 100 ? "warning" : "success",
   });
 
-  // 2. One real watch item, skipping the generic "nothing to report" filler
-  //    (that case is already covered by the alerts line below).
-  const watch = watchItems.find((w) => w.icon !== "stable");
+  // 2. One real watch item, distinct from the headline above. Skips the
+  //    generic "nothing to report" filler (already covered by the alerts
+  //    line below) *and* trend-based watch items ("trend-up"/"trend-down"):
+  //    those only ever fire when `hasHistory` is true, in which case the
+  //    headline's own trend clause above already states the same fact
+  //    ("Air quality is good" / "...and has been improving over recent
+  //    readings"), so surfacing it again as a second "Air quality is
+  //    improving" card would just repeat the headline rather than add a
+  //    distinct observation.
+  const watch = watchItems.find(
+    (w) => w.icon !== "stable" && w.icon !== "trend-up" && w.icon !== "trend-down",
+  );
   if (watch) {
     items.push({
       id: "watch",

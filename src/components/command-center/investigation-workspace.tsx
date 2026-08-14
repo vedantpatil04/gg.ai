@@ -129,6 +129,7 @@ const EVENT_ICON: Record<string, typeof CheckCircle2> = {
   closed: Lock,
   rework_requested: RotateCcw,
   rejected: X,
+  citizen_accepted: CheckCircle2,
 };
 const EVENT_COLOR: Record<string, string> = {
   created: "var(--color-muted-foreground)",
@@ -144,6 +145,7 @@ const EVENT_COLOR: Record<string, string> = {
   closed: "var(--color-success)",
   rework_requested: "var(--color-destructive)",
   rejected: "var(--color-muted-foreground)",
+  citizen_accepted: "var(--color-success)",
 };
 
 const CHECKLIST_ITEMS = [

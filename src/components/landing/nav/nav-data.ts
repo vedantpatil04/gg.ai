@@ -62,7 +62,7 @@ export const PLATFORM_ITEMS: readonly PlatformNavItem[] = [
   },
   {
     to: "/intelligence",
-    label: "AI Copilot",
+    label: "GreenGuard Intelligence Center",
     description: "Ask anything about your environment. Get cited, actionable answers.",
     icon: Brain,
   },

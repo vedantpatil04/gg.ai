@@ -15,7 +15,7 @@ import { getPollutionTrend, deriveThingsToWatch, deriveWhatMattersNow } from "@/
 import { useQuery } from "@tanstack/react-query";
 import { alertApi, copilotApi, adminApi } from "@/lib/api/services.api";
 import { environmentalApi } from "@/lib/api/environmental.api";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { STAGGER, FADE_UP } from "@/lib/motion";
 
@@ -45,7 +45,6 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 function Dashboard() {
-  const [currentTime, setCurrentTime] = useState("");
   const { city, cities, isApiConnected, refreshCity } = useCity();
   const { user } = useAuth();
   const band = aqiBand(city.aqi);
@@ -96,18 +95,6 @@ function Dashboard() {
   }, [trend24hData]);
 
   const isAdmin = user?.role === "administrator";
-
-  useEffect(() => {
-    const updateTime = () => {
-      setCurrentTime(new Date().toLocaleTimeString());
-    };
-
-    updateTime();
-
-    const interval = setInterval(updateTime, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   const {
     data: alertData,
@@ -1080,7 +1067,8 @@ function Dashboard() {
           band={band}
           envBand={envHealth.band}
           isApiConnected={isApiConnected}
-          lastUpdated={currentTime}
+          freshness={dataFreshness}
+          lastUpdatedLabel={dataLastUpdatedLabel}
           onRefresh={handleRefresh}
           isRefreshing={isRefreshing}
           onExport={handleExport}

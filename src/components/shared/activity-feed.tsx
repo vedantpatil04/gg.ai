@@ -63,6 +63,7 @@ const EVENT_META: Record<
   verified: { icon: ShieldCheck, color: "text-green-600", bgColor: "bg-green-600/10" },
   closed: { icon: Lock, color: "text-green-600", bgColor: "bg-green-600/10" },
   rework_requested: { icon: RotateCcw, color: "text-red-500", bgColor: "bg-red-500/10" },
+  citizen_accepted: { icon: CheckCircle2, color: "text-green-600", bgColor: "bg-green-600/10" },
   rejected: { icon: AlertTriangle, color: "text-destructive", bgColor: "bg-destructive/10" },
   note_updated: { icon: FileText, color: "text-slate-500", bgColor: "bg-slate-500/10" },
   environmental_alert: { icon: AlertTriangle, color: "text-amber-500", bgColor: "bg-amber-500/10" },
@@ -208,6 +209,7 @@ export function complaintEventsToActivityFeed(
     verified: "Resolution Verified",
     closed: "Complaint Closed",
     rework_requested: "Rework Requested",
+    citizen_accepted: "Resolution Accepted",
     rejected: "Complaint Rejected",
     note_updated: "Notes Updated",
   };

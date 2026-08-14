@@ -147,7 +147,7 @@ export function AICopilotExperience() {
         <ExperienceHeader
           align="center"
           tone="chart5"
-          eyebrow="AI Copilot"
+          eyebrow="GreenGuard Intelligence Center"
           title="Ask GreenGuard Intelligence anything."
           sub="A real conversational interface, grounded in real city data. Sign in from any answer to unlock the full, live AI model."
         />
@@ -218,7 +218,7 @@ export function AICopilotExperience() {
 
         <ExperienceCTA to="/intelligence" tone="chart5">
           <Sparkles className="size-4" />
-          Open AI Copilot
+          Open GreenGuard Intelligence Center
         </ExperienceCTA>
       </div>
     </section>

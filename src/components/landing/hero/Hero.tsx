@@ -2,6 +2,7 @@ import { useRef, type MouseEvent } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, ShieldCheck, Lock, Database, Zap } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { useCity } from "@/lib/city-context";
 import { STAGGER, FADE_UP } from "@/lib/motion";
 import { LANDING_CONTAINER, CTA_PRIMARY_CLASS, CTA_SECONDARY_CLASS } from "@/components/landing/shared";
 import { LAUNCH_LINK } from "@/components/landing/nav/nav-data";
@@ -25,6 +26,7 @@ function scrollToPlatformOverview(event: MouseEvent<HTMLAnchorElement>, instant:
 export function Hero() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const reducedMotion = useReducedMotion();
+  const { cities, isApiConnected } = useCity();
   const { scrollYProgress } = useScroll({
     target: sectionRef,
     offset: ["start start", "end start"],
@@ -53,8 +55,10 @@ export function Hero() {
               className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-3 py-1 text-xs backdrop-blur"
             >
               <span className="relative inline-flex size-1.5 rounded-full bg-[color:var(--color-primary)] pulse-dot" />
-              <span className="text-muted-foreground">Live</span>
-              <span className="text-foreground/80">Monitoring 14 cities · 1,200+ sensors</span>
+              <span className="text-muted-foreground">{isApiConnected ? "Live" : "Latest"}</span>
+              <span className="text-foreground/80">
+                Environmental intelligence across {cities.length} cities
+              </span>
             </motion.div>
 
             <motion.h1
@@ -69,7 +73,7 @@ export function Hero() {
               variants={FADE_UP}
               className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground"
             >
-              GreenGuard AI unifies real-time sensor data, forecasting, citizen reports and AI
+              GreenGuard AI unifies live environmental data, forecasting, citizen reports and AI
               insight into a single operating picture — so authorities can monitor, predict and
               act on environmental risk before it becomes a crisis.
             </motion.p>

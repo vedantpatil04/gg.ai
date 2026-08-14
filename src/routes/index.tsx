@@ -11,9 +11,8 @@ import {
   Database,
   CheckCircle2,
   ArrowUpRight,
-  Radio,
-  Globe2,
 } from "lucide-react";
+import { useCity } from "@/lib/city-context";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { Hero } from "@/components/landing/hero/Hero";
@@ -50,7 +49,6 @@ function Landing() {
       <Hero />
       <TrustStrip />
       <PlatformOverview />
-      <LiveOperations />
 
       {/* ── Phase 2: live platform experiences ── */}
       <EnvironmentalOverviewExperience />
@@ -71,12 +69,18 @@ function Landing() {
 }
 
 /* ---------------- PLATFORM OVERVIEW ---------------- */
+/**
+ * Every figure here is either read live from the same city context every
+ * other module uses (`useCity`), or a qualitative descriptor rather than an
+ * invented number — no fabricated sensor counts or unverifiable accuracy
+ * claims. See Phase 2.1 correction notes.
+ */
 function PlatformOverview() {
+  const { cities, isApiConnected } = useCity();
   const stats = [
-    { k: "14", l: "Cities monitored" },
-    { k: "1.2k+", l: "Active sensors" },
-    { k: "98.7%", l: "Forecast accuracy" },
-    { k: "<800ms", l: "Alert latency" },
+    { k: String(cities.length), l: "Cities monitored" },
+    { k: "72h", l: "Forecast horizon" },
+    { k: "Air · Water · Climate", l: "Data domains covered" },
   ];
   return (
     <section id="platform-overview" className="border-y border-border/60 bg-card/30">
@@ -90,12 +94,18 @@ function PlatformOverview() {
               One operating picture for the environment.
             </h2>
             <p className="mt-4 text-muted-foreground max-w-xl leading-relaxed">
-              Stop stitching dashboards together. GreenGuard AI ingests sensors, satellites, weather
-              feeds and citizen reports into a single, queryable layer — surfaced through modules
-              built for the people who actually act on the data.
+              Stop stitching dashboards together. GreenGuard AI ingests live environmental APIs,
+              weather feeds, geospatial data and citizen reports into a single, queryable layer —
+              surfaced through modules built for the people who actually act on the data.
+            </p>
+            <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span
+                className={`size-1.5 rounded-full ${isApiConnected ? "bg-[color:var(--color-success)]" : "bg-muted-foreground/50"}`}
+              />
+              {isApiConnected ? "Live data connection" : "Latest available data"}
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-px rounded-2xl border border-border/60 bg-border/60 overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-px rounded-2xl border border-border/60 bg-border/60 overflow-hidden">
             {stats.map((s, i) => (
               <motion.div
                 key={s.l}
@@ -105,7 +115,7 @@ function PlatformOverview() {
                 transition={{ duration: 0.4, delay: i * 0.05 }}
                 className="bg-card p-6"
               >
-                <div className="font-display text-3xl lg:text-4xl font-semibold tabular-nums tracking-tight">
+                <div className="font-display text-2xl lg:text-3xl font-semibold tabular-nums tracking-tight">
                   {s.k}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground uppercase tracking-wider">
@@ -114,170 +124,6 @@ function PlatformOverview() {
               </motion.div>
             ))}
           </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ---------------- LIVE OPERATIONS ---------------- */
-function LiveOperations() {
-  const feed = [
-    { t: "14:02", c: "warning", m: "PM2.5 threshold breached — Whitefield zone", tag: "Bengaluru" },
-    { t: "13:58", c: "info", m: "Forecast updated — 72h horizon refreshed", tag: "All cities" },
-    { t: "13:47", c: "success", m: "AQI improving (−18%) in Jayanagar", tag: "Bengaluru" },
-    { t: "13:31", c: "destructive", m: "Water turbidity spike — Powai lake", tag: "Mumbai" },
-    { t: "13:14", c: "info", m: "Citizen report verified · noise pollution", tag: "Pune" },
-    { t: "12:58", c: "warning", m: "Sensor offline — Indiranagar-04", tag: "Bengaluru" },
-  ];
-
-  return (
-    <section className="py-24">
-      <div className="mx-auto max-w-[1440px] px-6 lg:px-10">
-        <SectionHead
-          eyebrow="Live Operations"
-          title="The world's environment, narrated in real time."
-          sub="Every sensor reading, citizen report and forecast event flows into a unified stream — geo-tagged, ranked by risk, and ready to action."
-        />
-
-        <div className="mt-12 grid gap-6 lg:grid-cols-3">
-          {/* Map mock */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.5 }}
-            className="lg:col-span-2 rounded-2xl border border-border/60 bg-card overflow-hidden"
-          >
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Globe2 className="size-4 text-[color:var(--color-primary)]" />
-                Global Risk Map
-              </div>
-              <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-[color:var(--color-success)]" />
-                  Good
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-[color:var(--color-warning)]" />
-                  Moderate
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-[color:var(--color-destructive)]" />
-                  Severe
-                </span>
-              </div>
-            </div>
-            <div className="relative aspect-[16/8] bg-background overflow-hidden">
-              {/* Stylized map grid */}
-              <div
-                className="absolute inset-0 opacity-30"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(to right, var(--color-border) 1px, transparent 1px), linear-gradient(to bottom, var(--color-border) 1px, transparent 1px)",
-                  backgroundSize: "32px 32px",
-                }}
-              />
-              <div
-                className="absolute inset-0"
-                style={{
-                  background:
-                    "radial-gradient(ellipse 60% 80% at 50% 50%, color-mix(in oklab, var(--color-primary) 8%, transparent), transparent 70%)",
-                }}
-              />
-              {/* Dots */}
-              {[
-                { x: 22, y: 38, c: "success", s: "London" },
-                { x: 28, y: 52, c: "warning", s: "Madrid" },
-                { x: 54, y: 44, c: "destructive", s: "Delhi" },
-                { x: 58, y: 56, c: "warning", s: "Mumbai" },
-                { x: 60, y: 64, c: "destructive", s: "Bengaluru" },
-                { x: 72, y: 36, c: "warning", s: "Beijing" },
-                { x: 78, y: 50, c: "success", s: "Singapore" },
-                { x: 82, y: 38, c: "success", s: "Tokyo" },
-                { x: 18, y: 48, c: "info", s: "New York" },
-                { x: 48, y: 50, c: "warning", s: "Dubai" },
-              ].map((d, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ scale: 0, opacity: 0 }}
-                  whileInView={{ scale: 1, opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.2 + i * 0.05, duration: 0.4 }}
-                  className="absolute"
-                  style={{ left: `${d.x}%`, top: `${d.y}%` }}
-                >
-                  <span className="relative grid place-items-center">
-                    <span
-                      className="absolute size-6 rounded-full opacity-50 blur-md"
-                      style={{ background: `var(--color-${d.c})` }}
-                    />
-                    <span
-                      className="relative size-2 rounded-full ring-2"
-                      style={
-                        {
-                          background: `var(--color-${d.c})`,
-                          boxShadow: `0 0 0 4px color-mix(in oklab, var(--color-${d.c}) 20%, transparent)`,
-                          // @ts-ignore
-                          "--tw-ring-color": "var(--color-background)",
-                        } as any
-                      }
-                    />
-                  </span>
-                </motion.div>
-              ))}
-            </div>
-            <div className="px-5 py-3 border-t border-border/60 flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">10 cities active · refreshed 12s ago</span>
-              <Link
-                to="/map"
-                className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--color-primary)] transition-colors"
-              >
-                Open Smart Map <ArrowUpRight className="size-3.5" />
-              </Link>
-            </div>
-          </motion.div>
-
-          {/* Activity feed */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="rounded-2xl border border-border/60 bg-card overflow-hidden"
-          >
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Radio className="size-4 text-[color:var(--color-warning)]" />
-                Live Activity
-              </div>
-              <span className="text-[10px] font-mono text-muted-foreground">streaming</span>
-            </div>
-            <ul className="divide-y divide-border/60">
-              {feed.map((f, i) => (
-                <motion.li
-                  key={i}
-                  initial={{ opacity: 0, x: -8 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.05 }}
-                  className="px-5 py-3 flex items-start gap-3"
-                >
-                  <span
-                    className="mt-1.5 size-1.5 rounded-full shrink-0"
-                    style={{ background: `var(--color-${f.c})` }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[13px] leading-snug">{f.m}</div>
-                    <div className="mt-0.5 text-[11px] text-muted-foreground">
-                      <span className="font-mono">{f.t}</span> · {f.tag}
-                    </div>
-                  </div>
-                </motion.li>
-              ))}
-            </ul>
-          </motion.div>
         </div>
       </div>
     </section>
@@ -323,7 +169,7 @@ function Modules() {
         <SectionHead
           eyebrow="The Rest Of The Platform"
           title="Four more modules, same data fabric."
-          sub="Environmental Overview, Smart Map, Forecast and AI Copilot are above — every module shares the same underlying data, so insight in one place is immediately actionable in the next."
+          sub="Environmental Overview, Smart Map, Forecast and GreenGuard Intelligence Center are above — every module shares the same underlying data, so insight in one place is immediately actionable in the next."
         />
 
         <div className="mt-12 grid gap-px bg-border/60 rounded-2xl overflow-hidden border border-border/60 sm:grid-cols-2 lg:grid-cols-4">
@@ -370,7 +216,7 @@ function HowItWorks() {
       n: "01",
       icon: Database,
       t: "Ingest",
-      d: "Connect sensors, satellite feeds, weather APIs and citizen reports. GreenGuard normalises every signal into a single time-series fabric.",
+      d: "Connect live environmental APIs, weather feeds, geospatial data and citizen reports. GreenGuard normalises every signal into a single time-series fabric.",
     },
     {
       n: "02",

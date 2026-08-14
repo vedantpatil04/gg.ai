@@ -26,6 +26,7 @@ import { Pill } from "@/components/ui-bits";
 import { resolveAssetUrl } from "@/components/profile/profile-utils";
 import { useState } from "react";
 import { humanizeIssueType } from "./issue-type";
+import { ActivityFeed, complaintEventsToActivityFeed } from "@/components/admin/shared/activity-feed";
 import type {
   ComplaintSeverity,
   ComplaintStatus,
@@ -244,10 +245,29 @@ export function ComplaintDetailPanel({
                   </div>
                 )}
               </div>
+
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground mb-2">
+                  Timeline
+                </div>
+                <ActivityFeed
+                  events={complaintEventsToActivityFeed(
+                    complaint.events ?? [],
+                    complaint.title,
+                    complaint._id,
+                  )}
+                  maxItems={10}
+                  compact
+                />
+              </div>
             </div>
 
-            {/* Action buttons — only for actionable statuses (not resolved/rework/closed) */}
-            {(complaint.status === "pending" || complaint.status === "in-progress") && (
+            {/* Action buttons — pending/in-progress get the full triage set;
+                rework only gets reassignment (Administrator's sole rework
+                action per the Phase 5 workflow — no verify/reject here). */}
+            {(complaint.status === "pending" ||
+              complaint.status === "in-progress" ||
+              complaint.status === "rework") && (
               <div className="mt-8 space-y-2">
                 {complaint.status === "pending" && (
                   <Button className="w-full" onClick={() => onVerify(complaint)}>
@@ -259,14 +279,16 @@ export function ComplaintDetailPanel({
                   <UserPlus className="size-4 mr-1.5" />
                   {complaint.assignedTo ? "Reassign Authority" : "Assign to Authority"}
                 </Button>
-                <Button
-                  variant="outline"
-                  className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => onReject(complaint)}
-                >
-                  <X className="size-4 mr-1.5" />
-                  Reject
-                </Button>
+                {complaint.status !== "rework" && (
+                  <Button
+                    variant="outline"
+                    className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => onReject(complaint)}
+                  >
+                    <X className="size-4 mr-1.5" />
+                    Reject
+                  </Button>
+                )}
               </div>
             )}
 

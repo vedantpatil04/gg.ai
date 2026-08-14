@@ -1,9 +1,8 @@
+import { useMemo } from "react";
 import { Map as MapIcon, Radio } from "lucide-react";
-import { CITIES } from "@/lib/mock-data";
+import { useCity } from "@/lib/city-context";
 import { LandingMapPreview } from "./LandingMapPreview";
 import { ExperienceHeader, ExperienceCTA, FloatingInsightPanel } from "./shared";
-
-const AVG_AQI = Math.round(CITIES.reduce((sum, c) => sum + c.aqi, 0) / CITIES.length);
 
 /**
  * Hero-level composition: small label → headline → short supporting line →
@@ -12,6 +11,12 @@ const AVG_AQI = Math.round(CITIES.reduce((sum, c) => sum + c.aqi, 0) / CITIES.le
  * gravity; nothing else in the section competes with it for width.
  */
 export function SmartMapExperience() {
+  const { cities, isApiConnected } = useCity();
+  const avgAqi = useMemo(
+    () => (cities.length ? Math.round(cities.reduce((sum, c) => sum + c.aqi, 0) / cities.length) : null),
+    [cities],
+  );
+
   return (
     <section className="relative overflow-hidden py-16 lg:py-20">
       {/* Satellite-inspired backdrop with a faint topographic grid */}
@@ -31,19 +36,21 @@ export function SmartMapExperience() {
         <ExperienceHeader
           tone="info"
           eyebrow="Smart Map"
-          title="Every sensor, every hotspot, on one live map."
-          sub="Real coordinates, real AQI-weighted markers, live from the same tile layer that powers the production Smart Map."
+          title="Every zone, every hotspot, on one live map."
+          sub="Real coordinates, real AQI-weighted markers, from the same tile layer and city data that power the production Smart Map."
         />
 
         <div className="relative">
           <LandingMapPreview />
 
-          <FloatingInsightPanel
-            icon={Radio}
-            label="Network average AQI"
-            value={`${AVG_AQI} across ${CITIES.length} cities`}
-            className="absolute bottom-5 left-5 hidden sm:flex"
-          />
+          {avgAqi !== null && (
+            <FloatingInsightPanel
+              icon={Radio}
+              label={isApiConnected ? "Live network average AQI" : "Network average AQI"}
+              value={`${avgAqi} across ${cities.length} cities`}
+              className="absolute bottom-5 left-5 hidden sm:flex"
+            />
+          )}
         </div>
 
         <ExperienceCTA to="/map" tone="info">

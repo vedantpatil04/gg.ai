@@ -35,7 +35,9 @@ export const STATUS_META: Record<
   awaiting_citizen_review: { label: "Ready for Review", tone: "primary" },
   // Only reached after a rework resubmission — genuinely awaiting the admin.
   resolved: { label: "Awaiting Verification", tone: "primary" },
-  rework: { label: "In Progress", tone: "info" }, // citizen sees rework as in-progress
+  // Reached when the citizen rejects the authority's first resolution — the
+  // complaint is now an administrator-controlled governance case (Phase 5).
+  rework: { label: "Rework Requested", tone: "warning" },
   rejected: { label: "Rejected", tone: "destructive" },
   closed: { label: "Closed", tone: "success" },
 };

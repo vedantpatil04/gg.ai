@@ -13,30 +13,44 @@
  *    Issue advisory remains the one clearly primary action
  *  - All motion still respects prefers-reduced-motion
  *
- * Backward compatible: same props, same exports, same route import.
+ * Phase 2A fix: the freshness badge used to pair an always-"Live" label
+ * (true whenever the API was merely reachable) with a wall clock that
+ * ticked every second — so it could read "Live · Updated 3:45:12 PM" while
+ * Current Conditions and Data Status, reading the same city, correctly
+ * said "Data delayed · Updated 24 min ago". The badge now takes the same
+ * `freshness` value and real last-updated label the rest of the dashboard
+ * uses, so this header can never contradict them. API connectivity is
+ * still shown (via the icon and the offline retry affordance) but no
+ * longer drives the freshness wording on its own.
+ *
+ * Backward compatible: same exports, same route import. `lastUpdated`
+ * (raw wall-clock string) was replaced by `freshness` + `lastUpdatedLabel`
+ * — the route already computes both for Current Conditions/Data Status.
  */
 
 import { RefreshCw, Download, Megaphone, WifiOff, Signal } from "lucide-react";
 import { Pill } from "@/components/ui-bits";
 import type { EnvHealthBand } from "@/lib/environmental-health";
+import { freshnessColor, type DataFreshness } from "@/lib/data-freshness";
 import { cn } from "@/lib/utils";
 import { motion, useReducedMotion } from "framer-motion";
 import { FADE_UP, TAP_PRESS, HOVER_LIFT_SM, DUR_MD, EASE_OUT } from "@/lib/motion";
 
 export function DashboardHeader({
   cityName, country, band, envBand, isApiConnected,
-  lastUpdated, onRefresh, isRefreshing, onExport, onAdvisory,
+  freshness, lastUpdatedLabel, onRefresh, isRefreshing, onExport, onAdvisory,
 }: {
-  cityName:      string;
-  country:       string;
-  band:          { label: string; color: string };
-  envBand:       EnvHealthBand;
-  isApiConnected:boolean;
-  lastUpdated:   string;
-  onRefresh:     () => void;
-  isRefreshing?: boolean;
-  onExport:      () => void;
-  onAdvisory:    () => void;
+  cityName:        string;
+  country:         string;
+  band:            { label: string; color: string };
+  envBand:         EnvHealthBand;
+  isApiConnected:  boolean;
+  freshness:       DataFreshness;
+  lastUpdatedLabel:string;
+  onRefresh:       () => void;
+  isRefreshing?:   boolean;
+  onExport:        () => void;
+  onAdvisory:      () => void;
 }) {
   const prefersReduced = useReducedMotion();
 
@@ -49,6 +63,10 @@ export function DashboardHeader({
 
   const aqiTone =
     band.label === "Good" ? "success" : band.label === "Moderate" ? "warning" : "destructive";
+
+  const freshnessDotColor = freshnessColor(freshness);
+  const freshnessText =
+    freshness === "current" ? "Live" : freshness === "delayed" ? "Data delayed" : "Data unavailable";
 
   return (
     <motion.header
@@ -83,37 +101,37 @@ export function DashboardHeader({
             </Pill>
           </motion.div>
 
-          {/* Live / Mock indicator — Phase 2: gradient border when live */}
+          {/* Data freshness indicator — Phase 2A: driven by the same
+              `freshness` state as Current Conditions/Data Status (not raw
+              API connectivity + a ticking clock), so this can never say
+              "Live" while the rest of the dashboard reports stale data. */}
           <div
+            role="status"
+            aria-live="polite"
             className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full"
             style={{
-              background: isApiConnected
-                ? "color-mix(in oklab, var(--color-success) 10%, transparent)"
-                : "transparent",
-              border: isApiConnected
-                ? "1px solid color-mix(in oklab, var(--color-success) 30%, transparent)"
-                : "1px solid transparent",
-              color: isApiConnected
-                ? "color-mix(in oklab, var(--color-success) 85%, var(--color-foreground))"
-                : "var(--color-muted-foreground)",
-              transition: "background 0.3s, border-color 0.3s",
+              background: `color-mix(in oklab, ${freshnessDotColor} 10%, transparent)`,
+              border: `1px solid color-mix(in oklab, ${freshnessDotColor} 30%, transparent)`,
+              color: `color-mix(in oklab, ${freshnessDotColor} 85%, var(--color-foreground))`,
+              transition: "background 0.3s, border-color 0.3s, color 0.3s",
             }}
           >
             {isApiConnected ? (
-              <>
-                <Signal className="size-3.5 shrink-0" />
-                <span
-                  className={cn("size-2 rounded-full shrink-0", !prefersReduced && "pulse-dot")}
-                  style={{ background: "var(--color-success)" }}
-                />
-                Live
-              </>
+              <Signal className="size-3.5 shrink-0" />
             ) : (
-              <span className="size-2 rounded-full bg-warning shrink-0" />
+              <WifiOff className="size-3.5 shrink-0" />
             )}
-            <span className="text-muted-foreground">
-              · Updated {lastUpdated}
-            </span>
+            <span
+              className={cn(
+                "size-2 rounded-full shrink-0",
+                freshness === "current" && !prefersReduced && "pulse-dot",
+              )}
+              style={{ background: freshnessDotColor }}
+            />
+            {freshnessText}
+            {freshness !== "unavailable" && (
+              <span className="text-muted-foreground">· Updated {lastUpdatedLabel}</span>
+            )}
           </div>
 
           {!isApiConnected && (
