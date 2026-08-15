@@ -48,6 +48,7 @@ function makeUserDoc(overrides: Record<string, unknown>) {
     name: "Test User",
     email: "test@example.com",
     role: "citizen",
+    password: "$2a$10$hashedpasswordhere1234567890",
     approvalStatus: "approved",
     isActive: true,
     refreshTokens: [] as string[],
@@ -94,6 +95,7 @@ async function run() {
       return makeUserDoc({ role: "authority", approvalStatus: "pending" });
     };
     (User as any).findOne = async () => null;
+    (User as any).find = () => ({ select: () => ({ lean: async () => [] }) });
     (User as any).findByIdAndUpdate = async () => {
       throw new Error("should not be called for pending signup");
     };
@@ -104,6 +106,7 @@ async function run() {
         email: "auth@example.com",
         password: "Passw0rd!",
         role: "authority",
+        department: "pollution_control",
       },
     };
     const res = fakeRes();
@@ -148,6 +151,22 @@ async function run() {
     assert(updateCalled, "refresh token was persisted (findByIdAndUpdate called)");
   }
 
+  // ── 3.5. Login: missing Turnstile token is blocked ──────────────────────
+  {
+    console.log("\n[3.5] login — missing Turnstile token is blocked");
+    const req: any = {
+      body: { email: "citizen@example.com", password: "Passw0rd!", portal: "citizen" },
+    };
+    const res = fakeRes();
+    let caughtErr: any = null;
+    await login(req, res, (e: any) => {
+      caughtErr = e;
+    });
+
+    assert(caughtErr instanceof AppError, "next() called with an AppError");
+    assert(caughtErr?.statusCode === 400, `status code is 400 (got ${caughtErr?.statusCode})`);
+  }
+
   // ── 4. Login: pending authority is blocked ───────────────────────────────
   {
     console.log("\n[4] login — pending authority cannot log in");
@@ -156,7 +175,7 @@ async function run() {
     });
 
     const req: any = {
-      body: { email: "auth@example.com", password: "Passw0rd!", portal: "authority" },
+      body: { email: "auth@example.com", password: "Passw0rd!", portal: "authority", turnstileToken: "test-token" },
     };
     const res = fakeRes();
     let caughtErr: any = null;
@@ -177,7 +196,7 @@ async function run() {
     });
 
     const req: any = {
-      body: { email: "auth@example.com", password: "Passw0rd!", portal: "authority" },
+      body: { email: "auth@example.com", password: "Passw0rd!", portal: "authority", turnstileToken: "test-token" },
     };
     const res = fakeRes();
     let caughtErr: any = null;
@@ -198,7 +217,7 @@ async function run() {
     (User as any).findByIdAndUpdate = async () => {};
 
     const req: any = {
-      body: { email: "auth@example.com", password: "Passw0rd!", portal: "authority" },
+      body: { email: "auth@example.com", password: "Passw0rd!", portal: "authority", turnstileToken: "test-token" },
     };
     const res = fakeRes();
     let caughtErr: any = null;
@@ -221,7 +240,7 @@ async function run() {
     (User as any).findByIdAndUpdate = async () => {};
 
     const req: any = {
-      body: { email: "admin@greenguard.ai", password: "Admin@123456", portal: "admin" },
+      body: { email: "admin@greenguard.ai", password: "Admin@123456", portal: "admin", turnstileToken: "test-token" },
     };
     const res = fakeRes();
     let caughtErr: any = null;
@@ -242,7 +261,7 @@ async function run() {
     (User as any).findByIdAndUpdate = async () => {};
 
     const req: any = {
-      body: { email: "citizen@example.com", password: "Passw0rd!", portal: "citizen" },
+      body: { email: "citizen@example.com", password: "Passw0rd!", portal: "citizen", turnstileToken: "test-token" },
     };
     const res = fakeRes();
     let caughtErr: any = null;

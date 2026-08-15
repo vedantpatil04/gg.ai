@@ -55,6 +55,9 @@ export const loginValidator = [
     .bail()
     .isIn(["citizen", "authority", "admin"])
     .withMessage("Invalid portal selected"),
+  body("turnstileToken")
+    .notEmpty()
+    .withMessage("Security verification is required"),
 ];
 
 export const forgotPasswordValidator = [

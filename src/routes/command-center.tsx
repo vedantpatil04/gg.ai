@@ -11,6 +11,7 @@ import {
   Loader2,
   AlertTriangle,
   FileBarChart,
+  Map as MapIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { ProtectedRoute, AUTHORITY_ROLES } from "@/components/protected-route";
@@ -48,6 +49,16 @@ const EnvironmentalIntelligence = lazy(() =>
 const AuthorityActions = lazy(() =>
   import("@/components/command-center/authority-actions").then((m) => ({
     default: m.AuthorityActions,
+  })),
+);
+const AuthorityAlerts = lazy(() =>
+  import("@/components/command-center/authority-alerts").then((m) => ({
+    default: m.AuthorityAlerts,
+  })),
+);
+const AuthoritySmartMap = lazy(() =>
+  import("@/components/command-center/authority-smart-map").then((m) => ({
+    default: m.AuthoritySmartMap,
   })),
 );
 const ExecutiveReports = lazy(() =>
@@ -101,6 +112,8 @@ const TOP_TABS = [
         icon: Radar,
         Component: EnvironmentalIntelligence,
       },
+      { id: "alerts", label: "Alerts", icon: AlertTriangle, Component: AuthorityAlerts },
+      { id: "map", label: "Smart Map", icon: MapIcon, Component: AuthoritySmartMap },
       { id: "actions", label: "Authority Actions", icon: Zap, Component: AuthorityActions },
     ],
   },
@@ -166,6 +179,10 @@ function CommandCenterContent() {
   const { user } = useAuth();
   const [activeTop, setActiveTop] = useState<TopTabId>("overview");
   const [activeSub, setActiveSub] = useState<string>("overview");
+  // Phase 7 — lets the Smart Map's complaint markers jump straight to the
+  // existing, fully-authorized Investigation Workspace instead of just
+  // switching tabs and leaving the authority to find it themselves.
+  const [openComplaintId, setOpenComplaintId] = useState<string | null>(null);
 
   const activeTopTab = TOP_TABS.find((t) => t.id === activeTop) ?? TOP_TABS[0];
 
@@ -206,6 +223,14 @@ function CommandCenterContent() {
     if (subTabId) setActiveSub(subTabId);
   };
 
+  // Phase 7 — Smart Map "Open Complaint" hands off the same way: switch to
+  // the Work Queue tab and tell it which complaint to pre-select.
+  const handleOpenComplaint = (complaintId: string) => {
+    setOpenComplaintId(complaintId);
+    setActiveTop("work-queue");
+    setActiveSub("complaints");
+  };
+
   return (
     <CommandCenterLayout
       header={
@@ -232,6 +257,13 @@ function CommandCenterContent() {
       <Suspense fallback={<TabFallback />}>
         {activeTop === "overview" ? (
           <ExecutiveOverview onNavigate={handleMissionControlNavigate} />
+        ) : activeTop === "work-queue" ? (
+          <ComplaintIntelligence
+            openComplaintId={openComplaintId}
+            onOpenComplaintConsumed={() => setOpenComplaintId(null)}
+          />
+        ) : activeTop === "environmental" && activeSub === "map" ? (
+          <AuthoritySmartMap onOpenComplaint={handleOpenComplaint} />
         ) : (
           <ActiveComponent />
         )}

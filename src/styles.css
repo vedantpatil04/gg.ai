@@ -679,6 +679,93 @@
   }
 }
 
+/* ─── Accessibility — Settings-driven global preferences ────────────────────
+   Applied as classes on <html> by AccessibilityProvider (src/lib/accessibility.tsx),
+   driven by the Accessibility panel in Settings. These are real, app-wide
+   preferences — not confined to the Settings page. Rules here are intentionally
+   unlayered (like the color tokens above), which is what lets them win over the
+   layered `@theme` defaults they're adjusting.
+─────────────────────────────────────────────────────────────────────────────── */
+
+/* Reduce Motion — collapses non-essential animation/transition duration to
+   effectively instant. Loading indicators (animate-spin / animate-pulse) are
+   excluded so in-progress state is still visible, per "preserve functional
+   animations where necessary". */
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+html.reduce-motion *:not(.animate-spin):not(.animate-pulse) {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+}
+
+/* High Contrast — strengthens borders, muted text, and every translucent
+   "glass" surface using the same tokens components already read, so the
+   effect reaches the whole app with no per-component changes. Light and dark
+   get their own pass since the baseline colors differ. */
+.high-contrast:not(.dark) {
+  --border: oklch(0.32 0.02 230);
+  --input: oklch(0.32 0.02 230);
+  --muted-foreground: oklch(0.3 0.02 230);
+  --sidebar-border: oklch(0.32 0.02 230);
+  --panel-border: oklch(0.32 0.02 230);
+  --card-border: oklch(0.32 0.02 230);
+  --control-border: oklch(0.32 0.02 230);
+  --overlay-border: oklch(0.32 0.02 230);
+  --grad-surface: var(--card);
+  --panel-bg: var(--card);
+  --card-bg: var(--card);
+  --control-bg: var(--card);
+  --overlay-bg: var(--popover);
+}
+
+.dark.high-contrast {
+  --border: oklch(1 0 0 / 0.5);
+  --input: oklch(1 0 0 / 0.45);
+  --muted-foreground: oklch(0.9 0.01 220);
+  --sidebar-border: oklch(1 0 0 / 0.45);
+  --panel-border: oklch(1 0 0 / 0.45);
+  --card-border: oklch(1 0 0 / 0.45);
+  --control-border: oklch(1 0 0 / 0.45);
+  --overlay-border: oklch(1 0 0 / 0.45);
+  --grad-surface: var(--card);
+  --panel-bg: var(--card);
+  --card-bg: var(--card);
+  --control-bg: var(--card);
+  --overlay-bg: var(--popover);
+}
+
+.high-contrast .glass,
+.high-contrast .glass-panel,
+.high-contrast .glass-card,
+.high-contrast .glass-control,
+.high-contrast .glass-overlay {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Large Text — scales the type ramp only (each Tailwind text-* utility reads
+   one of these). Spacing, radii, and icon sizing live on a separate
+   --spacing token, so cards/tables/nav/dialogs keep their existing geometry —
+   only the text itself grows. */
+html.large-text {
+  --text-xs: 0.8125rem;
+  --text-sm: 1rem;
+  --text-base: 1.125rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.625rem;
+  --text-3xl: 2.125rem;
+  --text-4xl: 2.5rem;
+  --text-5xl: 3.25rem;
+  --text-6xl: 4rem;
+  --text-7xl: 4.75rem;
+}
+
 /* Shell background utility — use on the outermost wrapper */
 @utility shell-bg {
   background-color: var(--shell-bg);

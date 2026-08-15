@@ -993,10 +993,30 @@ function ComplaintAnalytics({ d, refetch }: { d: ComplaintIntelligenceData; refe
 
 // ─── Root export ──────────────────────────────────────────────────────────────
 type View = "operations" | "analytics";
-export function ComplaintIntelligence() {
+export function ComplaintIntelligence({
+  openComplaintId,
+  onOpenComplaintConsumed,
+}: {
+  /** Set externally (e.g. from the Phase 7 Smart Map) to jump straight to a
+   *  specific complaint's Investigation Workspace. Purely additive — every
+   *  existing entry point into this component still works identically when
+   *  these props are omitted. */
+  openComplaintId?: string | null;
+  onOpenComplaintConsumed?: () => void;
+} = {}) {
   const { user } = useAuth();
   const [view, setView] = useState<View>("operations");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Consume an externally-requested complaint open exactly once, then
+  // clear it so re-renders don't re-trigger the same navigation.
+  useEffect(() => {
+    if (!openComplaintId) return;
+    setSelectedId(openComplaintId);
+    setView("operations");
+    onOpenComplaintConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openComplaintId]);
 
   // Real, authority-scoped complaint data — single source shared by the
   // summary tiles and the queue list. The backend hard-scopes this to the

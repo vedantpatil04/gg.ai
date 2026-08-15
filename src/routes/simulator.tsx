@@ -57,6 +57,7 @@ import {
   Clock,
   FileDown,
   Zap as ZapIcon,
+  ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -359,6 +360,111 @@ function SkeletonBlock({ className }: { className?: string }) {
   return <div className={cn("sim-skeleton rounded-lg", className)} />;
 }
 
+// ─── MobileLiveImpactPanel ────────────────────────────────────────────────────
+// Mobile-only sticky panel that stays visible while the user scrolls through
+// policy levers, showing the most important simulation metrics at a glance.
+
+const MobileLiveImpactPanel = memo(function MobileLiveImpactPanel({
+  localResults,
+  currentAqi,
+  simStatus,
+}: {
+  localResults: { projectedAqi: number; aqiDelta: number; health: number; eco: number; sustain: number; carbon: number };
+  currentAqi: number;
+  simStatus: SimStatus;
+}) {
+  const band = getAqiBand(localResults.projectedAqi);
+  const isImprovement = localResults.aqiDelta < 0;
+  const deltaPts = Math.abs(Math.round(localResults.aqiDelta));
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Scroll the page to the full results section
+  const handleViewFull = () => {
+    document.getElementById("sim-results-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  return (
+    <div
+      className={`sim-mobile-sticky-panel lg:hidden`}
+      role="region"
+      aria-label="Live simulation results"
+      aria-live="polite"
+    >
+      <button
+        className="sim-mobile-sticky-collapse-btn"
+        onClick={() => setCollapsed((v) => !v)}
+        aria-label={collapsed ? "Expand live impact panel" : "Collapse live impact panel"}
+        aria-expanded={!collapsed}
+      >
+        <span className="sim-mobile-sticky-header">
+          <span className="sim-mobile-sticky-title">
+            <span
+              className="sim-mobile-sticky-dot"
+              style={{ background: simStatus === "recalculating" ? "var(--color-warning)" : band.color }}
+              aria-hidden
+            />
+            LIVE SIMULATION
+          </span>
+          <ChevronUp
+            className={`sim-mobile-sticky-chevron ${collapsed ? "sim-mobile-sticky-chevron-down" : ""}`}
+            aria-hidden
+          />
+        </span>
+      </button>
+
+      {!collapsed && (
+        <div className="sim-mobile-sticky-body">
+          <div className="sim-mobile-sticky-metrics">
+            <div className="sim-mobile-sticky-metric">
+              <span className="sim-mobile-sticky-metric-label">AQI</span>
+              <span className="sim-mobile-sticky-metric-value" style={{ color: band.color }}>
+                <AnimatedNumber value={localResults.projectedAqi} duration={400} />
+              </span>
+              <span
+                className="sim-mobile-sticky-metric-sub"
+                style={{ color: isImprovement ? "var(--color-success)" : "var(--color-destructive)" }}
+              >
+                {isImprovement ? "↓" : "↑"}{deltaPts} pts
+              </span>
+            </div>
+            <div className="sim-mobile-sticky-divider" aria-hidden />
+            <div className="sim-mobile-sticky-metric">
+              <span className="sim-mobile-sticky-metric-label">Health</span>
+              <span className="sim-mobile-sticky-metric-value" style={{ color: "var(--color-info)" }}>
+                <AnimatedNumber value={localResults.health} duration={400} />
+              </span>
+              <span className="sim-mobile-sticky-metric-sub">/100</span>
+            </div>
+            <div className="sim-mobile-sticky-divider" aria-hidden />
+            <div className="sim-mobile-sticky-metric">
+              <span className="sim-mobile-sticky-metric-label">Eco</span>
+              <span className="sim-mobile-sticky-metric-value" style={{ color: "var(--color-primary)" }}>
+                <AnimatedNumber value={localResults.eco} duration={400} />
+              </span>
+              <span className="sim-mobile-sticky-metric-sub">/100</span>
+            </div>
+            <div className="sim-mobile-sticky-divider" aria-hidden />
+            <div className="sim-mobile-sticky-metric">
+              <span className="sim-mobile-sticky-metric-label">SI</span>
+              <span className="sim-mobile-sticky-metric-value" style={{ color: "var(--color-success)" }}>
+                <AnimatedNumber value={localResults.sustain} duration={400} />
+              </span>
+              <span className="sim-mobile-sticky-metric-sub">/100</span>
+            </div>
+          </div>
+          <button
+            className="sim-mobile-sticky-view-btn"
+            onClick={handleViewFull}
+            aria-label="View full simulation results"
+          >
+            View full impact →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+});
+
 // ─── Simulator ───────────────────────────────────────────────────────────────
 
 function Simulator() {
@@ -527,13 +633,20 @@ function Simulator() {
   }, []);
 
   return (
-    <div className={cn("min-h-screen transition-opacity duration-700", visible ? "opacity-100" : "opacity-0")}>
+    <div className={cn("min-h-screen transition-opacity duration-700 sim-page-root", visible ? "opacity-100" : "opacity-0")}>
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full opacity-[0.04] blur-3xl" style={{ background: "var(--color-primary)" }} />
         <div className="absolute -bottom-48 -left-48 w-[500px] h-[500px] rounded-full opacity-[0.03] blur-3xl" style={{ background: "var(--color-info)" }} />
       </div>
 
-      <div className="relative z-10 px-4 sm:px-6 lg:px-8 xl:px-10 py-6 lg:py-8 max-w-[1680px] mx-auto space-y-6 lg:space-y-8">
+      {/* Mobile-only sticky live impact panel */}
+      <MobileLiveImpactPanel
+        localResults={localResults}
+        currentAqi={city.aqi}
+        simStatus={simStatus}
+      />
+
+      <div className="relative z-10 px-4 sm:px-6 lg:px-8 xl:px-10 py-6 lg:py-8 max-w-[1680px] mx-auto space-y-6 lg:space-y-8 sim-page-content">
         <SimulatorHeader
           city={city}
           isApiConnected={isApiConnected}
@@ -563,8 +676,10 @@ function Simulator() {
           />
         )}
 
+        {/* Main simulator grid — desktop: side-by-side, mobile: stacked */}
         <div className="grid xl:grid-cols-12 gap-5 lg:gap-6">
-          <div className="xl:col-span-4 2xl:col-span-3">
+          {/* Policy levers — desktop: left column, mobile: shown after KPIs */}
+          <div className="xl:col-span-4 2xl:col-span-3 order-2 xl:order-1">
             <LeversPanel
               vals={vals}
               onLeverChange={handleLeverChange}
@@ -573,8 +688,10 @@ function Simulator() {
             />
           </div>
 
-          <div className="xl:col-span-8 2xl:col-span-9 space-y-5 lg:space-y-6">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
+          {/* Results — desktop: right columns, mobile: first (order-1) */}
+          <div id="sim-results-section" className="xl:col-span-8 2xl:col-span-9 space-y-5 lg:space-y-6 order-1 xl:order-2">
+            {/* KPI cards: mobile = full-width AQI + 2-col gauges, desktop = 4-col row */}
+            <div className="sim-kpi-grid">
               <HeroAqiCard
                 projectedAqi={localResults.projectedAqi}
                 aqiDelta={localResults.aqiDelta}
@@ -661,8 +778,8 @@ const SimulatorHeader = memo(function SimulatorHeader({
 
   return (
     <header className="sim-header flex flex-wrap items-start justify-between gap-4 lg:gap-6">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2 mb-2">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
           <div className="flex items-center gap-1.5 sim-eyebrow">
             <Activity className="size-3 text-primary" />
             <span className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Policy Simulator</span>
@@ -672,75 +789,82 @@ const SimulatorHeader = memo(function SimulatorHeader({
             <MapPin className="size-3" />
             <span className="font-medium">{city.name}</span>
           </div>
-          <span className="text-muted-foreground/30 text-[10px]">·</span>
-          <SimStatusBadge status={simStatus} aiState={aiState} />
+          <span className="text-muted-foreground/30 text-[10px] hidden sm:inline">·</span>
+          <div className="hidden sm:block">
+            <SimStatusBadge status={simStatus} aiState={aiState} />
+          </div>
         </div>
         <h1 className="sim-page-title text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight leading-none">
           What-if <span className="text-aurora">{city.name}</span>
         </h1>
-        <p className="sim-subtitle mt-2 text-sm text-muted-foreground max-w-xl leading-relaxed">
+        <p className="sim-subtitle mt-2 text-sm text-muted-foreground max-w-xl leading-relaxed hidden sm:block">
           Quantify the AQI, health, and sustainability impact of policy levers before deploying.
         </p>
       </div>
 
-      <div className="sim-toolbar flex items-center gap-2 flex-wrap">
-        <SimTooltip label="Restore all levers to defaults">
-          <button
-            onClick={onReset}
-            className="sim-btn sim-btn-ghost sim-btn-ripple inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-medium"
-            aria-label="Reset all policy levers to defaults"
-          >
-            <RotateCcw className="size-3.5 transition-transform duration-300 group-hover:rotate-[-90deg]" />
-            Reset
-          </button>
-        </SimTooltip>
+      {/* Action buttons — responsive: wraps on mobile */}
+      <div className="sim-toolbar sim-toolbar-responsive">
+        {/* Secondary actions row */}
+        <div className="sim-toolbar-secondary">
+          <SimTooltip label="Restore all levers to defaults">
+            <button
+              onClick={onReset}
+              className="sim-btn sim-btn-ghost sim-btn-ripple inline-flex items-center gap-1.5 rounded-lg px-3 sm:px-3.5 py-2 text-xs font-medium"
+              aria-label="Reset all policy levers to defaults"
+            >
+              <RotateCcw className="size-3.5" />
+              <span>Reset</span>
+            </button>
+          </SimTooltip>
 
-        <SimTooltip label={compareOpen ? "Close comparison mode" : "Compare two policy scenarios side-by-side"}>
-          <button
-            onClick={onToggleCompare}
-            className={cn(
-              "sim-btn sim-btn-ghost sim-btn-ripple inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-medium",
-              compareOpen && "sim-btn-active",
-            )}
-            aria-pressed={compareOpen}
-            aria-label="Toggle scenario comparison"
-          >
-            <GitCompareArrows className="size-3.5" />
-            Compare
-            {compareOpen && <span className="sim-active-dot" aria-hidden />}
-          </button>
-        </SimTooltip>
+          <SimTooltip label={compareOpen ? "Close comparison mode" : "Compare two policy scenarios side-by-side"}>
+            <button
+              onClick={onToggleCompare}
+              className={cn(
+                "sim-btn sim-btn-ghost sim-btn-ripple inline-flex items-center gap-1.5 rounded-lg px-3 sm:px-3.5 py-2 text-xs font-medium",
+                compareOpen && "sim-btn-active",
+              )}
+              aria-pressed={compareOpen}
+              aria-label="Toggle scenario comparison"
+            >
+              <GitCompareArrows className="size-3.5" />
+              <span>Compare</span>
+              {compareOpen && <span className="sim-active-dot" aria-hidden />}
+            </button>
+          </SimTooltip>
 
-        <SimTooltip label={!isApiConnected ? "Start backend to export" : "Download a PDF summary of this scenario"}>
-          <button
-            onClick={onExport}
-            disabled={exportState === "pending" || !isApiConnected}
-            className={cn(
-              "sim-btn sim-btn-ghost sim-btn-ripple inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-medium",
-              exportState === "success" && "sim-btn-success",
-              exportState === "error" && "sim-btn-error",
-            )}
-            aria-label={exportLabel}
-            aria-busy={exportState === "pending"}
-          >
-            {exportState === "pending"
-              ? <Loader2 className="size-3.5 animate-spin" />
-              : exportState === "success"
-                ? <CheckCircle2 className="size-3.5" />
-                : exportState === "error"
-                  ? <AlertCircle className="size-3.5" />
-                  : <FileDown className="size-3.5" />}
-            <span className="hidden sm:inline">{exportLabel}</span>
-            <span className="sm:hidden">PDF</span>
-          </button>
-        </SimTooltip>
+          <SimTooltip label={!isApiConnected ? "Start backend to export" : "Download a PDF summary of this scenario"}>
+            <button
+              onClick={onExport}
+              disabled={exportState === "pending" || !isApiConnected}
+              className={cn(
+                "sim-btn sim-btn-ghost sim-btn-ripple inline-flex items-center gap-1.5 rounded-lg px-3 sm:px-3.5 py-2 text-xs font-medium",
+                exportState === "success" && "sim-btn-success",
+                exportState === "error" && "sim-btn-error",
+              )}
+              aria-label={exportLabel}
+              aria-busy={exportState === "pending"}
+            >
+              {exportState === "pending"
+                ? <Loader2 className="size-3.5 animate-spin" />
+                : exportState === "success"
+                  ? <CheckCircle2 className="size-3.5" />
+                  : exportState === "error"
+                    ? <AlertCircle className="size-3.5" />
+                    : <FileDown className="size-3.5" />}
+              <span className="hidden sm:inline">{exportLabel}</span>
+              <span className="sm:hidden">PDF</span>
+            </button>
+          </SimTooltip>
+        </div>
 
+        {/* Primary CTA — always full-width on xs, auto on sm+ */}
         <SimTooltip label={aiTooltip}>
           <button
             onClick={onRun}
             disabled={aiDisabled}
             className={cn(
-              "sim-btn-primary sim-btn-ripple inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold",
+              "sim-btn-primary sim-btn-ripple inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold w-full sm:w-auto",
               aiState === "stale" && "sim-ai-stale",
               aiState === "success" && "sim-ai-success",
               aiState === "error" && "sim-ai-error",
@@ -757,8 +881,7 @@ const SimulatorHeader = memo(function SimulatorHeader({
                   : aiState === "stale"
                     ? <ZapIcon className="size-3.5 animate-pulse" />
                     : <Sparkles className="size-3.5" />}
-            <span className="hidden sm:inline">{aiLabel}</span>
-            <span className="sm:hidden">AI</span>
+            <span>{aiLabel}</span>
           </button>
         </SimTooltip>
       </div>
@@ -825,25 +948,27 @@ const PresetSection = memo(function PresetSection({
   onApply: (preset: ScenarioPreset) => void;
 }) {
   return (
-    <div className="sim-preset-section flex flex-wrap items-center gap-2.5" role="group" aria-label="Scenario presets">
-      <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground shrink-0 mr-0.5" aria-hidden>Presets</span>
-      {presets.map((p, i) => (
-        <SimTooltip key={p.id} label={p.description || p.name}>
-          <button
-            onClick={() => onApply(p)}
-            aria-pressed={activePresetId === p.id}
-            aria-label={`Apply preset: ${p.name}`}
-            style={{ animationDelay: `${i * 40}ms` }}
-            className={cn(
-              "sim-preset-chip inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium",
-              activePresetId === p.id ? "sim-preset-chip-active" : "sim-preset-chip-idle",
-            )}
-          >
-            {p.name}
-            {activePresetId === p.id && <ChevronRight className="size-3" />}
-          </button>
-        </SimTooltip>
-      ))}
+    <div className="sim-preset-section sim-preset-section-responsive" role="group" aria-label="Scenario presets">
+      <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground shrink-0 mr-0.5 sim-preset-label" aria-hidden>Presets</span>
+      <div className="sim-preset-chips-rail">
+        {presets.map((p, i) => (
+          <SimTooltip key={p.id} label={p.description || p.name}>
+            <button
+              onClick={() => onApply(p)}
+              aria-pressed={activePresetId === p.id}
+              aria-label={`Apply preset: ${p.name}`}
+              style={{ animationDelay: `${i * 40}ms` }}
+              className={cn(
+                "sim-preset-chip inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium whitespace-nowrap shrink-0",
+                activePresetId === p.id ? "sim-preset-chip-active" : "sim-preset-chip-idle",
+              )}
+            >
+              {p.name}
+              {activePresetId === p.id && <ChevronRight className="size-3" />}
+            </button>
+          </SimTooltip>
+        ))}
+      </div>
     </div>
   );
 });

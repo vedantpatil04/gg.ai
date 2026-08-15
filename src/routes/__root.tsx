@@ -9,10 +9,12 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { MotionConfig } from "framer-motion";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "@/lib/theme";
+import { AccessibilityProvider, useAccessibility } from "@/lib/accessibility";
 import { CityProvider } from "@/lib/city-context";
 import { AuthProvider } from "@/lib/auth-context";
 import { Toaster } from "@/components/ui/sonner";
@@ -123,16 +125,33 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <AuthProvider>
-          <CityProvider>
-            <TooltipProvider delayDuration={150}>
-              <Outlet />
-              <NavigationTransitionOverlay />
-              <Toaster />
-            </TooltipProvider>
-          </CityProvider>
-        </AuthProvider>
+        <AccessibilityProvider>
+          <AuthProvider>
+            <CityProvider>
+              <TooltipProvider delayDuration={150}>
+                <MotionPreferences>
+                  <Outlet />
+                  <NavigationTransitionOverlay />
+                  <Toaster />
+                </MotionPreferences>
+              </TooltipProvider>
+            </CityProvider>
+          </AuthProvider>
+        </AccessibilityProvider>
       </ThemeProvider>
     </QueryClientProvider>
+  );
+}
+
+// Bridges the Accessibility panel's Reduce Motion preference into
+// framer-motion: when explicitly enabled, every motion.* animation in the
+// app collapses to instant. Otherwise framer-motion still honors the
+// OS-level prefers-reduced-motion on its own via "user".
+function MotionPreferences({ children }: { children: ReactNode }) {
+  const { settings } = useAccessibility();
+  return (
+    <MotionConfig reducedMotion={settings.reduceMotion ? "always" : "user"}>
+      {children}
+    </MotionConfig>
   );
 }

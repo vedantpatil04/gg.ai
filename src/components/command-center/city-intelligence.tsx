@@ -15,9 +15,10 @@ import {
   Scatter,
   ZAxis,
 } from "recharts";
-import { Loader2, Globe, TrendingDown, TrendingUp, Minus } from "lucide-react";
+import { Loader2, Globe, TrendingDown, TrendingUp, Minus, MapPinned } from "lucide-react";
 import { intelligenceApi, environmentalApi } from "@/lib/api/environmental.api";
 import { Panel, Pill, WorkspaceHeader } from "@/components/ui-bits";
+import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 
 function TrendIcon({ value }: { value: number }) {
@@ -42,6 +43,7 @@ function AqiBand(aqi: number) {
 }
 
 export function CityIntelligence() {
+  const { user } = useAuth();
   const { data: rankRes, isLoading: rankLoading } = useQuery({
     queryKey: ["env-rankings"],
     queryFn: () => environmentalApi.getRankings(),
@@ -95,6 +97,13 @@ export function CityIntelligence() {
 
   const scatterData = rankings.map((c) => ({ x: c.aqi, y: c.eco, z: c.risk, name: c.cityName }));
 
+  // Phase 7 §3 — prioritize the Authority's own jurisdiction using data
+  // already fetched above (no extra API call). Purely additive: renders
+  // nothing when the account has no assignedCities or none appear in the
+  // current rankings.
+  const jurisdictionCities = user?.assignedCities ?? [];
+  const jurisdictionRankings = rankings.filter((c) => jurisdictionCities.includes(c.cityId));
+
   return (
     <div className="space-y-6">
       {/* ── Workspace Header ─────────────────────────────────────────────── */}
@@ -111,6 +120,33 @@ export function CityIntelligence() {
           { label: "Leaders", value: leaders, tone: "success" },
         ]}
       />
+
+      {jurisdictionRankings.length > 0 && (
+        <Panel eyebrow="Your Jurisdiction" title="Assigned Cities — Current Readings">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {jurisdictionRankings.map((c) => {
+              const band = AqiBand(c.aqi);
+              return (
+                <div
+                  key={c.cityId}
+                  className="rounded-xl border border-border/60 p-3.5 flex items-center justify-between gap-3"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 text-sm font-medium truncate">
+                      <MapPinned className="size-3.5 text-primary shrink-0" />
+                      {c.cityName}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">
+                      PM2.5 {c.pm25} · Risk {c.risk}
+                    </div>
+                  </div>
+                  <Pill tone={band.tone}>AQI {c.aqi}</Pill>
+                </div>
+              );
+            })}
+          </div>
+        </Panel>
+      )}
 
       {/* Rankings table */}
       <Panel eyebrow="Pollution Rankings" title="All Cities — Current Readings">

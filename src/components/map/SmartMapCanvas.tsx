@@ -265,6 +265,18 @@ interface Props {
   onLocate?: () => void;
   /** Toggle between one-shot and continuous tracking */
   onToggleTracking?: () => void;
+  /**
+   * Embedded / preview mode.
+   *
+   * When true the GIS toolbar (search, layer manager, timeline, map tools),
+   * the system-status panel, and the legend are hidden so the component
+   * renders as a pure map surface — suitable for landing page previews,
+   * dashboard cards, or any context where the full map chrome is unwanted.
+   *
+   * All map lifecycle, style, source, clustering, markers, theme, and
+   * fitBounds logic is identical to the full-page mode.
+   */
+  embedded?: boolean;
 }
 
 const TIME_RANGE_OPTS: { id: TimeRange; label: string }[] = [
@@ -301,6 +313,7 @@ export function SmartMapCanvas({
   isTracking = false,
   onLocate,
   onToggleTracking,
+  embedded = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -1464,6 +1477,7 @@ export function SmartMapCanvas({
           bar — consolidating three separate surfaces into one, and freeing
           a full row of vertical space back to the map.
       ═════════════════════════════════════════════════════════════════════ */}
+      {!embedded && (
       <div className="absolute top-0 inset-x-0 z-30 h-14 glass-panel border-b border-border/40 px-3 flex items-center gap-2">
         {/* Search */}
         <div className="relative flex-1 min-w-0 max-w-md">
@@ -1719,11 +1733,13 @@ export function SmartMapCanvas({
           </button>
         </div>
       </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════
           LAYER MANAGER — Top Left, below toolbar (grouped, animated,
           toolbar-toggleable, now with per-layer descriptions)
       ═════════════════════════════════════════════════════════════════════ */}
+      {!embedded && (
       <AnimatePresence>
         {layerPanelOpen && (
           <motion.div
@@ -2010,6 +2026,7 @@ export function SmartMapCanvas({
           </motion.div>
         )}
       </AnimatePresence>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════
           DYNAMIC LEGEND (Phase 4, Section 5) — driven by the registry.
@@ -2101,6 +2118,7 @@ export function SmartMapCanvas({
       {/* ══════════════════════════════════════════════════════════════════
           SYSTEM STATUS — Top Right, below toolbar
       ═════════════════════════════════════════════════════════════════════ */}
+      {!embedded && (
       <div className="hidden md:block absolute top-[4.5rem] right-3 z-20">
         <div className="glass-panel rounded-xl px-3 py-4 flex flex-col gap-1.5 min-w-[140px]">
           <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -2137,10 +2155,12 @@ export function SmartMapCanvas({
           </div>
         </div>
       </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════
           LEGEND — Bottom Left (collapsible, dynamic — only active layers)
       ═════════════════════════════════════════════════════════════════════ */}
+      {!embedded && (
       <div className="absolute bottom-[124px] left-3 sm:left-4 md:bottom-16 lg:bottom-10 z-20">
         <details className="group">
           <summary className="glass-panel rounded-xl px-3 py-2 cursor-pointer list-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
@@ -2224,6 +2244,7 @@ export function SmartMapCanvas({
           </div>
         </details>
       </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════
           MAP CONTROLS — Bottom Right (pure map manipulation: fullscreen,

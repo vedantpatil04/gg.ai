@@ -97,11 +97,12 @@ export interface MapComplaint {
   title: string;
   issueType: string;
   severity: "low" | "medium" | "high" | "critical";
-  status: "pending" | "in-progress" | "resolved" | "rejected";
+  status: "pending" | "in-progress" | "awaiting_citizen_review" | "rework" | "resolved" | "closed" | "rejected";
   lat: number;
   lng: number;
   address: string;
   createdAt: string;
+  assignedTo?: string;
 }
 
 // ─── Phase 3: History day record (returned by /history/:cityId) ──────────────

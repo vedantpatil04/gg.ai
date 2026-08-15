@@ -86,10 +86,15 @@ export function AICopilotExperience() {
       text: `Hi! I'm GreenGuard Intelligence. Ask me about ${city.name}'s air quality, forecasts, or environmental risk.`,
     },
   ]);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" });
+    if (messages.length > 1 && chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: reducedMotion ? "auto" : "smooth",
+      });
+    }
   }, [messages, reducedMotion]);
 
   const chatMutation = useMutation({
@@ -154,6 +159,7 @@ export function AICopilotExperience() {
 
         <div className="glass-panel w-full max-w-2xl rounded-3xl p-4 shadow-2xl sm:p-6">
           <div
+            ref={chatContainerRef}
             aria-live="polite"
             className="flex max-h-[320px] flex-col gap-3 overflow-y-auto pr-1"
           >
@@ -169,7 +175,6 @@ export function AICopilotExperience() {
                 </div>
               </div>
             )}
-            <div ref={bottomRef} />
           </div>
 
           <div className="mt-4">

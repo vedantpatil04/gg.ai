@@ -123,11 +123,11 @@ const CITY_IMAGES: Record<string, CityImageConfig> = {
   bengaluru: {
     label:     "Bengaluru, India",
     hero:      "/images/cities/bengaluru/hero.webp",
-    morning:   "/images/cities/bengaluru/morning.webp",
-    afternoon: "/images/cities/bengaluru/afternoon.webp",
-    evening:   "/images/cities/bengaluru/evening.webp",
-    night:     "/images/cities/bengaluru/night.webp",
-    rainy:     "/images/cities/bengaluru/rainy.webp",
+    // morning:   "/images/cities/bengaluru/morning.webp",
+    // afternoon: "/images/cities/bengaluru/afternoon.webp",
+    // evening:   "/images/cities/bengaluru/evening.webp",
+    // night:     "/images/cities/bengaluru/night.webp",
+    // rainy:     "/images/cities/bengaluru/rainy.webp",
   },
 
   // ── Mumbai ────────────────────────────────────────────────────────────────
@@ -135,11 +135,11 @@ const CITY_IMAGES: Record<string, CityImageConfig> = {
   mumbai: {
     label:     "Mumbai, India",
     hero:      "/images/cities/mumbai/hero.webp",
-    morning:   "/images/cities/mumbai/morning.webp",
-    afternoon: "/images/cities/mumbai/afternoon.webp",
-    evening:   "/images/cities/mumbai/evening.webp",
-    night:     "/images/cities/mumbai/night.webp",
-    rainy:     "/images/cities/mumbai/rainy.webp",
+    // morning:   "/images/cities/mumbai/morning.webp",
+    // afternoon: "/images/cities/mumbai/afternoon.webp",
+    // evening:   "/images/cities/mumbai/evening.webp",
+    // night:     "/images/cities/mumbai/night.webp",
+    // rainy:     "/images/cities/mumbai/rainy.webp",
   },
 
   // ── Delhi ─────────────────────────────────────────────────────────────────
@@ -147,11 +147,11 @@ const CITY_IMAGES: Record<string, CityImageConfig> = {
   delhi: {
     label:     "Delhi, India",
     hero:      "/images/cities/delhi/hero.webp",
-    morning:   "/images/cities/delhi/morning.webp",
-    afternoon: "/images/cities/delhi/afternoon.webp",
-    evening:   "/images/cities/delhi/evening.webp",
-    night:     "/images/cities/delhi/night.webp",
-    rainy:     "/images/cities/delhi/rainy.webp",
+    // morning:   "/images/cities/delhi/morning.webp",
+    // afternoon: "/images/cities/delhi/afternoon.webp",
+    // evening:   "/images/cities/delhi/evening.webp",
+    // night:     "/images/cities/delhi/night.webp",
+    // rainy:     "/images/cities/delhi/rainy.webp",
   },
 
   // ── Hyderabad ─────────────────────────────────────────────────────────────
@@ -159,11 +159,11 @@ const CITY_IMAGES: Record<string, CityImageConfig> = {
   hyderabad: {
     label:     "Hyderabad, India",
     hero:      "/images/cities/hyderabad/hero.webp",
-    morning:   "/images/cities/hyderabad/morning.webp",
-    afternoon: "/images/cities/hyderabad/afternoon.webp",
-    evening:   "/images/cities/hyderabad/evening.webp",
-    night:     "/images/cities/hyderabad/night.webp",
-    rainy:     "/images/cities/hyderabad/rainy.webp",
+    // morning:   "/images/cities/hyderabad/morning.webp",
+    // afternoon: "/images/cities/hyderabad/afternoon.webp",
+    // evening:   "/images/cities/hyderabad/evening.webp",
+    // night:     "/images/cities/hyderabad/night.webp",
+    // rainy:     "/images/cities/hyderabad/rainy.webp",
   },
 
   // ── Chennai ───────────────────────────────────────────────────────────────
@@ -171,11 +171,11 @@ const CITY_IMAGES: Record<string, CityImageConfig> = {
   chennai: {
     label:     "Chennai, India",
     hero:      "/images/cities/chennai/hero.webp",
-    morning:   "/images/cities/chennai/morning.webp",
-    afternoon: "/images/cities/chennai/afternoon.webp",
-    evening:   "/images/cities/chennai/evening.webp",
-    night:     "/images/cities/chennai/night.webp",
-    rainy:     "/images/cities/chennai/rainy.webp",
+    // morning:   "/images/cities/chennai/morning.webp",
+    // afternoon: "/images/cities/chennai/afternoon.webp",
+    // evening:   "/images/cities/chennai/evening.webp",
+    // night:     "/images/cities/chennai/night.webp",
+    // rainy:     "/images/cities/chennai/rainy.webp",
   },
 
   // ── Pune ──────────────────────────────────────────────────────────────────
@@ -183,11 +183,11 @@ const CITY_IMAGES: Record<string, CityImageConfig> = {
   pune: {
     label:     "Pune, India",
     hero:      "/images/cities/pune/hero.webp",
-    morning:   "/images/cities/pune/morning.webp",
-    afternoon: "/images/cities/pune/afternoon.webp",
-    evening:   "/images/cities/pune/evening.webp",
-    night:     "/images/cities/pune/night.webp",
-    rainy:     "/images/cities/pune/rainy.webp",
+    // morning:   "/images/cities/pune/morning.webp",
+    // afternoon: "/images/cities/pune/afternoon.webp",
+    // evening:   "/images/cities/pune/evening.webp",
+    // night:     "/images/cities/pune/night.webp",
+    // rainy:     "/images/cities/pune/rainy.webp",
   },
 
   // ── Kolkata ───────────────────────────────────────────────────────────────
@@ -195,11 +195,11 @@ const CITY_IMAGES: Record<string, CityImageConfig> = {
   kolkata: {
     label:     "Kolkata, India",
     hero:      "/images/cities/kolkata/hero.webp",
-    morning:   "/images/cities/kolkata/morning.webp",
-    afternoon: "/images/cities/kolkata/afternoon.webp",
-    evening:   "/images/cities/kolkata/evening.webp",
-    night:     "/images/cities/kolkata/night.webp",
-    rainy:     "/images/cities/kolkata/rainy.webp",
+    // morning:   "/images/cities/kolkata/morning.webp",
+    // afternoon: "/images/cities/kolkata/afternoon.webp",
+    // evening:   "/images/cities/kolkata/evening.webp",
+    // night:     "/images/cities/kolkata/night.webp",
+    // rainy:     "/images/cities/kolkata/rainy.webp",
   },
 
   // ── Ahmedabad ─────────────────────────────────────────────────────────────
@@ -207,11 +207,11 @@ const CITY_IMAGES: Record<string, CityImageConfig> = {
   ahmedabad: {
     label:     "Ahmedabad, India",
     hero:      "/images/cities/ahmedabad/hero.webp",
-    morning:   "/images/cities/ahmedabad/morning.webp",
-    afternoon: "/images/cities/ahmedabad/afternoon.webp",
-    evening:   "/images/cities/ahmedabad/evening.webp",
-    night:     "/images/cities/ahmedabad/night.webp",
-    rainy:     "/images/cities/ahmedabad/rainy.webp",
+    // morning:   "/images/cities/ahmedabad/morning.webp",
+    // afternoon: "/images/cities/ahmedabad/afternoon.webp",
+    // evening:   "/images/cities/ahmedabad/evening.webp",
+    // night:     "/images/cities/ahmedabad/night.webp",
+    // rainy:     "/images/cities/ahmedabad/rainy.webp",
   },
 
   // ── London ────────────────────────────────────────────────────────────────
@@ -219,11 +219,11 @@ const CITY_IMAGES: Record<string, CityImageConfig> = {
   london: {
     label:     "London, United Kingdom",
     hero:      "/images/cities/london/hero.webp",
-    morning:   "/images/cities/london/morning.webp",
-    afternoon: "/images/cities/london/afternoon.webp",
-    evening:   "/images/cities/london/evening.webp",
-    night:     "/images/cities/london/night.webp",
-    rainy:     "/images/cities/london/rainy.webp",
+    // morning:   "/images/cities/london/morning.webp",
+    // afternoon: "/images/cities/london/afternoon.webp",
+    // evening:   "/images/cities/london/evening.webp",
+    // night:     "/images/cities/london/night.webp",
+    // rainy:     "/images/cities/london/rainy.webp",
   },
 
   // ── New York ──────────────────────────────────────────────────────────────
@@ -231,11 +231,11 @@ const CITY_IMAGES: Record<string, CityImageConfig> = {
   newyork: {
     label:     "New York, United States",
     hero:      "/images/cities/new-york/hero.webp",
-    morning:   "/images/cities/new-york/morning.webp",
-    afternoon: "/images/cities/new-york/afternoon.webp",
-    evening:   "/images/cities/new-york/evening.webp",
-    night:     "/images/cities/new-york/night.webp",
-    rainy:     "/images/cities/new-york/rainy.webp",
+    // morning:   "/images/cities/new-york/morning.webp",
+    // afternoon: "/images/cities/new-york/afternoon.webp",
+    // evening:   "/images/cities/new-york/evening.webp",
+    // night:     "/images/cities/new-york/night.webp",
+    // rainy:     "/images/cities/new-york/rainy.webp",
   },
 
   // ── Singapore ─────────────────────────────────────────────────────────────
@@ -243,11 +243,11 @@ const CITY_IMAGES: Record<string, CityImageConfig> = {
   singapore: {
     label:     "Singapore",
     hero:      "/images/cities/singapore/hero.webp",
-    morning:   "/images/cities/singapore/morning.webp",
-    afternoon: "/images/cities/singapore/afternoon.webp",
-    evening:   "/images/cities/singapore/evening.webp",
-    night:     "/images/cities/singapore/night.webp",
-    rainy:     "/images/cities/singapore/rainy.webp",
+    // morning:   "/images/cities/singapore/morning.webp",
+    // afternoon: "/images/cities/singapore/afternoon.webp",
+    // evening:   "/images/cities/singapore/evening.webp",
+    // night:     "/images/cities/singapore/night.webp",
+    // rainy:     "/images/cities/singapore/rainy.webp",
   },
 
   // ── Tokyo ─────────────────────────────────────────────────────────────────
@@ -255,11 +255,11 @@ const CITY_IMAGES: Record<string, CityImageConfig> = {
   tokyo: {
     label:     "Tokyo, Japan",
     hero:      "/images/cities/tokyo/hero.webp",
-    morning:   "/images/cities/tokyo/morning.webp",
-    afternoon: "/images/cities/tokyo/afternoon.webp",
-    evening:   "/images/cities/tokyo/evening.webp",
-    night:     "/images/cities/tokyo/night.webp",
-    rainy:     "/images/cities/tokyo/rainy.webp",
+    // morning:   "/images/cities/tokyo/morning.webp",
+    // afternoon: "/images/cities/tokyo/afternoon.webp",
+    // evening:   "/images/cities/tokyo/evening.webp",
+    // night:     "/images/cities/tokyo/night.webp",
+    // rainy:     "/images/cities/tokyo/rainy.webp",
   },
 
   // ── Dubai ─────────────────────────────────────────────────────────────────
@@ -267,11 +267,11 @@ const CITY_IMAGES: Record<string, CityImageConfig> = {
   dubai: {
     label:     "Dubai, United Arab Emirates",
     hero:      "/images/cities/dubai/hero.webp",
-    morning:   "/images/cities/dubai/morning.webp",
-    afternoon: "/images/cities/dubai/afternoon.webp",
-    evening:   "/images/cities/dubai/evening.webp",
-    night:     "/images/cities/dubai/night.webp",
-    rainy:     "/images/cities/dubai/rainy.webp",
+    // morning:   "/images/cities/dubai/morning.webp",
+    // afternoon: "/images/cities/dubai/afternoon.webp",
+    // evening:   "/images/cities/dubai/evening.webp",
+    // night:     "/images/cities/dubai/night.webp",
+    // rainy:     "/images/cities/dubai/rainy.webp",
   },
 
 };

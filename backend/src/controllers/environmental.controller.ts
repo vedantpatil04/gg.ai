@@ -644,7 +644,7 @@ export async function getMapComplaints(
       "location.lat": { $exists: true, $ne: null },
       "location.lng": { $exists: true, $ne: null },
     })
-      .select("title issueType severity status location createdAt")
+      .select("title issueType severity status location createdAt assignedTo")
       .sort({ createdAt: -1 })
       .limit(200)
       .lean();
@@ -661,6 +661,7 @@ export async function getMapComplaints(
         lng: c.location.lng as number,
         address: c.location.address ?? "",
         createdAt: c.createdAt,
+        assignedTo: c.assignedTo ? String(c.assignedTo) : undefined,
       })),
     });
   } catch (err) {

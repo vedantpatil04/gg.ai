@@ -5,6 +5,7 @@ export interface LoginPayload {
   email: string;
   password: string;
   portal: LoginPortal;
+  turnstileToken: string;
 }
 export interface SignupPayload {
   name: string;

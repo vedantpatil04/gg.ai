@@ -31,6 +31,12 @@ export interface AuthUser {
   isActive: boolean;
   lastLogin?: string;
   createdAt: string;
+  /** Authority-only jurisdiction — city ids this account is permitted to
+   *  operate in (Smart Routing/Automation 2, untouched by this addition).
+   *  Already returned by the backend on login/getMe; this type simply
+   *  hadn't declared it yet. Absent/empty for citizen and administrator
+   *  accounts, and for authorities with no jurisdiction configured. */
+  assignedCities?: string[];
   // Phase 3 — Personal Information. All optional: absent until the person
   // fills them in via the Edit Profile drawer.
   firstName?: string;
@@ -66,6 +72,7 @@ interface AuthContextValue extends AuthState {
     email: string,
     password: string,
     portal: LoginPortal,
+    turnstileToken: string,
   ) => Promise<LoginResult>;
   signup: (data: {
     name: string;
@@ -169,8 +176,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ─── Login ─────────────────────────────────────────────────────────────────
   const login = useCallback(
-    async (email: string, password: string, portal: LoginPortal): Promise<LoginResult> => {
-      const res = await authApi.login({ email, password, portal });
+    async (
+      email: string,
+      password: string,
+      portal: LoginPortal,
+      turnstileToken: string,
+    ): Promise<LoginResult> => {
+      const res = await authApi.login({ email, password, portal, turnstileToken });
 
       // Handle 2FA challenge response
       if (res.requires2FA) {

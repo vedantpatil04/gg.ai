@@ -42,8 +42,9 @@ function parseDevice(ua: string): string {
 }
 
 export function getRequestMeta(req: Request): RequestMeta {
-  const ua = req.headers["user-agent"] || "";
-  const forwardedFor = req.headers["x-forwarded-for"];
+  const headers = req.headers || {};
+  const ua = headers["user-agent"] || "";
+  const forwardedFor = headers["x-forwarded-for"];
   const ip =
     (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor?.split(",")[0].trim()) ||
     req.ip ||

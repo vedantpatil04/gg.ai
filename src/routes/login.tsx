@@ -14,6 +14,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { authApi } from "@/lib/api/auth.api";
 import { getRoleLandingPage } from "@/components/protected-route";
+import { TurnstileWidget, type TurnstileRef } from "@/components/ui/turnstile";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in — GreenGuard AI" }] }),
@@ -323,6 +324,8 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [remember, setRemember] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileRef = useRef<TurnstileRef>(null);
 
   // Surface a friendly message when landing here after a forced logout
   // (e.g. an expired session), then consume it so it doesn't reappear.
@@ -394,10 +397,14 @@ function LoginPage() {
       setError("Please fill in all fields.");
       return;
     }
+    if (!turnstileToken) {
+      setError("Please complete the security verification.");
+      return;
+    }
     setError("");
     setLoading(true);
     try {
-      const loggedInUser = await login(email, password, role);
+      const loggedInUser = await login(email, password, role, turnstileToken);
 
       // ── Handle 2FA response
       if ("requires2FA" in loggedInUser) {
@@ -416,6 +423,9 @@ function LoginPage() {
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setError(msg ?? "Invalid email or password.");
+      // Reset Turnstile token and widget on failed attempt so the user can re-verify and retry
+      turnstileRef.current?.reset();
+      setTurnstileToken("");
     } finally {
       setLoading(false);
     }
@@ -973,6 +983,25 @@ function LoginPage() {
           >
             Forgot password?
           </button>
+        </div>
+
+        {/* Turnstile Security Verification */}
+        <div style={{ display: "flex", justifyContent: "center", margin: "0.25rem 0" }}>
+          <TurnstileWidget
+            ref={turnstileRef}
+            theme="dark"
+            onSuccess={(token) => {
+              setTurnstileToken(token);
+              setError((prev) => (prev === "Please complete the security verification." ? "" : prev));
+            }}
+            onError={() => {
+              setTurnstileToken("");
+              setError("Security verification failed. Please try again.");
+            }}
+            onExpire={() => {
+              setTurnstileToken("");
+            }}
+          />
         </div>
 
         {/* CTA */}

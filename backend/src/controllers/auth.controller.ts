@@ -40,6 +40,7 @@ import {
   notifyAccountUnlocked,
 } from "../services/notification.service";
 import { normalizeAuthorityDepartment } from "../constants/smartRouting";
+import { verifyTurnstileToken } from "../services/turnstile.service";
 
 // Maps a login portal (as selected on the frontend) to the User.role values
 // stored in the database. Kept separate because the "Administrator" portal
@@ -152,13 +153,20 @@ export async function signup(req: Request, res: Response, next: NextFunction): P
 // ─── Login ──────────────────────────────────────────────────────────────────
 export async function login(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { email, password, portal } = req.body;
+    const { email, password, portal, turnstileToken } = req.body;
     const meta = getRequestMeta(req);
 
     // Portal presence/shape is already enforced by loginValidator, but guard
     // defensively in case this endpoint is ever called without it.
     const expectedRole = PORTAL_ROLE_MAP[portal];
     if (!expectedRole) return next(new AppError("Invalid portal selected", 400));
+
+    // Server-side Cloudflare Turnstile CAPTCHA verification before credential checking
+    const clientIp = (req.headers?.["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip;
+    const turnstileResult = await verifyTurnstileToken(turnstileToken, clientIp);
+    if (!turnstileResult.success) {
+      return next(new AppError(turnstileResult.error || "Security verification failed. Please try again.", 400));
+    }
 
     const user = await User.findOne({ email }).select(
       "+password +refreshTokens +failedLoginAttempts +accountLockedUntil",
