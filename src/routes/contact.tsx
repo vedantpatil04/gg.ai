@@ -29,7 +29,7 @@ function ContactPage() {
     {
       icon: MessageSquare,
       t: "Product",
-      d: "Questions about modules, integrations or the AI Copilot.",
+      d: "Questions about modules, integrations or the GreenGuard Intelligence Center.",
       v: "hello@greenguard.ai",
     },
     {

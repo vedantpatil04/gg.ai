@@ -1,0 +1,63 @@
+{
+  "title": "धोरण सिम्युलेटर",
+  "subtitle": "पर्यावरण धोरणांचे मॉडेल करा।",
+  "levers": "धोरण लीव्हर",
+  "groups": {
+    "transport": "वाहतूक",
+    "environment": "पर्यावरण",
+    "energy": "ऊर्जा आणि कचरा",
+    "industry": "उद्योग"
+  },
+  "leverLabels": {
+    "ev": "EV स्वीकृती",
+    "traffic": "वाहतूक कमी",
+    "publicTransport": "सार्वजनिक वाहतूक वापर",
+    "trees": "वृक्षारोपण",
+    "greenArea": "हरित क्षेत्र विस्तार",
+    "renewable": "नवीकरणीय ऊर्जा स्वीकृती",
+    "wasteManagement": "कचरा व्यवस्थापन कार्यक्षमता",
+    "industry": "औद्योगिक वाढ"
+  },
+  "results": {
+    "title": "अंदाजित परिणाम",
+    "projectedAqi": "अंदाजित AQI",
+    "aqiChange": "AQI बदल",
+    "healthImpact": "आरोग्य परिणाम",
+    "ecoScore": "इको स्कोर",
+    "sustainability": "टिकाऊपणा",
+    "carbonReduction": "कार्बन कपात",
+    "topContributor": "शीर्ष योगदानकर्ता"
+  },
+  "status": {
+    "recalculating": "पुनर्गणना होत आहे...",
+    "ready": "तयार",
+    "optimized": "अनुकूलित"
+  },
+  "aiAnalysis": {
+    "title": "AI धोरण विश्लेषण",
+    "generate": "AI विश्लेषण तयार करा",
+    "generating": "Gemini द्वारे विश्लेषण होत आहे...",
+    "stale": "लीव्हर बदलले - विश्लेषण पुन्हा चालवा",
+    "unavailable": "AI विश्लेषण अनुपलब्ध।",
+    "retry": "पुन्हा प्रयत्न करा",
+    "poweredBy": "Gemini द्वारे चालित"
+  },
+  "presets": "परिस्थिती प्रीसेट",
+  "reset": "आधाररेषेवर रीसेट करा",
+  "export": "PDF निर्यात करा",
+  "bands": {
+    "excellent": "उत्कृष्ट",
+    "good": "चांगले",
+    "moderate": "मध्यम",
+    "poor": "खराब",
+    "severe": "गंभीर"
+  },
+  "baseline": "आधाररेषा",
+  "simulation": "सिम्युलेशन",
+  "verdict": {
+    "highlyRecommended": "अत्यंत शिफारस",
+    "recommended": "शिफारस",
+    "moderateImpact": "मध्यम परिणाम",
+    "notRecommended": "शिफारस नाही"
+  }
+}

@@ -28,7 +28,7 @@ const COMMUNITY_CATEGORIES = [
   "Smart Maps",
   "Reports & Analytics",
   "Sustainability",
-  "AI Copilot",
+  "GreenGuard Intelligence Center",
   "Notifications",
   "General",
 ];

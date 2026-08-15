@@ -162,6 +162,20 @@ export interface DailyForecast {
   precipitationChance?: number;
 }
 
+export interface CityTrendPoint {
+  timestamp: string;
+  aqi: number;
+  pm25: number;
+  water: number;
+  eco: number;
+  risk?: number;
+  temp?: number;
+  humidity?: number;
+  renewableShare?: number;
+  carbon?: number;
+  greenCover?: number;
+}
+
 // ─── Existing API surface (unchanged — no breaking changes) ───────────────────
 export const environmentalApi = {
   getCities: () => client.get("/environmental/cities").then((r) => r.data),
@@ -172,6 +186,12 @@ export const environmentalApi = {
     client.get(`/environmental/cities/${cityId}/forecast`).then((r) => r.data),
 
   getCityTrend: (cityId: string, hours = 24) =>
+    client.get(`/environmental/cities/${cityId}/trend`, { params: { hours } }).then((r) => r.data),
+
+  getCityTrendTyped: (
+    cityId: string,
+    hours = 24,
+  ): Promise<{ success: boolean; data: { cityId: string; hours: number; trend: CityTrendPoint[] } }> =>
     client.get(`/environmental/cities/${cityId}/trend`, { params: { hours } }).then((r) => r.data),
 
   getHotspots: (cityId: string) =>

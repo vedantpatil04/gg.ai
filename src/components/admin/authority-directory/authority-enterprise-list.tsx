@@ -44,7 +44,7 @@ export type SortField = "name" | "workload" | "resolutionRate" | "activeCases" |
 interface AuthorityEnterpriseListProps {
   searchTerm: string;
   statusFilter: StatusFilter;
-  approvalFilter: "all" | AuthorityApprovalStatus;
+  approvalFilter: "all" | "approved" | "pending" | "rejected";
   page: number;
   limit: number;
   onPageChange: (page: number) => void;

@@ -1,0 +1,66 @@
+{
+  "title": "नीति सिम्युलेटर",
+  "subtitle": "पर्यावरण नीतियों का मॉडल बनाएं।",
+  "levers": "नीति लीवर",
+  "groups": {
+    "transport": "परिवहन",
+    "environment": "पर्यावरण",
+    "energy": "ऊर्जा और अपशिष्ट",
+    "industry": "उद्योग"
+  },
+  "leverLabels": {
+    "ev": "EV अपनाने की दर",
+    "traffic": "यातायात में कमी",
+    "publicTransport": "सार्वजनिक परिवहन उपयोग",
+    "trees": "वृक्षारोपण",
+    "greenArea": "हरित क्षेत्र विस्तार",
+    "renewable": "नवीकरणीय ऊर्जा अपनाने की दर",
+    "wasteManagement": "अपशिष्ट प्रबंधन दक्षता",
+    "industry": "औद्योगिक विकास"
+  },
+  "results": {
+    "title": "अनुमानित परिणाम",
+    "projectedAqi": "अनुमानित AQI",
+    "aqiChange": "AQI परिवर्तन",
+    "healthImpact": "स्वास्थ्य प्रभाव",
+    "ecoScore": "इको स्कोर",
+    "sustainability": "स्थिरता",
+    "carbonReduction": "कार्बन कमी",
+    "topContributor": "शीर्ष योगदानकर्ता"
+  },
+  "status": {
+    "recalculating": "पुनर्गणना हो रही है...",
+    "ready": "तैयार",
+    "optimized": "अनुकूलित"
+  },
+  "aiAnalysis": {
+    "title": "AI नीति विश्लेषण",
+    "generate": "AI विश्लेषण तैयार करें",
+    "generating": "Gemini से विश्लेषण हो रहा है...",
+    "stale": "लीवर बदले - विश्लेषण पुनः चलाएं",
+    "unavailable": "AI विश्लेषण अनुपलब्ध।",
+    "retry": "पुनः प्रयास करें",
+    "poweredBy": "Gemini द्वारा संचालित"
+  },
+  "presets": "परिदृश्य प्रीसेट",
+  "reset": "आधार रेखा पर रीसेट करें",
+  "export": "PDF निर्यात करें",
+  "compare": "परिदृश्य तुलना करें",
+  "bands": {
+    "excellent": "उत्कृष्ट",
+    "good": "अच्छा",
+    "moderate": "मध्यम",
+    "poor": "खराब",
+    "severe": "गंभीर"
+  },
+  "weeklyImpact": "साप्ताहिक प्रभाव",
+  "monthlyImpact": "मासिक प्रभाव",
+  "baseline": "आधार रेखा",
+  "simulation": "सिमुलेशन",
+  "verdict": {
+    "highlyRecommended": "अत्यंत अनुशंसित",
+    "recommended": "अनुशंसित",
+    "moderateImpact": "मध्यम प्रभाव",
+    "notRecommended": "अनुशंसित नहीं"
+  }
+}

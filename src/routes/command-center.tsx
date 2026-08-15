@@ -41,6 +41,11 @@ const ComplaintIntelligence = lazy(() =>
     default: m.ComplaintIntelligence,
   })),
 );
+const AuthorityAnalytics = lazy(() =>
+  import("@/components/command-center/authority-analytics").then((m) => ({
+    default: m.AuthorityAnalytics,
+  })),
+);
 const EnvironmentalIntelligence = lazy(() =>
   import("@/components/command-center/environmental-intelligence").then((m) => ({
     default: m.EnvironmentalIntelligence,
@@ -123,7 +128,13 @@ const TOP_TABS = [
     subtitle: "Insights & Trends",
     icon: TrendingUp,
     subTabs: [
-      { id: "trends", label: "Trend Intelligence", icon: TrendingUp, Component: TrendIntelligence },
+      {
+        id: "workload",
+        label: "My Workload",
+        icon: ClipboardList,
+        Component: AuthorityAnalytics,
+      },
+      { id: "trends", label: "Network Trends", icon: TrendingUp, Component: TrendIntelligence },
     ],
   },
   {

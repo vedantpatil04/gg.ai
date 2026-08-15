@@ -1,0 +1,26 @@
+{
+  "title": "टिकाऊपणा",
+  "overview": "पर्यावरण आढावा",
+  "currentConditions": "{{city}} मधील सध्याच्या परिस्थिती।",
+  "ecoScore": "इको स्कोर",
+  "grade": "श्रेणी",
+  "kpis": {
+    "aqi": "AQI",
+    "greenCover": "हरित आवरण",
+    "renewable": "नवीकरणीय ऊर्जा",
+    "water": "पाण्याची गुणवत्ता",
+    "waste": "कचरा विचलन"
+  },
+  "targets": {
+    "above": "सध्याच्या {{target}} लक्ष्यापेक्षा वर",
+    "needsImprovement": "सुधारणा आवश्यक"
+  },
+  "aiSummary": "GreenGuard इंटेलिजेंस केंद्र",
+  "history": "ऐतिहासिक ट्रेंड",
+  "ecoBreakdown": "इको स्कोर तपशील",
+  "loading": "टिकाऊपणा डेटा लोड होत आहे...",
+  "noData": "कोणताही टिकाऊपणा डेटा उपलब्ध नाही।",
+  "bandGood": "चांगले",
+  "bandModerate": "मध्यम",
+  "bandCritical": "गंभीर"
+}

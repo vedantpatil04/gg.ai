@@ -141,7 +141,8 @@ export function NotificationPreferencesPanel() {
   } = useQuery({
     queryKey: ["notification-preferences"],
     queryFn: () => notificationApi.getSettingsPreferences(),
-    staleTime: 15_000,
+    staleTime: 300_000,
+    refetchOnWindowFocus: false,
     throwOnError: false,
   });
 

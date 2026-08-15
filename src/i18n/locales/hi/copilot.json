@@ -1,0 +1,77 @@
+{
+  "title": "ग्रीनगार्ड इंटेलिजेंस सेंटर",
+  "subtitle": "Gemini द्वारा संचालित पर्यावरण इंटेलिजेंस।",
+  "tabs": {
+    "chat": "सहायक",
+    "intelligence": "इंटेलिजेंस",
+    "health": "स्वास्थ्य",
+    "actions": "कार्रवाइयां"
+  },
+  "chat": {
+    "placeholder": "वायु गुणवत्ता, पूर्वानुमान, सिफारिशों के बारे में पूछें...",
+    "send": "भेजें",
+    "thinking": "पर्यावरण डेटा विश्लेषण हो रहा है...",
+    "aiUnavailable": "AI अस्थायी रूप से अनुपलब्ध।",
+    "retry": "पुनः प्रयास करें",
+    "copy": "कॉपी करें",
+    "copied": "कॉपी हो गया!",
+    "feedback": "प्रतिक्रिया",
+    "helpful": "सहायक",
+    "notHelpful": "सहायक नहीं",
+    "newChat": "नई चैट",
+    "clearHistory": "इतिहास साफ करें"
+  },
+  "intelligence": {
+    "title": "इंटेलिजेंस डैशबोर्ड",
+    "insights": "अंतर्दृष्टि",
+    "recommendations": "सिफारिशें",
+    "riskAssessment": "जोखिम मूल्यांकन",
+    "cityRanking": "शहर रैंकिंग",
+    "alerts": "सक्रिय अलर्ट",
+    "noInsights": "कोई अंतर्दृष्टि उपलब्ध नहीं।",
+    "noAlerts": "कोई सक्रिय अलर्ट नहीं।",
+    "loading": "इंटेलिजेंस डेटा लोड हो रहा है..."
+  },
+  "health": {
+    "title": "स्वास्थ्य सलाह",
+    "riskLevel": "जोखिम स्तर",
+    "summary": "सारांश",
+    "outdoorActivity": "बाहरी गतिविधि",
+    "exercise": "व्यायाम",
+    "masks": "मास्क",
+    "schools": "स्कूल",
+    "elderly": "बुजुर्ग",
+    "children": "बच्चे",
+    "generalPublic": "आम जनता",
+    "low": "कम",
+    "moderate": "मध्यम",
+    "high": "उच्च",
+    "severe": "गंभीर",
+    "loading": "स्वास्थ्य सलाह लोड हो रही है...",
+    "noData": "स्वास्थ्य सलाह अनुपलब्ध।"
+  },
+  "actions": {
+    "title": "अनुशंसित कार्रवाइयां",
+    "citizen": "नागरिक कार्रवाइयां",
+    "government": "सरकारी कार्रवाइयां",
+    "expand": "कार्रवाइयां देखें",
+    "collapse": "संक्षिप्त करें",
+    "noActions": "वर्तमान में कोई कार्रवाई अनुशंसित नहीं।"
+  },
+  "prompts": {
+    "airQuality": "वायु गुणवत्ता",
+    "health": "स्वास्थ्य",
+    "forecast": "पूर्वानुमान",
+    "policy": "नीति",
+    "alerts": "अलर्ट"
+  },
+  "status": {
+    "online": "AI ऑनलाइन",
+    "offline": "AI ऑफलाइन",
+    "degraded": "अवनत",
+    "processing": "प्रक्रिया में"
+  },
+  "aiPoweredBy": "Gemini द्वारा संचालित",
+  "contextPanel": "पर्यावरण संदर्भ",
+  "liveData": "लाइव डेटा"
+}

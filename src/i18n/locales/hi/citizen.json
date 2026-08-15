@@ -1,35 +1,35 @@
 {
-  "title": "Citizen Portal",
-  "submitComplaint": "Submit a Complaint",
-  "myComplaints": "My Complaints",
-  "nearbyAlerts": "Nearby Alerts",
-  "environmentalStatus": "Environmental Status",
-  "noComplaints": "You haven’t submitted any complaints yet.",
+  "title": "नागरिक पोर्टल",
+  "submitComplaint": "शिकायत दर्ज करें",
+  "myComplaints": "मेरी शिकायतें",
+  "nearbyAlerts": "निकटवर्ती अलर्ट",
+  "environmentalStatus": "पर्यावरण स्थिति",
+  "noComplaints": "आपने अभी तक कोई शिकायत दर्ज नहीं की है।",
   "complaints": {
-    "title": "Submit Complaint",
-    "new": "New Complaint",
-    "category": "Category",
-    "description": "Description",
-    "location": "Location",
-    "attachments": "Attachments",
-    "submit": "Submit Complaint",
-    "success": "Your complaint has been submitted successfully.",
-    "trackingId": "Tracking ID",
+    "title": "शिकायत दर्ज करें",
+    "new": "नई शिकायत",
+    "category": "श्रेणी",
+    "description": "विवरण",
+    "location": "स्थान",
+    "attachments": "संलग्नक",
+    "submit": "शिकायत दर्ज करें",
+    "success": "आपकी शिकायत सफलतापूर्वक दर्ज की गई।",
+    "trackingId": "ट्रैकिंग आईडी",
     "status": {
-      "submitted": "Submitted",
-      "under_review": "Under Review",
-      "in_progress": "In Progress",
-      "resolved": "Resolved",
-      "rejected": "Rejected",
-      "closed": "Closed"
+      "submitted": "दर्ज की गई",
+      "under_review": "समीक्षाधीन",
+      "in_progress": "प्रगति में",
+      "resolved": "हल की गई",
+      "rejected": "अस्वीकृत",
+      "closed": "बंद"
     }
   },
   "categories": {
-    "air": "Air Quality",
-    "water": "Water Pollution",
-    "noise": "Noise Pollution",
-    "waste": "Waste Management",
-    "soil": "Soil Contamination",
-    "other": "Other"
+    "air": "वायु गुणवत्ता",
+    "water": "जल प्रदूषण",
+    "noise": "ध्वनि प्रदूषण",
+    "waste": "कचरा प्रबंधन",
+    "soil": "मिट्टी प्रदूषण",
+    "other": "अन्य"
   }
 }

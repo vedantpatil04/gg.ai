@@ -165,9 +165,11 @@ export function EmptyState({
 export function Pill({
   tone = "muted",
   children,
+  className,
 }: {
   tone?: "muted" | "success" | "warning" | "destructive" | "info" | "primary";
   children: ReactNode;
+  className?: string;
 }) {
   const map: Record<string, string> = {
     muted: "var(--color-muted-foreground)",
@@ -180,7 +182,10 @@ export function Pill({
   const c = map[tone];
   return (
     <span
-      className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border tabular-nums"
+      className={cn(
+        "inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border tabular-nums",
+        className,
+      )}
       style={{
         color: c,
         borderColor: `color-mix(in oklab, ${c} 35%, transparent)`,

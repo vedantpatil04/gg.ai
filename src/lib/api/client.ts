@@ -32,6 +32,7 @@ let queue: Array<(token: string) => void> = [];
 client.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
+    const original = (error.config || {}) as any;
     const isAuthBypass =
       original.url?.startsWith("/auth/login") ||
       original.url?.startsWith("/auth/refresh") ||

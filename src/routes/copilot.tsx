@@ -49,6 +49,7 @@ import { AnalysisHistory, type WorkspaceHistoryEntry } from "@/components/intell
 import { WorkspaceStats }    from "@/components/intelligence/workspace-stats";
 import { InsightCard, deriveInsightCards } from "@/components/intelligence/insight-card";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
@@ -370,15 +371,15 @@ function IntelligenceDashboard({ city, isApiConnected, onExplain }: {
   const [compareB, setCompareB] = useState(cities.find(c => c.id !== city.id)?.id ?? city.id);
   const opts = { enabled: isApiConnected, staleTime: 5 * 60_000, throwOnError: false as const };
 
-  const aqiTrend  = useQuery({ queryKey: ["intel-aqi",     city.id], queryFn: () => intelligenceApi.getAqiTrend(city.id).then(r => r.data.data),       ...opts });
-  const hotspots  = useQuery({ queryKey: ["intel-hotspot", city.id], queryFn: () => intelligenceApi.getHotspots(city.id).then(r => r.data.data),        ...opts });
-  const health    = useQuery({ queryKey: ["intel-health",  city.id], queryFn: () => intelligenceApi.getHealthImpact(city.id).then(r => r.data.data),     ...opts });
-  const risk      = useQuery({ queryKey: ["intel-risk",    city.id], queryFn: () => intelligenceApi.getRiskAnalysis(city.id).then(r => r.data.data),     ...opts });
-  const sustain   = useQuery({ queryKey: ["intel-sustain", city.id], queryFn: () => intelligenceApi.getSustainability(city.id).then(r => r.data.data),   ...opts });
-  const executive = useQuery({ queryKey: ["intel-exec"],              queryFn: () => intelligenceApi.getExecutiveInsights().then(r => r.data.data),        ...opts });
+  const aqiTrend  = useQuery({ queryKey: ["intel-aqi",     city.id], queryFn: () => intelligenceApi.getAQITrend(city.id).then((r: any) => r?.data?.data ?? r?.data),       ...opts });
+  const hotspots  = useQuery({ queryKey: ["intel-hotspot", city.id], queryFn: () => intelligenceApi.getHotspotAnalysis(city.id).then((r: any) => r?.data?.data ?? r?.data),        ...opts });
+  const health    = useQuery({ queryKey: ["intel-health",  city.id], queryFn: () => intelligenceApi.getHealthImpact(city.id).then((r: any) => r?.data?.data ?? r?.data),     ...opts });
+  const risk      = useQuery({ queryKey: ["intel-risk",    city.id], queryFn: () => intelligenceApi.getRiskAnalysis(city.id).then((r: any) => r?.data?.data ?? r?.data),     ...opts });
+  const sustain   = useQuery({ queryKey: ["intel-sustain", city.id], queryFn: () => intelligenceApi.getSustainabilityRecommendations(city.id).then((r: any) => r?.data?.data ?? r?.data),   ...opts });
+  const executive = useQuery({ queryKey: ["intel-exec"],              queryFn: () => intelligenceApi.getExecutiveInsights().then((r: any) => r?.data?.data ?? r?.data),        ...opts });
   const compare   = useQuery({
     queryKey: ["intel-compare", compareA, compareB],
-    queryFn:  () => intelligenceApi.compareLocations({ cityIdA: compareA, cityIdB: compareB }).then(r => r.data.data),
+    queryFn:  () => intelligenceApi.getCityComparison([compareA, compareB]).then((r: any) => r?.data?.data ?? r?.data),
     enabled: isApiConnected && compareA !== compareB, staleTime: 5 * 60_000, throwOnError: false,
   });
 
@@ -894,6 +895,7 @@ function IntelligenceRail({ city, isApiConnected, alerts, criticalCount, chatPen
 // ─── Main component ───────────────────────────────────────────────────────────
 
 function IntelligenceCenter() {
+  const { t } = useTranslation("copilot");
   const { city, cities, isApiConnected, setCityId } = useCity();
   const { user }  = useAuth();
   const reduced   = useReducedMotion() ?? false;
@@ -1066,14 +1068,14 @@ function IntelligenceCenter() {
             variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
             className="mb-6 max-w-2xl">
             <motion.div variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: DUR_LG, ease: EASE_OUT } } }}
-              className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">Environmental Intelligence Panel</motion.div>
+              className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">{t("contextPanel")}</motion.div>
             <motion.h1 variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: DUR_LG, ease: EASE_OUT } } }}
               className="text-3xl sm:text-4xl font-bold tracking-tight text-aurora leading-tight">
-              🌍 GreenGuard Intelligence Center
+              🌍 {t("title")}
             </motion.h1>
             <motion.p variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0, transition: { duration: DUR_MD, ease: EASE_OUT } } }}
               className="mt-1.5 text-sm text-muted-foreground">
-              The AI Brain of GreenGuard · {city.name}
+              {t("subtitle")} · {city.name}
             </motion.p>
           </motion.div>
 
@@ -1103,7 +1105,7 @@ function IntelligenceCenter() {
           {/* ── 2. RECOMMENDATION CHIPS ── */}
           <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: DUR_MD, delay: 0.35 }}
             className="flex flex-wrap gap-2">
-            <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground self-center">Recommendations:</span>
+            <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground self-center">{t("intelligence.recommendations")}:</span>
             {recChips.map(chip => (
               <button key={chip} onClick={() => handlePrompt(`Tell me more about: ${chip}`)}
                 className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full glass text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary">
@@ -1120,22 +1122,22 @@ function IntelligenceCenter() {
           className="flex glass rounded-xl p-1 gap-0.5 overflow-x-auto scrollbar-none"
           role="tablist" aria-label="Intelligence Center navigation">
           {([
-            { id: "chat",          label: "💬 Assistant" },
-            { id: "intelligence",  label: "🧠 Intelligence" },
-            { id: "health",        label: "🩺 Health" },
-            { id: "actions",       label: "⚡ Actions" },
-          ] as const).map(t => (
-            <button key={t.id} role="tab" aria-selected={tab === t.id} aria-controls={`tabpanel-${t.id}`}
-              onClick={() => setTab(t.id)}
+            { id: "chat",          label: `💬 ${t("tabs.chat")}` },
+            { id: "intelligence",  label: `🧠 ${t("tabs.intelligence")}` },
+            { id: "health",        label: `🩺 ${t("tabs.health")}` },
+            { id: "actions",       label: `⚡ ${t("tabs.actions")}` },
+          ] as const).map(tItem => (
+            <button key={tItem.id} role="tab" aria-selected={tab === tItem.id} aria-controls={`tabpanel-${tItem.id}`}
+              onClick={() => setTab(tItem.id)}
               className={cn("relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 whitespace-nowrap shrink-0",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
-                tab === t.id ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
-              {tab === t.id && (
+                tab === tItem.id ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+              {tab === tItem.id && (
                 <motion.div layoutId={reduced ? undefined : "nav-pill"}
                   className="absolute inset-0 rounded-lg aurora shadow-[var(--shadow-glow)]"
                   transition={{ type: "spring", stiffness: 350, damping: 30 }} />
               )}
-              <span className="relative">{t.label}</span>
+              <span className="relative">{tItem.label}</span>
             </button>
           ))}
         </motion.div>
@@ -1269,9 +1271,9 @@ function IntelligenceCenter() {
                   )}
 
                   {/* Workspace sub-panels */}
-                  {wsTab === "documents" && <div className="flex-1 overflow-y-auto" id="ws-panel-documents" role="tabpanel"><DocumentWorkspace cityId={city.id} onAskAI={p => { setWsTab("chat"); handlePrompt(p); }} onComplete={handleWsComplete} /></div>}
-                  {wsTab === "images"    && <div className="flex-1 overflow-y-auto" id="ws-panel-images"    role="tabpanel"><ImageWorkspace    cityId={city.id} onAskAI={p => { setWsTab("chat"); handlePrompt(p); }} onComplete={handleWsComplete} /></div>}
-                  {wsTab === "data"      && <div className="flex-1 overflow-y-auto" id="ws-panel-data"      role="tabpanel"><DataWorkspace      cityId={city.id} onAskAI={p => { setWsTab("chat"); handlePrompt(p); }} onComplete={handleWsComplete} /></div>}
+                  {wsTab === "documents" && <div className="flex-1 overflow-y-auto" id="ws-panel-documents" role="tabpanel"><DocumentWorkspace cityId={city.id} onAskAI={p => { setWsTab("chat"); handlePrompt(p); }} /></div>}
+                  {wsTab === "images"    && <div className="flex-1 overflow-y-auto" id="ws-panel-images"    role="tabpanel"><ImageWorkspace    cityId={city.id} onAskAI={p => { setWsTab("chat"); handlePrompt(p); }} /></div>}
+                  {wsTab === "data"      && <div className="flex-1 overflow-y-auto" id="ws-panel-data"      role="tabpanel"><DataWorkspace      cityId={city.id} onAskAI={p => { setWsTab("chat"); handlePrompt(p); }} /></div>}
                 </motion.div>
               )}
 

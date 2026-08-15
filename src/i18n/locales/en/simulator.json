@@ -1,0 +1,66 @@
+{
+  "title": "Policy Simulator",
+  "subtitle": "Model environmental policies and predict their impact.",
+  "levers": "Policy Levers",
+  "groups": {
+    "transport": "Transportation",
+    "environment": "Environment",
+    "energy": "Energy & Waste",
+    "industry": "Industry"
+  },
+  "leverLabels": {
+    "ev": "EV adoption",
+    "traffic": "Traffic reduction",
+    "publicTransport": "Public transport usage",
+    "trees": "Tree plantation",
+    "greenArea": "Green area expansion",
+    "renewable": "Renewable energy adoption",
+    "wasteManagement": "Waste management efficiency",
+    "industry": "Industrial growth"
+  },
+  "results": {
+    "title": "Projected Results",
+    "projectedAqi": "Projected AQI",
+    "aqiChange": "AQI Change",
+    "healthImpact": "Health Impact",
+    "ecoScore": "Eco Score",
+    "sustainability": "Sustainability",
+    "carbonReduction": "Carbon Reduction",
+    "topContributor": "Top Contributor"
+  },
+  "status": {
+    "recalculating": "Recalculating…",
+    "ready": "Ready",
+    "optimized": "Optimized"
+  },
+  "aiAnalysis": {
+    "title": "AI Policy Analysis",
+    "generate": "Generate AI Analysis",
+    "generating": "Analysing with Gemini…",
+    "stale": "Levers changed — re-run analysis",
+    "unavailable": "AI analysis unavailable.",
+    "retry": "Retry",
+    "poweredBy": "Powered by Gemini"
+  },
+  "presets": "Scenario Presets",
+  "reset": "Reset to baseline",
+  "export": "Export PDF",
+  "compare": "Compare scenarios",
+  "bands": {
+    "excellent": "Excellent",
+    "good": "Good",
+    "moderate": "Moderate",
+    "poor": "Poor",
+    "severe": "Severe"
+  },
+  "weeklyImpact": "Weekly Impact",
+  "monthlyImpact": "Monthly Impact",
+  "baseline": "Baseline",
+  "simulation": "Simulation",
+  "verdict": {
+    "highlyRecommended": "Highly Recommended",
+    "recommended": "Recommended",
+    "moderateImpact": "Moderate Impact",
+    "notRecommended": "Not Recommended"
+  }
+}

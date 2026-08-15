@@ -7,14 +7,14 @@ import {
   CheckCircle2,
   ArrowLeft,
   Loader2,
-  ChevronRight,
-  Info,
+  ArrowRight,
 } from "lucide-react";
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { authApi } from "@/lib/api/auth.api";
 import { getRoleLandingPage } from "@/components/protected-route";
 import { TurnstileWidget, type TurnstileRef } from "@/components/ui/turnstile";
+import { LOGIN_HERO_IMAGE } from "@/assets/login-image";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in — GreenGuard AI" }] }),
@@ -26,290 +26,36 @@ export const Route = createFileRoute("/login")({
 type Role = "citizen" | "authority" | "admin";
 type View = "login" | "fp-email" | "fp-done";
 
-// ─── Role config ──────────────────────────────────────────────────────────────
+// ─── Role configuration ───────────────────────────────────────────────────────
 
 const ROLES: Record<
   Role,
   {
     label: string;
-    tagline: string;
-    description: string;
-    accent: string;
-    accentRgb: string;
-    features: string[];
-    headline: string;
+    heading: string;
+    subtext: string;
+    showApprovalNote: boolean;
   }
 > = {
   citizen: {
     label: "Citizen",
-    tagline: "Your environment. Your voice.",
-    description:
-      "Report environmental incidents, track the status of your complaints, receive targeted alerts, and view real-time data for your neighbourhood.",
-    accent: "#0EA5E9",
-    accentRgb: "14,165,233",
-    headline: "Empowering citizens with\nenvironmental intelligence.",
-    features: [
-      "Submit Environmental Incident Reports",
-      "Track Complaint Status in Real Time",
-      "Receive Targeted Environmental Alerts",
-      "View Local Air, Water & Noise Data",
-    ],
+    heading: "Welcome back",
+    subtext: "Sign in to access your GreenGuard environmental services.",
+    showApprovalNote: false,
   },
   authority: {
     label: "Authority",
-    tagline: "Informed decisions. Faster response.",
-    description:
-      "Manage complaints across your jurisdiction, access AI-powered environmental intelligence, monitor city sensor networks, and drive corrective action.",
-    accent: "#F59E0B",
-    accentRgb: "245,158,11",
-    headline: "Environmental authority\nintelligence, centralised.",
-    features: [
-      "Complaint Management & Escalation",
-      "AI Environmental Intelligence Briefings",
-      "City-Wide Sensor Network Monitoring",
-      "Authority Action & Response Tracking",
-    ],
+    heading: "Authority Sign In",
+    subtext: "Access your environmental investigation and management workspace.",
+    showApprovalNote: true,
   },
   admin: {
     label: "Administrator",
-    tagline: "Platform-wide visibility. Executive control.",
-    description:
-      "Operate the GreenGuard Command Center, manage cities and agencies, access platform-wide intelligence, and generate executive environmental reports.",
-    accent: "#0D9373",
-    accentRgb: "13,147,115",
-    headline: "Executive command over\ncity environmental systems.",
-    features: [
-      "Executive Command Center Dashboard",
-      "City & Agency Management",
-      "Platform-Wide Environmental Intelligence",
-      "AI-Generated Executive Reports",
-    ],
+    heading: "Administrator Sign In",
+    subtext: "Access GreenGuard platform administration and governance.",
+    showApprovalNote: false,
   },
 };
-
-// ─── Animated network canvas ──────────────────────────────────────────────────
-
-interface NetworkNode {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  r: number;
-  pulse: number;
-  pulseSpeed: number;
-  kind: "hub" | "node" | "leaf";
-}
-
-function NetworkCanvas({ accentRgb }: { accentRgb: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const nodesRef = useRef<NetworkNode[]>([]);
-  const rafRef = useRef<number>(0);
-  const timeRef = useRef(0);
-  const accentRef = useRef(accentRgb);
-
-  useEffect(() => {
-    accentRef.current = accentRgb;
-  }, [accentRgb]);
-
-  const buildNodes = useCallback((w: number, h: number) => {
-    const count = Math.max(22, Math.floor((w * h) / 11000));
-    const nodes: NetworkNode[] = [];
-    for (let i = 0; i < count; i++) {
-      const rnd = Math.random();
-      nodes.push({
-        x: Math.random() * w,
-        y: Math.random() * h,
-        vx: (Math.random() - 0.5) * 0.15,
-        vy: (Math.random() - 0.5) * 0.15,
-        r: rnd > 0.88 ? 4 : rnd > 0.6 ? 2.5 : 1.5,
-        pulse: Math.random() * Math.PI * 2,
-        pulseSpeed: 0.01 + Math.random() * 0.02,
-        kind: rnd > 0.88 ? "hub" : rnd > 0.6 ? "node" : "leaf",
-      });
-    }
-    nodesRef.current = nodes;
-  }, []);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const resize = () => {
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = canvas.offsetWidth * dpr;
-      canvas.height = canvas.offsetHeight * dpr;
-      ctx.scale(dpr, dpr);
-      buildNodes(canvas.offsetWidth, canvas.offsetHeight);
-    };
-    resize();
-    const ro = new ResizeObserver(resize);
-    ro.observe(canvas);
-
-    const tick = () => {
-      const W = canvas.offsetWidth;
-      const H = canvas.offsetHeight;
-      timeRef.current += 0.007;
-      const t = timeRef.current;
-      const rgb = accentRef.current;
-
-      ctx.clearRect(0, 0, W, H);
-
-      const nodes = nodesRef.current;
-      const maxD = Math.min(W, H) * 0.26;
-
-      for (const n of nodes) {
-        n.x += n.vx;
-        n.y += n.vy;
-        n.pulse += n.pulseSpeed;
-        if (n.x < 0 || n.x > W) n.vx *= -1;
-        if (n.y < 0 || n.y > H) n.vy *= -1;
-        n.x = Math.max(0, Math.min(W, n.x));
-        n.y = Math.max(0, Math.min(H, n.y));
-      }
-
-      // Connections
-      for (let i = 0; i < nodes.length; i++) {
-        for (let j = i + 1; j < nodes.length; j++) {
-          const a = nodes[i],
-            b = nodes[j];
-          const dx = a.x - b.x,
-            dy = a.y - b.y;
-          const d = Math.sqrt(dx * dx + dy * dy);
-          if (d > maxD) continue;
-          const fade = (1 - d / maxD) * (0.06 + 0.08 * Math.sin(t + i * 0.2));
-          ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
-          ctx.strokeStyle = `rgba(${rgb},${fade})`;
-          ctx.lineWidth = 0.65;
-          ctx.stroke();
-        }
-      }
-
-      // Travelling packet
-      if (nodes.length > 1) {
-        const segIdx = Math.floor(t * 0.35) % nodes.length;
-        const nextIdx = (segIdx + 1) % nodes.length;
-        const progress = (t * 0.35) % 1;
-        const px = nodes[segIdx].x + (nodes[nextIdx].x - nodes[segIdx].x) * progress;
-        const py = nodes[segIdx].y + (nodes[nextIdx].y - nodes[segIdx].y) * progress;
-        const pg = ctx.createRadialGradient(px, py, 0, px, py, 6);
-        pg.addColorStop(0, `rgba(${rgb},0.9)`);
-        pg.addColorStop(1, `rgba(${rgb},0)`);
-        ctx.beginPath();
-        ctx.arc(px, py, 6, 0, Math.PI * 2);
-        ctx.fillStyle = pg;
-        ctx.fill();
-      }
-
-      // Nodes
-      for (const n of nodes) {
-        const pf = 0.5 + 0.5 * Math.sin(n.pulse);
-        if (n.kind === "hub") {
-          const rr = n.r * (2.8 + pf * 1.6);
-          const g = ctx.createRadialGradient(n.x, n.y, n.r, n.x, n.y, rr);
-          g.addColorStop(0, `rgba(${rgb},${0.22 * pf})`);
-          g.addColorStop(1, `rgba(${rgb},0)`);
-          ctx.beginPath();
-          ctx.arc(n.x, n.y, rr, 0, Math.PI * 2);
-          ctx.fillStyle = g;
-          ctx.fill();
-        }
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
-        ctx.fillStyle =
-          n.kind === "hub"
-            ? `rgba(${rgb},1)`
-            : n.kind === "node"
-              ? `rgba(${rgb},0.7)`
-              : `rgba(${rgb},0.4)`;
-        ctx.fill();
-      }
-
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(rafRef.current);
-      ro.disconnect();
-    };
-  }, [buildNodes]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      aria-hidden="true"
-      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
-    />
-  );
-}
-
-// ─── Feature card row ─────────────────────────────────────────────────────────
-
-function FeatureCard({ text, accent }: { text: string; accent: string }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "0.625rem",
-        padding: "0.5rem 0.75rem",
-        background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.07)",
-        borderRadius: "0.5rem",
-        fontSize: "0.75rem",
-        color: "rgba(255,255,255,0.6)",
-        letterSpacing: "0.005em",
-        lineHeight: 1.4,
-      }}
-    >
-      <CheckCircle2 size={13} style={{ flexShrink: 0, color: accent }} />
-      {text}
-    </div>
-  );
-}
-
-// ─── Role tab ─────────────────────────────────────────────────────────────────
-
-function RoleTab({
-  label,
-  active,
-  accent,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  accent: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        flex: 1,
-        padding: "0.5rem 0.25rem",
-        fontSize: "0.75rem",
-        fontWeight: active ? 600 : 400,
-        color: active ? accent : "rgba(255,255,255,0.35)",
-        background: active
-          ? `rgba(${accent === "#0EA5E9" ? "14,165,233" : accent === "#F59E0B" ? "245,158,11" : "13,147,115"},0.1)`
-          : "transparent",
-        border: "none",
-        borderBottom: active ? `2px solid ${accent}` : "2px solid transparent",
-        cursor: "pointer",
-        transition: "all 0.18s ease",
-        fontFamily: "inherit",
-        letterSpacing: "0.02em",
-        whiteSpace: "nowrap" as const,
-      }}
-    >
-      {label}
-    </button>
-  );
-}
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
@@ -323,12 +69,10 @@ function LoginPage() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [remember, setRemember] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
   const turnstileRef = useRef<TurnstileRef>(null);
 
   // Surface a friendly message when landing here after a forced logout
-  // (e.g. an expired session), then consume it so it doesn't reappear.
   useEffect(() => {
     if (authMessage) {
       setError(authMessage);
@@ -336,10 +80,8 @@ function LoginPage() {
     }
   }, [authMessage, clearAuthMessage]);
 
-  // Role tab state
+  // Role and view state
   const [role, setRole] = useState<Role>("citizen");
-
-  // View state
   const [view, setView] = useState<View>("login");
 
   // Forgot-password flow state
@@ -353,20 +95,8 @@ function LoginPage() {
   const [fpEmailFocus, setFpEmailFocus] = useState(false);
 
   const rc = ROLES[role];
-  const accent = rc.accent;
 
-  // Precompute accent-based bg string for RoleTab
-  const accentBg = useMemo(() => {
-    if (accent === "#0EA5E9") return "rgba(14,165,233,0.1)";
-    if (accent === "#F59E0B") return "rgba(245,158,11,0.1)";
-    return "rgba(13,147,115,0.1)";
-  }, [accent]);
-
-  // Avoid flashing the login form while the session is still being
-  // restored, and redirect away immediately if it turns out the user is
-  // already authenticated (e.g. a stale bookmark, or the browser Back
-  // button after already signing in) rather than showing a form they
-  // don't need.
+  // Redirect if already authenticated
   useEffect(() => {
     if (!isLoading && isAuthenticated && user) {
       navigate({ to: getRoleLandingPage(user.role) });
@@ -381,7 +111,7 @@ function LoginPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#08090E",
+          background: "#0A0C12",
         }}
       >
         <Loader2 className="animate-spin" size={20} color="rgba(255,255,255,0.4)" />
@@ -389,16 +119,17 @@ function LoginPage() {
     );
   }
 
-  // ── Login submit ────────────────────────────────────────────────────────────
+  // ── Login submit ──────────────────────────────────────────────────────────
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
     if (!email || !password) {
-      setError("Please fill in all fields.");
+      setError("Please fill in your email and password.");
       return;
     }
     if (!turnstileToken) {
-      setError("Please complete the security verification.");
+      setError("Please complete the security verification to continue.");
       return;
     }
     setError("");
@@ -406,24 +137,18 @@ function LoginPage() {
     try {
       const loggedInUser = await login(email, password, role, turnstileToken);
 
-      // ── Handle 2FA response
       if ("requires2FA" in loggedInUser) {
         navigate({
           to: "/verify-2fa",
-          search: {
-            challengeToken: loggedInUser.challengeToken,
-          },
+          search: { challengeToken: loggedInUser.challengeToken },
         });
-        return; // stop here, don't redirect to dashboard yet
+        return;
       }
 
-      navigate({
-        to: getRoleLandingPage(loggedInUser.role),
-      });
+      navigate({ to: getRoleLandingPage(loggedInUser.role) });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(msg ?? "Invalid email or password.");
-      // Reset Turnstile token and widget on failed attempt so the user can re-verify and retry
+      setError(msg ?? "The email or password is incorrect. Please try again.");
       turnstileRef.current?.reset();
       setTurnstileToken("");
     } finally {
@@ -431,10 +156,8 @@ function LoginPage() {
     }
   };
 
-  // ── Forgot password ─────────────────────────────────────────────────────────
-  // Sends the account email to the real backend, which emails a signed,
-  // time-limited reset link (see /reset-password). There is no in-app code
-  // or password step here — the person continues the flow from their inbox.
+  // ── Forgot password ──────────────────────────────────────────────────────
+
   const handleFpEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fpEmail) {
@@ -464,826 +187,362 @@ function LoginPage() {
     setView("login");
   };
 
-  // ── Shared input style helper ───────────────────────────────────────────────
-  const inputStyle = (focused: boolean, hasError = false): React.CSSProperties => ({
-    width: "100%",
-    background: "rgba(255,255,255,0.03)",
-    border: `1px solid ${hasError ? "rgba(239,68,68,0.5)" : focused ? accent : "rgba(255,255,255,0.1)"}`,
-    borderRadius: "0.5rem",
-    padding: "0.6875rem 0.875rem",
-    fontSize: "0.875rem",
-    color: "rgba(255,255,255,0.9)",
-    outline: "none",
-    fontFamily: "inherit",
-    boxSizing: "border-box",
-    transition: "border-color 0.15s, box-shadow 0.15s",
-    boxShadow: focused
-      ? `0 0 0 3px ${accent}22`
-      : hasError
-        ? "0 0 0 3px rgba(239,68,68,0.08)"
-        : "none",
-  });
+  // ── Render ────────────────────────────────────────────────────────────────
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // LEFT PANEL
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  const LeftPanel = (
-    <div
-      className="gg-left"
-      style={{
-        position: "relative",
-        overflow: "hidden",
-        borderRight: "1px solid rgba(255,255,255,0.05)",
-        display: "none",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        minHeight: "100vh",
-      }}
-    >
-      {/* Canvas */}
-      <NetworkCanvas accentRgb={rc.accentRgb} />
-
-      {/* Ambient glow orbs */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 1,
-          pointerEvents: "none",
-          background: `radial-gradient(ellipse 55% 45% at 20% 65%, ${accent}18 0%, transparent 60%),
-                     radial-gradient(ellipse 40% 35% at 80% 20%, ${accent}10 0%, transparent 55%)`,
-          transition: "background 0.6s ease",
-        }}
-      />
-
-      {/* Dark overlay */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 2,
-          pointerEvents: "none",
-          background:
-            "linear-gradient(170deg, rgba(8,9,14,0.6) 0%, rgba(8,9,14,0.15) 50%, rgba(8,9,14,0.8) 100%)",
-        }}
-      />
-
-      <div
-        style={{
-          position: "relative",
-          zIndex: 10,
-          padding: "2.5rem",
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-          gap: "0",
-          justifyContent: "space-between",
-        }}
-      >
-        {/* Logo + status */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Link
-            to="/"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.625rem",
-              textDecoration: "none",
-              color: "inherit",
-            }}
-          >
-            <div
-              style={{
-                width: "2rem",
-                height: "2rem",
-                borderRadius: "0.5rem",
-                background: `linear-gradient(135deg, ${accent} 0%, ${accent}bb 100%)`,
-                display: "grid",
-                placeItems: "center",
-                boxShadow: `0 0 16px ${accent}44`,
-                transition: "background 0.5s, box-shadow 0.5s",
-              }}
-            >
-              <Shield size={15} color="#fff" />
-            </div>
-            <span style={{ fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "-0.01em" }}>
-              GreenGuard AI
-            </span>
-          </Link>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.4rem",
-              background: `${accent}14`,
-              border: `1px solid ${accent}30`,
-              borderRadius: "99px",
-              padding: "0.25rem 0.75rem",
-              fontSize: "0.6125rem",
-              color: accent,
-              fontFamily: "'JetBrains Mono', monospace",
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              transition: "all 0.4s",
-            }}
-          >
-            <span
-              style={{
-                width: "6px",
-                height: "6px",
-                borderRadius: "50%",
-                background: accent,
-                boxShadow: `0 0 6px ${accent}`,
-                animation: "gg-pulse 2s ease-in-out infinite",
-              }}
-            />
-            Systems operational
-          </div>
-        </div>
-
-        {/* Hero */}
-        <div>
-          <p
-            style={{
-              fontSize: "0.6375rem",
-              fontFamily: "'JetBrains Mono', monospace",
-              color: accent,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              marginBottom: "1rem",
-              transition: "color 0.4s",
-            }}
-          >
-            Environmental Intelligence Platform · {rc.label} Portal
-          </p>
-          <h2
-            style={{
-              fontSize: "clamp(1.5rem, 2.6vw, 2.125rem)",
-              fontWeight: 600,
-              letterSpacing: "-0.03em",
-              lineHeight: 1.15,
-              color: "rgba(255,255,255,0.95)",
-              margin: "0 0 0.875rem",
-              whiteSpace: "pre-line",
-            }}
-          >
-            {rc.headline}
-          </h2>
-          <p
-            style={{
-              fontSize: "0.875rem",
-              color: "rgba(255,255,255,0.38)",
-              lineHeight: 1.7,
-              maxWidth: "27rem",
-              margin: "0 0 2rem",
-            }}
-          >
-            {rc.description}
-          </p>
-
-          {/* Feature cards */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {rc.features.map((f) => (
-              <FeatureCard key={f} text={f} accent={accent} />
-            ))}
-          </div>
-        </div>
-
-        {/* Certs */}
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          {["SOC 2 Type II", "ISO 27001", "CERT-In", "GDPR"].map((c) => (
-            <span
-              key={c}
-              style={{
-                fontSize: "0.5875rem",
-                fontFamily: "'JetBrains Mono', monospace",
-                letterSpacing: "0.05em",
-                color: "rgba(255,255,255,0.22)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: "4px",
-                padding: "2px 7px",
-                textTransform: "uppercase",
-              }}
-            >
-              {c}
-            </span>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // RIGHT PANEL VIEWS
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  // Shared wrapper
-  const formWrapStyle: React.CSSProperties = { width: "100%", maxWidth: "22.5rem" };
-
-  const errorBox = (msg: string) =>
-    msg ? (
-      <div
-        role="alert"
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          gap: "0.5rem",
-          borderRadius: "0.5rem",
-          border: "1px solid rgba(239,68,68,0.25)",
-          background: "rgba(239,68,68,0.07)",
-          padding: "0.625rem 0.875rem",
-          fontSize: "0.8125rem",
-          color: "rgb(252,165,165)",
-          marginBottom: "1rem",
-        }}
-      >
-        <AlertCircle size={14} style={{ flexShrink: 0, marginTop: "2px" }} />
-        <span>{msg}</span>
-      </div>
-    ) : null;
-
-  const submitBtnStyle = (disabled: boolean): React.CSSProperties => ({
-    width: "100%",
-    background: `linear-gradient(135deg, ${accent} 0%, ${accent}cc 100%)`,
-    color: "#fff",
-    border: "none",
-    borderRadius: "0.5rem",
-    padding: "0.75rem",
-    fontSize: "0.875rem",
-    fontWeight: 600,
-    cursor: disabled ? "not-allowed" : "pointer",
-    letterSpacing: "0.01em",
-    boxShadow: `0 0 24px ${accent}30, 0 1px 3px rgba(0,0,0,0.4)`,
-    transition: "opacity 0.15s, transform 0.12s, box-shadow 0.15s, background 0.4s",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "0.5rem",
-    fontFamily: "inherit",
-    opacity: disabled ? 0.65 : 1,
-  });
-
-  const BackBtn = ({ onClick }: { onClick: () => void }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      className="gg-back-btn"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "0.375rem",
-        background: "none",
-        border: "none",
-        color: "rgba(255,255,255,0.38)",
-        fontSize: "0.8125rem",
-        cursor: "pointer",
-        padding: 0,
-        marginBottom: "1.75rem",
-        fontFamily: "inherit",
-        transition: "color 0.15s",
-      }}
-    >
-      <ArrowLeft size={13} /> Back to sign in
-    </button>
-  );
-
-  // ── Login view ──────────────────────────────────────────────────────────────
-
-  const LoginView = (
-    <div style={formWrapStyle}>
-      {/* Mobile logo */}
-      <div className="gg-mobile-logo" style={{ marginBottom: "2rem" }}>
-        <Link
-          to="/"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.625rem",
-            textDecoration: "none",
-            color: "inherit",
-          }}
-        >
-          <div
-            style={{
-              width: "2rem",
-              height: "2rem",
-              borderRadius: "0.5rem",
-              background: `linear-gradient(135deg, ${accent} 0%, ${accent}bb 100%)`,
-              display: "grid",
-              placeItems: "center",
-              boxShadow: `0 0 14px ${accent}44`,
-            }}
-          >
-            <Shield size={15} color="#fff" />
-          </div>
-          <span style={{ fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "-0.01em" }}>
-            GreenGuard AI
-          </span>
-        </Link>
-      </div>
-
-      {/* Role tabs */}
-      <div
-        style={{
-          display: "flex",
-          background: "rgba(255,255,255,0.03)",
-          border: "1px solid rgba(255,255,255,0.07)",
-          borderRadius: "0.625rem",
-          overflow: "hidden",
-          marginBottom: "1.75rem",
-        }}
-      >
-        {(["citizen", "authority", "admin"] as Role[]).map((r) => (
-          <RoleTab
-            key={r}
-            label={ROLES[r].label}
-            active={role === r}
-            accent={ROLES[r].accent}
-            onClick={() => {
-              setRole(r);
-              setError("");
-            }}
-          />
-        ))}
-      </div>
-
-      <h1
-        style={{
-          fontSize: "1.375rem",
-          fontWeight: 600,
-          letterSpacing: "-0.025em",
-          color: "rgba(255,255,255,0.95)",
-          margin: "0 0 0.25rem",
-        }}
-      >
-        Welcome back
-      </h1>
-      <p
-        style={{
-          fontSize: "0.8125rem",
-          color: "rgba(255,255,255,0.32)",
-          margin: "0 0 1.5rem",
-          lineHeight: 1.5,
-        }}
-      >
-        {rc.tagline}
-      </p>
-
-      {role === "authority" && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: "0.5rem",
-            borderRadius: "0.5rem",
-            border: `1px solid ${accent}30`,
-            background: `${accent}0f`,
-            padding: "0.625rem 0.875rem",
-            fontSize: "0.75rem",
-            lineHeight: 1.5,
-            color: "rgba(255,255,255,0.55)",
-            marginBottom: "1.5rem",
-          }}
-        >
-          <Info size={13} style={{ flexShrink: 0, marginTop: "1px", color: accent }} />
-          <span>Authority accounts require Administrator approval before first login.</span>
-        </div>
-      )}
-
-      {errorBox(error)}
-
-      <form
-        onSubmit={handleSubmit}
-        noValidate
-        style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
-      >
-        {/* Email */}
-        <div>
-          <label
-            htmlFor="gg-email"
-            style={{
-              display: "block",
-              fontSize: "0.6875rem",
-              fontWeight: 500,
-              color: "rgba(255,255,255,0.42)",
-              letterSpacing: "0.07em",
-              textTransform: "uppercase",
-              marginBottom: "0.5rem",
-            }}
-          >
-            Email address
-          </label>
-          <input
-            id="gg-email"
-            type="email"
-            autoComplete="email"
-            placeholder="you@city.gov"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onFocus={() => setEmailFocus(true)}
-            onBlur={() => setEmailFocus(false)}
-            style={inputStyle(emailFocus)}
-          />
-        </div>
-
-        {/* Password */}
-        <div>
-          <label
-            htmlFor="gg-pw"
-            style={{
-              display: "block",
-              fontSize: "0.6875rem",
-              fontWeight: 500,
-              color: "rgba(255,255,255,0.42)",
-              letterSpacing: "0.07em",
-              textTransform: "uppercase",
-              marginBottom: "0.5rem",
-            }}
-          >
-            Password
-          </label>
-          <div style={{ position: "relative" }}>
-            <input
-              id="gg-pw"
-              type={showPw ? "text" : "password"}
-              autoComplete="current-password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onFocus={() => setPwFocus(true)}
-              onBlur={() => setPwFocus(false)}
-              style={{ ...inputStyle(pwFocus), paddingRight: "2.75rem" }}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPw((v) => !v)}
-              aria-label={showPw ? "Hide password" : "Show password"}
-              style={{
-                position: "absolute",
-                right: "0.75rem",
-                top: "50%",
-                transform: "translateY(-50%)",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: "rgba(255,255,255,0.3)",
-                padding: "0.25rem",
-                display: "flex",
-                alignItems: "center",
-                transition: "color 0.15s",
-              }}
-              className="gg-eye"
-            >
-              {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-          </div>
-        </div>
-
-        {/* Remember + Forgot */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              fontSize: "0.8125rem",
-              color: "rgba(255,255,255,0.36)",
-              cursor: "pointer",
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={remember}
-              onChange={(e) => setRemember(e.target.checked)}
-              style={{ width: "13px", height: "13px", accentColor: accent, cursor: "pointer" }}
-            />
-            Keep me signed in
-          </label>
-          <button
-            type="button"
-            onClick={() => {
-              setFpEmail(email);
-              setFpError("");
-              setView("fp-email");
-            }}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: accent,
-              fontSize: "0.8125rem",
-              fontFamily: "inherit",
-              padding: 0,
-              transition: "opacity 0.15s",
-            }}
-            className="gg-fp-link"
-          >
-            Forgot password?
-          </button>
-        </div>
-
-        {/* Turnstile Security Verification */}
-        <div style={{ display: "flex", justifyContent: "center", margin: "0.25rem 0" }}>
-          <TurnstileWidget
-            ref={turnstileRef}
-            theme="dark"
-            onSuccess={(token) => {
-              setTurnstileToken(token);
-              setError((prev) => (prev === "Please complete the security verification." ? "" : prev));
-            }}
-            onError={() => {
-              setTurnstileToken("");
-              setError("Security verification failed. Please try again.");
-            }}
-            onExpire={() => {
-              setTurnstileToken("");
-            }}
-          />
-        </div>
-
-        {/* CTA */}
-        <button
-          type="submit"
-          disabled={loading}
-          style={submitBtnStyle(loading)}
-          className={loading ? "" : "gg-btn-hover"}
-        >
-          {loading ? (
-            <>
-              <Loader2 size={14} style={{ animation: "gg-spin 0.85s linear infinite" }} />
-              Authenticating…
-            </>
-          ) : (
-            <>
-              Access Environmental Intelligence <ChevronRight size={14} />
-            </>
-          )}
-        </button>
-      </form>
-
-      <p
-        style={{
-          marginTop: "1.75rem",
-          fontSize: "0.8125rem",
-          color: "rgba(255,255,255,0.3)",
-          textAlign: "center",
-        }}
-      >
-        New to GreenGuard?{" "}
-        <Link to="/signup" style={{ color: accent, textDecoration: "none" }} className="gg-link">
-          Request access
-        </Link>
-      </p>
-    </div>
-  );
-
-  // ── Forgot step 1: email ────────────────────────────────────────────────────
-
-  const FpEmailView = (
-    <div style={formWrapStyle}>
-      <div className="gg-mobile-logo" style={{ marginBottom: "2rem" }}>
-        <Link
-          to="/"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.625rem",
-            textDecoration: "none",
-            color: "inherit",
-          }}
-        >
-          <div
-            style={{
-              width: "2rem",
-              height: "2rem",
-              borderRadius: "0.5rem",
-              background: `linear-gradient(135deg, ${accent} 0%, ${accent}bb 100%)`,
-              display: "grid",
-              placeItems: "center",
-            }}
-          >
-            <Shield size={15} color="#fff" />
-          </div>
-          <span style={{ fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "-0.01em" }}>
-            GreenGuard AI
-          </span>
-        </Link>
-      </div>
-
-      <BackBtn onClick={resetFp} />
-
-      <h1
-        style={{
-          fontSize: "1.375rem",
-          fontWeight: 600,
-          letterSpacing: "-0.025em",
-          color: "rgba(255,255,255,0.95)",
-          margin: "0 0 0.25rem",
-        }}
-      >
-        Reset your password
-      </h1>
-      <p style={{ fontSize: "0.8125rem", color: "rgba(255,255,255,0.32)", margin: "0 0 1.5rem" }}>
-        Enter your account email and we'll send a link to reset your password.
-      </p>
-
-      {errorBox(fpError)}
-
-      <form
-        onSubmit={handleFpEmailSubmit}
-        noValidate
-        style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
-      >
-        <div>
-          <label
-            htmlFor="gg-fp-email"
-            style={{
-              display: "block",
-              fontSize: "0.6875rem",
-              fontWeight: 500,
-              color: "rgba(255,255,255,0.42)",
-              letterSpacing: "0.07em",
-              textTransform: "uppercase",
-              marginBottom: "0.5rem",
-            }}
-          >
-            Email address
-          </label>
-          <input
-            id="gg-fp-email"
-            type="email"
-            autoComplete="email"
-            placeholder="you@city.gov"
-            value={fpEmail}
-            onChange={(e) => setFpEmail(e.target.value)}
-            onFocus={() => setFpEmailFocus(true)}
-            onBlur={() => setFpEmailFocus(false)}
-            style={inputStyle(fpEmailFocus)}
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={fpLoading}
-          style={submitBtnStyle(fpLoading)}
-          className={fpLoading ? "" : "gg-btn-hover"}
-        >
-          {fpLoading ? (
-            <>
-              <Loader2 size={14} style={{ animation: "gg-spin 0.85s linear infinite" }} />
-              Sending…
-            </>
-          ) : (
-            <>
-              Send reset link <ChevronRight size={14} />
-            </>
-          )}
-        </button>
-      </form>
-    </div>
-  );
-
-  // ── Forgot done ──────────────────────────────────────────────────────────────
-  // The actual password change happens on /reset-password once the person
-  // clicks the link emailed to them — this screen only confirms the email
-  // was sent.
-
-  const FpDoneView = (
-    <div style={formWrapStyle}>
-      <div className="gg-mobile-logo" style={{ marginBottom: "2rem" }}>
-        <Link
-          to="/"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.625rem",
-            textDecoration: "none",
-            color: "inherit",
-          }}
-        >
-          <div
-            style={{
-              width: "2rem",
-              height: "2rem",
-              borderRadius: "0.5rem",
-              background: `linear-gradient(135deg, ${accent} 0%, ${accent}bb 100%)`,
-              display: "grid",
-              placeItems: "center",
-            }}
-          >
-            <Shield size={15} color="#fff" />
-          </div>
-          <span style={{ fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "-0.01em" }}>
-            GreenGuard AI
-          </span>
-        </Link>
-      </div>
-
-      <div
-        style={{
-          width: "3rem",
-          height: "3rem",
-          borderRadius: "50%",
-          background: `${accent}18`,
-          border: `1px solid ${accent}35`,
-          display: "grid",
-          placeItems: "center",
-          marginBottom: "1.5rem",
-          boxShadow: `0 0 20px ${accent}20`,
-        }}
-      >
-        <CheckCircle2 size={22} color={accent} />
-      </div>
-
-      <h1
-        style={{
-          fontSize: "1.375rem",
-          fontWeight: 600,
-          letterSpacing: "-0.025em",
-          color: "rgba(255,255,255,0.95)",
-          margin: "0 0 0.25rem",
-        }}
-      >
-        Check your inbox
-      </h1>
-      <p style={{ fontSize: "0.8125rem", color: "rgba(255,255,255,0.32)", margin: "0 0 1.75rem" }}>
-        If <span style={{ color: "rgba(255,255,255,0.65)" }}>{fpEmail}</span> is registered, a reset
-        link is on its way. It expires in 1 hour — check spam if you don't see it.
-      </p>
-
-      <button
-        type="button"
-        onClick={resetFp}
-        style={{ ...submitBtnStyle(false), cursor: "pointer" }}
-        className="gg-btn-hover"
-      >
-        Back to sign in
-      </button>
-    </div>
-  );
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  const activeView = {
-    login: LoginView,
-    "fp-email": FpEmailView,
-    "fp-done": FpDoneView,
-  }[view];
+  const activeView = { login: "login", "fp-email": "fp-email", "fp-done": "fp-done" }[view];
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;1,14..32,400&family=Space+Grotesk:wght@500;600&display=swap');
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        .gg-root {
+        .gg2-root {
           min-height: 100vh;
-          display: grid;
-          grid-template-columns: 1fr;
-          background: #08090E;
+          display: flex;
+          background: #0A0C12;
           color: rgba(255,255,255,0.88);
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          font-size: 14px;
+          line-height: 1.5;
         }
 
+        /* Left image panel — hidden on mobile */
+        .gg2-visual {
+          display: none;
+          position: relative;
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+
+        /* Right form panel */
+        .gg2-form-col {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 100vh;
+          overflow-y: auto;
+        }
+
+        .gg2-form-center {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 2rem 1.5rem;
+        }
+
+        .gg2-form-wrap {
+          width: 100%;
+          max-width: 22rem;
+        }
+
+        /* Role selector */
+        .gg2-role-bar {
+          display: flex;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 0.625rem;
+          padding: 3px;
+          gap: 2px;
+          margin-bottom: 2rem;
+        }
+
+        .gg2-role-btn {
+          flex: 1;
+          padding: 0.4375rem 0.25rem;
+          border: none;
+          border-radius: 0.4375rem;
+          cursor: pointer;
+          font-size: 0.8125rem;
+          font-weight: 500;
+          letter-spacing: 0.005em;
+          font-family: inherit;
+          transition: background 0.18s ease, color 0.18s ease;
+          white-space: nowrap;
+          background: transparent;
+          color: rgba(255,255,255,0.35);
+        }
+
+        .gg2-role-btn[aria-selected="true"] {
+          background: rgba(255,255,255,0.09);
+          color: rgba(255,255,255,0.92);
+          font-weight: 600;
+        }
+
+        .gg2-role-btn:focus-visible {
+          outline: 2px solid rgba(255,255,255,0.4);
+          outline-offset: -1px;
+        }
+
+        /* Inputs */
+        .gg2-input {
+          width: 100%;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 0.5rem;
+          padding: 0.6875rem 0.875rem;
+          font-size: 0.875rem;
+          color: rgba(255,255,255,0.9);
+          outline: none;
+          font-family: inherit;
+          transition: border-color 0.15s, box-shadow 0.15s;
+          box-sizing: border-box;
+        }
+
+        .gg2-input:focus {
+          border-color: rgba(255,255,255,0.3);
+          box-shadow: 0 0 0 3px rgba(255,255,255,0.05);
+        }
+
+        .gg2-input--error {
+          border-color: rgba(239,68,68,0.45);
+          box-shadow: 0 0 0 3px rgba(239,68,68,0.07);
+        }
+
+        .gg2-input::placeholder { color: rgba(255,255,255,0.18); }
+
+        .gg2-input:-webkit-autofill,
+        .gg2-input:-webkit-autofill:hover,
+        .gg2-input:-webkit-autofill:focus {
+          -webkit-box-shadow: 0 0 0 1000px #131620 inset !important;
+          -webkit-text-fill-color: rgba(255,255,255,0.9) !important;
+          caret-color: rgba(255,255,255,0.9);
+        }
+
+        /* CTA button */
+        .gg2-cta {
+          width: 100%;
+          border: none;
+          border-radius: 0.5rem;
+          padding: 0.75rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          letter-spacing: 0.01em;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          font-family: inherit;
+          transition: opacity 0.15s, transform 0.12s;
+          background: #fff;
+          color: #0A0C12;
+        }
+
+        .gg2-cta:not(:disabled):hover {
+          opacity: 0.88;
+          transform: translateY(-1px);
+        }
+
+        .gg2-cta:not(:disabled):active { transform: translateY(0); }
+
+        .gg2-cta:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+        }
+
+        /* Ghost button (forgot password back) */
+        .gg2-ghost-btn {
+          background: rgba(255,255,255,0.05);
+          color: rgba(255,255,255,0.75);
+          border: 1px solid rgba(255,255,255,0.09);
+        }
+        .gg2-ghost-btn:not(:disabled):hover {
+          background: rgba(255,255,255,0.08);
+          opacity: 1;
+        }
+
+        /* Inline links */
+        .gg2-link {
+          background: none;
+          border: none;
+          padding: 0;
+          font-family: inherit;
+          font-size: inherit;
+          cursor: pointer;
+          color: rgba(255,255,255,0.55);
+          text-decoration: underline;
+          text-underline-offset: 2px;
+          text-decoration-color: rgba(255,255,255,0.2);
+          transition: color 0.15s;
+        }
+
+        .gg2-link:hover { color: rgba(255,255,255,0.85); }
+        .gg2-link:focus-visible {
+          outline: 2px solid rgba(255,255,255,0.3);
+          outline-offset: 2px;
+          border-radius: 2px;
+        }
+
+        /* Label */
+        .gg2-label {
+          display: block;
+          font-size: 0.75rem;
+          font-weight: 500;
+          color: rgba(255,255,255,0.45);
+          letter-spacing: 0.03em;
+          margin-bottom: 0.4375rem;
+        }
+
+        /* Back button */
+        .gg2-back {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.375rem;
+          background: none;
+          border: none;
+          color: rgba(255,255,255,0.38);
+          font-size: 0.8125rem;
+          cursor: pointer;
+          padding: 0;
+          font-family: inherit;
+          transition: color 0.15s;
+          margin-bottom: 1.75rem;
+        }
+
+        .gg2-back:hover { color: rgba(255,255,255,0.7); }
+
+        .gg2-back:focus-visible {
+          outline: 2px solid rgba(255,255,255,0.3);
+          outline-offset: 2px;
+          border-radius: 2px;
+        }
+
+        /* Error / info alert */
+        .gg2-alert {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.5rem;
+          border-radius: 0.5rem;
+          padding: 0.625rem 0.875rem;
+          font-size: 0.8125rem;
+          line-height: 1.5;
+          margin-bottom: 1rem;
+        }
+
+        .gg2-alert--error {
+          border: 1px solid rgba(239,68,68,0.22);
+          background: rgba(239,68,68,0.07);
+          color: rgb(252,165,165);
+        }
+
+        .gg2-alert--info {
+          border: 1px solid rgba(255,255,255,0.08);
+          background: rgba(255,255,255,0.04);
+          color: rgba(255,255,255,0.48);
+        }
+
+        /* Eye toggle */
+        .gg2-eye {
+          position: absolute;
+          right: 0.75rem;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: rgba(255,255,255,0.28);
+          padding: 0.25rem;
+          display: flex;
+          align-items: center;
+          transition: color 0.15s;
+        }
+
+        .gg2-eye:hover { color: rgba(255,255,255,0.6); }
+
+        .gg2-eye:focus-visible {
+          outline: 2px solid rgba(255,255,255,0.3);
+          outline-offset: 1px;
+          border-radius: 3px;
+        }
+
+        /* Mobile header logo */
+        .gg2-mobile-brand {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 1.25rem 1.5rem;
+          border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* Forgot password inline link styling */
+        .gg2-fp-link {
+          background: none;
+          border: none;
+          padding: 0;
+          font-family: inherit;
+          font-size: 0.8125rem;
+          cursor: pointer;
+          color: rgba(255,255,255,0.38);
+          transition: color 0.15s;
+        }
+
+        .gg2-fp-link:hover { color: rgba(255,255,255,0.7); }
+
+        /* Turnstile wrapper */
+        .gg2-turnstile-wrap {
+          display: flex;
+          justify-content: center;
+          overflow: hidden;
+        }
+
+        /* Form field group */
+        .gg2-field { display: flex; flex-direction: column; gap: 0; }
+
+        /* Section divider text */
+        .gg2-divider {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin: 0.25rem 0;
+          font-size: 0.6875rem;
+          color: rgba(255,255,255,0.18);
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+        .gg2-divider::before,
+        .gg2-divider::after {
+          content: "";
+          flex: 1;
+          height: 1px;
+          background: rgba(255,255,255,0.07);
+        }
+
+        /* ─── DESKTOP layout ─────────────────────────────────────────── */
         @media (min-width: 1024px) {
-          .gg-root { grid-template-columns: 1fr 1fr; }
-          .gg-left { display: flex !important; }
-          .gg-mobile-logo { display: none !important; }
+          .gg2-root { flex-direction: row; }
+
+          .gg2-visual {
+            display: block;
+            width: 42%;
+            min-width: 380px;
+            max-width: 560px;
+          }
+
+          .gg2-mobile-brand { display: none; }
+
+          .gg2-form-center { padding: 3rem 3rem; }
         }
 
-        @keyframes gg-pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.35; }
+        @media (min-width: 1280px) {
+          .gg2-visual { width: 44%; }
+          .gg2-form-center { padding: 3.5rem 4rem; }
         }
 
-        @keyframes gg-spin {
+        /* ─── Animations ─────────────────────────────────────────────── */
+        @keyframes gg2-spin {
           to { transform: rotate(360deg); }
         }
 
-        .gg-btn-hover:hover {
-          opacity: 0.86 !important;
-          transform: translateY(-1px);
+        @keyframes gg2-fadein {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .gg-btn-hover:active { transform: translateY(0); }
 
-        .gg-back-btn:hover { color: rgba(255,255,255,0.7) !important; }
-        .gg-eye:hover { color: rgba(255,255,255,0.65) !important; }
-        .gg-fp-link:hover { opacity: 0.75; }
-        .gg-link:hover { opacity: 0.8; }
-
-        input::placeholder { color: rgba(255,255,255,0.18); }
-
-        input:-webkit-autofill,
-        input:-webkit-autofill:hover,
-        input:-webkit-autofill:focus {
-          -webkit-box-shadow: 0 0 0 1000px #0d1117 inset !important;
-          -webkit-text-fill-color: rgba(255,255,255,0.9) !important;
-          caret-color: rgba(255,255,255,0.9);
+        .gg2-view-enter {
+          animation: gg2-fadein 0.22s ease forwards;
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -1294,18 +553,553 @@ function LoginPage() {
         }
       `}</style>
 
-      <div className="gg-root">
-        {LeftPanel}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "2rem 1.25rem",
-            minHeight: "100vh",
-          }}
-        >
-          {activeView}
+      <div className="gg2-root">
+        {/* ── Left: Environmental photograph ─────────────────────────── */}
+        <div className="gg2-visual" aria-hidden="true">
+          {/* Photograph */}
+          <img
+            src={LOGIN_HERO_IMAGE.imageUrl}
+            alt={LOGIN_HERO_IMAGE.imageAlt}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center",
+            }}
+            draggable={false}
+          />
+
+          {/* Gradient overlays — allow photo to breathe while keeping text legible */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: `
+                linear-gradient(
+                  180deg,
+                  rgba(10,12,18,0.72) 0%,
+                  rgba(10,12,18,0.28) 38%,
+                  rgba(10,12,18,0.38) 68%,
+                  rgba(10,12,18,0.88) 100%
+                )
+              `,
+            }}
+          />
+
+          {/* Content over the photo */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              padding: "2rem",
+            }}
+          >
+            {/* Brand mark */}
+            <Link
+              to="/"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.625rem",
+                textDecoration: "none",
+                color: "inherit",
+              }}
+            >
+              <div
+                style={{
+                  width: "2.125rem",
+                  height: "2.125rem",
+                  borderRadius: "0.5rem",
+                  background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+                  display: "grid",
+                  placeItems: "center",
+                  flexShrink: 0,
+                  boxShadow: "0 0 16px rgba(34,197,94,0.35)",
+                }}
+              >
+                <Shield size={14} color="#fff" strokeWidth={2.25} />
+              </div>
+              <span
+                style={{
+                  fontFamily: "'Space Grotesk', system-ui, sans-serif",
+                  fontSize: "0.9375rem",
+                  fontWeight: 600,
+                  letterSpacing: "-0.01em",
+                  color: "rgba(255,255,255,0.95)",
+                }}
+              >
+                GreenGuard AI
+              </span>
+            </Link>
+
+            {/* Bottom identity */}
+            <div>
+              <p
+                style={{
+                  fontSize: "0.6875rem",
+                  fontWeight: 500,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.38)",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                Intelligent Environmental Platform
+              </p>
+              <p
+                style={{
+                  fontFamily: "'Space Grotesk', system-ui, sans-serif",
+                  fontSize: "clamp(1.375rem, 2.2vw, 1.875rem)",
+                  fontWeight: 600,
+                  letterSpacing: "-0.025em",
+                  lineHeight: 1.18,
+                  color: "rgba(255,255,255,0.92)",
+                  maxWidth: "18rem",
+                }}
+              >
+                Environmental intelligence for cities that care.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Right: Form column ───────────────────────────────────────── */}
+        <div className="gg2-form-col">
+          {/* Mobile-only top header */}
+          <div className="gg2-mobile-brand">
+            <Link
+              to="/"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                textDecoration: "none",
+                color: "inherit",
+              }}
+            >
+              <div
+                style={{
+                  width: "1.875rem",
+                  height: "1.875rem",
+                  borderRadius: "0.4375rem",
+                  background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+                  display: "grid",
+                  placeItems: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Shield size={13} color="#fff" strokeWidth={2.25} />
+              </div>
+              <span
+                style={{
+                  fontFamily: "'Space Grotesk', system-ui, sans-serif",
+                  fontSize: "0.9375rem",
+                  fontWeight: 600,
+                  letterSpacing: "-0.01em",
+                  color: "rgba(255,255,255,0.92)",
+                }}
+              >
+                GreenGuard AI
+              </span>
+            </Link>
+          </div>
+
+          <div className="gg2-form-center">
+            <div className="gg2-form-wrap gg2-view-enter" key={activeView}>
+
+              {/* ── Login view ─────────────────────────────────────────── */}
+              {view === "login" && (
+                <>
+                  {/* Role selector */}
+                  <div
+                    role="tablist"
+                    aria-label="Select your account type"
+                    className="gg2-role-bar"
+                  >
+                    {(["citizen", "authority", "admin"] as Role[]).map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        role="tab"
+                        aria-selected={role === r}
+                        className="gg2-role-btn"
+                        onClick={() => {
+                          setRole(r);
+                          setError("");
+                        }}
+                      >
+                        {ROLES[r].label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Heading */}
+                  <h1
+                    style={{
+                      fontFamily: "'Space Grotesk', system-ui, sans-serif",
+                      fontSize: "1.5rem",
+                      fontWeight: 600,
+                      letterSpacing: "-0.025em",
+                      color: "rgba(255,255,255,0.96)",
+                      marginBottom: "0.3125rem",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {rc.heading}
+                  </h1>
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "rgba(255,255,255,0.38)",
+                      marginBottom: "1.75rem",
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    {rc.subtext}
+                  </p>
+
+                  {/* Authority note */}
+                  {rc.showApprovalNote && (
+                    <div className="gg2-alert gg2-alert--info" style={{ marginBottom: "1.25rem" }}>
+                      <AlertCircle
+                        size={13}
+                        style={{ flexShrink: 0, marginTop: "1px", color: "rgba(255,255,255,0.38)" }}
+                      />
+                      <span>Authority accounts require administrator approval before first sign-in.</span>
+                    </div>
+                  )}
+
+                  {/* Error */}
+                  {error && (
+                    <div role="alert" className="gg2-alert gg2-alert--error">
+                      <AlertCircle size={13} style={{ flexShrink: 0, marginTop: "2px" }} />
+                      <span>{error}</span>
+                    </div>
+                  )}
+
+                  <form
+                    onSubmit={handleSubmit}
+                    noValidate
+                    style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+                  >
+                    {/* Email */}
+                    <div className="gg2-field">
+                      <label htmlFor="gg2-email" className="gg2-label">
+                        Email address
+                      </label>
+                      <input
+                        id="gg2-email"
+                        type="email"
+                        autoComplete="email"
+                        placeholder="you@organisation.gov"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        onFocus={() => setEmailFocus(true)}
+                        onBlur={() => setEmailFocus(false)}
+                        className={`gg2-input${emailFocus ? "" : ""}${error && !email ? " gg2-input--error" : ""}`}
+                        aria-describedby={error ? "gg2-form-error" : undefined}
+                      />
+                    </div>
+
+                    {/* Password */}
+                    <div className="gg2-field">
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          marginBottom: "0.4375rem",
+                        }}
+                      >
+                        <label htmlFor="gg2-pw" className="gg2-label" style={{ marginBottom: 0 }}>
+                          Password
+                        </label>
+                        <button
+                          type="button"
+                          className="gg2-fp-link"
+                          onClick={() => {
+                            setFpEmail(email);
+                            setFpError("");
+                            setView("fp-email");
+                          }}
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
+                      <div style={{ position: "relative" }}>
+                        <input
+                          id="gg2-pw"
+                          type={showPw ? "text" : "password"}
+                          autoComplete="current-password"
+                          placeholder="••••••••••"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          onFocus={() => setPwFocus(true)}
+                          onBlur={() => setPwFocus(false)}
+                          className={`gg2-input${pwFocus ? "" : ""}${error && !password ? " gg2-input--error" : ""}`}
+                          style={{ paddingRight: "2.75rem" }}
+                        />
+                        <button
+                          type="button"
+                          className="gg2-eye"
+                          onClick={() => setShowPw((v) => !v)}
+                          aria-label={showPw ? "Hide password" : "Show password"}
+                        >
+                          {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Turnstile */}
+                    <div className="gg2-turnstile-wrap">
+                      <TurnstileWidget
+                        ref={turnstileRef}
+                        theme="dark"
+                        onSuccess={(token) => {
+                          setTurnstileToken(token);
+                          setError((prev) =>
+                            prev === "Please complete the security verification to continue."
+                              ? ""
+                              : prev,
+                          );
+                        }}
+                        onError={() => {
+                          setTurnstileToken("");
+                          setError("Security verification failed. Please try again.");
+                        }}
+                        onExpire={() => {
+                          setTurnstileToken("");
+                        }}
+                      />
+                    </div>
+
+                    {/* Submit */}
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="gg2-cta"
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2
+                            size={14}
+                            style={{ animation: "gg2-spin 0.85s linear infinite", flexShrink: 0 }}
+                          />
+                          Signing in…
+                        </>
+                      ) : (
+                        <>
+                          Sign In
+                          <ArrowRight size={14} />
+                        </>
+                      )}
+                    </button>
+                  </form>
+
+                  {/* Footer link */}
+                  <p
+                    style={{
+                      marginTop: "1.5rem",
+                      fontSize: "0.8125rem",
+                      color: "rgba(255,255,255,0.28)",
+                      textAlign: "center",
+                    }}
+                  >
+                    New to GreenGuard?{" "}
+                    <Link
+                      to="/signup"
+                      style={{ color: "rgba(255,255,255,0.55)", textDecoration: "underline", textUnderlineOffset: "2px", textDecorationColor: "rgba(255,255,255,0.22)" }}
+                      className="gg2-link"
+                    >
+                      Request access
+                    </Link>
+                  </p>
+                </>
+              )}
+
+              {/* ── Forgot password: email step ─────────────────────────── */}
+              {view === "fp-email" && (
+                <>
+                  <button type="button" className="gg2-back" onClick={resetFp}>
+                    <ArrowLeft size={13} /> Back to sign in
+                  </button>
+
+                  <h1
+                    style={{
+                      fontFamily: "'Space Grotesk', system-ui, sans-serif",
+                      fontSize: "1.5rem",
+                      fontWeight: 600,
+                      letterSpacing: "-0.025em",
+                      color: "rgba(255,255,255,0.96)",
+                      marginBottom: "0.3125rem",
+                    }}
+                  >
+                    Reset your password
+                  </h1>
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "rgba(255,255,255,0.38)",
+                      marginBottom: "1.75rem",
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    Enter your account email and we'll send a link to reset your password.
+                  </p>
+
+                  {fpError && (
+                    <div role="alert" className="gg2-alert gg2-alert--error">
+                      <AlertCircle size={13} style={{ flexShrink: 0, marginTop: "2px" }} />
+                      <span>{fpError}</span>
+                    </div>
+                  )}
+
+                  <form
+                    onSubmit={handleFpEmailSubmit}
+                    noValidate
+                    style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+                  >
+                    <div className="gg2-field">
+                      <label htmlFor="gg2-fp-email" className="gg2-label">
+                        Email address
+                      </label>
+                      <input
+                        id="gg2-fp-email"
+                        type="email"
+                        autoComplete="email"
+                        placeholder="you@organisation.gov"
+                        value={fpEmail}
+                        onChange={(e) => setFpEmail(e.target.value)}
+                        onFocus={() => setFpEmailFocus(true)}
+                        onBlur={() => setFpEmailFocus(false)}
+                        className={`gg2-input${fpEmailFocus ? "" : ""}`}
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={fpLoading}
+                      className="gg2-cta"
+                    >
+                      {fpLoading ? (
+                        <>
+                          <Loader2
+                            size={14}
+                            style={{ animation: "gg2-spin 0.85s linear infinite", flexShrink: 0 }}
+                          />
+                          Sending…
+                        </>
+                      ) : (
+                        <>
+                          Send reset link
+                          <ArrowRight size={14} />
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </>
+              )}
+
+              {/* ── Forgot password: done step ─────────────────────────── */}
+              {view === "fp-done" && (
+                <>
+                  {/* Success icon */}
+                  <div
+                    style={{
+                      width: "3rem",
+                      height: "3rem",
+                      borderRadius: "50%",
+                      background: "rgba(34,197,94,0.1)",
+                      border: "1px solid rgba(34,197,94,0.22)",
+                      display: "grid",
+                      placeItems: "center",
+                      marginBottom: "1.5rem",
+                    }}
+                  >
+                    <CheckCircle2 size={22} color="#22c55e" />
+                  </div>
+
+                  <h1
+                    style={{
+                      fontFamily: "'Space Grotesk', system-ui, sans-serif",
+                      fontSize: "1.5rem",
+                      fontWeight: 600,
+                      letterSpacing: "-0.025em",
+                      color: "rgba(255,255,255,0.96)",
+                      marginBottom: "0.3125rem",
+                    }}
+                  >
+                    Check your inbox
+                  </h1>
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "rgba(255,255,255,0.38)",
+                      marginBottom: "1.75rem",
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    If{" "}
+                    <span style={{ color: "rgba(255,255,255,0.65)" }}>{fpEmail}</span>{" "}
+                    is registered, a reset link is on its way. It expires in 1 hour — check spam if
+                    you don't see it.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={resetFp}
+                    className="gg2-cta gg2-ghost-btn"
+                  >
+                    Back to sign in
+                  </button>
+                </>
+              )}
+
+            </div>
+          </div>
+
+          {/* Form footer */}
+          <div
+            style={{
+              padding: "1rem 1.5rem",
+              borderTop: "1px solid rgba(255,255,255,0.05)",
+              display: "flex",
+              alignItems: "center",
+              gap: "1rem",
+              flexWrap: "wrap",
+            }}
+          >
+            <span style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.2)", flex: 1 }}>
+              © 2025 GreenGuard AI
+            </span>
+            <Link
+              to="/privacy"
+              style={{
+                fontSize: "0.6875rem",
+                color: "rgba(255,255,255,0.22)",
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Privacy
+            </Link>
+            <Link
+              to="/terms"
+              style={{
+                fontSize: "0.6875rem",
+                color: "rgba(255,255,255,0.22)",
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Terms
+            </Link>
+          </div>
         </div>
       </div>
     </>

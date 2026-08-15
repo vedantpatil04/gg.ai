@@ -1,0 +1,63 @@
+{
+  "title": "ನೀತಿ ಸಿಮ್ಯುಲೇಟರ್",
+  "subtitle": "ಪರಿಸರ ನೀತಿಗಳ ಮಾದರಿ ಮಾಡಿ।",
+  "levers": "ನೀತಿ ಲಿವರ್‌ಗಳು",
+  "groups": {
+    "transport": "ಸಾರಿಗೆ",
+    "environment": "ಪರಿಸರ",
+    "energy": "ಶಕ್ತಿ ಮತ್ತು ತ್ಯಾಜ್ಯ",
+    "industry": "ಉದ್ಯಮ"
+  },
+  "leverLabels": {
+    "ev": "EV ಅಳವಡಿಕೆ",
+    "traffic": "ಸಂಚಾರ ಕಡಿತ",
+    "publicTransport": "ಸಾರ್ವಜನಿಕ ಸಾರಿಗೆ ಬಳಕೆ",
+    "trees": "ಮರ ನಾಟಿ",
+    "greenArea": "ಹಸಿರು ಪ್ರದೇಶ ವಿಸ್ತರಣೆ",
+    "renewable": "ನವೀಕರಿಸಬಹುದಾದ ಶಕ್ತಿ ಅಳವಡಿಕೆ",
+    "wasteManagement": "ತ್ಯಾಜ್ಯ ನಿರ್ವಹಣೆ ದಕ್ಷತೆ",
+    "industry": "ಕೈಗಾರಿಕಾ ಬೆಳವಣಿಗೆ"
+  },
+  "results": {
+    "title": "ಅಂದಾಜು ಫಲಿತಾಂಶಗಳು",
+    "projectedAqi": "ಅಂದಾಜು AQI",
+    "aqiChange": "AQI ಬದಲಾವಣೆ",
+    "healthImpact": "ಆರೋಗ್ಯ ಪ್ರಭಾವ",
+    "ecoScore": "ಇಕೋ ಸ್ಕೋರ್",
+    "sustainability": "ಸ್ಥಿರತೆ",
+    "carbonReduction": "ಇಂಗಾಲ ಕಡಿತ",
+    "topContributor": "ಅಗ್ರ ಕೊಡುಗೆದಾರ"
+  },
+  "status": {
+    "recalculating": "ಮರುಲೆಕ್ಕ ಆಗುತ್ತಿದೆ...",
+    "ready": "ಸಿದ್ಧ",
+    "optimized": "ಅನುಕೂಲಿತ"
+  },
+  "aiAnalysis": {
+    "title": "AI ನೀತಿ ವಿಶ್ಲೇಷಣೆ",
+    "generate": "AI ವಿಶ್ಲೇಷಣೆ ರಚಿಸಿ",
+    "generating": "Gemini ನಿಂದ ವಿಶ್ಲೇಷಣೆ ಆಗುತ್ತಿದೆ...",
+    "stale": "ಲಿವರ್‌ಗಳು ಬದಲಾಗಿವೆ - ವಿಶ್ಲೇಷಣೆ ಮರು ಚಲಾಯಿಸಿ",
+    "unavailable": "AI ವಿಶ್ಲೇಷಣೆ ಲಭ್ಯವಿಲ್ಲ।",
+    "retry": "ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ",
+    "poweredBy": "Gemini ಚಾಲಿತ"
+  },
+  "presets": "ಸನ್ನಿವೇಶ ಪ್ರಿಸೆಟ್‌ಗಳು",
+  "reset": "ಆಧಾರ ರೇಖೆಗೆ ರೀಸೆಟ್ ಮಾಡಿ",
+  "export": "PDF ರಫ್ತು ಮಾಡಿ",
+  "bands": {
+    "excellent": "ಅತ್ಯುತ್ತಮ",
+    "good": "ಉತ್ತಮ",
+    "moderate": "ಮಧ್ಯಮ",
+    "poor": "ಕಳಪೆ",
+    "severe": "ತೀವ್ರ"
+  },
+  "baseline": "ಆಧಾರ ರೇಖೆ",
+  "simulation": "ಸಿಮ್ಯುಲೇಶನ್",
+  "verdict": {
+    "highlyRecommended": "ಅತ್ಯಂತ ಶಿಫಾರಸ್ ಮಾಡಲಾಗಿದೆ",
+    "recommended": "ಶಿಫಾರಸ್ ಮಾಡಲಾಗಿದೆ",
+    "moderateImpact": "ಮಧ್ಯಮ ಪ್ರಭಾವ",
+    "notRecommended": "ಶಿಫಾರಸ್ ಮಾಡಲಾಗಿಲ್ಲ"
+  }
+}

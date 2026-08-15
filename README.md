@@ -285,7 +285,7 @@ http://localhost:5000/api
 | GET    | `/reports/:id`   | Single report                                     |
 | POST   | `/reports`       | Generate report with AI summary (authority/admin) |
 
-### AI Copilot
+### GreenGuard Intelligence Center
 
 | Method | Endpoint                   | Description                     |
 | ------ | -------------------------- | ------------------------------- |
@@ -352,7 +352,7 @@ Every page works without the backend running. When the API is unreachable, the a
 
 ### AI Integration (Gemini)
 
-- **Copilot chat** — ask natural language questions about any city's air quality
+- **GreenGuard Intelligence Center chat** — ask natural language questions about any city's air quality
 - **Policy Simulator** — AI insight on your policy lever combination
 - **Report summaries** — auto-generated 3-sentence executive summaries
 - **Recommendations** — city-specific actionable suggestions

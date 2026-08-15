@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
+import { useTranslation } from "react-i18next";
 import { CitizenDashboard } from "./citizen-dashboard";
 import { CitizenComplaintList } from "./citizen-complaint-list";
 import { CitizenComplaintWorkspace } from "./citizen-complaint-workspace";
@@ -64,9 +65,17 @@ function TabBar({
   active: TabId;
   onChange: (t: TabId) => void;
 }) {
+  const { t } = useTranslation("citizen");
+  const tabs: Array<{ id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
+    { id: "dashboard", label: t("environmentalStatus"), icon: LayoutDashboard },
+    { id: "new", label: t("submitComplaint"), icon: PenLine },
+    { id: "history", label: t("myComplaints"), icon: FileText },
+    { id: "analytics", label: "Analytics", icon: BarChart3 },
+  ];
+
   return (
     <div className="flex items-center gap-0.5 p-1 bg-muted/50 rounded-2xl border border-border w-fit overflow-x-auto">
-      {TABS.map(({ id, label, icon: Icon }) => (
+      {tabs.map(({ id, label, icon: Icon }) => (
         <button
           key={id}
           onClick={() => onChange(id)}
@@ -88,13 +97,14 @@ function TabBar({
 // ─── New Complaint tab header ─────────────────────────────────────────────────
 
 function NewComplaintHeader({ onViewHistory }: { onViewHistory: () => void }) {
+  const { t } = useTranslation("citizen");
   return (
     <div className="flex items-start justify-between gap-4 flex-wrap">
       <div>
-        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Report</div>
-        <h2 className="text-xl font-semibold tracking-tight mt-0.5">Submit a New Complaint</h2>
+        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{t("title")}</div>
+        <h2 className="text-xl font-semibold tracking-tight mt-0.5">{t("complaints.new")}</h2>
         <p className="text-sm text-muted-foreground mt-0.5">
-          AI-powered reporting — describe the issue and let the assistant guide you.
+          {t("complaints.description")}
         </p>
       </div>
       <Button
@@ -103,7 +113,7 @@ function NewComplaintHeader({ onViewHistory }: { onViewHistory: () => void }) {
         className="text-xs shrink-0"
         onClick={onViewHistory}
       >
-        View My Complaints
+        {t("myComplaints")}
       </Button>
     </div>
   );
@@ -112,6 +122,7 @@ function NewComplaintHeader({ onViewHistory }: { onViewHistory: () => void }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function CitizenHubPage() {
+  const { t } = useTranslation("citizen");
   const { user, isAuthenticated } = useAuth();
   const [tab, setTab] = useState<TabId>("dashboard");
   const [openComplaintId, setOpenComplaintId] = useState<string | null>(null);
@@ -134,9 +145,9 @@ export function CitizenHubPage() {
       <div className="px-4 md:px-8 py-8 space-y-6 max-w-[1400px] mx-auto">
         <header>
           <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            Citizen Hub
+            {t("title")}
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight mt-1">Report. Track. Improve.</h1>
+          <h1 className="text-3xl font-semibold tracking-tight mt-1">{t("title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Help your city respond faster — every report becomes a signal.
           </p>
@@ -174,7 +185,7 @@ export function CitizenHubPage() {
   // Role guard
   if (user && user.role !== "citizen") {
     return (
-      <div className="px-4 md:px-8 py-8 max-w-[1400px] mx-auto">
+      <div className="px-4 md:px-8 py-8 w-full">
         <div className="glass rounded-2xl p-8 text-center space-y-3">
           <h2 className="text-lg font-semibold">This page is for citizens.</h2>
           <p className="text-sm text-muted-foreground">

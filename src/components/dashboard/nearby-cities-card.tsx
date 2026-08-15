@@ -164,7 +164,7 @@ function CityCard({
               background: `color-mix(in oklab, ${band.color} 14%, transparent)`,
               color: band.color,
             }}>
-            {band.shortLabel}
+            {(band as any).shortLabel ?? band.label}
           </div>
         </div>
         <div className={`flex items-center gap-0.5 text-[10px] font-medium ${trendColor}`}>

@@ -1,0 +1,49 @@
+{
+  "title": "रिपोर्ट केंद्र",
+  "subtitle": "लाइब्रेरी और विश्लेषण",
+  "description": "AI-जनित सारांश के साथ अनुपालन रिपोर्टिंग।",
+  "searchPlaceholder": "रिपोर्ट खोजें...",
+  "filter": "फिल्टर",
+  "aiReport": "AI रिपोर्ट",
+  "generate": "तैयार करें",
+  "generating": "Gemini से तैयार हो रहा है...",
+  "generated": "तैयार",
+  "download": "डाउनलोड",
+  "stats": {
+    "total": "कुल रिपोर्ट",
+    "monthly": "इस माह",
+    "compliance": "अनुपालन ऑडिट",
+    "citizenReports": "नागरिक रिपोर्ट"
+  },
+  "aiGenerator": {
+    "title": "AI रिपोर्ट जनरेटर",
+    "description": "Gemini पर्यावरण डेटा का विश्लेषण करके रिपोर्ट तैयार करेगा।",
+    "types": {
+      "daily": "दैनिक",
+      "weekly": "साप्ताहिक",
+      "monthly": "मासिक",
+      "city": "शहर",
+      "sustainability": "स्थिरता"
+    },
+    "generateButton": "{{type}} रिपोर्ट तैयार करें",
+    "backendRequired": "AI रिपोर्ट के लिए बैकएंड आवश्यक है",
+    "failed": "रिपोर्ट तैयार करने में विफल।"
+  },
+  "sections": {
+    "executiveSummary": "कार्यकारी सारांश",
+    "aqiAnalysis": "AQI विश्लेषण",
+    "waterQuality": "जल गुणवत्ता",
+    "riskAssessment": "जोखिम मूल्यांकन",
+    "keyFindings": "मुख्य निष्कर्ष",
+    "recommendations": "सिफारिशें",
+    "outlook": "दृष्टिकोण"
+  },
+  "reportList": "रिपोर्ट लाइब्रेरी",
+  "noReports": "कोई रिपोर्ट नहीं मिली।",
+  "backendOffline": "रिपोर्ट अनुपलब्ध।",
+  "type": "प्रकार",
+  "pages": "पृष्ठ",
+  "size": "आकार",
+  "date": "दिनांक",
+  "notAvailable": "उपलब्ध नहीं"
+}

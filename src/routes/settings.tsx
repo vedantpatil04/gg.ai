@@ -108,7 +108,7 @@ function SettingsPage() {
     <div className="min-h-full w-full">
       {/* ── Page header ── */}
       <div className="border-b border-border px-4 sm:px-6 md:px-8 pt-6 pb-4">
-        <div className="max-w-[1400px] mx-auto">
+        <div className="w-full">
           <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
             GreenGuard AI
           </div>
@@ -146,7 +146,7 @@ function SettingsPage() {
       </div>
 
       {/* ── Two-column layout ── */}
-      <div className="max-w-[1400px] mx-auto flex items-start gap-6 lg:gap-8 px-4 sm:px-6 md:px-8 py-6 md:py-8">
+      <div className="w-full flex items-start gap-6 lg:gap-8 px-4 sm:px-6 md:px-8 py-6 md:py-8">
         {/* Sidebar — desktop only */}
         <nav
           className="hidden md:flex flex-col gap-0.5 w-44 lg:w-52 shrink-0 sticky top-8"
@@ -181,7 +181,7 @@ function SettingsPage() {
         </nav>
 
         {/* Content panel */}
-        <main
+        <div
           className="flex-1 min-w-0"
           role="tabpanel"
           aria-label={t(`sections.${section}`, { defaultValue: t("title") })}
@@ -198,7 +198,7 @@ function SettingsPage() {
           {section === "accessibility" && <AccessibilityPreferencesPanel />}
           {section === "privacy" && <PrivacyPreferencesPanel />}
           {section === "about" && <AboutSection />}
-        </main>
+        </div>
       </div>
     </div>
   );

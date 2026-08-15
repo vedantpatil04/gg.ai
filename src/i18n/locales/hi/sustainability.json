@@ -1,0 +1,30 @@
+{
+  "title": "स्थिरता",
+  "subtitle": "{{city}} के लिए पर्यावरण प्रदर्शन अवलोकन।",
+  "overview": "पर्यावरण अवलोकन",
+  "currentConditions": "{{city}} में वर्तमान स्थितियां।",
+  "ecoScore": "इको स्कोर",
+  "grade": "श्रेणी",
+  "kpis": {
+    "aqi": "AQI",
+    "greenCover": "हरित आवरण",
+    "renewable": "नवीकरणीय ऊर्जा",
+    "water": "जल गुणवत्ता",
+    "waste": "अपशिष्ट विचलन"
+  },
+  "targets": {
+    "above": "वर्तमान {{target}} लक्ष्य से ऊपर",
+    "needsImprovement": "सुधार की आवश्यकता"
+  },
+  "aiSummary": "GreenGuard इंटेलिजेंस केंद्र",
+  "aiSummaryDesc": "{{city}} के पर्यावरण प्रदर्शन के बारे में GreenGuard से पूछें।",
+  "history": "ऐतिहासिक रुझान",
+  "ecoBreakdown": "इको स्कोर विवरण",
+  "loading": "स्थिरता डेटा लोड हो रहा है...",
+  "noData": "कोई स्थिरता डेटा उपलब्ध नहीं।",
+  "apiConnected": "लाइव डेटा",
+  "apiOffline": "ऑफलाइन डेटा",
+  "bandGood": "अच्छा",
+  "bandModerate": "मध्यम",
+  "bandCritical": "गंभीर"
+}

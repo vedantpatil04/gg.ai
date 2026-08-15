@@ -1,0 +1,31 @@
+{
+  "title": "अहवाल केंद्र",
+  "subtitle": "लायब्ररी आणि विश्लेषण",
+  "searchPlaceholder": "अहवाल शोधा...",
+  "filter": "फिल्टर",
+  "aiReport": "AI अहवाल",
+  "generate": "तयार करा",
+  "generating": "Gemini द्वारे तयार होत आहे...",
+  "generated": "तयार",
+  "download": "डाउनलोड",
+  "stats": {
+    "total": "एकूण अहवाल",
+    "monthly": "या महिन्यात",
+    "compliance": "अनुपालन लेखापरीक्षणे",
+    "citizenReports": "नागरिक अहवाल"
+  },
+  "sections": {
+    "executiveSummary": "कार्यकारी सारांश",
+    "aqiAnalysis": "AQI विश्लेषण",
+    "waterQuality": "पाण्याची गुणवत्ता",
+    "riskAssessment": "जोखीम मूल्यांकन",
+    "keyFindings": "प्रमुख निष्कर्ष",
+    "recommendations": "शिफारसी",
+    "outlook": "दृष्टीकोन"
+  },
+  "noReports": "कोणतेही अहवाल सापडले नाहीत।",
+  "reportList": "अहवाल लायब्ररी",
+  "type": "प्रकार",
+  "date": "दिनांक",
+  "notAvailable": "उपलब्ध नाही"
+}

@@ -30,7 +30,7 @@ function DayWeatherIcon({ condition, animated }: { condition: WeatherCondition; 
   const isPartly  = condition.includes("partly");
   const isRain    = condition.includes("rain") || condition === "thunderstorm";
   const isCloudy  = condition.includes("cloud") || condition === "overcast";
-  const isHaze    = condition === "haze" || condition === "smoke";
+  const isHaze    = (condition as string) === "haze" || (condition as string) === "smoke";
 
   return (
     <div className="relative size-12 flex items-center justify-center">

@@ -238,7 +238,7 @@ export function ForecastOverview({ className }: { className?: string }) {
             </div>
             <p className="text-sm text-muted-foreground max-w-lg leading-relaxed">
               {isAvailable && intelligence
-                ? `${intelligence.days ?? days.length}-day forecast for ${city.name}. Full hourly and long-range analysis in the Forecast Center.`
+                ? `${(intelligence as any).days ?? days.length}-day forecast for ${city.name}. Full hourly and long-range analysis in the Forecast Center.`
                 : `Forecast data for ${city.name} is temporarily limited. The Forecast Center may have additional or cached data.`}
             </p>
           </div>

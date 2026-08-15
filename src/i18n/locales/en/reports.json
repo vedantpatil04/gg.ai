@@ -1,0 +1,50 @@
+{
+  "title": "Reports Center",
+  "subtitle": "Library & analytics",
+  "description": "Compliance-ready environmental reporting with AI-generated summaries.",
+  "searchPlaceholder": "Search reports…",
+  "filter": "Filter",
+  "aiReport": "AI Report",
+  "generate": "Generate",
+  "generating": "Generating with Gemini…",
+  "generated": "Generated",
+  "download": "Download",
+  "stats": {
+    "total": "Total reports",
+    "monthly": "This month",
+    "compliance": "Compliance audits",
+    "citizenReports": "Citizen reports"
+  },
+  "aiGenerator": {
+    "title": "AI Report Generator",
+    "description": "Gemini will analyse current environmental data and generate a structured report.",
+    "types": {
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "city": "City",
+      "sustainability": "Sustainability"
+    },
+    "generateButton": "Generate {{type}} report",
+    "backendRequired": "Backend required for AI reports",
+    "failed": "Failed to generate report. Check backend connection."
+  },
+  "sections": {
+    "executiveSummary": "Executive summary",
+    "aqiAnalysis": "AQI analysis",
+    "waterQuality": "Water quality",
+    "riskAssessment": "Risk assessment",
+    "keyFindings": "Key findings",
+    "recommendations": "Recommendations",
+    "outlook": "Outlook"
+  },
+  "reportList": "Report Library",
+  "noReports": "No reports found.",
+  "noReportsSearch": "No reports match “{{query}}”",
+  "backendOffline": "Reports unavailable — backend offline.",
+  "type": "Type",
+  "pages": "pages",
+  "size": "size",
+  "date": "Date",
+  "notAvailable": "Not available"
+}

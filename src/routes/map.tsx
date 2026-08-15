@@ -34,6 +34,7 @@ import { AiCommandPanel } from "@/components/map/AiCommandPanel";
 import { DigitalTwinPanel } from "@/components/map/DigitalTwinPanel";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   Shield,
@@ -254,6 +255,7 @@ function TrendBadge({ direction, value }: { direction: "up" | "down" | "stable";
 const EMPTY_HISTORY: never[] = [];
 
 function MapPage() {
+  const { t } = useTranslation("map");
   const { city, isApiConnected, setCityId } = useCity();
 
   // ── Phase 10: Live geolocation ────────────────────────────────────────────
@@ -1847,7 +1849,7 @@ function MapPage() {
                         }}
                       >
                         <div className="flex items-center gap-1.5 text-primary text-[9px] uppercase tracking-[0.14em] mb-1.5">
-                          <Cpu className="size-3" /> GreenGuard Copilot
+                          <Cpu className="size-3" /> GreenGuard Intelligence Center
                         </div>
                         <div className="text-[10px] text-muted-foreground leading-relaxed">
                           {city.aqi > 150

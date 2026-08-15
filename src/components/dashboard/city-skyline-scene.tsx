@@ -516,9 +516,11 @@ function DefaultSkyline({ fill, hi }: { fill: string; hi: string }) {
   );
 }
 
+import type React from "react";
+
 // ─── City router ──────────────────────────────────────────────────────────────
 
-const CITY_MAP: Record<string, (props: { fill: string; hi: string }) => JSX.Element> = {
+const CITY_MAP: Record<string, (props: { fill: string; hi: string }) => React.ReactElement> = {
   dubai:     DubaiSkyline,
   newyork:   NewYorkSkyline,
   tokyo:     TokyoSkyline,

@@ -27,6 +27,13 @@ import type enAdministrator  from "./locales/en/administrator.json";
 import type enErrors         from "./locales/en/errors.json";
 import type enValidation     from "./locales/en/validation.json";
 import type enNotifications  from "./locales/en/notifications.json";
+import type enForecast       from "./locales/en/forecast.json";
+import type enCopilot        from "./locales/en/copilot.json";
+import type enMap            from "./locales/en/map.json";
+import type enReports        from "./locales/en/reports.json";
+import type enSimulator      from "./locales/en/simulator.json";
+import type enSustainability from "./locales/en/sustainability.json";
+import type enProfile        from "./locales/en/profile.json";
 
 export interface I18nResources {
   common:         typeof enCommon;
@@ -40,6 +47,13 @@ export interface I18nResources {
   errors:         typeof enErrors;
   validation:     typeof enValidation;
   notifications:  typeof enNotifications;
+  forecast:       typeof enForecast;
+  copilot:        typeof enCopilot;
+  map:            typeof enMap;
+  reports:        typeof enReports;
+  simulator:      typeof enSimulator;
+  sustainability: typeof enSustainability;
+  profile:        typeof enProfile;
 }
 
 // Augment the i18next module — activates TypeScript checking for all t() calls.

@@ -1,0 +1,31 @@
+{
+  "title": "ವರದಿ ಕೇಂದ್ರ",
+  "subtitle": "ಲೈಬ್ರರಿ ಮತ್ತು ವಿಶ್ಲೇಷಣೆ",
+  "searchPlaceholder": "ವರದಿಗಳನ್ನು ಹುಡುಕಿ...",
+  "filter": "ಫಿಲ್ಟರ್",
+  "aiReport": "AI ವರದಿ",
+  "generate": "ರಚಿಸಿ",
+  "generating": "Gemini ನಿಂದ ರಚಿಸಲಾಗುತ್ತಿದೆ...",
+  "generated": "ರಚಿಸಲಾಗಿದೆ",
+  "download": "ಡೌನ್‌ಲೋಡ್",
+  "stats": {
+    "total": "ಒಟ್ಟು ವರದಿಗಳು",
+    "monthly": "ಈ ತಿಂಗಳು",
+    "compliance": "ಅನುಸರಣೆ ಲೆಕ್ಕಪರಿಶೋಧನೆಗಳು",
+    "citizenReports": "ನಾಗರಿಕ ವರದಿಗಳು"
+  },
+  "sections": {
+    "executiveSummary": "ಕಾರ್ಯಕಾರಿ ಸಾರಾಂಶ",
+    "aqiAnalysis": "AQI ವಿಶ್ಲೇಷಣೆ",
+    "waterQuality": "ನೀರಿನ ಗುಣಮಟ್ಟ",
+    "riskAssessment": "ಅಪಾಯ ಮೌಲ್ಯಮಾಪನ",
+    "keyFindings": "ಪ್ರಮುಖ ಸಂಶೋಧನೆಗಳು",
+    "recommendations": "ಶಿಫಾರಸ್ಸುಗಳು",
+    "outlook": "ದೃಷ್ಟಿಕೋನ"
+  },
+  "noReports": "ಯಾವುದೇ ವರದಿಗಳು ಕಂಡುಬಂದಿಲ್ಲ।",
+  "reportList": "ವರದಿ ಲೈಬ್ರರಿ",
+  "type": "ಪ್ರಕಾರ",
+  "date": "ದಿನಾಂಕ",
+  "notAvailable": "ಲಭ್ಯವಿಲ್ಲ"
+}

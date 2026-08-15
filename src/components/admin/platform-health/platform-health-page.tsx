@@ -181,7 +181,7 @@ export function PlatformHealthPage() {
           status={aiStatus}
           description={
             health.data?.aiEnabled
-              ? "Powers AI copilot, insights, and executive summaries."
+              ? "Powers GreenGuard Intelligence Center, insights, and executive summaries."
               : "Gemini API key not configured — AI features are unavailable."
           }
           lastChecked={lastChecked}

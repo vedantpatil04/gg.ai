@@ -1,0 +1,31 @@
+{
+  "title": "प्रोफाइल",
+  "editProfile": "प्रोफाइल संपादित करा",
+  "personalInfo": "वैयक्तिक माहिती",
+  "firstName": "पहिले नाव",
+  "lastName": "आडनाव",
+  "email": "ईमेल",
+  "phone": "फोन",
+  "bio": "चरित्र",
+  "location": "स्थान",
+  "avatar": "प्रोफाइल फोटो",
+  "changeAvatar": "फोटो बदला",
+  "removeAvatar": "फोटो काढा",
+  "role": "भूमिका",
+  "save": "बदल जतन करा",
+  "saving": "जतन होत आहे...",
+  "saved": "प्रोफाइल जतन झाली",
+  "saveFailed": "प्रोफाइल जतन करता आली नाही।",
+  "cancel": "रद्द करा",
+  "activitySummary": "क्रियाकलाप सारांश",
+  "complaintsSubmitted": "दाखल तक्रारी",
+  "reportsViewed": "पाहिलेले अहवाल",
+  "alertsReceived": "प्राप्त इशारे",
+  "changePassword": "पासवर्ड बदला",
+  "deleteAccount": "खाते हटवा",
+  "roles": {
+    "citizen": "नागरिक",
+    "authority": "प्राधिकरण अधिकारी",
+    "administrator": "प्रशासक"
+  }
+}

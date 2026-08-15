@@ -23,7 +23,7 @@ const KB_TITLES = [
   "Understanding the AQI Dashboard",
   "How to Submit an Environmental Complaint",
   "Smart Maps and Layer Management",
-  "AI Copilot Usage Guide",
+  "GreenGuard Intelligence Center Usage Guide",
   "Two-Factor Authentication Setup",
   "Authority Command Center Overview",
   "Generating Environmental Reports",
@@ -41,12 +41,12 @@ const TUTORIAL_TITLES = [
   "Submitting Your First Complaint",
   "Reading Your Local AQI",
   "Command Center Fundamentals",
-  "AI Copilot: Your First Conversation",
+  "GreenGuard Intelligence Center: Your First Conversation",
   "Smart Maps: Complete Layer Guide",
   "Securing Your Account",
   "Sensor Network Deep Dive",
   "Configuring Alert Thresholds",
-  "Advanced AI Copilot Analysis",
+  "Advanced GreenGuard Intelligence Center Analysis",
 ];
 
 // ─── POST /api/help-ai/chat ───────────────────────────────────────────────────

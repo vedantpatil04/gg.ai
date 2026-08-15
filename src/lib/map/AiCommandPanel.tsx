@@ -603,7 +603,7 @@ export function AiCommandPanel({ city }: { city: City }) {
       {/* 7. Copilot mini-chat (reuses existing copilotApi.chat) */}
       <div>
         <div className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-1.5 mb-2.5">
-          <Brain className="size-3" /> AI Copilot
+          <Brain className="size-3" /> GreenGuard Intelligence Center
         </div>
         <CopilotMiniChat city={city} suggestedPrompts={data.suggestedPrompts} />
       </div>

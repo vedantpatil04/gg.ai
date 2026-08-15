@@ -36,7 +36,7 @@ function TermsPage() {
         <ul>
           <li>Do not attempt to access data outside your organisation's scope.</li>
           <li>Do not interfere with monitoring, alerting or forecast pipelines.</li>
-          <li>Do not use the AI Copilot to generate content that violates applicable law.</li>
+          <li>Do not use the GreenGuard Intelligence Center to generate content that violates applicable law.</li>
           <li>Citizen reports must be made in good faith and reflect genuine observations.</li>
         </ul>
 

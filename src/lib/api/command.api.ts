@@ -125,12 +125,67 @@ export interface ExecutiveReportData {
   generatedAt: string;
 }
 
+// ─── Authority Analytics (Phase 8) ───────────────────────────────────────────
+// Authority-scoped complaint/workload analytics — distinct from the
+// network-wide ComplaintIntelligenceData above.
+export interface AuthorityAnalyticsData {
+  scope: "assigned" | "all";
+  period: { days: number; since: string };
+  kpis: {
+    totalAssigned: number;
+    inProgress: number;
+    awaitingCitizenReview: number;
+    rework: number;
+    closed: number;
+    resolutionRate: number;
+    avgOpenCaseAgeHours?: number;
+  };
+  performance: {
+    avgAssignmentToInvestigationHours?: number;
+    avgInvestigationDurationHours?: number;
+    avgResolutionToClosureHours?: number;
+    avgOverallResolutionHours?: number;
+  };
+  byStatus: Array<{ status: string; count: number }>;
+  bySeverity: Array<{ severity: string; count: number }>;
+  byCategory: Array<{ issueType: string; count: number }>;
+  byAssignmentSource: Array<{ source: string; count: number }>;
+  byCity: Array<{
+    cityId: string;
+    total: number;
+    resolved: number;
+    pending: number;
+    critical: number;
+    resolutionRate: number;
+    aqi?: number;
+  }>;
+  rework: {
+    total: number;
+    percentage: number;
+    avgResolutionAttempts?: number;
+    byCategory: Array<{ issueType: string; count: number }>;
+  };
+  citizenReview: { awaiting: number; accepted: number; avgTurnaroundHours?: number };
+  trend: Array<{ date: string; submitted: number; resolved: number; closed: number; rework: number }>;
+  generatedAt: string;
+}
+
 export const commandApi = {
   // Executive Overview tab
   getExecutiveDashboard: () => client.get("/command/executive-dashboard").then((r) => r.data),
 
   // Complaint Intelligence tab
   getComplaintIntelligence: () => client.get("/command/complaint-intelligence").then((r) => r.data),
+
+  // Authority Analytics — "My Workload" tab (Phase 8)
+  getAuthorityAnalytics: (days: 7 | 30 | 90 = 30) =>
+    client.get("/command/authority-analytics", { params: { days } }).then((r) => r.data),
+
+  // Complaint Operations Report PDF export (Phase 8)
+  exportOperationsReportPdf: (days: 7 | 30 | 90 = 30) =>
+    client
+      .get("/command/export-operations-report-pdf", { params: { days }, responseType: "blob" })
+      .then((r) => r.data as Blob),
 
   // Trend Intelligence tab
   getTrendIntelligence: (granularity: "daily" | "weekly" | "monthly" = "daily") =>

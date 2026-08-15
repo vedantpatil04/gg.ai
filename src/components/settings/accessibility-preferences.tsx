@@ -93,7 +93,8 @@ export function AccessibilityPreferencesPanel() {
   } = useQuery({
     queryKey: ["accessibility-preferences"],
     queryFn: () => accessibilityApi.get().then((r) => r.data.accessibility),
-    staleTime: 15_000,
+    staleTime: 300_000,
+    refetchOnWindowFocus: false,
     throwOnError: false,
   });
 

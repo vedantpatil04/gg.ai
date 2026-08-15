@@ -1,35 +1,35 @@
 {
-  "title": "Citizen Portal",
-  "submitComplaint": "Submit a Complaint",
-  "myComplaints": "My Complaints",
-  "nearbyAlerts": "Nearby Alerts",
-  "environmentalStatus": "Environmental Status",
-  "noComplaints": "You haven’t submitted any complaints yet.",
+  "title": "ನಾಗರಿಕ ಪೋರ್ಟಲ್",
+  "submitComplaint": "ದೂರು ಸಲ್ಲಿಸಿ",
+  "myComplaints": "ನನ್ನ ದೂರುಗಳು",
+  "nearbyAlerts": "ಹತ್ತಿರದ ಎಚ್ಚರಿಕೆಗಳು",
+  "environmentalStatus": "ಪರಿಸರ ಸ್ಥಿತಿ",
+  "noComplaints": "ನೀವು ಇನ್ನೂ ಯಾವುದೇ ದೂರು ಸಲ್ಲಿಸಿಲ್ಲ।",
   "complaints": {
-    "title": "Submit Complaint",
-    "new": "New Complaint",
-    "category": "Category",
-    "description": "Description",
-    "location": "Location",
-    "attachments": "Attachments",
-    "submit": "Submit Complaint",
-    "success": "Your complaint has been submitted successfully.",
-    "trackingId": "Tracking ID",
+    "title": "ದೂರು ಸಲ್ಲಿಸಿ",
+    "new": "ಹೊಸ ದೂರು",
+    "category": "ವರ್ಗ",
+    "description": "ವಿವರಣೆ",
+    "location": "ಸ್ಥಳ",
+    "attachments": "ಲಗತ್ತುಗಳು",
+    "submit": "ದೂರು ಸಲ್ಲಿಸಿ",
+    "success": "ನಿಮ್ಮ ದೂರು ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ।",
+    "trackingId": "ಟ್ರ್ಯಾಕಿಂಗ್ ಐಡಿ",
     "status": {
-      "submitted": "Submitted",
-      "under_review": "Under Review",
-      "in_progress": "In Progress",
-      "resolved": "Resolved",
-      "rejected": "Rejected",
-      "closed": "Closed"
+      "submitted": "ಸಲ್ಲಿಸಲಾಗಿದೆ",
+      "under_review": "ಪರಿಶೀಲನೆಯಲ್ಲಿ",
+      "in_progress": "ಪ್ರಗತಿಯಲ್ಲಿ",
+      "resolved": "ಪರಿಹರಿಸಲಾಗಿದೆ",
+      "rejected": "ತಿರಸ್ಕರಿಸಲಾಗಿದೆ",
+      "closed": "ಮುಚ್ಚಲಾಗಿದೆ"
     }
   },
   "categories": {
-    "air": "Air Quality",
-    "water": "Water Pollution",
-    "noise": "Noise Pollution",
-    "waste": "Waste Management",
-    "soil": "Soil Contamination",
-    "other": "Other"
+    "air": "ವಾಯು ಗುಣಮಟ್ಟ",
+    "water": "ನೀರಿನ ಮಾಲಿನ್ಯ",
+    "noise": "ಶಬ್ದ ಮಾಲಿನ್ಯ",
+    "waste": "ತ್ಯಾಜ್ಯ ನಿರ್ವಹಣೆ",
+    "soil": "ಮಣ್ಣು ಮಾಲಿನ್ಯ",
+    "other": "ಇತರೆ"
   }
 }

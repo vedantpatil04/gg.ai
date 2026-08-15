@@ -31,7 +31,7 @@ const sections = [
   },
   {
     icon: Cpu,
-    t: "AI Copilot",
+    t: "GreenGuard Intelligence Center",
     d: "Prompt patterns, grounding strategy and confidence scoring.",
     to: "/copilot",
   },
@@ -88,8 +88,8 @@ function DocsPage() {
         </div>
         <p className="mt-2 text-sm text-muted-foreground max-w-2xl leading-relaxed">
           GreenGuard AI ingests time-series environmental data into a normalised event fabric, runs
-          anomaly detection and forecast models, and surfaces insights through the dashboard, AI
-          Copilot and alerting layer. Citizen reports and policy simulations enrich the same
+          anomaly detection and forecast models, and surfaces insights through the dashboard, GreenGuard
+          Intelligence Center and alerting layer. Citizen reports and policy simulations enrich the same
           underlying graph.
         </p>
         <pre className="mt-5 overflow-x-auto rounded-lg border border-border/60 bg-background p-4 text-[12px] font-mono leading-relaxed text-foreground/80">
@@ -105,7 +105,7 @@ function DocsPage() {
         │  anomaly · 72h horizon · grounding    │
         └────────────────┬──────────────────────┘
                          ▼
-   Dashboard · Copilot · Reports · Map · Simulator`}
+   Dashboard · Intelligence Center · Reports · Map · Simulator`}
         </pre>
       </div>
     </InfoPageShell>

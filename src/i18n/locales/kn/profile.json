@@ -1,0 +1,31 @@
+{
+  "title": "ಪ್ರೊಫೈಲ್",
+  "editProfile": "ಪ್ರೊಫೈಲ್ ಸಂಪಾದಿಸಿ",
+  "personalInfo": "ವೈಯಕ್ತಿಕ ಮಾಹಿತಿ",
+  "firstName": "ಮೊದಲ ಹೆಸರು",
+  "lastName": "ಕೊನೆಯ ಹೆಸರು",
+  "email": "ಇಮೇಲ್",
+  "phone": "ಫೋನ್",
+  "bio": "ಜೀವನ ಚರಿತ್ರೆ",
+  "location": "ಸ್ಥಳ",
+  "avatar": "ಪ್ರೊಫೈಲ್ ಫೋಟೋ",
+  "changeAvatar": "ಫೋಟೋ ಬದಲಾಯಿಸಿ",
+  "removeAvatar": "ಫೋಟೋ ತೆಗೆಯಿರಿ",
+  "role": "ಪಾತ್ರ",
+  "save": "ಬದಲಾವಣೆಗಳನ್ನು ಉಳಿಸಿ",
+  "saving": "ಉಳಿಸಲಾಗುತ್ತಿದೆ...",
+  "saved": "ಪ್ರೊಫೈಲ್ ಉಳಿಸಲಾಗಿದೆ",
+  "saveFailed": "ಪ್ರೊಫೈಲ್ ಉಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ।",
+  "cancel": "ರದ್ದುಮಾಡಿ",
+  "activitySummary": "ಚಟುವಟಿಕೆ ಸಾರಾಂಶ",
+  "complaintsSubmitted": "ಸಲ್ಲಿಸಿದ ದೂರುಗಳು",
+  "reportsViewed": "ವೀಕ್ಷಿಸಿದ ವರದಿಗಳು",
+  "alertsReceived": "ಪಡೆದ ಎಚ್ಚರಿಕೆಗಳು",
+  "changePassword": "ಪಾಸ್‌ವರ್ಡ್ ಬದಲಾಯಿಸಿ",
+  "deleteAccount": "ಖಾತೆ ಅಳಿಸಿ",
+  "roles": {
+    "citizen": "ನಾಗರಿಕ",
+    "authority": "ಪ್ರಾಧಿಕಾರ ಅಧಿಕಾರಿ",
+    "administrator": "ನಿರ್ವಾಹಕ"
+  }
+}

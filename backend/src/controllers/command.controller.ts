@@ -13,7 +13,7 @@ import {
   generateAuthorityActionPlan,
   generateExecutiveReport,
 } from "../services/gemini.service";
-import { buildCommandReportPdf } from "../services/commandPdfExport.service";
+import { buildCommandReportPdf, buildAuthorityOperationsReportPdf } from "../services/commandPdfExport.service";
 
 // ─── GET /api/command/executive-dashboard ────────────────────────────────────
 // Returns composite scorecards + alert/complaint aggregates for the Overview tab
@@ -202,6 +202,281 @@ export async function getComplaintIntelligence(
         generatedAt: new Date(),
       },
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ─── GET /api/command/authority-analytics ─────────────────────────────────────
+// Phase 8 — Authority-scoped complaint/workload analytics for the Analytics
+// tab's "My Workload" view. Unlike getComplaintIntelligence above (which is
+// intentionally network-wide for the separate, already-labeled network
+// Analytics view), this endpoint hard-scopes to the authenticated authority's
+// own assignedTo complaints — mirroring the exact same server-side scoping
+// rule already enforced in complaint.controller.ts's getComplaints (an
+// authority can never see another authority's queue; an administrator sees
+// the full network, matching their existing broader access elsewhere in
+// Command Center). Every figure below is derived from real Complaint
+// documents/timestamps/events — nothing is fabricated, and any metric whose
+// underlying event data doesn't exist for a given dataset is simply omitted
+// (undefined) rather than estimated.
+interface AuthorityAnalyticsComplaintLean {
+  _id: unknown;
+  status: string;
+  severity: string;
+  issueType: string;
+  cityId: string;
+  createdAt: Date;
+  assignedAt?: Date;
+  resolvedAt?: Date;
+  reworkCount?: number;
+  assignmentSource?: string;
+  events: Array<{ type: string; message: string; timestamp: Date }>;
+}
+
+function avgHours(pairs: Array<[number, number]>): number | undefined {
+  if (pairs.length === 0) return undefined;
+  const totalMs = pairs.reduce((sum, [from, to]) => sum + Math.max(0, to - from), 0);
+  return Math.round((totalMs / pairs.length / (1000 * 60 * 60)) * 10) / 10;
+}
+
+function findEventTime(
+  c: AuthorityAnalyticsComplaintLean,
+  type: string,
+  messageEquals?: string,
+): number | undefined {
+  const ev = c.events?.find((e) => e.type === type && (!messageEquals || e.message === messageEquals));
+  return ev ? new Date(ev.timestamp).getTime() : undefined;
+}
+
+const OPEN_STATUSES = ["pending", "in-progress", "rework", "awaiting_citizen_review", "resolved"];
+
+// Shared computation, reused by both the JSON endpoint (getAuthorityAnalytics)
+// and the PDF export (exportAuthorityOperationsReportPdf) so the two never
+// drift out of sync — one real-data source, two presentations.
+async function computeAuthorityAnalytics(req: AuthRequest, daysParam: unknown) {
+    const days = Math.min(90, Math.max(7, Number(daysParam) || 30));
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    // Same server-authoritative scoping rule as getComplaints — an authority
+    // can never widen this via query params; only administrators see the
+    // full network, exactly matching their existing access elsewhere.
+    const filter: Record<string, unknown> = {};
+    const scope: "assigned" | "all" = req.user?.role === "authority" ? "assigned" : "all";
+    if (scope === "assigned") filter.assignedTo = req.user?._id;
+
+    const complaints = (await Complaint.find(filter)
+      .select(
+        "status severity issueType cityId createdAt assignedAt resolvedAt reworkCount assignmentSource events",
+      )
+      .lean()) as unknown as AuthorityAnalyticsComplaintLean[];
+
+    const total = complaints.length;
+
+    // ── KPI summary ──────────────────────────────────────────────────────
+    const countByStatus = (s: string) => complaints.filter((c) => c.status === s).length;
+    const inProgress = countByStatus("in-progress");
+    const awaitingCitizenReview = countByStatus("awaiting_citizen_review");
+    const reworkStatusCount = countByStatus("rework");
+    const closed = countByStatus("closed");
+    const resolutionRate = total > 0 ? Math.round((closed / total) * 100) : 0;
+
+    const now = Date.now();
+    const openAgePairs: Array<[number, number]> = complaints
+      .filter((c) => OPEN_STATUSES.includes(c.status))
+      .map((c) => [new Date(c.createdAt).getTime(), now]);
+    const avgOpenCaseAgeHours = avgHours(openAgePairs);
+
+    // ── Performance analytics (Section 6) — only real event timestamps ────
+    const assignToInvestigationPairs: Array<[number, number]> = [];
+    const investigationToResolutionPairs: Array<[number, number]> = [];
+    const resolutionToClosurePairs: Array<[number, number]> = [];
+    const overallResolutionPairs: Array<[number, number]> = [];
+
+    for (const c of complaints) {
+      const assignedAtMs = c.assignedAt ? new Date(c.assignedAt).getTime() : undefined;
+      const investigationStartMs = findEventTime(c, "status_change", "Investigation started");
+      const resolvedAtMs = c.resolvedAt ? new Date(c.resolvedAt).getTime() : undefined;
+      const closedAtMs = findEventTime(c, "closed");
+      const createdAtMs = new Date(c.createdAt).getTime();
+
+      if (assignedAtMs && investigationStartMs && investigationStartMs >= assignedAtMs) {
+        assignToInvestigationPairs.push([assignedAtMs, investigationStartMs]);
+      }
+      if (investigationStartMs && resolvedAtMs && resolvedAtMs >= investigationStartMs) {
+        investigationToResolutionPairs.push([investigationStartMs, resolvedAtMs]);
+      }
+      if (resolvedAtMs && closedAtMs && closedAtMs >= resolvedAtMs) {
+        resolutionToClosurePairs.push([resolvedAtMs, closedAtMs]);
+      }
+      if (closedAtMs) {
+        overallResolutionPairs.push([createdAtMs, closedAtMs]);
+      }
+    }
+
+    // ── Breakdowns (Sections 4, 9, 10, 11) ─────────────────────────────────
+    const byStatusMap = new Map<string, number>();
+    const bySeverityMap = new Map<string, number>();
+    const byCategoryMap = new Map<string, number>();
+    const bySourceMap = new Map<string, number>();
+    const cityMap = new Map<string, { total: number; resolved: number; pending: number; critical: number }>();
+
+    for (const c of complaints) {
+      byStatusMap.set(c.status, (byStatusMap.get(c.status) ?? 0) + 1);
+      bySeverityMap.set(c.severity, (bySeverityMap.get(c.severity) ?? 0) + 1);
+      byCategoryMap.set(c.issueType, (byCategoryMap.get(c.issueType) ?? 0) + 1);
+      const source = c.assignmentSource ?? "unspecified";
+      bySourceMap.set(source, (bySourceMap.get(source) ?? 0) + 1);
+
+      const cs = cityMap.get(c.cityId) ?? { total: 0, resolved: 0, pending: 0, critical: 0 };
+      cs.total += 1;
+      if (c.status === "closed") cs.resolved += 1;
+      if (c.status === "pending") cs.pending += 1;
+      if (c.severity === "critical") cs.critical += 1;
+      cityMap.set(c.cityId, cs);
+    }
+
+    const byCityRaw = Array.from(cityMap.entries())
+      .map(([cityId, s]) => ({
+        cityId,
+        total: s.total,
+        resolved: s.resolved,
+        pending: s.pending,
+        critical: s.critical,
+        resolutionRate: s.total > 0 ? Math.round((s.resolved / s.total) * 100) : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    // Pair with real environmental context (Section 12) where available —
+    // factual AQI alongside complaint volume, no causal claim.
+    const cityIds = byCityRaw.map((c) => c.cityId);
+    const latestAqiByCity = cityIds.length
+      ? await EnvironmentalData.aggregate([
+          { $match: { cityId: { $in: cityIds } } },
+          { $sort: { cityId: 1, timestamp: -1 } },
+          { $group: { _id: "$cityId", aqi: { $first: "$aqi" } } },
+        ])
+      : [];
+    const aqiMap = new Map<string, number>(latestAqiByCity.map((d) => [d._id, d.aqi]));
+    const byCity = byCityRaw.map((c) => ({ ...c, aqi: aqiMap.get(c.cityId) }));
+
+    // ── Rework analytics (Section 7) ───────────────────────────────────────
+    const reworkTouched = complaints.filter((c) => (c.reworkCount ?? 0) > 0);
+    const reworkByCategoryMap = new Map<string, number>();
+    for (const c of reworkTouched) {
+      reworkByCategoryMap.set(c.issueType, (reworkByCategoryMap.get(c.issueType) ?? 0) + 1);
+    }
+    const attemptsPairs = complaints
+      .filter((c) => c.resolvedAt)
+      .map((c) => (c.reworkCount ?? 0) + 1);
+    const avgResolutionAttempts =
+      attemptsPairs.length > 0
+        ? Math.round((attemptsPairs.reduce((s, v) => s + v, 0) / attemptsPairs.length) * 10) / 10
+        : undefined;
+
+    // ── Citizen review analytics (Section 8) ───────────────────────────────
+    const acceptedComplaints = complaints.filter((c) =>
+      c.events.some((e) => e.type === "citizen_accepted"),
+    );
+    const turnaroundPairs: Array<[number, number]> = [];
+    for (const c of complaints) {
+      const resolvedMs = findEventTime(c, "resolved");
+      const acceptedMs = findEventTime(c, "citizen_accepted");
+      if (resolvedMs && acceptedMs && acceptedMs >= resolvedMs) {
+        turnaroundPairs.push([resolvedMs, acceptedMs]);
+      }
+    }
+
+    // ── Time-window trends (Section 5) — bucketed by day within the window ─
+    const bucket = (d: Date) => new Date(d).toISOString().slice(0, 10);
+    const trendMap = new Map<
+      string,
+      { submitted: number; resolved: number; closed: number; rework: number }
+    >();
+    const touch = (date: string, key: "submitted" | "resolved" | "closed" | "rework") => {
+      const row = trendMap.get(date) ?? { submitted: 0, resolved: 0, closed: 0, rework: 0 };
+      row[key] += 1;
+      trendMap.set(date, row);
+    };
+    for (const c of complaints) {
+      const createdAtMs = new Date(c.createdAt).getTime();
+      if (createdAtMs >= since.getTime()) touch(bucket(c.createdAt), "submitted");
+      if (c.resolvedAt && new Date(c.resolvedAt).getTime() >= since.getTime()) {
+        touch(bucket(c.resolvedAt), "resolved");
+      }
+      for (const e of c.events) {
+        const t = new Date(e.timestamp).getTime();
+        if (t < since.getTime()) continue;
+        if (e.type === "closed") touch(bucket(e.timestamp), "closed");
+        if (e.type === "rework_requested") touch(bucket(e.timestamp), "rework");
+      }
+    }
+    const trend = Array.from(trendMap.entries())
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([date, v]) => ({ date, ...v }));
+
+    return {
+      scope,
+      period: { days, since: since.toISOString() },
+      kpis: {
+        totalAssigned: total,
+        inProgress,
+        awaitingCitizenReview,
+        rework: reworkStatusCount,
+        closed,
+        resolutionRate,
+        avgOpenCaseAgeHours,
+      },
+      performance: {
+        avgAssignmentToInvestigationHours: avgHours(assignToInvestigationPairs),
+        avgInvestigationDurationHours: avgHours(investigationToResolutionPairs),
+        avgResolutionToClosureHours: avgHours(resolutionToClosurePairs),
+        avgOverallResolutionHours: avgHours(overallResolutionPairs),
+      },
+      byStatus: Array.from(byStatusMap.entries()).map(([status, count]) => ({ status, count })),
+      bySeverity: Array.from(bySeverityMap.entries()).map(([severity, count]) => ({
+        severity,
+        count,
+      })),
+      byCategory: Array.from(byCategoryMap.entries()).map(([issueType, count]) => ({
+        issueType,
+        count,
+      })),
+      byAssignmentSource: Array.from(bySourceMap.entries()).map(([source, count]) => ({
+        source,
+        count,
+      })),
+      byCity,
+      rework: {
+        total: reworkTouched.length,
+        percentage: total > 0 ? Math.round((reworkTouched.length / total) * 100) : 0,
+        avgResolutionAttempts,
+        byCategory: Array.from(reworkByCategoryMap.entries()).map(([issueType, count]) => ({
+          issueType,
+          count,
+        })),
+      },
+      citizenReview: {
+        awaiting: awaitingCitizenReview,
+        accepted: acceptedComplaints.length,
+        avgTurnaroundHours: avgHours(turnaroundPairs),
+      },
+      trend,
+      generatedAt: new Date(),
+    };
+}
+
+export type AuthorityAnalyticsResult = Awaited<ReturnType<typeof computeAuthorityAnalytics>>;
+
+// ─── GET /api/command/authority-analytics ─────────────────────────────────────
+export async function getAuthorityAnalytics(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const data = await computeAuthorityAnalytics(req, req.query.days);
+    res.json({ success: true, data });
   } catch (err) {
     next(err);
   }
@@ -631,6 +906,36 @@ export async function exportCommandReportPdf(
     res.setHeader(
       "Content-Disposition",
       `attachment; filename="greenguard-${safeType}-report-${dateStr}.pdf"`,
+    );
+    res.setHeader("Content-Length", pdfBuffer.length);
+    res.send(pdfBuffer);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ─── GET /api/command/export-operations-report-pdf ────────────────────────────
+// Phase 8 — streams the authority-scoped Complaint Operations Report (real
+// data only, no Gemini narrative) as a downloadable PDF. Reuses the exact
+// same computeAuthorityAnalytics() data source as the Analytics tab.
+export async function exportAuthorityOperationsReportPdf(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const data = await computeAuthorityAnalytics(req, req.query.days);
+
+    const pdfBuffer = await buildAuthorityOperationsReportPdf({
+      ...data,
+      generatedByName: req.user?.name ?? "Authority",
+    });
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="greenguard-operations-report-${dateStr}.pdf"`,
     );
     res.setHeader("Content-Length", pdfBuffer.length);
     res.send(pdfBuffer);

@@ -27,8 +27,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { StatCard, Panel } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
-import { useCitizenStats, useMyCitizenComplaints } from "./citizen-queries";
-import { humanizeIssueType, monthLabel } from "./citizen-status-utils";
+import { useCitizenStats, useMyCitizenComplaints } from "@/components/citizen/citizen-queries";
+import { humanizeIssueType, monthLabel } from "@/components/citizen/citizen-status-utils";
 import {
   ActivityFeed,
   complaintsToActivityFeed,
@@ -223,7 +223,7 @@ export function CitizenDashboard({
           {categoryBreakdown.length > 0 && (
             <Panel eyebrow="Breakdown" title="By Category">
               <div className="space-y-2">
-                {categoryBreakdown.slice(0, 5).map((c) => {
+                {categoryBreakdown.slice(0, 5).map((c: { issueType: string; count: number }) => {
                   const max = categoryBreakdown[0].count;
                   return (
                     <div key={c.issueType} className="space-y-1">

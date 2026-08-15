@@ -99,7 +99,7 @@ export const KB_CATEGORIES: KbCategory[] = [
   },
   {
     id: "ai-copilot",
-    title: "AI Copilot",
+    title: "GreenGuard Intelligence Center",
     description: "Natural language queries, AI briefs, and smart analysis",
     icon: Sparkles,
     accentColor: "var(--color-info)",
@@ -194,7 +194,7 @@ export const KB_ARTICLES: KbArticle[] = [
       { type: "list", items: ["Citizens who want to report pollution or monitor local air quality", "Environmental authorities managing complaints and enforcement", "Administrators governing platform users, cities, and data policies"] },
       { type: "heading", level: 2, text: "Core Platform Modules" },
       { type: "paragraph", text: "The platform is organized into several interconnected modules, each designed for a specific role and workflow." },
-      { type: "list", items: ["Dashboard — Environmental KPIs, live sensor feeds, and trend analysis", "Smart Maps — GIS-based overlays for AQI, pollution, and hazard zones", "AI Copilot — Natural language environmental queries and automated briefs", "Citizen Portal — Complaint submission and tracking", "Authority Command Center — Alert triage and enforcement coordination", "Reports — Scheduled and ad-hoc PDF/CSV export"] },
+      { type: "list", items: ["Dashboard — Environmental KPIs, live sensor feeds, and trend analysis", "Smart Maps — GIS-based overlays for AQI, pollution, and hazard zones", "GreenGuard Intelligence Center — Natural language environmental queries and automated briefs", "Citizen Portal — Complaint submission and tracking", "Authority Command Center — Alert triage and enforcement coordination", "Reports — Scheduled and ad-hoc PDF/CSV export"] },
       { type: "callout", variant: "info", text: "Your role determines which modules and features are available. Contact your platform administrator if you need access to additional areas." },
       { type: "heading", level: 2, text: "Getting Help" },
       { type: "paragraph", text: "This Help Center is your primary resource for guides, tutorials, and troubleshooting. For real-time support, use the Support Center or reach out to your platform administrator." },
@@ -465,12 +465,12 @@ export const KB_ARTICLES: KbArticle[] = [
     ],
   },
 
-  // ── AI Copilot ────────────────────────────────────────────────────────────
+  // ── GreenGuard Intelligence Center ─────────────────────────────────────────
   {
     id: "ai-001",
     categoryId: "ai-copilot",
-    title: "Using the AI Copilot for Environmental Analysis",
-    excerpt: "Learn how to query the AI Copilot in natural language, interpret AI-generated analysis, generate daily briefs, and use smart recommendations.",
+    title: "Using the GreenGuard Intelligence Center for Environmental Analysis",
+    excerpt: "Learn how to query the GreenGuard Intelligence Center in natural language, interpret AI-generated analysis, generate daily briefs, and use smart recommendations.",
     readTime: "6 min read",
     difficulty: "Beginner",
     views: 7890,
@@ -480,19 +480,19 @@ export const KB_ARTICLES: KbArticle[] = [
     relatedIds: ["ai-002", "env-001", "dash-001"],
     featured: true,
     content: [
-      { type: "paragraph", text: "The AI Copilot is a conversational assistant powered by large language models, grounded in GreenGuard's real-time environmental data. You can ask it questions, request analysis, or generate reports in plain English." },
+      { type: "paragraph", text: "The GreenGuard Intelligence Center is a conversational assistant powered by large language models, grounded in GreenGuard's real-time environmental data. You can ask it questions, request analysis, or generate reports in plain English." },
       { type: "heading", level: 2, text: "Example Queries" },
       { type: "list", items: ["\"What's the air quality trend in District 4 over the past week?\"", "\"Which three areas have the highest complaint volume this month?\"", "\"Generate a daily environmental brief for the city council.\"", "\"Which sensors are underperforming and need maintenance?\""] },
-      { type: "callout", variant: "info", text: "The AI Copilot draws on data up to 30 minutes ago. For real-time sensor values, use the Dashboard or Smart Maps directly." },
+      { type: "callout", variant: "info", text: "The GreenGuard Intelligence Center draws on data up to 30 minutes ago. For real-time sensor values, use the Dashboard or Smart Maps directly." },
       { type: "heading", level: 2, text: "Generating the Daily Brief" },
-      { type: "paragraph", text: "Click the Daily Brief button in the Copilot sidebar to generate a formatted executive summary of the previous 24 hours. The brief includes AQI trends, notable events, and complaint volume." },
+      { type: "paragraph", text: "Click the Daily Brief button in the GreenGuard Intelligence Center sidebar to generate a formatted executive summary of the previous 24 hours. The brief includes AQI trends, notable events, and complaint volume." },
     ],
   },
   {
     id: "ai-002",
     categoryId: "ai-copilot",
-    title: "AI Copilot Data Sources and Limitations",
-    excerpt: "Understand what data the AI Copilot can and cannot access, how its responses are grounded, and best practices for getting accurate results.",
+    title: "GreenGuard Intelligence Center Data Sources and Limitations",
+    excerpt: "Understand what data the GreenGuard Intelligence Center can and cannot access, how its responses are grounded, and best practices for getting accurate results.",
     readTime: "5 min read",
     difficulty: "Intermediate",
     views: 3201,
@@ -502,8 +502,8 @@ export const KB_ARTICLES: KbArticle[] = [
     relatedIds: ["ai-001", "env-001"],
     featured: false,
     content: [
-      { type: "paragraph", text: "The AI Copilot is designed to give accurate, grounded responses — but like all AI systems, it has limitations you should be aware of." },
-      { type: "heading", level: 2, text: "What the Copilot Can Access" },
+      { type: "paragraph", text: "The GreenGuard Intelligence Center is designed to give accurate, grounded responses — but like all AI systems, it has limitations you should be aware of." },
+      { type: "heading", level: 2, text: "What the Intelligence Center Can Access" },
       { type: "list", items: ["Real-time and historical sensor data (with up to 30-min lag)", "Complaint records within your permission scope", "Environmental alerts and threshold breach logs", "Published GreenGuard documentation and guidelines"] },
       { type: "heading", level: 2, text: "What It Cannot Access" },
       { type: "list", items: ["Personal user data outside your permission scope", "External databases not connected to GreenGuard", "Information more recent than ~30 minutes"] },
@@ -730,7 +730,7 @@ export const DIFFICULTY_COLOR: Record<Difficulty, string> = {
 
 export const POPULAR_SEARCH_CHIPS = [
   "Dashboard",
-  "AI Copilot",
+  "GreenGuard Intelligence Center",
   "Pollution Reports",
   "Smart Maps",
   "Complaint Tracking",

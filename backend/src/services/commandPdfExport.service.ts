@@ -519,3 +519,352 @@ export function buildCommandReportPdf(input: CommandReportPdfInput): Promise<Buf
     }
   });
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// AUTHORITY OPERATIONS REPORT PDF — Phase 8
+// ────────────────────────────────────────────────────────────────────────────
+// Unlike buildCommandReportPdf above (a Gemini-narrated network report), this
+// is a purely tabular, real-data-only operational document built from the
+// same authority-scoped complaint analytics served on the Analytics tab.
+// No AI narrative, no invented figures — every number here traces directly
+// back to real Complaint documents/timestamps/events.
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface AuthorityOperationsReportPdfInput {
+  scope: "assigned" | "all";
+  period: { days: number; since: string };
+  kpis: {
+    totalAssigned: number;
+    inProgress: number;
+    awaitingCitizenReview: number;
+    rework: number;
+    closed: number;
+    resolutionRate: number;
+    avgOpenCaseAgeHours?: number;
+  };
+  performance: {
+    avgAssignmentToInvestigationHours?: number;
+    avgInvestigationDurationHours?: number;
+    avgResolutionToClosureHours?: number;
+    avgOverallResolutionHours?: number;
+  };
+  byStatus: Array<{ status: string; count: number }>;
+  bySeverity: Array<{ severity: string; count: number }>;
+  byCategory: Array<{ issueType: string; count: number }>;
+  byAssignmentSource: Array<{ source: string; count: number }>;
+  byCity: Array<{
+    cityId: string;
+    total: number;
+    resolved: number;
+    pending: number;
+    critical: number;
+    resolutionRate: number;
+    aqi?: number;
+  }>;
+  rework: {
+    total: number;
+    percentage: number;
+    avgResolutionAttempts?: number;
+    byCategory: Array<{ issueType: string; count: number }>;
+  };
+  citizenReview: { awaiting: number; accepted: number; avgTurnaroundHours?: number };
+  generatedAt: Date;
+  generatedByName: string;
+}
+
+function fmtHours(h?: number): string {
+  if (h === undefined) return "Insufficient data";
+  if (h < 1) return `${Math.round(h * 60)} min`;
+  if (h < 48) return `${h} hrs`;
+  return `${Math.round((h / 24) * 10) / 10} days`;
+}
+
+function titleCase(s: string): string {
+  return s
+    .replace(/_/g, " ")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Simple two/three-column label→value data table, no chart dependency. */
+function renderDataTable(
+  doc: PDFKit.PDFDocument,
+  headers: string[],
+  colWidths: number[],
+  rows: string[][],
+) {
+  const startX = 50;
+  const rowH = 16;
+
+  doc.save().rect(startX, doc.y, 495, rowH).fillColor(C.primary).fill();
+  let cx = startX + 6;
+  headers.forEach((h, i) => {
+    doc
+      .fillColor(C.white)
+      .fontSize(7.5)
+      .font("Helvetica-Bold")
+      .text(h, cx, doc.y - rowH + 4, { width: colWidths[i] - 4, lineBreak: false });
+    cx += colWidths[i];
+  });
+  doc.restore();
+  doc.moveDown(rowH / 12);
+
+  if (rows.length === 0) {
+    doc
+      .fillColor(C.muted)
+      .fontSize(8.5)
+      .font("Helvetica")
+      .text("No data available for this period.", startX + 6, doc.y + 4);
+    doc.moveDown(1.2);
+    return;
+  }
+
+  rows.forEach((row, idx) => {
+    const rowY = doc.y;
+    if (idx % 2 === 0) {
+      doc.save().rect(startX, rowY, 495, rowH - 1).fillColor(C.light).fill().restore();
+    }
+    let cx2 = startX + 6;
+    row.forEach((val, ci) => {
+      doc
+        .fillColor(C.mid)
+        .fontSize(8)
+        .font(ci === 0 ? "Helvetica-Bold" : "Helvetica")
+        .text(val, cx2, rowY + 4, { width: colWidths[ci] - 4, lineBreak: false });
+      cx2 += colWidths[ci];
+    });
+    doc.moveDown(rowH / 12);
+  });
+}
+
+/** Main builder — returns the Authority Operations Report PDF as a Buffer */
+export function buildAuthorityOperationsReportPdf(
+  input: AuthorityOperationsReportPdfInput,
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({
+        size: "A4",
+        margin: 50,
+        info: {
+          Title: "GreenGuard AI — Complaint Operations Report",
+          Author: "GreenGuard AI",
+          Subject: "Authority Complaint Operations Report",
+          Creator: "GreenGuard AI v6.0",
+        },
+      });
+
+      const chunks: Buffer[] = [];
+      doc.on("data", (c) => chunks.push(c));
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
+
+      // ── HEADER ──────────────────────────────────────────────────────────
+      doc.save().rect(0, 0, 595, 6).fillColor(C.primary).fill().restore();
+      doc
+        .fillColor(C.muted)
+        .fontSize(7.5)
+        .font("Helvetica")
+        .text("GOVERNMENT COMPLAINT OPERATIONS", 50, 24, { characterSpacing: 1.2 });
+      doc.fillColor(C.dark).fontSize(20).font("Helvetica-Bold").text("GreenGuard AI", 50, 38);
+      doc
+        .fillColor(C.primary)
+        .fontSize(11)
+        .font("Helvetica")
+        .text("Authority Command Center — Complaint Operations Report", 50, 62);
+
+      hline(doc, 82);
+
+      doc
+        .fillColor(C.dark)
+        .fontSize(16)
+        .font("Helvetica-Bold")
+        .text("Complaint Operations Report", 50, 94, { width: 440 });
+      const sinceLabel = new Date(input.period.since).toLocaleDateString("en-IN");
+      doc
+        .fillColor(C.muted)
+        .fontSize(9)
+        .font("Helvetica")
+        .text(`Reporting Period: Last ${input.period.days} days (from ${sinceLabel})`, 50, doc.y + 4);
+      doc
+        .fillColor(C.muted)
+        .fontSize(8)
+        .text(
+          `Generated: ${input.generatedAt.toLocaleString("en-IN")} · Scope: ${
+            input.scope === "assigned" ? `Complaints assigned to ${input.generatedByName}` : "Network-wide (Administrator)"
+          }`,
+          50,
+          doc.y + 2,
+        );
+
+      doc.save().roundedRect(420, 94, 125, 32, 4).fillColor(C.primary).fill();
+      doc
+        .fillColor(C.white)
+        .fontSize(7)
+        .font("Helvetica-Bold")
+        .text("OFFICIAL REPORT", 420, 100, { width: 125, align: "center", characterSpacing: 0.6 });
+      doc
+        .fillColor(C.white)
+        .fontSize(6.5)
+        .font("Helvetica")
+        .text("GreenGuard AI v6.0", 420, 113, { width: 125, align: "center" });
+      doc.restore();
+
+      hline(doc, doc.y + 10);
+      doc.moveDown(1.4);
+
+      // ── KPI BOXES ───────────────────────────────────────────────────────
+      const kpiY = doc.y;
+      const boxW = 93;
+      const boxH = 48;
+      const gap = 6;
+      const kpis = [
+        { label: "Total Assigned", value: String(input.kpis.totalAssigned), color: C.primary },
+        { label: "In Progress", value: String(input.kpis.inProgress), color: C.info },
+        { label: "Awaiting Review", value: String(input.kpis.awaitingCitizenReview), color: C.warning },
+        { label: "Rework", value: String(input.kpis.rework), color: C.danger },
+        { label: "Resolution Rate", value: `${input.kpis.resolutionRate}%`, color: C.success },
+      ];
+      kpis.forEach((k, i) => kpiBox(doc, 50 + (boxW + gap) * i, kpiY, boxW, boxH, k.label, k.value, k.color));
+      doc.y = kpiY + boxH + 16;
+
+      // ── PERFORMANCE ─────────────────────────────────────────────────────
+      sectionHeader(doc, "1. Performance Metrics");
+      renderDataTable(
+        doc,
+        ["Metric", "Value"],
+        [280, 215],
+        [
+          ["Avg. Time to Closure (overall)", fmtHours(input.performance.avgOverallResolutionHours)],
+          ["Avg. Investigation Duration", fmtHours(input.performance.avgInvestigationDurationHours)],
+          ["Avg. Resolution → Closure", fmtHours(input.performance.avgResolutionToClosureHours)],
+          ["Avg. Age of Open Cases", fmtHours(input.kpis.avgOpenCaseAgeHours)],
+        ],
+      );
+      pad(doc, 10);
+
+      // ── STATUS / SEVERITY BREAKDOWN ────────────────────────────────────
+      sectionHeader(doc, "2. Status & Severity Distribution");
+      renderDataTable(
+        doc,
+        ["Status", "Count"],
+        [280, 215],
+        input.byStatus.map((s) => [titleCase(s.status), String(s.count)]),
+      );
+      pad(doc, 6);
+      renderDataTable(
+        doc,
+        ["Severity", "Count"],
+        [280, 215],
+        input.bySeverity.map((s) => [titleCase(s.severity), String(s.count)]),
+      );
+      pad(doc, 10);
+
+      // ── PAGE 2 ──────────────────────────────────────────────────────────
+      doc.addPage();
+      doc.save().rect(0, 0, 595, 6).fillColor(C.primary).fill().restore();
+      doc.moveDown(0.8);
+
+      // ── CATEGORY BREAKDOWN ──────────────────────────────────────────────
+      sectionHeader(doc, "3. Category Breakdown");
+      renderDataTable(
+        doc,
+        ["Category", "Count"],
+        [280, 215],
+        input.byCategory.map((c) => [titleCase(c.issueType), String(c.count)]),
+      );
+      pad(doc, 10);
+
+      // ── LOCATION BREAKDOWN ───────────────────────────────────────────────
+      sectionHeader(doc, "4. Location / Jurisdiction Breakdown");
+      renderDataTable(
+        doc,
+        ["City", "Total", "Resolved", "Pending", "Critical", "AQI"],
+        [140, 65, 80, 70, 70, 70],
+        input.byCity.map((c) => [
+          titleCase(c.cityId),
+          String(c.total),
+          String(c.resolved),
+          String(c.pending),
+          String(c.critical),
+          c.aqi !== undefined ? String(c.aqi) : "—",
+        ]),
+      );
+      pad(doc, 10);
+
+      // ── ASSIGNMENT SOURCE ──────────────────────────────────────────────
+      sectionHeader(doc, "5. Assignment Source (Smart Routing)");
+      renderDataTable(
+        doc,
+        ["Source", "Count"],
+        [280, 215],
+        input.byAssignmentSource.map((s) => [titleCase(s.source), String(s.count)]),
+      );
+      pad(doc, 10);
+
+      // ── PAGE 3 ──────────────────────────────────────────────────────────
+      doc.addPage();
+      doc.save().rect(0, 0, 595, 6).fillColor(C.primary).fill().restore();
+      doc.moveDown(0.8);
+
+      // ── REWORK ANALYTICS ────────────────────────────────────────────────
+      sectionHeader(doc, "6. Rework Analytics");
+      renderDataTable(
+        doc,
+        ["Metric", "Value"],
+        [280, 215],
+        [
+          ["Total Cases with Rework", String(input.rework.total)],
+          ["Rework Rate", `${input.rework.percentage}%`],
+          [
+            "Avg. Resolution Attempts",
+            input.rework.avgResolutionAttempts !== undefined
+              ? String(input.rework.avgResolutionAttempts)
+              : "Insufficient data",
+          ],
+        ],
+      );
+      pad(doc, 6);
+      if (input.rework.byCategory.length > 0) {
+        renderDataTable(
+          doc,
+          ["Rework by Category", "Count"],
+          [280, 215],
+          input.rework.byCategory.map((c) => [titleCase(c.issueType), String(c.count)]),
+        );
+        pad(doc, 10);
+      }
+
+      // ── CITIZEN REVIEW ───────────────────────────────────────────────────
+      sectionHeader(doc, "7. Citizen Review");
+      renderDataTable(
+        doc,
+        ["Metric", "Value"],
+        [280, 215],
+        [
+          ["Awaiting Citizen Review", String(input.citizenReview.awaiting)],
+          ["Accepted Resolutions", String(input.citizenReview.accepted)],
+          ["Avg. Citizen Review Turnaround", fmtHours(input.citizenReview.avgTurnaroundHours)],
+        ],
+      );
+      pad(doc, 20);
+
+      // ── FOOTER ───────────────────────────────────────────────────────────
+      const pages = doc.bufferedPageRange();
+      for (let i = 0; i < pages.count; i++) {
+        doc.switchToPage(pages.start + i);
+        hline(doc, 760);
+        doc
+          .fillColor(C.muted)
+          .fontSize(7)
+          .font("Helvetica")
+          .text("GreenGuard AI — Complaint Operations Report", 50, 768, { width: 350 })
+          .text(`Page ${i + 1} of ${pages.count}`, 50, 768, { width: 495, align: "right" });
+      }
+
+      doc.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
+}

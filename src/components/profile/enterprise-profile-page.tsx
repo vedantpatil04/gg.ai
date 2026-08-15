@@ -64,7 +64,7 @@ export function EnterpriseProfilePage() {
   const profile = (response?.data?.user ?? null) as EnterpriseProfile | null;
 
   return (
-    <main className="p-4 md:p-8 space-y-6 max-w-[1400px] mx-auto" aria-label="Profile page">
+    <div className="p-4 md:p-8 space-y-6 w-full" aria-label="Profile page">
       {isLoading ? (
         <ProfileSkeleton />
       ) : isError || !profile ? (
@@ -84,6 +84,6 @@ export function EnterpriseProfilePage() {
           <ProfilePhotoDialog open={isPhotoOpen} onOpenChange={setIsPhotoOpen} profile={profile} />
         </>
       )}
-    </main>
+    </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   BarChart,
   Bar,
@@ -23,11 +23,15 @@ import {
   TrendingUp,
   Target,
   Lightbulb,
+  ClipboardList,
 } from "lucide-react";
-import { commandApi, type ExecutiveReportData } from "@/lib/api/command.api";
-import { Panel, WorkspaceHeader, Pill } from "@/components/ui-bits";
+import { commandApi, type ExecutiveReportData, type AuthorityAnalyticsData } from "@/lib/api/command.api";
+import { Panel, WorkspaceHeader, Pill, StatCard, EmptyState } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ISSUE_LABELS } from "./investigation-workspace";
+import { STATUS_LABELS, titleCase, fmtHours } from "./authority-analytics";
+import { useAuth } from "@/lib/auth-context";
 
 type ReportType = "Weekly" | "Monthly" | "Sustainability" | "City";
 
@@ -328,7 +332,211 @@ function GeneratedReport({
   );
 }
 
+// ─── Complaint Operations Report (Phase 8) ───────────────────────────────────
+// Unlike the Gemini-narrated Environmental Intelligence reports above, this
+// is a real-data-only operational report — the exact same authority-scoped
+// dataset shown on the Analytics → My Workload tab, formatted as a report
+// and exportable as a PDF built server-side from the identical figures.
+function OperationsReportSection() {
+  const { user } = useAuth();
+  const [days, setDays] = useState<7 | 30 | 90>(30);
+
+  const { data: res, isLoading, isError, refetch } = useQuery({
+    queryKey: ["authority-analytics", days],
+    queryFn: () => commandApi.getAuthorityAnalytics(days),
+    staleTime: 60_000,
+  });
+  const d = res?.data as AuthorityAnalyticsData | undefined;
+
+  const downloadMutation = useMutation({
+    mutationFn: () => commandApi.exportOperationsReportPdf(days),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.download = `greenguard-operations-report-${dateStr}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+  });
+
+  return (
+    <div className="space-y-6">
+      <Panel eyebrow="Report Configuration" title="Reporting Period">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex gap-1.5">
+            {([7, 30, 90] as const).map((n) => (
+              <Button
+                key={n}
+                size="sm"
+                variant={days === n ? "default" : "outline"}
+                onClick={() => setDays(n)}
+                className="text-xs"
+              >
+                {n} Days
+              </Button>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            Refresh
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => downloadMutation.mutate()}
+            disabled={downloadMutation.isPending || !d}
+            className="gap-1.5"
+          >
+            {downloadMutation.isPending ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Download className="size-3.5" />
+            )}
+            {downloadMutation.isPending ? "Generating PDF…" : "Download PDF"}
+          </Button>
+        </div>
+        {downloadMutation.isError && (
+          <div className="mt-3 flex items-center gap-2 text-xs text-destructive">
+            <AlertTriangle className="size-3.5" />
+            PDF generation failed. Please try again.
+          </div>
+        )}
+        {downloadMutation.isSuccess && !downloadMutation.isPending && (
+          <div className="mt-3 flex items-center gap-2 text-xs text-success">
+            <CheckCircle className="size-3.5" />
+            PDF downloaded successfully.
+          </div>
+        )}
+      </Panel>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center h-48">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-sm text-muted-foreground">Compiling report…</span>
+        </div>
+      ) : isError || !d ? (
+        <EmptyState icon={<ClipboardList className="size-5" />} title="Unable to load report data" />
+      ) : d.kpis.totalAssigned === 0 ? (
+        <EmptyState
+          icon={<ClipboardList className="size-5" />}
+          title="No complaint data for this period"
+          description={
+            d.scope === "assigned"
+              ? "No complaints have been assigned to you yet."
+              : "No complaints exist in the network yet."
+          }
+        />
+      ) : (
+        <div className="space-y-5">
+          <div className="glass rounded-2xl p-6 border border-primary/20">
+            <div className="text-[10px] uppercase tracking-widest text-primary mb-1">
+              COMPLAINT OPERATIONS
+            </div>
+            <h2 className="text-xl font-bold tracking-tight">Complaint Operations Report</h2>
+            <div className="text-sm text-muted-foreground mt-1">
+              Reporting Period: Last {d.period.days} days · Scope:{" "}
+              {d.scope === "assigned" ? `Assigned to ${user?.name ?? "you"}` : "Network-wide"}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <StatCard label="Total" value={d.kpis.totalAssigned} accent="info" />
+            <StatCard label="In Progress" value={d.kpis.inProgress} accent="warning" />
+            <StatCard label="Awaiting Review" value={d.kpis.awaitingCitizenReview} accent="info" />
+            <StatCard label="Rework" value={d.kpis.rework} accent="destructive" />
+            <StatCard label="Closed" value={d.kpis.closed} accent="success" hint={`${d.kpis.resolutionRate}% rate`} />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <Panel eyebrow="Status Distribution" title="Complaints by Status">
+              <div className="space-y-1.5">
+                {d.byStatus.map((s) => (
+                  <div key={s.status} className="flex items-center justify-between text-sm">
+                    <span>{STATUS_LABELS[s.status] ?? titleCase(s.status)}</span>
+                    <span className="tabular-nums text-muted-foreground">{s.count}</span>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+            <Panel eyebrow="Category Breakdown" title="Complaints by Category">
+              <div className="space-y-1.5">
+                {d.byCategory.map((c) => (
+                  <div key={c.issueType} className="flex items-center justify-between text-sm">
+                    <span>{ISSUE_LABELS[c.issueType] ?? titleCase(c.issueType)}</span>
+                    <span className="tabular-nums text-muted-foreground">{c.count}</span>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          </div>
+
+          <Panel eyebrow="Location Analysis" title="Complaints by City">
+            <div className="space-y-1.5">
+              {d.byCity.slice(0, 10).map((c) => (
+                <div key={c.cityId} className="flex items-center justify-between text-sm">
+                  <span>{titleCase(c.cityId)}</span>
+                  <span className="tabular-nums text-muted-foreground">
+                    {c.total} total · {c.resolved} resolved
+                    {c.aqi !== undefined ? ` · AQI ${c.aqi}` : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <Panel eyebrow="Rework" title="Rework Summary">
+              <div className="grid grid-cols-2 gap-3 text-center">
+                <div>
+                  <div className="text-xl font-bold tabular-nums">{d.rework.total}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Total</div>
+                </div>
+                <div>
+                  <div className="text-xl font-bold tabular-nums">{d.rework.percentage}%</div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Rate</div>
+                </div>
+              </div>
+            </Panel>
+            <Panel eyebrow="Citizen Review" title="Citizen Review Summary">
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div>
+                  <div className="text-xl font-bold tabular-nums">{d.citizenReview.awaiting}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Awaiting</div>
+                </div>
+                <div>
+                  <div className="text-xl font-bold tabular-nums">{d.citizenReview.accepted}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Accepted</div>
+                </div>
+                <div>
+                  <div className="text-xl font-bold tabular-nums">
+                    {fmtHours(d.citizenReview.avgTurnaroundHours)}
+                  </div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">
+                    Avg. Turnaround
+                  </div>
+                </div>
+              </div>
+            </Panel>
+          </div>
+
+          <Panel className="border border-primary/10">
+            <div className="text-xs text-muted-foreground flex items-center justify-between">
+              <span>Generated {new Date(d.generatedAt).toLocaleString()} · GreenGuard AI v6.0</span>
+              <Pill tone="primary">Real Data — No AI Narrative</Pill>
+            </div>
+          </Panel>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type ReportMode = "environmental" | "operations";
+
 export function ExecutiveReports() {
+  const [mode, setMode] = useState<ReportMode>("environmental");
   const [selectedType, setSelectedType] = useState<ReportType>("Monthly");
   const [reportData, setReportData] = useState<ExecutiveReportData | null>(null);
 
@@ -351,9 +559,40 @@ export function ExecutiveReports() {
       <WorkspaceHeader
         eyebrow="REPORTS · REPORTING & EXPORT"
         title="Intelligence Reports"
-        description="Generate and export official environmental intelligence reports for any reporting period."
+        description="Generate and export official environmental intelligence and complaint operations reports."
       />
 
+      <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl w-fit border border-border">
+        <button
+          onClick={() => setMode("environmental")}
+          className={cn(
+            "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+            mode === "environmental"
+              ? "bg-card shadow-sm text-foreground"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <BookOpen className="size-3.5" />
+          Environmental Reports
+        </button>
+        <button
+          onClick={() => setMode("operations")}
+          className={cn(
+            "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+            mode === "operations"
+              ? "bg-card shadow-sm text-foreground"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <ClipboardList className="size-3.5" />
+          Complaint Operations Report
+        </button>
+      </div>
+
+      {mode === "operations" ? (
+        <OperationsReportSection />
+      ) : (
+        <>
       {/* Report type selector */}
       <Panel eyebrow="Report Configuration" title="Select Report Type">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -418,6 +657,8 @@ export function ExecutiveReports() {
 
       {reportData && !mutation.isPending && (
         <GeneratedReport data={reportData} selectedType={selectedType} />
+      )}
+        </>
       )}
     </div>
   );

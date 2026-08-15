@@ -414,42 +414,52 @@ const MobileLiveImpactPanel = memo(function MobileLiveImpactPanel({
 
       {!collapsed && (
         <div className="sim-mobile-sticky-body">
-          <div className="sim-mobile-sticky-metrics">
+          {/* 2×2 grid on narrow phones (≤430px), 4-column row on wider mobile */}
+          <div className="sim-mobile-sticky-metrics-grid">
+            {/* AQI with inline delta */}
             <div className="sim-mobile-sticky-metric">
               <span className="sim-mobile-sticky-metric-label">AQI</span>
-              <span className="sim-mobile-sticky-metric-value" style={{ color: band.color }}>
-                <AnimatedNumber value={localResults.projectedAqi} duration={400} />
-              </span>
-              <span
-                className="sim-mobile-sticky-metric-sub"
-                style={{ color: isImprovement ? "var(--color-success)" : "var(--color-destructive)" }}
-              >
-                {isImprovement ? "↓" : "↑"}{deltaPts} pts
-              </span>
+              <div className="sim-mobile-sticky-metric-row">
+                <span className="sim-mobile-sticky-metric-value" style={{ color: band.color }}>
+                  <AnimatedNumber value={localResults.projectedAqi} duration={400} />
+                </span>
+                <span
+                  className="sim-mobile-sticky-metric-delta"
+                  style={{ color: isImprovement ? "var(--color-success)" : "var(--color-destructive)" }}
+                >
+                  {isImprovement ? "↓" : "↑"}{deltaPts}
+                </span>
+              </div>
             </div>
-            <div className="sim-mobile-sticky-divider" aria-hidden />
+            {/* Health */}
             <div className="sim-mobile-sticky-metric">
               <span className="sim-mobile-sticky-metric-label">Health</span>
-              <span className="sim-mobile-sticky-metric-value" style={{ color: "var(--color-info)" }}>
-                <AnimatedNumber value={localResults.health} duration={400} />
-              </span>
-              <span className="sim-mobile-sticky-metric-sub">/100</span>
+              <div className="sim-mobile-sticky-metric-row">
+                <span className="sim-mobile-sticky-metric-value" style={{ color: "var(--color-info)" }}>
+                  <AnimatedNumber value={localResults.health} duration={400} />
+                </span>
+                <span className="sim-mobile-sticky-metric-delta">/100</span>
+              </div>
             </div>
-            <div className="sim-mobile-sticky-divider" aria-hidden />
+            {/* Eco */}
             <div className="sim-mobile-sticky-metric">
               <span className="sim-mobile-sticky-metric-label">Eco</span>
-              <span className="sim-mobile-sticky-metric-value" style={{ color: "var(--color-primary)" }}>
-                <AnimatedNumber value={localResults.eco} duration={400} />
-              </span>
-              <span className="sim-mobile-sticky-metric-sub">/100</span>
+              <div className="sim-mobile-sticky-metric-row">
+                <span className="sim-mobile-sticky-metric-value" style={{ color: "var(--color-primary)" }}>
+                  <AnimatedNumber value={localResults.eco} duration={400} />
+                </span>
+                <span className="sim-mobile-sticky-metric-delta">/100</span>
+              </div>
             </div>
-            <div className="sim-mobile-sticky-divider" aria-hidden />
+            {/* Sustainability */}
             <div className="sim-mobile-sticky-metric">
               <span className="sim-mobile-sticky-metric-label">SI</span>
-              <span className="sim-mobile-sticky-metric-value" style={{ color: "var(--color-success)" }}>
-                <AnimatedNumber value={localResults.sustain} duration={400} />
-              </span>
-              <span className="sim-mobile-sticky-metric-sub">/100</span>
+              <div className="sim-mobile-sticky-metric-row">
+                <span className="sim-mobile-sticky-metric-value" style={{ color: "var(--color-success)" }}>
+                  <AnimatedNumber value={localResults.sustain} duration={400} />
+                </span>
+                <span className="sim-mobile-sticky-metric-delta">/100</span>
+              </div>
             </div>
           </div>
           <button
@@ -678,8 +688,8 @@ function Simulator() {
 
         {/* Main simulator grid — desktop: side-by-side, mobile: stacked */}
         <div className="grid xl:grid-cols-12 gap-5 lg:gap-6">
-          {/* Policy levers — desktop: left column, mobile: shown after KPIs */}
-          <div className="xl:col-span-4 2xl:col-span-3 order-2 xl:order-1">
+          {/* Policy levers — mobile: first (top), desktop: left column */}
+          <div className="xl:col-span-4 2xl:col-span-3">
             <LeversPanel
               vals={vals}
               onLeverChange={handleLeverChange}
@@ -688,9 +698,9 @@ function Simulator() {
             />
           </div>
 
-          {/* Results — desktop: right columns, mobile: first (order-1) */}
-          <div id="sim-results-section" className="xl:col-span-8 2xl:col-span-9 space-y-5 lg:space-y-6 order-1 xl:order-2">
-            {/* KPI cards: mobile = full-width AQI + 2-col gauges, desktop = 4-col row */}
+          {/* Results — desktop: right columns, mobile: second (below levers) */}
+          <div id="sim-results-section" className="xl:col-span-8 2xl:col-span-9 space-y-5 lg:space-y-6">
+            {/* KPI cards: mobile = full-width AQI + 2-col gauges, desktop (lg) = 4-col row */}
             <div className="sim-kpi-grid">
               <HeroAqiCard
                 projectedAqi={localResults.projectedAqi}
@@ -1079,7 +1089,7 @@ const LeversPanel = memo(function LeversPanel({
   recentlyActivatedLeverIds: Set<string>;
 }) {
   return (
-    <div className="sim-panel rounded-2xl overflow-hidden h-full flex flex-col" role="region" aria-label="Policy levers">
+    <div className="sim-panel rounded-2xl overflow-hidden xl:h-full flex flex-col" role="region" aria-label="Policy levers">
       <div className="px-5 pt-5 pb-4 border-b border-[var(--color-border)]">
         <div className="flex items-center justify-between">
           <div>
@@ -1095,7 +1105,7 @@ const LeversPanel = memo(function LeversPanel({
           )} aria-hidden />
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6 sim-scrollbar">
+      <div className="flex-1 xl:overflow-y-auto px-5 py-4 space-y-6 sim-scrollbar">
         {LEVER_GROUPS.map((group) => {
           const groupLevers = LEVERS.filter((l) => l.group === group.id);
           return (
@@ -1224,7 +1234,7 @@ const HeroAqiCard = memo(function HeroAqiCard({
     <SimTooltip label="Projected AQI after applying all active policy levers">
       <div
         className={cn(
-          "sim-kpi-card sim-hero-aqi rounded-2xl p-5 relative overflow-hidden group col-span-2 lg:col-span-1 cursor-default",
+          "sim-kpi-card sim-hero-aqi rounded-2xl p-5 relative overflow-hidden group cursor-default",
           isRecalculating && "sim-kpi-recalculating",
         )}
         role="region"

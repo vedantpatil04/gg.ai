@@ -849,7 +849,7 @@ const BREADCRUMB_MAP: Record<string, BreadcrumbEntry> = {
   "/dashboard":      { label: "Dashboard", labelKey: "dashboard" },
   "/environment":    { label: "Environmental Overview", labelKey: "environment" },
   "/map":            { label: "Smart Map", labelKey: "map" },
-  "/copilot":        { label: "AI Copilot", labelKey: "aiCopilot" },
+  "/copilot":        { label: "GreenGuard Intelligence Center", labelKey: "aiCopilot" },
   "/forecast":       { label: "Forecast", labelKey: "forecast" },
   "/citizen":        { label: "Citizen Hub", labelKey: "citizenHub" },
   "/reports":        { label: "Reports", labelKey: "reports" },
@@ -972,7 +972,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
   const [scrolled, setScrolled] = useState(false);
 
   const profileRef = useRef<HTMLDivElement>(null);
-  const breadcrumbs = resolveBreadcrumbs(pathname, (key) => t(key, { ns: "navigation" }));
+  const breadcrumbs = resolveBreadcrumbs(pathname, (key) => (t as any)(key, { ns: "navigation" }));
 
   // ── Scroll elevation ──────────────────────────────────────────────────────
   useEffect(() => {

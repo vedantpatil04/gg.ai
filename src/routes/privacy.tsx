@@ -28,7 +28,7 @@ function PrivacyPage() {
         <p>
           This policy describes how GreenGuard AI ("we", "us", "the platform") collects, uses,
           stores and shares information when you use our environmental intelligence platform,
-          including the dashboard, AI Copilot, Forecast, Citizen Hub, Reports, Sustainability,
+          including the dashboard, GreenGuard Intelligence Center, Forecast, Citizen Hub, Reports, Sustainability,
           Policy Simulator and Smart Map modules.
         </p>
 

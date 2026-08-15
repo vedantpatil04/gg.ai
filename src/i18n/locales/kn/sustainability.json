@@ -1,0 +1,26 @@
+{
+  "title": "ಸ್ಥಿರತೆ",
+  "overview": "ಪರಿಸರ ಅವಲೋಕನ",
+  "currentConditions": "{{city}} ನಲ್ಲಿ ಪ್ರಸ್ತುತ ಸ್ಥಿತಿಗಳು।",
+  "ecoScore": "ಇಕೋ ಸ್ಕೋರ್",
+  "grade": "ಶ್ರೇಣಿ",
+  "kpis": {
+    "aqi": "AQI",
+    "greenCover": "ಹಸಿರು ಆವರಣ",
+    "renewable": "ನವೀಕರಿಸಬಹುದಾದ ಶಕ್ತಿ",
+    "water": "ನೀರಿನ ಗುಣಮಟ್ಟ",
+    "waste": "ತ್ಯಾಜ್ಯ ವಿಚಲನ"
+  },
+  "targets": {
+    "above": "ಪ್ರಸ್ತುತ {{target}} ಗುರಿಗಿಂತ ಮೇಲೆ",
+    "needsImprovement": "ಸುಧಾರಣೆ ಅಗತ್ಯ"
+  },
+  "aiSummary": "GreenGuard ಇಂಟೆಲಿಜೆನ್ಸ್ ಕೇಂದ್ರ",
+  "history": "ಐತಿಹಾಸಿಕ ಪ್ರವೃತ್ತಿಗಳು",
+  "ecoBreakdown": "ಇಕೋ ಸ್ಕೋರ್ ವಿವರ",
+  "loading": "ಸ್ಥಿರತೆ ಡೇಟಾ ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+  "noData": "ಯಾವುದೇ ಸ್ಥಿರತೆ ಡೇಟಾ ಲಭ್ಯವಿಲ್ಲ।",
+  "bandGood": "ಉತ್ತಮ",
+  "bandModerate": "ಮಧ್ಯಮ",
+  "bandCritical": "ತೀವ್ರ"
+}

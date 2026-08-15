@@ -174,7 +174,7 @@ function IntelligenceCenter() {
           : "success";
 
   return (
-    <div className="p-4 md:p-8 space-y-6 max-w-[1600px] mx-auto">
+    <div className="p-4 md:p-8 space-y-6 w-full">
       {/* Header */}
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>

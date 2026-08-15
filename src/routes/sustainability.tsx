@@ -30,7 +30,7 @@ export const Route = createFileRoute("/sustainability")({
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-function bandTone(label: string): Tone {
+function bandTone(label: string): "good" | "warning" | "critical" {
   if (label === "Good") return "good";
   if (label === "Moderate" || label === "Unhealthy (SG)") return "warning";
   return "critical";
@@ -46,38 +46,19 @@ function bandTone(label: string): Tone {
 // project target, instead of the old "+4%"-style fabricated trend arrow
 // (removed in Phase 3 — no real historical data exists yet to justify a
 // change indicator; that's Phase 4's job).
-function targetStatus(value: number, target: number, targetLabel: string): KpiItem["status"] {
+import { useTranslation } from "react-i18next";
+
+function targetStatus(value: number, target: number, targetLabel: string, t: (k: any, opts?: any) => string): KpiItem["status"] {
   return value >= target
-    ? { label: `Above the current ${targetLabel} target`, tone: "good" }
-    : { label: "Needs improvement", tone: "warning" };
+    ? { label: t("targets.above", { target: targetLabel }), tone: "good" }
+    : { label: t("targets.needsImprovement"), tone: "warning" };
 }
 
 function Sustainability() {
+  const { t } = useTranslation("sustainability");
   const { city: rawCity, isApiConnected } = useCity();
 
-  // Phase 2 — Transparent EcoScore: the backend (getCity/getCities) now
-  // computes a deterministic, explainable EcoScore from this same Phase 1
-  // data (see ecoScore.service.ts) and attaches it as city.ecoScore. To
-  // "ensure the same calculated EcoScore is used throughout Sustainability"
-  // without touching every child component on this page individually, the
-  // page-local `city` used below overrides `eco` with that calculated score
-  // at this single entry point — every downstream component that already
-  // reads city.eco (Hero, AI summary, KPI strip, Copilot) automatically
-  // gets the transparent value with zero changes to those files. Falls back
-  // to the untouched legacy `eco` only when running fully offline (no
-  // fabrication — just the same number this page always showed in that
-  // mode). The global city object from useCity() is left untouched, so
-  // Dashboard and every other module keep using the legacy field exactly
-  // as before.
   const city = { ...rawCity, eco: rawCity.ecoScore?.score ?? rawCity.eco };
-
-  // Centralized sustainability data — both fields come from the same real
-  // backend reading already used for every other metric on this page
-  // (city.aqi, city.eco, city.water, ...): see EnvironmentalData /
-  // getCity() on the backend and mapBackendToCity() in city-context.tsx.
-  // Falls back to 0 only in the fully-offline state, matching the
-  // no-fabricated-value convention used by EnvironmentalMetrics on the
-  // Environment page.
   const renewableShare = city.renewableShare ?? 0;
   const greenCover     = city.greenCover ?? 0;
   const wasteDiversion = Math.round(50 + city.eco * 0.15);
@@ -86,22 +67,18 @@ function Sustainability() {
   const tone = bandTone(band.label);
   const grade = rawCity.ecoScore?.grade ?? ecoGradeFallback(city.eco);
 
-  // Environmental Overview — five current-condition cards. No fake trend
-  // arrows and no progress bars: each card just states the current value
-  // and what it means against the project's real, established targets
-  // (or, for AQI, its real band classification).
   const kpis: KpiItem[] = [
-    { icon: Wind,     label: "AQI",              value: city.aqi,       accent: "var(--color-info)",     status: { label: band.label, tone } },
-    { icon: Leaf,     label: "Green cover",      value: greenCover,     suffix: "%", accent: "var(--color-success)", status: targetStatus(greenCover, 30, "30%") },
-    { icon: Zap,      label: "Renewable energy", value: renewableShare, suffix: "%", accent: "var(--color-info)",    status: targetStatus(renewableShare, 40, "40%") },
-    { icon: Droplets, label: "Water quality",    value: city.water,     suffix: "%", accent: "var(--color-info)",    status: targetStatus(city.water, 75, "75%") },
-    { icon: Recycle,  label: "Waste diversion",  value: wasteDiversion, suffix: "%", accent: "var(--color-primary)", status: targetStatus(wasteDiversion, 60, "60%") },
+    { icon: Wind,     label: t("kpis.aqi"),              value: city.aqi,       accent: "var(--color-info)",     status: { label: band.label, tone } },
+    { icon: Leaf,     label: t("kpis.greenCover"),      value: greenCover,     suffix: "%", accent: "var(--color-success)", status: targetStatus(greenCover, 30, "30%", t) },
+    { icon: Zap,      label: t("kpis.renewable"), value: renewableShare, suffix: "%", accent: "var(--color-info)",    status: targetStatus(renewableShare, 40, "40%", t) },
+    { icon: Droplets, label: t("kpis.water"),    value: city.water,     suffix: "%", accent: "var(--color-info)",    status: targetStatus(city.water, 75, "75%", t) },
+    { icon: Recycle,  label: t("kpis.waste"),  value: wasteDiversion, suffix: "%", accent: "var(--color-primary)", status: targetStatus(wasteDiversion, 60, "60%", t) },
   ];
 
   return (
     <div className="relative">
       <SustainabilityBackground />
-      <div className="relative p-3 sm:p-4 md:p-8 space-y-8 sm:space-y-10 md:space-y-12 max-w-[1600px] mx-auto overflow-hidden">
+      <div className="relative p-3 sm:p-4 md:p-8 space-y-8 sm:space-y-10 md:space-y-12 w-full overflow-hidden">
 
         {/* ── SUSTAINABILITY OVERVIEW ──────────────────────────── */}
         <section id="hero">
@@ -110,7 +87,7 @@ function Sustainability() {
 
         {/* ── ENVIRONMENTAL OVERVIEW ─────────────────────────── */}
         <section id="environmental-overview">
-          <SustainabilitySectionHeading icon={Leaf} title="Environmental Overview" description={`Current conditions in ${city.name}.`} />
+          <SustainabilitySectionHeading icon={Leaf} title={t("overview")} description={t("currentConditions", { city: city.name })} />
           <ExecutiveKpiStrip items={kpis} />
         </section>
 
@@ -128,8 +105,8 @@ function Sustainability() {
         <section id="greenguard-ai" aria-labelledby="greenguard-ai-heading">
           <SustainabilitySectionHeading
             icon={BotMessageSquare}
-            title="GreenGuard Intelligence Center"
-            description={`Ask GreenGuard about ${city.name}'s current environmental performance.`}
+            title={t("aiSummary")}
+            description={t("aiSummaryDesc", { city: city.name })}
             accent="var(--color-primary)"
           />
           <div className="space-y-6">

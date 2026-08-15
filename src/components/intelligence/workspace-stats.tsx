@@ -15,8 +15,8 @@ interface WorkspaceStatsProps {
 export function WorkspaceStats({ history }: WorkspaceStatsProps) {
   const reduced = useReducedMotion();
 
-  const docs   = history.filter(e => e.type === "document").length;
-  const imgs   = history.filter(e => e.type === "image").length;
+  const docs   = history.filter(e => e.type === "documents").length;
+  const imgs   = history.filter(e => e.type === "images").length;
   const csvs   = history.filter(e => e.type === "data").length;
   const total  = history.length;
   const avgMs  = total === 0 ? 0

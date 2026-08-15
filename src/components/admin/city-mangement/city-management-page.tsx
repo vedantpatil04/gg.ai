@@ -19,7 +19,6 @@ import { adminCityApi } from "@/lib/api/environmental.api";
 import { useCityDirectory, type DirectoryCityBase } from "@/components/admin/city-directory/city-directory-queries";
 import { useQuery } from "@tanstack/react-query";
 import { complaintApi, alertApi } from "@/lib/api/services.api";
-import { User } from "@/lib/api/client";
 import client from "@/lib/api/client";
 
 // Enriched city with live counts
@@ -45,12 +44,12 @@ function CityForm({ initial, onSubmit, isSubmitting, submitLabel }: {
     <div className="space-y-4 mt-4">
       {([
         { key: "cityId" as const, label: "City ID", placeholder: "e.g. belagavi", hint: "Lowercase slug — unique identifier" },
-        { key: "name" as const, label: "City Name", placeholder: "e.g. Belagavi" },
-        { key: "country" as const, label: "Country", placeholder: "e.g. India" },
-        { key: "lat" as const, label: "Latitude", placeholder: "e.g. 15.8497" },
-        { key: "lng" as const, label: "Longitude", placeholder: "e.g. 74.4977" },
-        { key: "timezone" as const, label: "Timezone", placeholder: "e.g. Asia/Kolkata" },
-      ] as const).map(({ key, label, placeholder, hint }) => (
+        { key: "name" as const, label: "City Name", placeholder: "e.g. Belagavi", hint: "" },
+        { key: "country" as const, label: "Country", placeholder: "e.g. India", hint: "" },
+        { key: "lat" as const, label: "Latitude", placeholder: "e.g. 15.8497", hint: "" },
+        { key: "lng" as const, label: "Longitude", placeholder: "e.g. 74.4977", hint: "" },
+        { key: "timezone" as const, label: "Timezone", placeholder: "e.g. Asia/Kolkata", hint: "" },
+      ]).map(({ key, label, placeholder, hint }) => (
         <div key={key} className="space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground">{label}</label>
           <Input value={form[key]} onChange={e => set(key)(e.target.value)} placeholder={placeholder} />

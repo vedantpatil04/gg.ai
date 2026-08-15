@@ -8,6 +8,7 @@ import { reportApi, complaintApi } from "@/lib/api/services.api";
 import { useCity } from "@/lib/city-context";
 import { useAuth } from "@/lib/auth-context";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/reports")({
   head: () => ({ meta: [{ title: "Reports Center — GreenGuard AI" }] }),
@@ -36,6 +37,7 @@ interface GeneratedReport {
 }
 
 function Reports() {
+  const { t } = useTranslation("reports");
   const { city, isApiConnected } = useCity();
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -63,17 +65,20 @@ function Reports() {
   });
 
   const { data: complaintData, isLoading: complaintLoading } = useQuery({
-    queryKey: ["complaint-totals", city.id],
-    queryFn: () => complaintApi.getAll({ cityId: city.id, limit: 1 }),
+    queryKey: ["reports-complaints-count", city.id],
+    queryFn: () => complaintApi.getAll({ cityId: city.id, limit: 1 }).then((r) => r.data),
     staleTime: 5 * 60_000,
     enabled: isApiConnected,
     throwOnError: false,
   });
 
   const generateMutation = useMutation({
-    mutationFn: () => reportApi.generateAI({ type: aiReportType, cityId: city.id, save: true }),
-    onSuccess: (res) => {
-      setGeneratedReport(res.data.report as GeneratedReport);
+    mutationFn: () =>
+      reportApi
+        .generateAI({ type: aiReportType, cityId: city.id, save: true })
+        .then((r) => (r?.report ?? r?.data?.report ?? r?.data ?? r) as GeneratedReport),
+    onSuccess: (data) => {
+      setGeneratedReport(data);
       qc.invalidateQueries({ queryKey: ["reports", city.id] });
       qc.invalidateQueries({ queryKey: ["report-stats", city.id] });
     },
@@ -102,30 +107,30 @@ function Reports() {
   )?.data?.pagination?.total;
 
   return (
-    <div className="p-4 md:p-8 space-y-6 max-w-[1600px] mx-auto">
+    <div className="p-4 md:p-8 space-y-6 w-full">
       {/* Header */}
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            Reports center
+            {t("title")}
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight mt-1">Library & analytics</h1>
+          <h1 className="text-3xl font-semibold tracking-tight mt-1">{t("subtitle")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Compliance-ready environmental reporting with AI-generated summaries.
+            {t("description")}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <div className="glass rounded-lg flex items-center px-3 py-1.5 text-sm w-60">
             <Search className="size-3.5 text-muted-foreground mr-2" />
             <input
-              placeholder="Search reports…"
+              placeholder={t("searchPlaceholder")}
               className="bg-transparent outline-none w-full"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <button className="glass rounded-lg px-3 py-2 text-sm inline-flex items-center gap-1.5">
-            <Filter className="size-3.5" /> Filter
+            <Filter className="size-3.5" /> {t("filter")}
           </button>
           {canGenerate && (
             <button
@@ -135,7 +140,7 @@ function Reports() {
               }}
               className="aurora text-primary-foreground rounded-lg px-3 py-2 text-sm inline-flex items-center gap-1.5"
             >
-              <Sparkles className="size-3.5" /> AI Report
+              <Sparkles className="size-3.5" /> {t("aiReport")}
             </button>
           )}
         </div>
@@ -145,10 +150,10 @@ function Reports() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {(
           [
-            [stats.total, "Total reports", statsLoading],
-            [stats.monthly, "This month", statsLoading],
-            [stats.compliance, "Compliance audits", statsLoading],
-            [totalComplaints, "Citizen reports", complaintLoading],
+            [stats.total, t("stats.total"), statsLoading],
+            [stats.monthly, t("stats.monthly"), statsLoading],
+            [stats.compliance, t("stats.compliance"), statsLoading],
+            [totalComplaints, t("stats.citizenReports"), complaintLoading],
           ] as [number | undefined, string, boolean][]
         ).map(([v, l, loading]) => (
           <div key={l} className="glass rounded-2xl p-5">
@@ -212,33 +217,33 @@ function Reports() {
                 {!isApiConnected && (
                   <p className="text-xs text-muted-foreground">Backend required for AI reports</p>
                 )}
+                {generateMutation.isError && (
+                  <p className="text-sm text-destructive">
+                    {t("aiGenerator.failed")}
+                  </p>
+                )}
               </div>
-              {generateMutation.isError && (
-                <p className="text-sm text-destructive">
-                  Failed to generate report. Check backend connection.
-                </p>
-              )}
             </div>
           ) : (
             <div className="space-y-5">
               <div className="flex items-center gap-2">
                 <CheckCircle className="size-5 text-[var(--color-success)]" />
                 <div className="font-semibold">{generatedReport.title}</div>
-                <Pill tone="success">Generated</Pill>
+                <Pill tone="success">{t("generated")}</Pill>
               </div>
 
-              <Section label="Executive summary" text={generatedReport.executiveSummary} />
+              <Section label={t("sections.executiveSummary")} text={generatedReport.executiveSummary} />
 
               <div className="grid md:grid-cols-3 gap-4">
-                <Section label="AQI analysis" text={generatedReport.aqiAnalysis} />
-                <Section label="Water quality" text={generatedReport.waterQualityAnalysis} />
-                <Section label="Risk assessment" text={generatedReport.riskAssessment} />
+                <Section label={t("sections.aqiAnalysis")} text={generatedReport.aqiAnalysis} />
+                <Section label={t("sections.waterQuality")} text={generatedReport.waterQualityAnalysis} />
+                <Section label={t("sections.riskAssessment")} text={generatedReport.riskAssessment} />
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
-                    Key findings
+                    {t("sections.keyFindings")}
                   </div>
                   <ul className="space-y-1.5">
                     {generatedReport.keyFindings.map((f, i) => (
@@ -251,7 +256,7 @@ function Reports() {
                 </div>
                 <div>
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
-                    Recommendations
+                    {t("sections.recommendations")}
                   </div>
                   <ul className="space-y-1.5">
                     {generatedReport.recommendations.map((r, i) => (
@@ -266,7 +271,7 @@ function Reports() {
 
               <div className="rounded-xl bg-muted/40 p-4">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Outlook
+                  {t("sections.outlook")}
                 </div>
                 <div className="text-sm mt-1">{generatedReport.outlook}</div>
               </div>
@@ -295,7 +300,7 @@ function Reports() {
                   }}
                 >
                   <Download className="size-3.5" />
-                  Download
+                  {t("download")}
                 </button>
               </div>
             </div>
@@ -304,17 +309,19 @@ function Reports() {
       )}
 
       {/* Report Library */}
-      <Panel eyebrow="Library" title="Environmental reports">
+      <Panel eyebrow={t("stats.compliance")} title={t("reportList")}>
         {reportsLoading ? (
           <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground text-sm">
             <Loader2 className="size-4 animate-spin" />
-            Loading reports…
+            {t("aiGenerator.description")}
           </div>
         ) : reports.length === 0 ? (
           <div className="py-12 text-center text-muted-foreground text-sm">
             {search
-              ? "No reports match your search."
-              : "No reports have been generated yet. Use the AI Report button above to create the first one."}
+              ? t("noReportsSearch", { query: search })
+              : !isApiConnected
+                ? t("backendOffline")
+                : t("noReports")}
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">

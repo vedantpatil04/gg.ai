@@ -67,7 +67,7 @@ function EnvironmentOverview() {
   return (
     <div className="relative min-h-screen">
       <motion.div variants={variants} initial="hidden" animate="show">
-        <div className="max-w-[1680px] mx-auto px-4 sm:px-6 md:px-10 xl:px-14 2xl:px-16">
+        <div className="w-full px-4 sm:px-6 md:px-10 xl:px-14 2xl:px-16">
           {/* ═══ AREA 1 — CITY ENVIRONMENTAL CONTEXT ═════════════════════════ */}
           <div className="pt-8 md:pt-12">
             <CityEnvironmentalContext />

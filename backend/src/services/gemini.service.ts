@@ -1570,7 +1570,7 @@ Return ONLY valid JSON:
   "subject": "clear one-line summary (max 100 chars)",
   "category": "Technical Issue|Bug Report|Access Request|Data Issue|Account & Billing|Feature Request|Other",
   "priority": "low|medium|high|critical",
-  "department": "Environmental Monitoring|Smart Maps|AI Copilot|Reports & Exports|Platform Administration|Authority Portal|Citizen Portal|Security & Access|Sensor Network|Other",
+  "department": "Environmental Monitoring|Smart Maps|GreenGuard Intelligence Center|Reports & Exports|Platform Administration|Authority Portal|Citizen Portal|Security & Access|Sensor Network|Other",
   "description": "professional description based on what the user said (2-3 sentences)",
   "expectedResult": "what the user expects the system to do",
   "environment": "Production",

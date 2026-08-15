@@ -20,7 +20,7 @@ import { Gauge, ThermometerSun, Droplets, Wind, Radio, Clock } from "lucide-reac
 import { findAqiBand } from "@/lib/mock-data";
 
 interface StatusPillProps {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   label: string;
   value: string | number;
   unit?: string;

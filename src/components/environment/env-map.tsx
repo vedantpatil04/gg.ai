@@ -160,7 +160,7 @@ interface Particle {
 }
 
 function useWindCanvas(
-  canvasRef: React.RefObject<HTMLCanvasElement>,
+  canvasRef: React.RefObject<HTMLCanvasElement | null>,
   windSpeed: number | undefined,
   windDirection: number | undefined,
   reduced: boolean,

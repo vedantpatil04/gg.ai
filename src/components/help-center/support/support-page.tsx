@@ -1008,7 +1008,7 @@ function FeedbackCenter() {
           <FormSelect
             value={category}
             onChange={setCategory}
-            options={["General Experience", "UI/UX Design", "Performance", "AI Copilot", "Smart Maps", "Reports", "Support Quality", "Documentation", "Other"]}
+            options={["General Experience", "UI/UX Design", "Performance", "GreenGuard Intelligence Center", "Smart Maps", "Reports", "Support Quality", "Documentation", "Other"]}
             placeholder="Select category"
           />
         </FormField>
@@ -1035,7 +1035,7 @@ function FeedbackCenter() {
         <FormField label="UI Satisfaction">
           <StarRating value={uiSat} onChange={setUiSat} />
         </FormField>
-        <FormField label="AI Copilot Satisfaction">
+        <FormField label="GreenGuard Intelligence Center Satisfaction">
           <StarRating value={aiSat} onChange={setAiSat} />
         </FormField>
       </div>

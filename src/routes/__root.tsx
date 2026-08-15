@@ -17,6 +17,7 @@ import { ThemeProvider } from "@/lib/theme";
 import { AccessibilityProvider, useAccessibility } from "@/lib/accessibility";
 import { CityProvider } from "@/lib/city-context";
 import { AuthProvider } from "@/lib/auth-context";
+import { I18nProvider } from "@/lib/i18n-context";
 import { Toaster } from "@/components/ui/sonner";
 import { NavigationTransitionOverlay } from "@/components/shared/navigation-transition";
 
@@ -127,15 +128,17 @@ function RootComponent() {
       <ThemeProvider>
         <AccessibilityProvider>
           <AuthProvider>
-            <CityProvider>
-              <TooltipProvider delayDuration={150}>
-                <MotionPreferences>
-                  <Outlet />
-                  <NavigationTransitionOverlay />
-                  <Toaster />
-                </MotionPreferences>
-              </TooltipProvider>
-            </CityProvider>
+            <I18nProvider>
+              <CityProvider>
+                <TooltipProvider delayDuration={150}>
+                  <MotionPreferences>
+                    <Outlet />
+                    <NavigationTransitionOverlay />
+                    <Toaster />
+                  </MotionPreferences>
+                </TooltipProvider>
+              </CityProvider>
+            </I18nProvider>
           </AuthProvider>
         </AccessibilityProvider>
       </ThemeProvider>

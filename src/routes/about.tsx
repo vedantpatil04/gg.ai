@@ -44,7 +44,7 @@ function AboutPage() {
         <h2>How we work</h2>
         <p>
           We build with the agencies that use us, not for them. Every module in GreenGuard AI —
-          monitoring, forecast, copilot, citizen hub, reports, sustainability, simulator and map —
+          monitoring, forecast, intelligence center, citizen hub, reports, sustainability, simulator and map —
           ships because a real city operator asked for it. We measure success in outcomes: incidents
           prevented, response times reduced, advisories issued before the air got bad.
         </p>

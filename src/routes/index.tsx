@@ -18,6 +18,7 @@ import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { Hero } from "@/components/landing/hero/Hero";
 import { TrustStrip } from "@/components/landing/TrustStrip";
+import { LANDING_CONTAINER } from "@/components/landing/shared";
 import { SectionDivider } from "@/components/landing/experiences/shared";
 import { EnvironmentalOverviewExperience } from "@/components/landing/experiences/EnvironmentalOverviewExperience";
 import { SmartMapExperience } from "@/components/landing/experiences/SmartMapExperience";
@@ -84,7 +85,7 @@ function PlatformOverview() {
   ];
   return (
     <section id="platform-overview" className="border-y border-border/60 bg-card/30">
-      <div className="mx-auto max-w-[1440px] px-6 lg:px-10 py-14">
+      <div className={`${LANDING_CONTAINER} py-14`}>
         <div className="grid gap-8 lg:grid-cols-[1.2fr_1fr] items-center">
           <div>
             <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
@@ -137,7 +138,7 @@ function LiveOperations() {
 
   return (
     <section className="py-24">
-      <div className="mx-auto max-w-[1440px] px-6 lg:px-10">
+      <div className={LANDING_CONTAINER}>
         <SectionHead
           eyebrow="Live Operations"
           title="The world's environment, narrated in real time."
@@ -323,7 +324,7 @@ function Modules() {
 
   return (
     <section className="py-24 border-t border-border/60">
-      <div className="mx-auto max-w-[1440px] px-6 lg:px-10">
+      <div className={LANDING_CONTAINER}>
         <SectionHead
           eyebrow="The Rest Of The Platform"
           title="Four more modules, same data fabric."
@@ -391,7 +392,7 @@ function HowItWorks() {
   ];
   return (
     <section className="py-24 border-t border-border/60">
-      <div className="mx-auto max-w-[1440px] px-6 lg:px-10">
+      <div className={LANDING_CONTAINER}>
         <SectionHead
           eyebrow="How It Works"
           title="From raw signal to decision, in one platform."
@@ -443,7 +444,7 @@ function Benefits() {
   ];
   return (
     <section className="py-24 border-t border-border/60 bg-card/30">
-      <div className="mx-auto max-w-[1440px] px-6 lg:px-10 grid gap-12 lg:grid-cols-[1fr_1.2fr] items-start">
+      <div className={`${LANDING_CONTAINER} grid gap-12 lg:grid-cols-[1fr_1.2fr] items-start`}>
         <div>
           <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
             Why GreenGuard
@@ -479,7 +480,7 @@ function Benefits() {
 function CTA() {
   return (
     <section className="py-24 border-t border-border/60">
-      <div className="mx-auto max-w-[1440px] px-6 lg:px-10">
+      <div className={LANDING_CONTAINER}>
         <div className="relative rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-[color:var(--color-primary)]/5 p-10 lg:p-16 overflow-hidden">
           <div
             className="absolute -top-32 -right-32 size-[420px] rounded-full opacity-30 blur-3xl"

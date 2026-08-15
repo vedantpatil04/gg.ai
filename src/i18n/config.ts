@@ -38,6 +38,13 @@ export const NAMESPACES = [
   "errors",
   "validation",
   "notifications",
+  "forecast",
+  "copilot",
+  "map",
+  "reports",
+  "simulator",
+  "sustainability",
+  "profile",
 ] as const;
 
 export type Namespace = (typeof NAMESPACES)[number];

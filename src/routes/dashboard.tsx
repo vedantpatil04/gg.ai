@@ -1056,7 +1056,7 @@ function Dashboard() {
   return (
     <>
       <motion.div
-        className="p-4 md:p-8 space-y-6 max-w-[1600px] mx-auto"
+        className="p-4 md:p-8 space-y-6 w-full"
         variants={PAGE_STAGGER}
         initial={prefersReduced ? false : "hidden"}
         animate="show"

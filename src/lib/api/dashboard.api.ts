@@ -7,7 +7,7 @@ export const LANDING_PAGES = [
   { id: "forecast", path: "/forecast", label: "Forecast" },
   { id: "citizen", path: "/citizen", label: "Citizen Hub" },
   { id: "sustainability", path: "/sustainability", label: "Sustainability" },
-  { id: "copilot", path: "/copilot", label: "AI Copilot" },
+  { id: "copilot", path: "/copilot", label: "GreenGuard Intelligence Center" },
 ] as const;
 export type LandingPageId = (typeof LANDING_PAGES)[number]["id"];
 

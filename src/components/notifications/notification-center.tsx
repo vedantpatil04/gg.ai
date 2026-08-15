@@ -87,16 +87,16 @@ import { useAuth } from "@/lib/auth-context";
 // Identical to Phase 7 — API categories drive this map.
 
 const CATEGORY_META: Record<
-  NotificationCategory,
+  string,
   { label: string; icon: React.ComponentType<{ className?: string }>; color: string }
 > = {
   complaints:   { label: "Complaints",   icon: ClipboardList, color: "text-blue-500"   },
-  assignments:  { label: "Assignments",  icon: Users,         color: "text-violet-500" },
-  authorities:  { label: "Authorities",  icon: ShieldAlert,   color: "text-orange-500" },
-  platform:     { label: "Platform",     icon: Cpu,           color: "text-slate-500"  },
-  environmental:{ label: "Environmental",icon: Leaf,          color: "text-emerald-500"},
+  reports:      { label: "Reports",      icon: ClipboardList, color: "text-violet-500" },
+  authority:    { label: "Authority",    icon: ShieldAlert,   color: "text-orange-500" },
+  environment:  { label: "Environment",  icon: Leaf,          color: "text-emerald-500"},
+  forecast:     { label: "Forecast",     icon: Globe,         color: "text-cyan-500"   },
+  admin:        { label: "Admin",        icon: Cpu,           color: "text-slate-500"  },
   security:     { label: "Security",     icon: ShieldAlert,   color: "text-red-500"    },
-  ai:           { label: "AI",           icon: Brain,         color: "text-purple-500" },
   system:       { label: "System",       icon: Globe,         color: "text-gray-500"   },
 };
 
@@ -648,8 +648,8 @@ function NotificationPreferences({ onBack }: { onBack: () => void }) {
 
   const roleCategories = useMemo(() => {
     const base: NotificationCategory[] = ["complaints", "security", "system"];
-    if (user?.role === "authority")     return [...base, "assignments"];
-    if (user?.role === "administrator") return [...base, "assignments", "authorities", "platform", "environmental", "ai"];
+    if (user?.role === "authority")     return [...base, "reports", "authority"];
+    if (user?.role === "administrator") return [...base, "reports", "authority", "environment", "forecast", "admin"];
     return base;
   }, [user?.role]);
 
@@ -671,7 +671,7 @@ function NotificationPreferences({ onBack }: { onBack: () => void }) {
         </p>
         <div className="space-y-4">
           {roleCategories.map((cat) => {
-            const meta = CATEGORY_META[cat];
+            const meta = CATEGORY_META[cat] || { label: cat, icon: Globe, color: "text-gray-500" };
             const Icon = meta.icon;
             return (
               <div key={cat} className="flex items-center justify-between">
@@ -681,7 +681,7 @@ function NotificationPreferences({ onBack }: { onBack: () => void }) {
                 </div>
                 <Switch
                   checked={prefs[cat] !== false}
-                  onCheckedChange={() => toggle(cat)}
+                  onCheckedChange={() => toggle(cat as NotificationCategory)}
                   disabled={isPending}
                 />
               </div>

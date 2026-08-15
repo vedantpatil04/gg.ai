@@ -24,6 +24,7 @@
 import { useReducedMotion, motion } from "framer-motion";
 import { useRef, useState, useCallback } from "react";
 import { Sunrise, Sun, Moon, Moon as NightIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { getGreetingText } from "@/lib/format-time";
 import { findAqiBand } from "@/lib/mock-data";
 import { computeSceneCondition } from "@/lib/hero-scene";
@@ -93,22 +94,28 @@ export interface WelcomeHeroProps {
 }
 
 export function WelcomeHero({
-  cityId,
-  userName,
   cityName,
+  cityId,
   country,
   aqi = 0,
   temp,
   humidity,
   windSpeed,
-  lastUpdated,
   sensorsOnline,
+  lastUpdated,
+  userName,
 }: WelcomeHeroProps) {
+  const { t } = useTranslation("dashboard");
   const prefersReduced = useReducedMotion() ?? false;
-  const hour = new Date().getHours();
-  const greet = getGreetingText(hour);
-  const Icon = greetingIcon(greet);
-  const emoji = greetingEmoji(greet);
+  const rawGreet = getGreetingText();
+  const greet =
+    rawGreet === "Good morning"
+      ? t("goodMorning")
+      : rawGreet === "Good afternoon"
+        ? t("goodAfternoon")
+        : t("goodEvening");
+  const emoji = greetingEmoji(rawGreet);
+  const Icon = greetingIcon(rawGreet);
   const band = findAqiBand(aqi);
   const scene = computeSceneCondition({ aqi, temp, humidity, windSpeed });
   const outdoorMessage = getOutdoorMessage(aqi, cityName);

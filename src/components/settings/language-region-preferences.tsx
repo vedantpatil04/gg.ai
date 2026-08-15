@@ -131,7 +131,8 @@ export function LanguageRegionPanel() {
     //   { success: boolean; data: { languageRegion: LanguageRegionPreferences } }
     queryFn: () =>
       languageRegionApi.get().then((r) => r.data.languageRegion),
-    staleTime: 15_000,
+    staleTime: 300_000,
+    refetchOnWindowFocus: false,
     throwOnError: false,
   });
 
@@ -348,7 +349,7 @@ export function LanguageRegionPanel() {
                   className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors cursor-pointer text-sm"
                 >
                   <RadioGroupItem value={opt.value} id={`time-${opt.value}`} />
-                  {t(opt.labelKey)}
+                  {t(opt.labelKey as any)}
                 </label>
               ))}
             </RadioGroup>
@@ -402,7 +403,7 @@ export function LanguageRegionPanel() {
                     id={`unit-${opt.value}`}
                   />
                   <span>
-                    {t(opt.labelKey)}{" "}
+                    {t(opt.labelKey as any)}{" "}
                     <span className="text-muted-foreground text-xs">
                       ({opt.desc})
                     </span>

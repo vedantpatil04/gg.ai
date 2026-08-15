@@ -1,0 +1,77 @@
+{
+  "title": "GreenGuard Intelligence Center",
+  "subtitle": "Environmental intelligence, powered by Gemini.",
+  "tabs": {
+    "chat": "Assistant",
+    "intelligence": "Intelligence",
+    "health": "Health",
+    "actions": "Actions"
+  },
+  "chat": {
+    "placeholder": "Ask about air quality, forecasts, recommendations…",
+    "send": "Send",
+    "thinking": "Analysing environmental data…",
+    "aiUnavailable": "AI temporarily unavailable. Please try again shortly.",
+    "retry": "Retry",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "feedback": "Feedback",
+    "helpful": "Helpful",
+    "notHelpful": "Not helpful",
+    "newChat": "New chat",
+    "clearHistory": "Clear history"
+  },
+  "intelligence": {
+    "title": "Intelligence Dashboard",
+    "insights": "Insights",
+    "recommendations": "Recommendations",
+    "riskAssessment": "Risk Assessment",
+    "cityRanking": "City Ranking",
+    "alerts": "Active Alerts",
+    "noInsights": "No insights available.",
+    "noAlerts": "No active alerts.",
+    "loading": "Loading intelligence data…"
+  },
+  "health": {
+    "title": "Health Advisory",
+    "riskLevel": "Risk Level",
+    "summary": "Summary",
+    "outdoorActivity": "Outdoor Activity",
+    "exercise": "Exercise",
+    "masks": "Masks",
+    "schools": "Schools",
+    "elderly": "Elderly",
+    "children": "Children",
+    "generalPublic": "General Public",
+    "low": "Low",
+    "moderate": "Moderate",
+    "high": "High",
+    "severe": "Severe",
+    "loading": "Loading health advisory…",
+    "noData": "Health advisory unavailable."
+  },
+  "actions": {
+    "title": "Recommended Actions",
+    "citizen": "Citizen Actions",
+    "government": "Government Actions",
+    "expand": "View actions",
+    "collapse": "Collapse",
+    "noActions": "No actions recommended currently."
+  },
+  "prompts": {
+    "airQuality": "Air Quality",
+    "health": "Health",
+    "forecast": "Forecast",
+    "policy": "Policy",
+    "alerts": "Alerts"
+  },
+  "status": {
+    "online": "AI Online",
+    "offline": "AI Offline",
+    "degraded": "Degraded",
+    "processing": "Processing"
+  },
+  "aiPoweredBy": "Powered by Gemini",
+  "contextPanel": "Environmental Context",
+  "liveData": "Live Data"
+}

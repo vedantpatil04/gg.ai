@@ -19,6 +19,7 @@ import {
   YAxis,
 } from "recharts";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
   Activity,
@@ -181,6 +182,7 @@ function useCountUp(target: number, durationMs = 900) {
 
 // ─── Main Forecast Center Component ───────────────────────────────────────────
 function Forecast() {
+  const { t } = useTranslation("forecast");
   const { city, isApiConnected } = useCity();
   const [active, setActive] = useState<(typeof RANGES)[number]["id"]>("48h");
   const range = RANGES.find((r) => r.id === active)!;
@@ -492,7 +494,7 @@ function Forecast() {
   );
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 lg:p-8 space-y-6 sm:space-y-8 max-w-[1600px] mx-auto overflow-hidden">
+    <div className="p-3 sm:p-4 md:p-6 lg:p-8 space-y-6 sm:space-y-8 w-full overflow-hidden">
       {/* ── 1. FORECAST HERO SECTION ────────────────────────────────────────── */}
       <section
         ref={heroRef}
@@ -530,7 +532,7 @@ function Forecast() {
               />
               {isApiConnected ? "Live data" : "Offline · mock"} · {now || "—"}
             </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight">Forecast Center</h1>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight">{t("title")}</h1>
             <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
               <span className="inline-flex items-center gap-1.5 text-base sm:text-lg text-muted-foreground font-medium">
                 <MapPin className="size-4 shrink-0" /> {city.name}, {city.country}

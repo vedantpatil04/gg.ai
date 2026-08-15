@@ -82,11 +82,13 @@ interface ChartPoint {
 // number on a raw 24h reading).
 function extractValue(metric: MetricKey, point: RawPoint): number | null {
   if ("timestamp" in point) {
-    const v = metric === "water" ? point.water : point[metric as Exclude<MetricKey, "water">];
+    if (metric === "ecoScore") return typeof point.eco === "number" ? point.eco : null;
+    const v = (point as any)[metric];
     return typeof v === "number" ? v : null;
   }
-  if (metric === "aqi") return point.aqi.avg;
-  const v = point[metric as Exclude<MetricKey, "aqi">];
+  if (metric === "aqi") return point.aqi?.avg ?? null;
+  if (metric === "ecoScore") return typeof point.eco === "number" ? point.eco : null;
+  const v = (point as any)[metric];
   return typeof v === "number" ? v : null;
 }
 
@@ -191,14 +193,14 @@ export function SustainabilityHistoryChart({ cityId, cityName }: { cityId: strin
   // equivalent period immediately before it.
   const { currentRaw, previousRaw } = useMemo(() => {
     if (range === "24h") {
-      const all = trendData?.data?.trend ?? [];
+      const all: RawPoint[] = trendData?.data?.trend ?? [];
       const cutoff = Date.now() - 24 * 60 * 60 * 1000;
       return {
-        currentRaw: all.filter((p) => new Date(p.timestamp).getTime() >= cutoff),
-        previousRaw: all.filter((p) => new Date(p.timestamp).getTime() < cutoff),
+        currentRaw: all.filter((p: RawPoint) => new Date(pointTimestamp(p)).getTime() >= cutoff),
+        previousRaw: all.filter((p: RawPoint) => new Date(pointTimestamp(p)).getTime() < cutoff),
       };
     }
-    const all = historyData?.data?.history ?? [];
+    const all: RawPoint[] = historyData?.data?.history ?? [];
     const days = cfg.days ?? 7;
     return {
       currentRaw: all.slice(-days),
@@ -210,12 +212,12 @@ export function SustainabilityHistoryChart({ cityId, cityName }: { cityId: strin
   const points: ChartPoint[] = useMemo(
     () =>
       currentRaw
-        .map((p) => {
+        .map((p: RawPoint) => {
           const value = extractValue(metricKey, p);
           const ts = pointTimestamp(p);
           return value == null ? null : { label: formatTickLabel(ts, range), timestamp: ts, value };
         })
-        .filter((p): p is ChartPoint => p !== null),
+        .filter((p: ChartPoint | null): p is ChartPoint => p !== null),
     [currentRaw, metricKey, range],
   );
 
@@ -236,13 +238,13 @@ export function SustainabilityHistoryChart({ cityId, cityName }: { cityId: strin
     () =>
       METRICS.map((m) => {
         const vals = currentRaw
-          .map((p) => extractValue(m.key, p))
-          .filter((v): v is number => v != null);
+          .map((p: RawPoint) => extractValue(m.key, p))
+          .filter((v: number | null): v is number => v != null);
         if (vals.length < 2) return null;
         const prev = vals[0];
         const curr = vals[vals.length - 1];
         return { metric: m, previous: prev, current: curr, change: curr - prev, direction: classifyChange(curr - prev, m) };
-      }).filter((r): r is NonNullable<typeof r> => r !== null),
+      }).filter((r: any): r is NonNullable<typeof r> => r !== null),
     [currentRaw],
   );
 
@@ -251,15 +253,15 @@ export function SustainabilityHistoryChart({ cityId, cityName }: { cityId: strin
   const comparison = useMemo(
     () =>
       METRICS.map((m) => {
-        const currVals = currentRaw.map((p) => extractValue(m.key, p)).filter((v): v is number => v != null);
-        const prevVals = previousRaw.map((p) => extractValue(m.key, p)).filter((v): v is number => v != null);
+        const currVals = currentRaw.map((p: RawPoint) => extractValue(m.key, p)).filter((v: number | null): v is number => v != null);
+        const prevVals = previousRaw.map((p: RawPoint) => extractValue(m.key, p)).filter((v: number | null): v is number => v != null);
         if (currVals.length < 2 || prevVals.length < 2) return null;
         const currAvg = average(currVals)!;
         const prevAvg = average(prevVals)!;
         if (prevAvg === 0) return null;
         const pct = ((currAvg - prevAvg) / Math.abs(prevAvg)) * 100;
         return { metric: m, pct, direction: classifyChange(currAvg - prevAvg, m) };
-      }).filter((r): r is NonNullable<typeof r> => r !== null),
+      }).filter((r: any): r is NonNullable<typeof r> => r !== null),
     [currentRaw, previousRaw],
   );
 

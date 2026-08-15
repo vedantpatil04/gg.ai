@@ -41,6 +41,13 @@ import enAdministrator  from "./locales/en/administrator.json";
 import enErrors         from "./locales/en/errors.json";
 import enValidation     from "./locales/en/validation.json";
 import enNotifications  from "./locales/en/notifications.json";
+import enForecast       from "./locales/en/forecast.json";
+import enCopilot        from "./locales/en/copilot.json";
+import enMap            from "./locales/en/map.json";
+import enReports        from "./locales/en/reports.json";
+import enSimulator      from "./locales/en/simulator.json";
+import enSustainability from "./locales/en/sustainability.json";
+import enProfile        from "./locales/en/profile.json";
 
 // ── Hindi ─────────────────────────────────────────────────────────────────────
 import hiCommon         from "./locales/hi/common.json";
@@ -54,6 +61,13 @@ import hiAdministrator  from "./locales/hi/administrator.json";
 import hiErrors         from "./locales/hi/errors.json";
 import hiValidation     from "./locales/hi/validation.json";
 import hiNotifications  from "./locales/hi/notifications.json";
+import hiForecast       from "./locales/hi/forecast.json";
+import hiCopilot        from "./locales/hi/copilot.json";
+import hiMap            from "./locales/hi/map.json";
+import hiReports        from "./locales/hi/reports.json";
+import hiSimulator      from "./locales/hi/simulator.json";
+import hiSustainability from "./locales/hi/sustainability.json";
+import hiProfile        from "./locales/hi/profile.json";
 
 // ── Kannada ───────────────────────────────────────────────────────────────────
 import knCommon         from "./locales/kn/common.json";
@@ -67,6 +81,13 @@ import knAdministrator  from "./locales/kn/administrator.json";
 import knErrors         from "./locales/kn/errors.json";
 import knValidation     from "./locales/kn/validation.json";
 import knNotifications  from "./locales/kn/notifications.json";
+import knForecast       from "./locales/kn/forecast.json";
+import knCopilot        from "./locales/kn/copilot.json";
+import knMap            from "./locales/kn/map.json";
+import knReports        from "./locales/kn/reports.json";
+import knSimulator      from "./locales/kn/simulator.json";
+import knSustainability from "./locales/kn/sustainability.json";
+import knProfile        from "./locales/kn/profile.json";
 
 // ── Marathi ───────────────────────────────────────────────────────────────────
 import mrCommon         from "./locales/mr/common.json";
@@ -80,6 +101,13 @@ import mrAdministrator  from "./locales/mr/administrator.json";
 import mrErrors         from "./locales/mr/errors.json";
 import mrValidation     from "./locales/mr/validation.json";
 import mrNotifications  from "./locales/mr/notifications.json";
+import mrForecast       from "./locales/mr/forecast.json";
+import mrCopilot        from "./locales/mr/copilot.json";
+import mrMap            from "./locales/mr/map.json";
+import mrReports        from "./locales/mr/reports.json";
+import mrSimulator      from "./locales/mr/simulator.json";
+import mrSustainability from "./locales/mr/sustainability.json";
+import mrProfile        from "./locales/mr/profile.json";
 
 // ── Bundled resource map ──────────────────────────────────────────────────────
 const resources = {
@@ -88,24 +116,32 @@ const resources = {
     dashboard: enDashboard, authentication: enAuthentication, citizen: enCitizen,
     authority: enAuthority, administrator: enAdministrator, errors: enErrors,
     validation: enValidation, notifications: enNotifications,
+    forecast: enForecast, copilot: enCopilot, map: enMap, reports: enReports,
+    simulator: enSimulator, sustainability: enSustainability, profile: enProfile,
   },
   hi: {
     common: hiCommon, navigation: hiNavigation, settings: hiSettings,
     dashboard: hiDashboard, authentication: hiAuthentication, citizen: hiCitizen,
     authority: hiAuthority, administrator: hiAdministrator, errors: hiErrors,
     validation: hiValidation, notifications: hiNotifications,
+    forecast: hiForecast, copilot: hiCopilot, map: hiMap, reports: hiReports,
+    simulator: hiSimulator, sustainability: hiSustainability, profile: hiProfile,
   },
   kn: {
     common: knCommon, navigation: knNavigation, settings: knSettings,
     dashboard: knDashboard, authentication: knAuthentication, citizen: knCitizen,
     authority: knAuthority, administrator: knAdministrator, errors: knErrors,
     validation: knValidation, notifications: knNotifications,
+    forecast: knForecast, copilot: knCopilot, map: knMap, reports: knReports,
+    simulator: knSimulator, sustainability: knSustainability, profile: knProfile,
   },
   mr: {
     common: mrCommon, navigation: mrNavigation, settings: mrSettings,
     dashboard: mrDashboard, authentication: mrAuthentication, citizen: mrCitizen,
     authority: mrAuthority, administrator: mrAdministrator, errors: mrErrors,
     validation: mrValidation, notifications: mrNotifications,
+    forecast: mrForecast, copilot: mrCopilot, map: mrMap, reports: mrReports,
+    simulator: mrSimulator, sustainability: mrSustainability, profile: mrProfile,
   },
 } as const;
 
@@ -122,7 +158,7 @@ const initialLanguage = detectInitialLanguage();
 void i18next
   .use(initReactI18next)
   .init({
-    resources,
+    resources:   resources as any,
     lng:         initialLanguage,
     fallbackLng: FALLBACK_LANGUAGE,
     ns:          [...NAMESPACES],
@@ -149,8 +185,6 @@ void i18next
         console.warn(`[i18n] Missing key "${ns}:${key}"`);
       };
     })(),
-
-    initImmediate: false,
   });
 
 // ── Side-effects on every language change ─────────────────────────────────────

@@ -146,7 +146,7 @@ export const TUT_CATEGORIES: TutCategory[] = [
   },
   {
     id: "ai-copilot",
-    title: "AI Copilot",
+    title: "GreenGuard Intelligence Center",
     description: "Natural language queries, daily briefs, and smart analysis",
     icon: Sparkles,
     accentColor: "var(--color-info)",
@@ -203,7 +203,7 @@ export const TUTORIALS: Tutorial[] = [
     id: "pb-001",
     categoryId: "platform-basics",
     title: "GreenGuard AI: Complete Platform Walkthrough",
-    description: "A hands-on introduction to every major module — dashboard, maps, AI Copilot, and role-based portals. Perfect for new users of any role.",
+    description: "A hands-on introduction to every major module — dashboard, maps, GreenGuard Intelligence Center, and role-based portals. Perfect for new users of any role.",
     difficulty: "Beginner",
     format: "guide",
     duration: "30 min",
@@ -241,7 +241,7 @@ export const TUTORIALS: Tutorial[] = [
         content: [
           { type: "paragraph", text: "The sidebar is your primary navigation tool. It adapts based on your role — citizens see the Citizen Portal, authorities see the Command Center, and administrators see governance tools." },
           { type: "heading", level: 2, text: "Universal Sidebar Items" },
-          { type: "list", items: ["Dashboard — Your environmental metrics home", "Smart Maps — Geographic view of all data", "AI Copilot — Natural language assistant", "Reports — Generate and export reports", "Settings — Personal preferences and security"] },
+          { type: "list", items: ["Dashboard — Your environmental metrics home", "Smart Maps — Geographic view of all data", "GreenGuard Intelligence Center — Natural language assistant", "Reports — Generate and export reports", "Settings — Personal preferences and security"] },
           { type: "tip", text: "Press Ctrl+B (or Cmd+B on Mac) to collapse the sidebar for a wider content view." },
         ],
       },
@@ -741,12 +741,12 @@ export const TUTORIALS: Tutorial[] = [
     ],
   },
 
-  // ── AI Copilot ────────────────────────────────────────────────────────────
+  // ── GreenGuard Intelligence Center ─────────────────────────────────────────
   {
     id: "ai-001",
     categoryId: "ai-copilot",
-    title: "AI Copilot: Your First Conversation",
-    description: "Learn to query the AI Copilot in natural language, interpret its responses, and use it to generate insights you couldn't get from dashboards alone.",
+    title: "GreenGuard Intelligence Center: Your First Conversation",
+    description: "Learn to query the GreenGuard Intelligence Center in natural language, interpret its responses, and use it to generate insights you couldn't get from dashboards alone.",
     difficulty: "Beginner",
     format: "interactive",
     duration: "20 min",
@@ -764,41 +764,41 @@ export const TUTORIALS: Tutorial[] = [
     steps: [
       {
         id: "s1",
-        title: "Opening the Copilot",
-        description: "Navigate to the AI Copilot module",
+        title: "Opening the Intelligence Center",
+        description: "Navigate to the GreenGuard Intelligence Center module",
         duration: "2 min",
         type: "practice",
         content: [
-          { type: "list", items: ["Click AI Copilot in the sidebar (Sparkles icon)", "Or press Cmd+J / Ctrl+J from anywhere in the app", "A new conversation starts automatically"] },
+          { type: "list", items: ["Click GreenGuard Intelligence Center in the sidebar (Sparkles icon)", "Or press Cmd+J / Ctrl+J from anywhere in the app", "A new conversation starts automatically"] },
         ],
       },
       {
         id: "s2",
         title: "Your First Query",
-        description: "Ask the Copilot a data question",
+        description: "Ask the Intelligence Center a data question",
         duration: "5 min",
         type: "practice",
         content: [
-          { type: "paragraph", text: "The Copilot understands natural language. Type your question as if talking to a knowledgeable colleague." },
+          { type: "paragraph", text: "The Intelligence Center understands natural language. Type your question as if talking to a knowledgeable colleague." },
           { type: "heading", level: 2, text: "Try These Starter Queries" },
           { type: "list", items: ["\"What's the current AQI for the city centre?\"", "\"Which area has the most open complaints right now?\"", "\"Show me pollution trends for the past week\"", "\"Generate a summary of today's environmental status\""] },
-          { type: "callout", variant: "info", text: "The Copilot draws on data up to 30 minutes old. For real-time readings, check Smart Maps directly." },
+          { type: "callout", variant: "info", text: "The Intelligence Center draws on data up to 30 minutes old. For real-time readings, check Smart Maps directly." },
         ],
       },
       {
         id: "s3",
         title: "Generating the Daily Brief",
-        description: "Use the Copilot to produce an executive summary",
+        description: "Use the Intelligence Center to produce an executive summary",
         duration: "5 min",
         type: "practice",
         content: [
-          { type: "list", items: ["Click the Daily Brief button in the Copilot sidebar", "The Copilot generates a formatted summary of the last 24 hours", "Review AQI trends, notable events, and complaint volume", "Copy or export the brief from the top right menu"] },
+          { type: "list", items: ["Click the Daily Brief button in the Intelligence Center sidebar", "The Intelligence Center generates a formatted summary of the last 24 hours", "Review AQI trends, notable events, and complaint volume", "Copy or export the brief from the top right menu"] },
         ],
       },
       {
         id: "s4",
-        title: "Understanding Copilot Limitations",
-        description: "Know what the Copilot can and cannot do",
+        title: "Understanding Intelligence Center Limitations",
+        description: "Know what the Intelligence Center can and cannot do",
         duration: "8 min",
         type: "read",
         content: [
@@ -814,8 +814,8 @@ export const TUTORIALS: Tutorial[] = [
   {
     id: "ai-002",
     categoryId: "ai-copilot",
-    title: "Advanced AI Copilot: Data Analysis Techniques",
-    description: "Go beyond simple queries — use the Copilot for trend analysis, comparative studies, anomaly detection, and automated briefing generation.",
+    title: "Advanced GreenGuard Intelligence Center: Data Analysis Techniques",
+    description: "Go beyond simple queries — use the Intelligence Center for trend analysis, comparative studies, anomaly detection, and automated briefing generation.",
     difficulty: "Advanced",
     format: "guide",
     duration: "40 min",
@@ -838,7 +838,7 @@ export const TUTORIALS: Tutorial[] = [
         duration: "10 min",
         type: "read",
         content: [
-          { type: "paragraph", text: "The quality of the Copilot's response correlates directly with how you phrase your query. Structured queries consistently yield more precise results." },
+          { type: "paragraph", text: "The quality of the Intelligence Center's response correlates directly with how you phrase your query. Structured queries consistently yield more precise results." },
           { type: "heading", level: 2, text: "Query Structure Best Practices" },
           { type: "list", items: ["Specify a time range: 'over the last 7 days', 'in March 2024'", "Name a specific district or sensor: 'in District 4', 'from Sensor S-142'", "State the output format: 'as a table', 'as a bullet summary', 'as a daily chart'", "Ask for comparisons: 'compare District 3 vs District 5'"] },
           { type: "callout", variant: "info", text: "Example: 'Compare average PM2.5 readings in District 3 vs District 5 over the last 30 days and highlight any anomalies.'" },
@@ -847,7 +847,7 @@ export const TUTORIALS: Tutorial[] = [
       {
         id: "s2",
         title: "Trend and Anomaly Analysis",
-        description: "Use the Copilot to identify patterns in environmental data",
+        description: "Use the Intelligence Center to identify patterns in environmental data",
         duration: "15 min",
         type: "practice",
         content: [
@@ -861,7 +861,7 @@ export const TUTORIALS: Tutorial[] = [
         duration: "15 min",
         type: "practice",
         content: [
-          { type: "list", items: ["Open the Copilot and click Scheduled Briefs", "Click New Schedule and choose a template", "Customise the scope: city, district, or custom sensor list", "Set the delivery time and format", "Add recipients and activate the schedule"] },
+          { type: "list", items: ["Open the Intelligence Center and click Scheduled Briefs", "Click New Schedule and choose a template", "Customise the scope: city, district, or custom sensor list", "Set the delivery time and format", "Add recipients and activate the schedule"] },
           { type: "callout", variant: "success", text: "Scheduled briefs are ideal for morning environmental briefings for authority teams and city council reports." },
         ],
       },
@@ -1157,8 +1157,8 @@ export const LEARNING_PATHS: LearningPath[] = [
   },
   {
     id: "lp-ai-power",
-    title: "AI Copilot Power User",
-    description: "Go from AI Copilot basics to advanced data analysis, scheduled briefings, and trend investigation.",
+    title: "GreenGuard Intelligence Center Power User",
+    description: "Go from GreenGuard Intelligence Center basics to advanced data analysis, scheduled briefings, and trend investigation.",
     targetRole: "All Roles",
     difficulty: "Intermediate",
     tutorialIds: ["pb-001", "ai-001", "ai-002", "env-001"],
@@ -1192,7 +1192,7 @@ export const TUT_POPULAR_SEARCHES = [
   "Submit Complaint",
   "AQI",
   "2FA",
-  "AI Copilot",
+  "GreenGuard Intelligence Center",
   "Smart Maps",
   "Reports",
   "Command Center",

@@ -28,13 +28,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Pill } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
-import { useMyCitizenComplaints } from "./citizen-queries";
+import { useMyCitizenComplaints } from "@/components/citizen/citizen-queries";
 import {
   getStatusMeta,
   getSeverityMeta,
   humanizeIssueType,
-} from "./citizen-status-utils";
-import type { CitizenComplaint } from "./citizen-queries";
+} from "@/components/citizen/citizen-status-utils";
+import type { CitizenComplaint } from "@/components/citizen/citizen-queries";
 import { TableSkeleton } from "@/components/shared/skeletons";
 import {
   NoComplaintsEmpty,
@@ -223,7 +223,7 @@ export function CitizenComplaintList({ onOpenComplaint }: CitizenComplaintListPr
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
-        (c) =>
+        (c: CitizenComplaint) =>
           c.title.toLowerCase().includes(q) ||
           c.issueType.toLowerCase().includes(q) ||
           c._id.includes(q) ||

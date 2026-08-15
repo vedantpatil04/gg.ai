@@ -119,9 +119,9 @@ function EvidenceThumb({ path, index }: { path: string; index: number }) {
 interface ComplaintDetailPanelProps {
   complaint: GovernedComplaint | null;
   onOpenChange: (open: boolean) => void;
-  onVerify: (complaint: GovernedComplaint) => void;
-  onReject: (complaint: GovernedComplaint) => void;
-  onAssign: (complaint: GovernedComplaint) => void;
+  onVerify?: (complaint: GovernedComplaint) => void;
+  onReject?: (complaint: GovernedComplaint) => void;
+  onAssign?: (complaint: GovernedComplaint) => void;
 }
 
 export function ComplaintDetailPanel({
@@ -269,17 +269,19 @@ export function ComplaintDetailPanel({
               complaint.status === "in-progress" ||
               complaint.status === "rework") && (
               <div className="mt-8 space-y-2">
-                {complaint.status === "pending" && (
+                {complaint.status === "pending" && onVerify && (
                   <Button className="w-full" onClick={() => onVerify(complaint)}>
                     <Check className="size-4 mr-1.5" />
                     Verify (mark In Progress)
                   </Button>
                 )}
-                <Button variant="outline" className="w-full" onClick={() => onAssign(complaint)}>
-                  <UserPlus className="size-4 mr-1.5" />
-                  {complaint.assignedTo ? "Reassign Authority" : "Assign to Authority"}
-                </Button>
-                {complaint.status !== "rework" && (
+                {onAssign && (
+                  <Button variant="outline" className="w-full" onClick={() => onAssign(complaint)}>
+                    <UserPlus className="size-4 mr-1.5" />
+                    {complaint.assignedTo ? "Reassign Authority" : "Assign to Authority"}
+                  </Button>
+                )}
+                {complaint.status !== "rework" && onReject && (
                   <Button
                     variant="outline"
                     className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"

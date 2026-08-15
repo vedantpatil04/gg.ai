@@ -260,7 +260,7 @@ interface TimelineEntry {
 
 const TIMELINE_ENTRIES: TimelineEntry[] = [
   { id: "t1", title: "Smart Maps: Hazard Intelligence Layer Guide", category: "Smart Maps",            date: "Today",      type: "feature", articleId: "map-001" },
-  { id: "t2", title: "AI Copilot Data Sources and Limitations",    category: "AI Copilot",            date: "Yesterday",  type: "update",  articleId: "ai-002"  },
+  { id: "t2", title: "GreenGuard Intelligence Center Data Sources and Limitations", category: "GreenGuard Intelligence Center", date: "Yesterday",  type: "update",  articleId: "ai-002"  },
   { id: "t3", title: "Configuring AQI Alert Thresholds",           category: "Environmental Monitoring", date: "2 days ago", type: "update",  articleId: "env-002" },
   { id: "t4", title: "Two-Factor Authentication Setup",            category: "Security",              date: "4 days ago", type: "fix",     articleId: "sec-001" },
   { id: "t5", title: "Authority Command Center Walkthrough",       category: "Authority Portal",      date: "5 days ago", type: "update",  articleId: "auth-001"},

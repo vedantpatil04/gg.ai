@@ -84,7 +84,7 @@ const HELP_CATEGORIES = [
   },
   {
     id: "ai-copilot",
-    title: "AI Copilot",
+    title: "GreenGuard Intelligence Center",
     description: "Natural language queries, AI brief, and smart analysis",
     icon: Sparkles,
     count: 6,
@@ -218,10 +218,10 @@ const POPULAR_ARTICLES = [
   },
   {
     id: "4",
-    title: "Using the AI Copilot for Environmental Analysis",
+    title: "Using the GreenGuard Intelligence Center for Environmental Analysis",
     excerpt:
-      "Learn how to query the AI Copilot for data insights, generate automated daily briefs, and interpret trend analysis.",
-    category: "AI Copilot",
+      "Learn how to query the GreenGuard Intelligence Center for data insights, generate automated daily briefs, and interpret trend analysis.",
+    category: "GreenGuard Intelligence Center",
     readTime: "6 min read",
     updatedAt: "5 days ago",
     views: 1876,
