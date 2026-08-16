@@ -656,7 +656,15 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-/* Page-enter animation — applied to the main content area on route change */
+/* Page-enter animation — applied to the main content area on route change.
+   IMPORTANT: the "to" keyframe uses `transform: none`, not `translateY(0)`.
+   They render identically (zero displacement), but `translateY(0)` is still
+   a non-none transform value, and *any* non-none transform on an ancestor
+   creates a new containing block for `position: fixed` descendants — which
+   breaks viewport-fixed elements rendered inside <main> (e.g. a route's
+   mobile sticky bar) for the animation's `animation-fill-mode: both`
+   duration, i.e. permanently after the animation completes. `none` avoids
+   that entirely while looking exactly the same. */
 @keyframes shell-page-in {
   from {
     opacity: 0;
@@ -665,7 +673,7 @@
 
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 

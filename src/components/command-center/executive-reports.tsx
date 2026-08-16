@@ -26,7 +26,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { commandApi, type ExecutiveReportData, type AuthorityAnalyticsData } from "@/lib/api/command.api";
-import { downloadBlob } from "@/lib/download-file";
+import { generateAndDownloadPdf, ReportDownloadError } from "@/lib/download-file";
 import { Panel, WorkspaceHeader, Pill, StatCard, EmptyState } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -89,11 +89,15 @@ function GeneratedReport({
 
   const downloadMutation = useMutation({
     mutationFn: async () => {
-      const blob = await commandApi.exportReportPdf({ type: selectedType });
       const dateStr = new Date().toISOString().slice(0, 10);
-      // Resolves only once the file is actually saved (see download-file.ts),
-      // so isSuccess below only ever reflects a genuine download.
-      await downloadBlob(blob, `greenguard-${selectedType.toLowerCase()}-report-${dateStr}.pdf`);
+      // Generation and saving are reported as distinct failure modes (see
+      // ReportDownloadError) so isError below never says "generation
+      // failed" when the PDF actually generated fine and only the
+      // on-device save failed, or vice versa.
+      await generateAndDownloadPdf(
+        () => commandApi.exportReportPdf({ type: selectedType }),
+        `greenguard-${selectedType.toLowerCase()}-report-${dateStr}.pdf`,
+      );
     },
   });
 
@@ -151,7 +155,9 @@ function GeneratedReport({
         {downloadMutation.isError && (
           <div className="mt-3 flex items-center gap-2 text-xs text-destructive">
             <AlertTriangle className="size-3.5" />
-            PDF generation failed. Please try again.
+            {downloadMutation.error instanceof ReportDownloadError
+              ? downloadMutation.error.message
+              : "PDF generation failed. Please try again."}
           </div>
         )}
         {downloadMutation.isSuccess && !downloadMutation.isPending && (
@@ -346,11 +352,11 @@ function OperationsReportSection() {
 
   const downloadMutation = useMutation({
     mutationFn: async () => {
-      const blob = await commandApi.exportOperationsReportPdf(days);
       const dateStr = new Date().toISOString().slice(0, 10);
-      // Resolves only once the file is actually saved (see download-file.ts),
-      // so isSuccess below only ever reflects a genuine download.
-      await downloadBlob(blob, `greenguard-operations-report-${dateStr}.pdf`);
+      await generateAndDownloadPdf(
+        () => commandApi.exportOperationsReportPdf(days),
+        `greenguard-operations-report-${dateStr}.pdf`,
+      );
     },
   });
 
@@ -391,7 +397,9 @@ function OperationsReportSection() {
         {downloadMutation.isError && (
           <div className="mt-3 flex items-center gap-2 text-xs text-destructive">
             <AlertTriangle className="size-3.5" />
-            PDF generation failed. Please try again.
+            {downloadMutation.error instanceof ReportDownloadError
+              ? downloadMutation.error.message
+              : "PDF generation failed. Please try again."}
           </div>
         )}
         {downloadMutation.isSuccess && !downloadMutation.isPending && (

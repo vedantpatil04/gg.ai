@@ -4,8 +4,9 @@ import { ProtectedRoute, AUTHORITY_ROLES } from "@/components/protected-route";
 import { Panel, Pill } from "@/components/ui-bits";
 import { Download, FileText, Search, Filter, Sparkles, Loader2, CheckCircle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { reportApi, complaintApi } from "@/lib/api/services.api";
-import { downloadBlob } from "@/lib/download-file";
+import { generateAndDownloadPdf, ReportDownloadError } from "@/lib/download-file";
 import { useCity } from "@/lib/city-context";
 import { useAuth } from "@/lib/auth-context";
 import { useState } from "react";
@@ -46,6 +47,10 @@ function Reports() {
   const [showGenerator, setShowGenerator] = useState(false);
   const [aiReportType, setAiReportType] = useState<AIReportType>("Daily");
   const [generatedReport, setGeneratedReport] = useState<GeneratedReport | null>(null);
+  // Per-item pending state for the report library grid below, mirroring the
+  // pattern already used in the admin Reports Center page, so only the
+  // clicked card shows a spinner rather than the whole list.
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const canGenerate = user?.role === "authority" || user?.role === "administrator";
 
@@ -106,6 +111,34 @@ function Reports() {
   const totalComplaints: number | undefined = (
     complaintData as { data?: { pagination?: { total?: number } } } | undefined
   )?.data?.pagination?.total;
+
+  // Shared by both the "generated report" download button above the list
+  // and each report card's Download button below — a single fetch-then-save
+  // pipeline instead of two separately-drifting implementations. Failures
+  // are surfaced via toast with an accurate reason (report couldn't be
+  // retrieved vs. couldn't be saved to the device) instead of being
+  // swallowed or shown as nothing at all.
+  const handleDownloadReport = async (id: string | undefined, title: string) => {
+    if (!id) {
+      toast.error("This report can't be downloaded yet.");
+      return;
+    }
+    setDownloadingId(id);
+    try {
+      await generateAndDownloadPdf(
+        () => reportApi.download(id),
+        `${title.replace(/[^a-z0-9]/gi, "_")}.pdf`,
+        {
+          generateFailed: "The report could not be retrieved. Please try again.",
+          saveFailed: "The report was retrieved but could not be saved to your device.",
+        },
+      );
+    } catch (err) {
+      toast.error(err instanceof ReportDownloadError ? err.message : "Download failed. Please try again.");
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   return (
     <div className="p-4 md:p-8 space-y-6 w-full">
@@ -279,17 +312,15 @@ function Reports() {
 
               <div className="flex gap-2">
                 <button
-                  className="text-xs aurora text-primary-foreground rounded-md px-3 py-1.5 inline-flex items-center gap-1.5 ml-auto"
-                  onClick={async () => {
-                    try {
-                      const blob = await reportApi.download(generatedReport._id || "");
-                      await downloadBlob(blob, `${generatedReport.title}.pdf`);
-                    } catch (err) {
-                      console.error("Download failed", err);
-                    }
-                  }}
+                  className="text-xs aurora text-primary-foreground rounded-md px-3 py-1.5 inline-flex items-center gap-1.5 ml-auto disabled:opacity-60"
+                  disabled={downloadingId === generatedReport._id}
+                  onClick={() => handleDownloadReport(generatedReport._id, generatedReport.title)}
                 >
-                  <Download className="size-3.5" />
+                  {downloadingId === generatedReport._id ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <Download className="size-3.5" />
+                  )}
                   {t("download")}
                 </button>
               </div>
@@ -343,8 +374,17 @@ function Reports() {
                 )}
                 <div className="mt-4 flex gap-2">
                   <button className="text-xs glass rounded-md px-3 py-1.5">Preview</button>
-                  <button className="text-xs aurora text-primary-foreground rounded-md px-3 py-1.5 inline-flex items-center gap-1.5 ml-auto">
-                    <Download className="size-3.5" /> Download
+                  <button
+                    className="text-xs aurora text-primary-foreground rounded-md px-3 py-1.5 inline-flex items-center gap-1.5 ml-auto disabled:opacity-60"
+                    disabled={downloadingId === (r.id ?? r._id)}
+                    onClick={() => handleDownloadReport(r.id ?? r._id, r.title)}
+                  >
+                    {downloadingId === (r.id ?? r._id) ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Download className="size-3.5" />
+                    )}
+                    Download
                   </button>
                 </div>
               </div>

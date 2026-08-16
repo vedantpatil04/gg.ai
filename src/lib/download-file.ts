@@ -57,6 +57,65 @@ function createRequestId(): string {
 }
 
 /**
+ * Distinguishes *why* a PDF export failed, so the UI can show an accurate
+ * message instead of a single generic "PDF generation failed" for every
+ * failure mode:
+ *
+ * - "generate": the PDF itself could not be produced (Gemini/API/network
+ *   error, or a fetch of an already-generated report failed).
+ * - "save": the PDF was produced successfully, but `downloadBlob` could not
+ *   get it onto the device (native save failed, or timed out on Android).
+ */
+export type ReportDownloadPhase = "generate" | "save";
+
+export class ReportDownloadError extends Error {
+  readonly phase: ReportDownloadPhase;
+  readonly cause?: unknown;
+
+  constructor(phase: ReportDownloadPhase, message: string, cause?: unknown) {
+    super(message);
+    this.name = "ReportDownloadError";
+    this.phase = phase;
+    this.cause = cause;
+  }
+}
+
+/**
+ * The single, shared "generate → save" pipeline every GreenGuard PDF export
+ * should go through. Keeping generation and saving as two separately-caught
+ * steps (rather than one big try/catch) is what lets every call site report
+ * an accurate failure reason instead of a blanket "PDF generation failed" -
+ * see ReportDownloadError.
+ */
+export async function generateAndDownloadPdf(
+  generate: () => Promise<Blob> | Blob,
+  filename: string,
+  messages?: { generateFailed?: string; saveFailed?: string },
+): Promise<void> {
+  let blob: Blob;
+  try {
+    blob = await generate();
+  } catch (err) {
+    throw new ReportDownloadError(
+      "generate",
+      messages?.generateFailed ?? "The PDF could not be generated. Please try again.",
+      err,
+    );
+  }
+
+  try {
+    await downloadBlob(blob, filename);
+  } catch (err) {
+    throw new ReportDownloadError(
+      "save",
+      messages?.saveFailed ??
+        "The PDF was generated but could not be saved to your device. Please try again.",
+      err,
+    );
+  }
+}
+
+/**
  * Saves `blob` to the user's device as `filename` and triggers the normal
  * download UI. Resolves once the file is actually saved; rejects if the
  * save fails (or times out waiting for native confirmation on Android).

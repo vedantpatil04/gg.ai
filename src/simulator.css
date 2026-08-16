@@ -786,8 +786,13 @@
 
 /* ─── Prevent horizontal overflow ────────────────────────────────────────── */
 /* Note: overflow-x:hidden on a non-scroll container does NOT clip
-   position:fixed children (the sticky panel), so this is safe. */
+   position:fixed children (the sticky panel), so this is safe.
+   `overflow-x: hidden` is declared first as a fallback for browsers without
+   `overflow: clip` support (clip landed later than hidden); the `clip`
+   declaration below wins wherever it's understood — the cascade lets an
+   unsupported value be ignored rather than break the fallback. */
 .sim-page-root {
+  overflow-x: hidden;
   overflow-x: clip; /* clip (not hidden) to preserve fixed positioning context */
 }
 

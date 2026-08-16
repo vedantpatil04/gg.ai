@@ -15,6 +15,7 @@ import { getPollutionTrend, deriveThingsToWatch, deriveWhatMattersNow } from "@/
 import { useQuery } from "@tanstack/react-query";
 import { alertApi, copilotApi, adminApi } from "@/lib/api/services.api";
 import { environmentalApi } from "@/lib/api/environmental.api";
+import { generateAndDownloadPdf, ReportDownloadError } from "@/lib/download-file";
 import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { STAGGER, FADE_UP } from "@/lib/motion";
@@ -173,6 +174,18 @@ function Dashboard() {
   });
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Export / Issue Advisory PDF status. Previously handleExport/handleAdvisory
+  // called jsPDF's own doc.save(), which is a synchronous void call with no
+  // way to know whether the file actually reached the device — on Android
+  // that just fires a click Capacitor's WebView can't natively resolve. Both
+  // handlers below now build the PDF exactly as before, then route the
+  // resulting blob through the same generate/save-confirmed pipeline used
+  // everywhere else (downloadBlob via generateAndDownloadPdf), so this state
+  // only ever reflects a real outcome.
+  type PdfExportStatus = { state: "idle" | "pending" | "success" | "error"; message?: string };
+  const [exportStatus, setExportStatus] = useState<PdfExportStatus>({ state: "idle" });
+  const [advisoryStatus, setAdvisoryStatus] = useState<PdfExportStatus>({ state: "idle" });
   const handleRefresh = async () => {
     // Phase 2: guard against duplicate/overlapping refresh requests if the
     // button is clicked again (or re-triggered) while one is already in flight.
@@ -194,7 +207,8 @@ function Dashboard() {
   // ============================================================
   // 1) ENVIRONMENTAL ASSESSMENT REPORT  (multi-page, enterprise)
   // ============================================================
-  const handleExport = () => {
+  const handleExport = async () => {
+    setExportStatus({ state: "pending" });
     const doc = new jsPDF("p", "mm", "a4");
     const PW = 210;
     const PH = 297;
@@ -752,13 +766,27 @@ function Dashboard() {
       if (p > 1) drawFooter(p, total);
     }
 
-    doc.save(`${city.name}_Environmental_Report_${reportId}.pdf`);
+    const filename = `${city.name}_Environmental_Report_${reportId}.pdf`;
+    try {
+      const blob = doc.output("blob");
+      await generateAndDownloadPdf(() => blob, filename);
+      setExportStatus({ state: "success" });
+    } catch (err) {
+      setExportStatus({
+        state: "error",
+        message:
+          err instanceof ReportDownloadError
+            ? err.message
+            : "The report could not be generated. Please try again.",
+      });
+    }
   };
 
   // ============================================================
   // 2) OFFICIAL ENVIRONMENTAL ADVISORY  (single-page, official)
   // ============================================================
-  const handleAdvisory = () => {
+  const handleAdvisory = async () => {
+    setAdvisoryStatus({ state: "pending" });
     const doc = new jsPDF("p", "mm", "a4");
     const PW = 210;
     const PH = 297;
@@ -1048,7 +1076,20 @@ function Dashboard() {
     doc.setTextColor(...MUTED);
     doc.text("Chief Environmental Officer", PW - 14, 291, { align: "right" });
 
-    doc.save(`${city.name}_Advisory_${ref}.pdf`);
+    const filename = `${city.name}_Advisory_${ref}.pdf`;
+    try {
+      const blob = doc.output("blob");
+      await generateAndDownloadPdf(() => blob, filename);
+      setAdvisoryStatus({ state: "success" });
+    } catch (err) {
+      setAdvisoryStatus({
+        state: "error",
+        message:
+          err instanceof ReportDownloadError
+            ? err.message
+            : "The advisory could not be generated. Please try again.",
+      });
+    }
   };
 
   const prefersReduced = useReducedMotion();
@@ -1073,6 +1114,8 @@ function Dashboard() {
           isRefreshing={isRefreshing}
           onExport={handleExport}
           onAdvisory={handleAdvisory}
+          exportStatus={exportStatus}
+          advisoryStatus={advisoryStatus}
         />
 
         <motion.div variants={PAGE_SECTION}>

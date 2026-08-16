@@ -32,6 +32,10 @@ export interface EnvCategory {
   label: string;
   emoji: string;
   icon: LucideIcon;
+  /** One-line framing shown under the category title in Section 3, e.g.
+   *  "Keep additional pollution to a minimum." Presentation-only context
+   *  for content that already exists below it — not a new data point. */
+  summary: string;
   doItems: string[];
   dontItems: string[];
   betterChoice: string[];
@@ -44,6 +48,7 @@ export const ENV_CATEGORIES: EnvCategory[] = [
     label: "Air Quality",
     emoji: "🌫️",
     icon: Wind,
+    summary: "Keep additional pollution to a minimum.",
     doItems: [
       "Reduce unnecessary vehicle trips",
       "Maintain vehicles properly",
@@ -78,6 +83,7 @@ export const ENV_CATEGORIES: EnvCategory[] = [
     label: "Waste",
     emoji: "♻️",
     icon: Recycle,
+    summary: "Handle what you discard the right way.",
     doItems: [
       "Separate waste into wet, dry, and hazardous categories",
       "Store waste in covered bins",
@@ -112,6 +118,7 @@ export const ENV_CATEGORIES: EnvCategory[] = [
     label: "Water",
     emoji: "💧",
     icon: Droplets,
+    summary: "Use only what you need, and keep it clean.",
     doItems: [
       "Fix leaking taps and pipes promptly",
       "Use only the water you need for daily tasks",
@@ -146,6 +153,7 @@ export const ENV_CATEGORIES: EnvCategory[] = [
     label: "Energy",
     emoji: "⚡",
     icon: Zap,
+    summary: "Use what you need, switch off the rest.",
     doItems: [
       "Switch off lights, fans, and appliances when not in use",
       "Use natural light and ventilation where possible",
@@ -169,7 +177,8 @@ export const ENV_CATEGORIES: EnvCategory[] = [
       },
       {
         question: "Why shift usage to off-peak hours?",
-        answer: "Spreading out demand reduces strain on the grid at the times it's under the most pressure.",
+        answer:
+          "Spreading out demand reduces strain on the grid at the times it's under the most pressure.",
       },
     ],
   },
@@ -178,6 +187,7 @@ export const ENV_CATEGORIES: EnvCategory[] = [
     label: "Transport",
     emoji: "🚗",
     icon: Car,
+    summary: "Choose the lower-impact way to get there.",
     doItems: [
       "Combine errands into fewer trips",
       "Maintain your vehicle properly, including regular servicing",
@@ -212,6 +222,7 @@ export const ENV_CATEGORIES: EnvCategory[] = [
     label: "Greenery",
     emoji: "🌳",
     icon: Trees,
+    summary: "Protect what's growing, and add to it.",
     doItems: [
       "Care for existing trees and green spaces near you",
       "Plant and maintain native species where space allows",
@@ -231,7 +242,8 @@ export const ENV_CATEGORIES: EnvCategory[] = [
     whyItMatters: [
       {
         question: "Why does existing tree cover matter?",
-        answer: "Mature trees offer shade and support local air quality, and take years to replace once lost.",
+        answer:
+          "Mature trees offer shade and support local air quality, and take years to replace once lost.",
       },
       {
         question: "Why choose native species?",
@@ -262,7 +274,11 @@ export const DO_THIS_INSTEAD: AvoidBetterPair[] = [
     better: "Switch off the engine during extended stops",
   },
   { id: "mix-waste", avoid: "Mix wet and dry waste", better: "Separate waste at the source" },
-  { id: "running-tap", avoid: "Let a tap run while not using it", better: "Use only the water you need" },
+  {
+    id: "running-tap",
+    avoid: "Let a tap run while not using it",
+    better: "Use only the water you need",
+  },
   {
     id: "chemicals-drain",
     avoid: "Pour chemicals or used oil down the drain",
@@ -356,7 +372,8 @@ export interface FocusContent {
 export const AIR_FOCUS_BY_TONE: Record<Tone, FocusContent> = {
   good: {
     headline: "Air quality is good today",
-    explanation: "Conditions are favorable. Keep up the everyday habits that help keep it that way.",
+    explanation:
+      "Conditions are favorable. Keep up the everyday habits that help keep it that way.",
     actions: [
       "Keep vehicles well maintained",
       "Avoid unnecessary open burning",
@@ -365,44 +382,104 @@ export const AIR_FOCUS_BY_TONE: Record<Tone, FocusContent> = {
   },
   warning: {
     headline: "Air quality needs some care today",
-    explanation: "Conditions are moderate. Avoid adding unnecessary particulate pollution where you can.",
-    actions: ["Avoid open waste burning", "Reduce unnecessary vehicle trips", "Avoid unnecessary vehicle idling"],
+    explanation:
+      "Conditions are moderate. Avoid adding unnecessary particulate pollution where you can.",
+    actions: [
+      "Avoid open waste burning",
+      "Reduce unnecessary vehicle trips",
+      "Avoid unnecessary vehicle idling",
+    ],
   },
   critical: {
     headline: "Air quality needs attention today",
-    explanation: "Air quality is currently elevated. Avoid actions that add unnecessary particulate pollution.",
-    actions: ["Avoid open waste burning", "Reduce unnecessary vehicle trips", "Avoid unnecessary vehicle idling"],
+    explanation:
+      "Air quality is currently elevated. Avoid actions that add unnecessary particulate pollution.",
+    actions: [
+      "Avoid open waste burning",
+      "Reduce unnecessary vehicle trips",
+      "Avoid unnecessary vehicle idling",
+    ],
   },
   info: {
     headline: "Air quality update",
     explanation: "Here's today's guidance based on current conditions.",
-    actions: ["Avoid open waste burning", "Reduce unnecessary vehicle trips", "Avoid unnecessary vehicle idling"],
+    actions: [
+      "Avoid open waste burning",
+      "Reduce unnecessary vehicle trips",
+      "Avoid unnecessary vehicle idling",
+    ],
   },
   neutral: {
     headline: "Everyday air-quality guidance",
-    explanation: "No live reading is available right now — here's general guidance that always applies.",
-    actions: ["Avoid open waste burning", "Reduce unnecessary vehicle trips", "Avoid unnecessary vehicle idling"],
+    explanation:
+      "No live reading is available right now — here's general guidance that always applies.",
+    actions: [
+      "Avoid open waste burning",
+      "Reduce unnecessary vehicle trips",
+      "Avoid unnecessary vehicle idling",
+    ],
   },
 };
 
+export interface TipItem {
+  emoji: string;
+  title: string;
+  detail: string;
+}
+
 /** Evergreen curated tips shown alongside (or instead of) the AQI-specific
  *  guidance, so the section always has something useful even without a
- *  live reading. */
-export const EVERGREEN_TIPS: string[] = [
-  "Separate wet and dry waste before disposal.",
-  "Fix dripping taps as soon as you notice them.",
-  "Combine errands into one trip when you can.",
-  "Avoid burning leaves, plastic, or household waste.",
-  "Switch off lights and fans when you leave a room.",
+ *  live reading. Same underlying guidance as Sections 1–3, restated as a
+ *  short title + one-line detail rather than a plain numbered sentence. */
+export const EVERGREEN_TIP_ITEMS: TipItem[] = [
+  {
+    emoji: "♻️",
+    title: "Separate waste at source",
+    detail: "Keep wet and dry waste separated before disposal.",
+  },
+  {
+    emoji: "💧",
+    title: "Fix leaks early",
+    detail: "Address dripping taps and visible leaks as soon as you notice them.",
+  },
+  {
+    emoji: "🔥",
+    title: "Avoid waste burning",
+    detail: "Don't burn leaves, plastics, or household waste.",
+  },
+  {
+    emoji: "🚗",
+    title: "Combine your trips",
+    detail: "Group errands into one outing instead of several short trips.",
+  },
+  {
+    emoji: "💡",
+    title: "Switch off when not in use",
+    detail: "Turn off lights, fans, and appliances before leaving a room.",
+  },
 ];
 
-/** Returns 3–5 tips for "GreenGuard Tips Today": leads with the AQI-specific
- *  action set when air quality needs care, then fills the rest from the
- *  evergreen curated pool — never inventing a new dynamic value. */
-export function getTipsToday(tone: Tone): string[] {
-  const focus = AIR_FOCUS_BY_TONE[tone];
-  const needsAirFocus = tone === "warning" || tone === "critical";
-  const lead = needsAirFocus ? focus.actions : [];
-  const fill = EVERGREEN_TIPS.filter((tip) => !lead.includes(tip));
-  return [...lead, ...fill].slice(0, 5);
+/** AQI-specific tip shown first when today's air quality needs some care —
+ *  same tone scale and same underlying guidance as Section 1, just framed
+ *  as a title + detail to match the rest of this section. */
+export const AIR_TIP_BY_TONE: Partial<Record<Tone, TipItem>> = {
+  warning: {
+    emoji: "🌫️",
+    title: "Ease off vehicle trips today",
+    detail: "Air quality is moderate — reduce unnecessary trips and avoid idling where you can.",
+  },
+  critical: {
+    emoji: "🌫️",
+    title: "Avoid extra pollution today",
+    detail: "Air quality needs attention — avoid open burning and unnecessary vehicle trips.",
+  },
+};
+
+/** Returns 3–4 tips for "GreenGuard Tips Today": leads with the AQI-specific
+ *  tip when air quality needs care, then fills the rest from the evergreen
+ *  curated pool — never inventing a new dynamic value. */
+export function getTipsToday(tone: Tone): TipItem[] {
+  const lead = AIR_TIP_BY_TONE[tone];
+  const fill = EVERGREEN_TIP_ITEMS.filter((tip) => tip.title !== lead?.title);
+  return (lead ? [lead, ...fill] : fill).slice(0, 4);
 }

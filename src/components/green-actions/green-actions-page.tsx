@@ -1,6 +1,13 @@
 import { useState } from "react";
-import { CalendarDays, ArrowRightLeft, Compass, HelpCircle, ListChecks, Sparkles } from "lucide-react";
-import { SustainabilitySectionHeading } from "@/components/sustainability/section-heading";
+import {
+  CalendarDays,
+  ArrowRightLeft,
+  Compass,
+  HelpCircle,
+  ListChecks,
+  Sparkles,
+} from "lucide-react";
+import { GreenActionsSectionHeading } from "./section-heading";
 import { TodaysEnvironmentalFocus } from "./today-focus";
 import { DoThisInstead } from "./do-this-instead";
 import { EnvironmentalAreas } from "./environmental-areas";
@@ -10,12 +17,17 @@ import { GreenGuardTipsToday } from "./tips-today";
 import type { EnvCategoryId } from "./green-actions-data";
 
 /**
- * GreenActionsPage — Phase 1: Foundation & Core Citizen Experience.
+ * GreenActionsPage — Phase 1.1: UI/UX Refinement & Real-World Presentation.
  *
  * A citizen environmental prevention and awareness page — practical
  * guidance on what to do, what to avoid, and what the better alternative
  * is. Not a complaints module, not a map, not a dashboard, not an AI
  * chatbot: see the Green Actions PRD for the full boundary.
+ *
+ * Phase 1.1 keeps the exact six-section content model from Phase 1 and
+ * refines presentation only: less card-repetition, more breathing room,
+ * a lighter section heading scoped to this page (see ./section-heading),
+ * and stronger visual hierarchy inside each section.
  *
  * Section 3 (Environmental Areas) and Section 4 (Why This Matters) share
  * the selected category so switching categories updates both at once.
@@ -24,18 +36,18 @@ export function GreenActionsPage() {
   const [selectedCategory, setSelectedCategory] = useState<EnvCategoryId>("air");
 
   return (
-    <div className="px-4 md:px-8 py-6 sm:py-8 space-y-10 md:space-y-12 max-w-[1400px] mx-auto w-full">
+    <div className="px-4 md:px-8 py-6 sm:py-8 space-y-12 md:space-y-14 max-w-[1400px] mx-auto w-full">
       {/* ── Page identity ── */}
       <header>
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Green Actions</h1>
         <p className="text-sm text-muted-foreground mt-1.5 max-w-xl">
-          Simple actions to reduce pollution and protect our environment.
+          Small everyday choices can help prevent unnecessary pollution and environmental impact.
         </p>
       </header>
 
       {/* ═══ SECTION 1 — TODAY'S ENVIRONMENTAL FOCUS ══════════════════════ */}
       <section aria-labelledby="todays-focus-heading">
-        <SustainabilitySectionHeading
+        <GreenActionsSectionHeading
           headingId="todays-focus-heading"
           icon={CalendarDays}
           title="Today's Environmental Focus"
@@ -46,7 +58,7 @@ export function GreenActionsPage() {
 
       {/* ═══ SECTION 2 — DO THIS INSTEAD ══════════════════════════════════ */}
       <section aria-labelledby="do-this-instead-heading">
-        <SustainabilitySectionHeading
+        <GreenActionsSectionHeading
           headingId="do-this-instead-heading"
           icon={ArrowRightLeft}
           title="Do This Instead"
@@ -58,7 +70,7 @@ export function GreenActionsPage() {
 
       {/* ═══ SECTION 3 — ENVIRONMENTAL AREAS ══════════════════════════════ */}
       <section aria-labelledby="environmental-areas-heading">
-        <SustainabilitySectionHeading
+        <GreenActionsSectionHeading
           headingId="environmental-areas-heading"
           icon={Compass}
           title="Environmental Areas"
@@ -69,7 +81,7 @@ export function GreenActionsPage() {
 
       {/* ═══ SECTION 4 — WHY THIS MATTERS ═════════════════════════════════ */}
       <section aria-labelledby="why-this-matters-heading">
-        <SustainabilitySectionHeading
+        <GreenActionsSectionHeading
           headingId="why-this-matters-heading"
           icon={HelpCircle}
           title="Why This Matters"
@@ -81,7 +93,7 @@ export function GreenActionsPage() {
 
       {/* ═══ SECTION 5 — EVERYDAY ACTIONS ═════════════════════════════════ */}
       <section aria-labelledby="everyday-actions-heading">
-        <SustainabilitySectionHeading
+        <GreenActionsSectionHeading
           headingId="everyday-actions-heading"
           icon={ListChecks}
           title="Everyday Actions"
@@ -92,7 +104,7 @@ export function GreenActionsPage() {
 
       {/* ═══ SECTION 6 — GREENGUARD TIPS TODAY ════════════════════════════ */}
       <section aria-labelledby="tips-today-heading">
-        <SustainabilitySectionHeading
+        <GreenActionsSectionHeading
           headingId="tips-today-heading"
           icon={Sparkles}
           title="GreenGuard Tips Today"

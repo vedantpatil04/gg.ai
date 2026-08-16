@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   PieChart,
   Pie,
@@ -24,9 +24,10 @@ import {
   Users,
   RefreshCw,
   ShieldCheck,
+  AlertTriangle,
 } from "lucide-react";
 import { commandApi, type AuthorityAnalyticsData } from "@/lib/api/command.api";
-import { downloadBlob } from "@/lib/download-file";
+import { generateAndDownloadPdf, ReportDownloadError } from "@/lib/download-file";
 import { Panel, StatCard, Pill, WorkspaceHeader, EmptyState } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { ISSUE_LABELS } from "./investigation-workspace";
@@ -91,11 +92,21 @@ export function AuthorityAnalytics() {
 
   const d = res?.data as AuthorityAnalyticsData | undefined;
 
-  const handleExport = async () => {
-    const blob = await commandApi.exportOperationsReportPdf(days);
-    const dateStr = new Date().toISOString().slice(0, 10);
-    await downloadBlob(blob, `greenguard-operations-report-${dateStr}.pdf`);
-  };
+  // Was a fire-and-forget async onClick handler with no loading state and
+  // no error handling — a failed generate or save (e.g. an Android native
+  // save timeout) surfaced as nothing but an unhandled promise rejection,
+  // with the button just sitting there looking like it did nothing. Now
+  // mirrors the same generate/save pipeline and error reporting used by
+  // the Reports → Complaint Operations Report PDF export.
+  const exportMutation = useMutation({
+    mutationFn: async () => {
+      const dateStr = new Date().toISOString().slice(0, 10);
+      await generateAndDownloadPdf(
+        () => commandApi.exportOperationsReportPdf(days),
+        `greenguard-operations-report-${dateStr}.pdf`,
+      );
+    },
+  });
 
   return (
     <div className="space-y-6">
@@ -126,12 +137,37 @@ export function AuthorityAnalytics() {
               <RefreshCw className={isFetching ? "size-3.5 mr-1.5 animate-spin" : "size-3.5 mr-1.5"} />
               Refresh
             </Button>
-            <Button size="sm" onClick={handleExport} disabled={!d}>
-              Export PDF
+            <Button
+              size="sm"
+              onClick={() => exportMutation.mutate()}
+              disabled={!d || exportMutation.isPending}
+              className="gap-1.5"
+            >
+              {exportMutation.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <ClipboardList className="size-3.5" />
+              )}
+              {exportMutation.isPending ? "Generating PDF…" : "Export PDF"}
             </Button>
           </div>
         }
       />
+
+      {exportMutation.isError && (
+        <div className="flex items-center gap-2 text-xs text-destructive">
+          <AlertTriangle className="size-3.5" />
+          {exportMutation.error instanceof ReportDownloadError
+            ? exportMutation.error.message
+            : "The PDF could not be generated. Please try again."}
+        </div>
+      )}
+      {exportMutation.isSuccess && !exportMutation.isPending && (
+        <div className="flex items-center gap-2 text-xs text-success">
+          <CheckCircle2 className="size-3.5" />
+          PDF downloaded successfully.
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center h-64">

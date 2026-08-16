@@ -12,7 +12,6 @@ import {
 } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { simulatorApi } from "@/lib/api/services.api";
-import { downloadBlob } from "@/lib/download-file";
 import {
   Area,
   AreaChart,
@@ -61,6 +60,9 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 
 export const Route = createFileRoute("/simulator")({
   head: () => ({ meta: [{ title: "Policy Simulator — GreenGuard AI" }] }),
@@ -269,7 +271,7 @@ function SimTooltip({ label, children }: { label: string; children: React.ReactN
     <div className="relative group/tip">
       {children}
       <div
-        className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium whitespace-nowrap z-50 opacity-0 translate-y-1 transition-all duration-150 group-hover/tip:opacity-100 group-hover/tip:translate-y-0"
+        className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium leading-snug w-max max-w-[200px] text-balance z-50 opacity-0 translate-y-1 transition-all duration-150 group-hover/tip:opacity-100 group-hover/tip:translate-y-0"
         style={{
           background: "var(--color-popover)",
           border: "1px solid var(--color-border)",
@@ -386,7 +388,7 @@ const MobileLiveImpactPanel = memo(function MobileLiveImpactPanel({
 
   return (
     <div
-      className={`sim-mobile-sticky-panel lg:hidden`}
+      className={`sim-mobile-sticky-panel xl:hidden`}
       role="region"
       aria-label="Live simulation results"
       aria-live="polite"
@@ -580,19 +582,21 @@ function Simulator() {
   });
 
   const exportMutation = useMutation({
-    mutationFn: async () => {
-      const blob = await simulatorApi.exportPdf(
-        lastSimulationId
-          ? { simulationId: lastSimulationId }
-          : { cityId: city.id, levers: vals, presetId: activePresetId ?? undefined },
-      );
-      // Resolves only once the file is actually saved (see
-      // download-file.ts), so onSuccess below only ever reflects a genuine
-      // download rather than just that a click was dispatched.
-      await downloadBlob(blob, `greenguard-simulation-${city.id}.pdf`);
-    },
+    mutationFn: () => simulatorApi.exportPdf(
+      lastSimulationId
+        ? { simulationId: lastSimulationId }
+        : { cityId: city.id, levers: vals, presetId: activePresetId ?? undefined },
+    ),
     onMutate: () => { setExportState("pending"); },
-    onSuccess: () => {
+    onSuccess: (blob) => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `greenguard-simulation-${city.id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
       setExportState("success");
       if (exportTimerRef.current) clearTimeout(exportTimerRef.current);
       exportTimerRef.current = setTimeout(() => setExportState("idle"), 3000);
@@ -671,7 +675,7 @@ function Simulator() {
         />
 
         {presets.length > 0 && (
-          <PresetSection presets={presets} activePresetId={activePresetId} onApply={applyPreset} />
+          <ScenarioSection presets={presets} activePresetId={activePresetId} onApply={applyPreset} />
         )}
 
         {compareOpen && (
@@ -685,21 +689,21 @@ function Simulator() {
           />
         )}
 
-        {/* Main simulator grid — desktop: side-by-side, mobile: stacked */}
+        {/*
+          Main simulator grid — one grid, one DOM order, responsive placement only:
+            Mobile/tablet (<xl): no grid-template is set below xl, so the three
+              items simply stack in DOM order — Impact Overview → Policy Levers →
+              Simulation Summary/Charts, per the required mobile reading order.
+            Desktop (xl+): explicit column/row placement puts Policy Levers in a
+              full-height left column, with Impact Overview and the rest of the
+              analytics stacked in the right column.
+        */}
         <div className="grid xl:grid-cols-12 gap-5 lg:gap-6">
-          {/* Policy levers — mobile: first (top), desktop: left column */}
-          <div className="xl:col-span-4 2xl:col-span-3">
-            <LeversPanel
-              vals={vals}
-              onLeverChange={handleLeverChange}
-              simStatus={simStatus}
-              recentlyActivatedLeverIds={recentlyActivatedLeverIds}
-            />
-          </div>
-
-          {/* Results — desktop: right columns, mobile: second (below levers) */}
-          <div id="sim-results-section" className="xl:col-span-8 2xl:col-span-9 space-y-5 lg:space-y-6">
-            {/* KPI cards: mobile = full-width AQI + 2-col gauges, desktop (lg) = 4-col row */}
+          {/* Impact Overview — mobile: 1st, desktop: top-right */}
+          <div
+            id="sim-impact-overview"
+            className="min-w-0 xl:col-start-5 xl:col-span-8 2xl:col-start-4 2xl:col-span-9 xl:row-start-1"
+          >
             <div className="sim-kpi-grid">
               <HeroAqiCard
                 projectedAqi={localResults.projectedAqi}
@@ -712,7 +716,23 @@ function Simulator() {
               <GaugeKpiCard eyebrow="Eco score" title="Eco Impact" value={localResults.eco} color="var(--color-primary)" label="Eco" icon={Leaf} isRecalculating={simStatus === "recalculating"} tooltip="Combined environmental benefit score across all active levers" />
               <GaugeKpiCard eyebrow="Sustainability" title="Sustainability" value={localResults.sustain} color="var(--color-success)" label="SI" icon={Wind} isRecalculating={simStatus === "recalculating"} tooltip="Long-term sustainability index derived from eco score and green infrastructure" />
             </div>
+          </div>
 
+          {/* Policy levers — mobile: 2nd, desktop: full-height left column */}
+          <div className="min-w-0 xl:col-start-1 xl:col-span-4 2xl:col-span-3 xl:row-start-1 xl:row-span-2">
+            <LeversPanel
+              vals={vals}
+              onLeverChange={handleLeverChange}
+              simStatus={simStatus}
+              recentlyActivatedLeverIds={recentlyActivatedLeverIds}
+            />
+          </div>
+
+          {/* Simulation summary + charts — mobile: 3rd, desktop: bottom-right */}
+          <div
+            id="sim-results-section"
+            className="min-w-0 xl:col-start-5 xl:col-span-8 2xl:col-start-4 2xl:col-span-9 xl:row-start-2 space-y-5 lg:space-y-6"
+          >
             <SimulationSummary
               localResults={localResults}
               currentAqi={city.aqi}
@@ -947,37 +967,96 @@ const SimStatusBadge = memo(function SimStatusBadge({
   );
 });
 
-// ─── PresetSection ────────────────────────────────────────────────────────────
+// ─── ScenarioSection ──────────────────────────────────────────────────────────
+// Compact scenario summary bar. Presets are not permanently listed on the page —
+// "View Presets" opens a selector (bottom sheet on mobile, centered dialog on
+// desktop) that reuses the same preset data and the same onApply/applyPreset
+// logic the old inline chip rail used. No new preset definitions or calculations.
 
-const PresetSection = memo(function PresetSection({
+const ScenarioSection = memo(function ScenarioSection({
   presets, activePresetId, onApply,
 }: {
   presets: ScenarioPreset[];
   activePresetId: string | null;
   onApply: (preset: ScenarioPreset) => void;
 }) {
-  return (
-    <div className="sim-preset-section sim-preset-section-responsive" role="group" aria-label="Scenario presets">
-      <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground shrink-0 mr-0.5 sim-preset-label" aria-hidden>Presets</span>
-      <div className="sim-preset-chips-rail">
-        {presets.map((p, i) => (
-          <SimTooltip key={p.id} label={p.description || p.name}>
-            <button
-              onClick={() => onApply(p)}
-              aria-pressed={activePresetId === p.id}
-              aria-label={`Apply preset: ${p.name}`}
-              style={{ animationDelay: `${i * 40}ms` }}
-              className={cn(
-                "sim-preset-chip inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium whitespace-nowrap shrink-0",
-                activePresetId === p.id ? "sim-preset-chip-active" : "sim-preset-chip-idle",
+  const [open, setOpen] = useState(false);
+  const isMobile = useIsMobile();
+  const activePreset = presets.find((p) => p.id === activePresetId) ?? null;
+
+  const handleSelect = useCallback((preset: ScenarioPreset) => {
+    onApply(preset);
+    setOpen(false);
+  }, [onApply]);
+
+  const list = (
+    <div className="sim-scenario-list">
+      {presets.map((p) => {
+        const active = activePresetId === p.id;
+        return (
+          <button
+            key={p.id}
+            onClick={() => handleSelect(p)}
+            aria-pressed={active}
+            aria-label={`Apply preset: ${p.name}`}
+            className={cn(
+              "sim-scenario-option w-full flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-left",
+              active ? "sim-preset-chip-active" : "sim-preset-chip-idle",
+            )}
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-medium truncate">{p.name}</span>
+              {p.description && (
+                <span className="block text-xs text-muted-foreground mt-0.5 leading-snug line-clamp-2">{p.description}</span>
               )}
-            >
-              {p.name}
-              {activePresetId === p.id && <ChevronRight className="size-3" />}
-            </button>
-          </SimTooltip>
-        ))}
+            </span>
+            {active
+              ? <CheckCircle2 className="size-4 shrink-0" aria-hidden />
+              : <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  return (
+    <div className="sim-panel sim-preset-section rounded-2xl px-4 sm:px-5 py-3.5 sm:py-4 flex items-center justify-between gap-4">
+      <div className="min-w-0">
+        <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Scenario</div>
+        <div className="text-sm font-semibold tracking-tight mt-0.5 truncate">
+          {activePreset ? activePreset.name : "Custom configuration"}
+        </div>
+        <div className="text-xs text-muted-foreground mt-0.5 hidden sm:block">Browse predefined policy scenarios.</div>
       </div>
+      <button
+        onClick={() => setOpen(true)}
+        className="sim-btn sim-btn-ghost sim-btn-ripple inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-medium shrink-0"
+        aria-haspopup="dialog"
+        aria-label="View policy scenario presets"
+      >
+        <span>View Presets</span>
+        <ChevronRight className="size-3.5" />
+      </button>
+
+      {isMobile ? (
+        <Drawer open={open} onOpenChange={setOpen}>
+          <DrawerContent className="max-h-[85dvh] flex flex-col">
+            <DrawerHeader className="text-left">
+              <DrawerTitle>Choose Scenario</DrawerTitle>
+            </DrawerHeader>
+            <div className="px-4 pb-6 overflow-y-auto">{list}</div>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Choose Scenario</DialogTitle>
+            </DialogHeader>
+            <div className="overflow-y-auto pr-1 -mr-1">{list}</div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 });
@@ -1017,7 +1096,7 @@ function ComparePanel({
         </div>
       </div>
       <div className="flex flex-wrap items-end gap-3">
-        <div className="flex-1 min-w-[220px]">
+        <div className="w-full min-w-0 sm:w-auto sm:flex-1 sm:min-w-[220px]">
           <label className="block text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5" htmlFor="compare-preset-select">
             Scenario B — preset to compare against
           </label>
@@ -1343,7 +1422,7 @@ const GaugeKpiCard = memo(function GaugeKpiCard({
             </div>
           </div>
           <div className="flex justify-center mt-1">
-            <ArcGauge value={value} color={color} label={label} size={110} />
+            <ArcGauge value={value} color={color} label={label} size={96} />
           </div>
           <div className="mt-3">
             <div className="h-1 rounded-full overflow-hidden" style={{ background: "color-mix(in oklab, var(--color-muted-foreground) 14%, transparent)" }}>

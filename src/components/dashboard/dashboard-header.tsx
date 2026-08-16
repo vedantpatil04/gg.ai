@@ -28,7 +28,7 @@
  * — the route already computes both for Current Conditions/Data Status.
  */
 
-import { RefreshCw, Download, Megaphone, WifiOff, Signal } from "lucide-react";
+import { RefreshCw, Download, Megaphone, WifiOff, Signal, Loader2, AlertTriangle } from "lucide-react";
 import { Pill } from "@/components/ui-bits";
 import type { EnvHealthBand } from "@/lib/environmental-health";
 import { freshnessColor, type DataFreshness } from "@/lib/data-freshness";
@@ -39,6 +39,7 @@ import { FADE_UP, TAP_PRESS, HOVER_LIFT_SM, DUR_MD, EASE_OUT } from "@/lib/motio
 export function DashboardHeader({
   cityName, country, band, envBand, isApiConnected,
   freshness, lastUpdatedLabel, onRefresh, isRefreshing, onExport, onAdvisory,
+  exportStatus, advisoryStatus,
 }: {
   cityName:        string;
   country:         string;
@@ -51,6 +52,9 @@ export function DashboardHeader({
   isRefreshing?:   boolean;
   onExport:        () => void;
   onAdvisory:      () => void;
+  /** Real save-confirmed status of the two jsPDF-backed exports below (optional — omitting keeps prior behavior). */
+  exportStatus?:   { state: "idle" | "pending" | "success" | "error"; message?: string };
+  advisoryStatus?: { state: "idle" | "pending" | "success" | "error"; message?: string };
 }) {
   const prefersReduced = useReducedMotion();
 
@@ -149,6 +153,7 @@ export function DashboardHeader({
       </div>
 
       {/* Action buttons */}
+      <div className="flex flex-col items-end gap-1.5">
       <div className="flex items-center gap-2">
         {/* Refresh */}
         <motion.button
@@ -174,30 +179,59 @@ export function DashboardHeader({
           whileTap={prefersReduced ? undefined : TAP_PRESS}
           whileHover={prefersReduced ? undefined : HOVER_LIFT_SM}
           onClick={onExport}
+          disabled={exportStatus?.state === "pending"}
           className={cn(
             "glass rounded-xl px-3.5 py-2 text-xs inline-flex items-center gap-1.5",
             "hover:bg-primary/8 hover:border-primary/35",
+            "disabled:opacity-50 disabled:cursor-not-allowed",
             "transition-colors duration-150",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
           )}
         >
-          <Download className="size-3.5" />
-          Export
+          {exportStatus?.state === "pending" ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <Download className="size-3.5" />
+          )}
+          {exportStatus?.state === "pending" ? "Exporting…" : "Export"}
         </motion.button>
 
         {/* Issue Advisory — the one clearly-primary action in this row */}
         <motion.button
           whileTap={prefersReduced ? undefined : TAP_PRESS}
           onClick={onAdvisory}
+          disabled={advisoryStatus?.state === "pending"}
           className={cn(
             "aurora text-primary-foreground rounded-xl px-3.5 py-2 text-xs inline-flex items-center gap-1.5 font-medium",
             "hover:opacity-88 transition-opacity duration-150",
+            "disabled:opacity-60 disabled:cursor-not-allowed",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
           )}
         >
-          <Megaphone className="size-3.5" />
-          Issue advisory
+          {advisoryStatus?.state === "pending" ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <Megaphone className="size-3.5" />
+          )}
+          {advisoryStatus?.state === "pending" ? "Preparing…" : "Issue advisory"}
         </motion.button>
+      </div>
+
+      {/* Real save-confirmed feedback — only ever shown once the export or
+          advisory PDF has actually finished generating and saving (or
+          failed to), never on the click itself. */}
+      {exportStatus?.state === "error" && (
+        <div className="flex items-center gap-1.5 text-[11px] text-destructive max-w-xs text-right">
+          <AlertTriangle className="size-3 shrink-0" />
+          {exportStatus.message ?? "Export failed. Please try again."}
+        </div>
+      )}
+      {advisoryStatus?.state === "error" && (
+        <div className="flex items-center gap-1.5 text-[11px] text-destructive max-w-xs text-right">
+          <AlertTriangle className="size-3 shrink-0" />
+          {advisoryStatus.message ?? "Advisory could not be issued. Please try again."}
+        </div>
+      )}
       </div>
     </motion.header>
   );
