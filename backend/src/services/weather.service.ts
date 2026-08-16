@@ -1,5 +1,6 @@
 import axios from "axios";
 import { logger } from "../utils/logger";
+import { TtlCache } from "../utils/ttlCache";
 
 // ─── Open-Meteo Current Weather API ──────────────────────────────────────────
 // Docs: https://open-meteo.com/en/docs#current
@@ -30,6 +31,12 @@ export interface WeatherReading {
   rain?: number | null;
 }
 
+export interface CityCoordinateTarget {
+  cityId: string;
+  lat: number;
+  lng: number;
+}
+
 // ─── Open-Meteo base URL — read from env, fall back to public endpoint ────────
 const WEATHER_BASE_URL =
   process.env.OPEN_METEO_WEATHER_BASE_URL ||
@@ -48,108 +55,266 @@ const CURRENT_WEATHER_VARS = [
   "wind_direction_10m",
 ].join(",");
 
-interface OpenMeteoCurrentWeatherResponse {
-  current?: {
-    time?: string;
-    temperature_2m?: number;
-    relative_humidity_2m?: number;
-    apparent_temperature?: number;
-    precipitation?: number;
-    rain?: number;
-    weather_code?: number;
-    pressure_msl?: number;
-    wind_speed_10m?: number;
-    wind_direction_10m?: number;
-  };
+interface OpenMeteoCurrentBlock {
+  time?: string;
+  temperature_2m?: number;
+  relative_humidity_2m?: number;
+  apparent_temperature?: number;
+  precipitation?: number;
+  rain?: number;
+  weather_code?: number;
+  pressure_msl?: number;
+  wind_speed_10m?: number;
+  wind_direction_10m?: number;
 }
+
+interface OpenMeteoLocationItem {
+  latitude?: number;
+  longitude?: number;
+  location_id?: number;
+  current?: OpenMeteoCurrentBlock;
+}
+
+// ─── 15-minute TTL Cache for current weather ─────────────────────────────────
+// Avoids repeated per-city and burst requests across scheduler ticks or callers.
+const weatherCache = new TtlCache<WeatherReading>(15 * 60 * 1000);
+
+// In-flight batch fetch promise to prevent duplicate concurrent network requests
+let inFlightBatchPromise: Promise<Map<string, WeatherReading>> | null = null;
 
 function toFinite(v: unknown): number | null {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
+function coordKey(lat: number, lng: number): string {
+  return `${lat.toFixed(3)},${lng.toFixed(3)}`;
+}
+
+/**
+ * Parse an Open-Meteo `current` block into a normalized WeatherReading.
+ * Returns null if required fields (temp, humidity) are missing or incomplete.
+ */
+function parseCurrentWeather(c?: OpenMeteoCurrentBlock): WeatherReading | null {
+  if (!c) return null;
+
+  const temp = toFinite(c.temperature_2m);
+  const humidity = toFinite(c.relative_humidity_2m);
+
+  if (temp === null || humidity === null) {
+    return null;
+  }
+
+  const apparentRaw = toFinite(c.apparent_temperature);
+  const weatherCodeRaw = toFinite(c.weather_code);
+  const rainRaw = toFinite(c.rain);
+
+  return {
+    temp: Math.round(temp * 10) / 10,
+    humidity: Math.round(humidity),
+    pressure: Math.round(toFinite(c.pressure_msl) ?? 1013),
+    windSpeed: Math.round((toFinite(c.wind_speed_10m) ?? 0) * 10) / 10,
+    windDirection: Math.round(toFinite(c.wind_direction_10m) ?? 0),
+    visibility: null,
+    rainfall: Math.round((toFinite(c.precipitation) ?? 0) * 10) / 10,
+    apparentTemperature:
+      apparentRaw !== null ? Math.round(apparentRaw * 10) / 10 : null,
+    weatherCode: weatherCodeRaw !== null ? Math.round(weatherCodeRaw) : null,
+    rain: rainRaw !== null ? Math.round(rainRaw * 10) / 10 : null,
+  };
+}
+
+/**
+ * Deterministically map Open-Meteo multi-location responses to requested cities.
+ * Never relies solely on assumed array position without coordinate or location_id validation.
+ */
+function mapResponseToCities(
+  targets: CityCoordinateTarget[],
+  items: OpenMeteoLocationItem[],
+): Map<string, WeatherReading> {
+  const results = new Map<string, WeatherReading>();
+  const unassignedTargets = new Set(targets.map((t) => t.cityId));
+
+  // Step 1: Match by location_id if provided by Open-Meteo
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const locId = item.location_id ?? (items.length === targets.length ? i : undefined);
+
+    if (locId !== undefined && locId >= 0 && locId < targets.length) {
+      const target = targets[locId];
+      if (unassignedTargets.has(target.cityId)) {
+        // Validate coordinate proximity (< 1.5 degrees) to guard against any misalignment
+        const latDiff = Math.abs((item.latitude ?? target.lat) - target.lat);
+        const lngDiff = Math.abs((item.longitude ?? target.lng) - target.lng);
+        if (latDiff < 1.5 && lngDiff < 1.5) {
+          const reading = parseCurrentWeather(item.current);
+          if (reading) {
+            results.set(target.cityId, reading);
+            weatherCache.set(target.cityId, reading);
+            weatherCache.set(coordKey(target.lat, target.lng), reading);
+            unassignedTargets.delete(target.cityId);
+            continue;
+          }
+        }
+      }
+    }
+  }
+
+  // Step 2: Fallback nearest-coordinate matching for any unassigned targets
+  for (const target of targets) {
+    if (!unassignedTargets.has(target.cityId)) continue;
+
+    let closestItem: OpenMeteoLocationItem | null = null;
+    let minDistance = Infinity;
+
+    for (const item of items) {
+      if (item.latitude === undefined || item.longitude === undefined) continue;
+      const d = Math.hypot(item.latitude - target.lat, item.longitude - target.lng);
+      if (d < minDistance) {
+        minDistance = d;
+        closestItem = item;
+      }
+    }
+
+    // Grid snap in Open-Meteo is typically within 0.25 degrees (~25km)
+    if (closestItem && minDistance < 2.0) {
+      const reading = parseCurrentWeather(closestItem.current);
+      if (reading) {
+        results.set(target.cityId, reading);
+        weatherCache.set(target.cityId, reading);
+        weatherCache.set(coordKey(target.lat, target.lng), reading);
+        unassignedTargets.delete(target.cityId);
+      }
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Fetch current weather for multiple cities in a single batched Open-Meteo request.
+ * Automatically checks TtlCache first, and only queries uncached coordinates.
+ * Deterministically maps results to each cityId.
+ */
+export async function fetchWeatherBatch(
+  cities: CityCoordinateTarget[],
+): Promise<Map<string, WeatherReading>> {
+  const finalMap = new Map<string, WeatherReading>();
+  const toFetch: CityCoordinateTarget[] = [];
+
+  for (const city of cities) {
+    const cached =
+      weatherCache.get(city.cityId) ||
+      weatherCache.get(coordKey(city.lat, city.lng));
+
+    if (cached) {
+      finalMap.set(city.cityId, cached);
+    } else {
+      toFetch.push(city);
+    }
+  }
+
+  // All cities satisfied from cache — no network request needed
+  if (toFetch.length === 0) {
+    return finalMap;
+  }
+
+  // Deduplicate in-flight requests if another tick or caller is fetching concurrently
+  if (inFlightBatchPromise) {
+    try {
+      const inFlightResults = await inFlightBatchPromise;
+      for (const city of toFetch) {
+        const res = inFlightResults.get(city.cityId);
+        if (res) finalMap.set(city.cityId, res);
+      }
+      return finalMap;
+    } catch {
+      // In-flight request failed; fall through to attempt this batch
+    }
+  }
+
+  const batchExecution = (async () => {
+    try {
+      const lats = toFetch.map((c) => c.lat).join(",");
+      const lngs = toFetch.map((c) => c.lng).join(",");
+
+      const { data } = await axios.get<
+        OpenMeteoLocationItem | OpenMeteoLocationItem[]
+      >(WEATHER_BASE_URL, {
+        timeout: 10000,
+        params: {
+          latitude: lats,
+          longitude: lngs,
+          current: CURRENT_WEATHER_VARS,
+          wind_speed_unit: "ms",
+          precipitation_unit: "mm",
+        },
+      });
+
+      const items: OpenMeteoLocationItem[] = Array.isArray(data)
+        ? data
+        : data
+          ? [data]
+          : [];
+
+      const mapped = mapResponseToCities(toFetch, items);
+      for (const [cId, reading] of mapped.entries()) {
+        finalMap.set(cId, reading);
+      }
+
+      logger.info(
+        `[weather] Batched fetch successful for ${mapped.size}/${toFetch.length} uncached cities (Open-Meteo)`,
+      );
+      return finalMap;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.status === 429) {
+        logger.warn(
+          "[weather] Open-Meteo weather rate limit (HTTP 429) encountered. Preserving cached data and previous readings.",
+        );
+      } else {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.warn(
+          `[weather] Open-Meteo batched current fetch failed for ${toFetch.length} cities: ${msg}`,
+        );
+      }
+      return finalMap;
+    }
+  })();
+
+  inFlightBatchPromise = batchExecution;
+  try {
+    return await batchExecution;
+  } finally {
+    inFlightBatchPromise = null;
+  }
+}
+
 /**
  * Fetch current weather conditions from Open-Meteo for a given coordinate.
- * Returns null if the provider is unavailable or returns incomplete data
- * for the required fields (temp, humidity). Missing optional fields are
- * returned as null rather than fabricated.
+ * Preserves backward compatibility for single-city callers.
+ * Checks TtlCache first, falling back to network fetch if uncached.
  *
  * @param lat      Latitude of the city
  * @param lng      Longitude of the city
- * @param timezone IANA timezone string — defaults to "UTC". For current
- *                 condition values this does not affect measurement accuracy;
- *                 it only influences the `time` field that Open-Meteo
- *                 includes in the `current` block (which GreenGuard does not
- *                 use for ingestion).
+ * @param timezone IANA timezone string — defaults to "UTC".
+ * @param cityId   Optional city identifier for cache lookup
  */
 export async function fetchWeather(
   lat: number,
   lng: number,
   timezone = "UTC",
+  cityId?: string,
 ): Promise<WeatherReading | null> {
-  try {
-    const { data } = await axios.get<OpenMeteoCurrentWeatherResponse>(
-      WEATHER_BASE_URL,
-      {
-        timeout: 8000,
-        params: {
-          latitude: lat,
-          longitude: lng,
-          timezone,
-          current: CURRENT_WEATHER_VARS,
-          wind_speed_unit: "ms",
-          precipitation_unit: "mm",
-        },
-      },
-    );
+  const key = cityId || coordKey(lat, lng);
+  const cached =
+    (cityId ? weatherCache.get(cityId) : undefined) ||
+    weatherCache.get(coordKey(lat, lng));
 
-    const c = data?.current;
-    if (!c) {
-      logger.warn(
-        `[weather] Open-Meteo returned no current block for (${lat}, ${lng})`,
-      );
-      return null;
-    }
-
-    const temp = toFinite(c.temperature_2m);
-    const humidity = toFinite(c.relative_humidity_2m);
-
-    // Require at minimum temperature and humidity — every other field
-    // degrades gracefully to a carried-forward value in ingestion.service.ts.
-    if (temp === null || humidity === null) {
-      logger.warn(
-        `[weather] Open-Meteo missing required temp/humidity for (${lat}, ${lng})`,
-      );
-      return null;
-    }
-
-    const apparentRaw = toFinite(c.apparent_temperature);
-    const weatherCodeRaw = toFinite(c.weather_code);
-    const rainRaw = toFinite(c.rain);
-
-    return {
-      temp: Math.round(temp * 10) / 10,
-      humidity: Math.round(humidity),
-      pressure: Math.round(toFinite(c.pressure_msl) ?? 1013),
-      windSpeed: Math.round((toFinite(c.wind_speed_10m) ?? 0) * 10) / 10,
-      windDirection: Math.round(toFinite(c.wind_direction_10m) ?? 0),
-      // Open-Meteo /v1/forecast current endpoint does not expose visibility.
-      visibility: null,
-      rainfall: Math.round((toFinite(c.precipitation) ?? 0) * 10) / 10,
-      // Optional Phase 1 additions
-      apparentTemperature:
-        apparentRaw !== null
-          ? Math.round(apparentRaw * 10) / 10
-          : null,
-      weatherCode:
-        weatherCodeRaw !== null ? Math.round(weatherCodeRaw) : null,
-      rain: rainRaw !== null ? Math.round(rainRaw * 10) / 10 : null,
-    };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    logger.warn(
-      `[weather] Open-Meteo current fetch failed for (${lat}, ${lng}): ${msg}`,
-    );
-    return null;
+  if (cached) {
+    return cached;
   }
+
+  const batchMap = await fetchWeatherBatch([{ cityId: key, lat, lng }]);
+  return batchMap.get(key) ?? null;
 }
+

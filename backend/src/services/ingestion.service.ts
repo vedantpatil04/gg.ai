@@ -1,7 +1,11 @@
 import { City } from "../models/City";
 import { EnvironmentalData } from "../models/EnvironmentalData";
 import { fetchAirQuality } from "./airQuality.service";
-import { fetchWeather } from "./weather.service";
+import {
+  fetchWeather,
+  fetchWeatherBatch,
+  WeatherReading,
+} from "./weather.service";
 import { logger } from "../utils/logger";
 
 // ─── Derive AQI-based composite scores (no hardcoded city values) ─────────────
@@ -26,17 +30,22 @@ function deriveCarbonEstimate(aqi: number, baseCarbon: number): number {
 }
 
 // ─── Ingest one city ──────────────────────────────────────────────────────────
-async function ingestCity(city: {
-  cityId: string;
-  name: string;
-  country: string;
-  lat: number;
-  lng: number;
-}): Promise<boolean> {
+async function ingestCity(
+  city: {
+    cityId: string;
+    name: string;
+    country: string;
+    lat: number;
+    lng: number;
+  },
+  preloadedWx?: WeatherReading | null,
+): Promise<boolean> {
   try {
     const [aq, wx] = await Promise.all([
       fetchAirQuality(city.lat, city.lng),
-      fetchWeather(city.lat, city.lng),
+      preloadedWx !== undefined
+        ? Promise.resolve(preloadedWx)
+        : fetchWeather(city.lat, city.lng, "UTC", city.cityId),
     ]);
 
     if (!aq && !wx) {
@@ -109,22 +118,35 @@ export async function runIngestion(): Promise<{ success: number; failed: number;
     return { success: 0, failed: 0, total: 0 };
   }
 
+  // Pre-fetch weather for all active cities in a single batched request (with cache check)
+  const weatherMap = await fetchWeatherBatch(
+    cities.map((c) => ({
+      cityId: c.cityId,
+      lat: c.lat,
+      lng: c.lng,
+    })),
+  );
+
   let success = 0;
   let failed = 0;
 
-  // Process cities with a small delay between calls to avoid rate limits
+  // Process cities with a small delay between calls to avoid rate limits on air quality
   for (const city of cities) {
-    const ok = await ingestCity({
-      cityId: city.cityId,
-      name: city.name,
-      country: city.country,
-      lat: city.lat,
-      lng: city.lng,
-    });
+    const wx = weatherMap.get(city.cityId) ?? null;
+    const ok = await ingestCity(
+      {
+        cityId: city.cityId,
+        name: city.name,
+        country: city.country,
+        lat: city.lat,
+        lng: city.lng,
+      },
+      wx,
+    );
     if (ok) success++;
     else failed++;
 
-    // 500ms between cities to avoid API rate limiting
+    // 500ms between cities to avoid API rate limiting on air quality
     await new Promise((r) => setTimeout(r, 500));
   }
 
@@ -133,3 +155,4 @@ export async function runIngestion(): Promise<{ success: number; failed: number;
   );
   return { success, failed, total: cities.length };
 }
+
