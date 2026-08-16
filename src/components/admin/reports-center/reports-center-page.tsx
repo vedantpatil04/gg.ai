@@ -31,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { SectionTitle, Pill } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
 import { reportApi } from "@/lib/api/services.api";
+import { downloadBlob } from "@/lib/download-file";
 import { useCity } from "@/lib/city-context";
 import { TableSkeleton } from "@/components/shared/skeletons";
 import { NoReportsEmpty, NoSearchResultsEmpty } from "@/components/shared/empty-states";
@@ -90,12 +91,7 @@ export function ReportsCenterPage() {
     setDownloadingId(report._id);
     try {
       const blob = await reportApi.download(report._id);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${report.title.replace(/[^a-z0-9]/gi, "_")}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      await downloadBlob(blob, `${report.title.replace(/[^a-z0-9]/gi, "_")}.pdf`);
     } catch {
       toast.error("Download failed. The report file may not be available.");
     } finally {

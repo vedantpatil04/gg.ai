@@ -12,6 +12,7 @@ import {
 } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { simulatorApi } from "@/lib/api/services.api";
+import { downloadBlob } from "@/lib/download-file";
 import {
   Area,
   AreaChart,
@@ -579,21 +580,19 @@ function Simulator() {
   });
 
   const exportMutation = useMutation({
-    mutationFn: () => simulatorApi.exportPdf(
-      lastSimulationId
-        ? { simulationId: lastSimulationId }
-        : { cityId: city.id, levers: vals, presetId: activePresetId ?? undefined },
-    ),
+    mutationFn: async () => {
+      const blob = await simulatorApi.exportPdf(
+        lastSimulationId
+          ? { simulationId: lastSimulationId }
+          : { cityId: city.id, levers: vals, presetId: activePresetId ?? undefined },
+      );
+      // Resolves only once the file is actually saved (see
+      // download-file.ts), so onSuccess below only ever reflects a genuine
+      // download rather than just that a click was dispatched.
+      await downloadBlob(blob, `greenguard-simulation-${city.id}.pdf`);
+    },
     onMutate: () => { setExportState("pending"); },
-    onSuccess: (blob) => {
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `greenguard-simulation-${city.id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+    onSuccess: () => {
       setExportState("success");
       if (exportTimerRef.current) clearTimeout(exportTimerRef.current);
       exportTimerRef.current = setTimeout(() => setExportState("idle"), 3000);

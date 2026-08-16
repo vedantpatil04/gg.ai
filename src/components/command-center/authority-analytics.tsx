@@ -26,6 +26,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { commandApi, type AuthorityAnalyticsData } from "@/lib/api/command.api";
+import { downloadBlob } from "@/lib/download-file";
 import { Panel, StatCard, Pill, WorkspaceHeader, EmptyState } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { ISSUE_LABELS } from "./investigation-workspace";
@@ -92,15 +93,8 @@ export function AuthorityAnalytics() {
 
   const handleExport = async () => {
     const blob = await commandApi.exportOperationsReportPdf(days);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
     const dateStr = new Date().toISOString().slice(0, 10);
-    a.download = `greenguard-operations-report-${dateStr}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    await downloadBlob(blob, `greenguard-operations-report-${dateStr}.pdf`);
   };
 
   return (
@@ -122,7 +116,6 @@ export function AuthorityAnalytics() {
                   size="sm"
                   variant={days === n ? "default" : "outline"}
                   onClick={() => setDays(n)}
-                  aria-pressed={days === n}
                   className="text-xs"
                 >
                   {n}D

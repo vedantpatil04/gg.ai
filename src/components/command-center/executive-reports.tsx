@@ -26,6 +26,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { commandApi, type ExecutiveReportData, type AuthorityAnalyticsData } from "@/lib/api/command.api";
+import { downloadBlob } from "@/lib/download-file";
 import { Panel, WorkspaceHeader, Pill, StatCard, EmptyState } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -87,17 +88,12 @@ function GeneratedReport({
   const { report, kpis, chartData } = data;
 
   const downloadMutation = useMutation({
-    mutationFn: () => commandApi.exportReportPdf({ type: selectedType }),
-    onSuccess: (blob) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
+    mutationFn: async () => {
+      const blob = await commandApi.exportReportPdf({ type: selectedType });
       const dateStr = new Date().toISOString().slice(0, 10);
-      a.download = `greenguard-${selectedType.toLowerCase()}-report-${dateStr}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Resolves only once the file is actually saved (see download-file.ts),
+      // so isSuccess below only ever reflects a genuine download.
+      await downloadBlob(blob, `greenguard-${selectedType.toLowerCase()}-report-${dateStr}.pdf`);
     },
   });
 
@@ -349,17 +345,12 @@ function OperationsReportSection() {
   const d = res?.data as AuthorityAnalyticsData | undefined;
 
   const downloadMutation = useMutation({
-    mutationFn: () => commandApi.exportOperationsReportPdf(days),
-    onSuccess: (blob) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
+    mutationFn: async () => {
+      const blob = await commandApi.exportOperationsReportPdf(days);
       const dateStr = new Date().toISOString().slice(0, 10);
-      a.download = `greenguard-operations-report-${dateStr}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Resolves only once the file is actually saved (see download-file.ts),
+      // so isSuccess below only ever reflects a genuine download.
+      await downloadBlob(blob, `greenguard-operations-report-${dateStr}.pdf`);
     },
   });
 
@@ -374,7 +365,6 @@ function OperationsReportSection() {
                 size="sm"
                 variant={days === n ? "default" : "outline"}
                 onClick={() => setDays(n)}
-                aria-pressed={days === n}
                 className="text-xs"
               >
                 {n} Days
@@ -563,15 +553,9 @@ export function ExecutiveReports() {
         description="Generate and export official environmental intelligence and complaint operations reports."
       />
 
-      <div
-        className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl w-fit border border-border"
-        role="tablist"
-        aria-label="Report category"
-      >
+      <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl w-fit border border-border">
         <button
           onClick={() => setMode("environmental")}
-          role="tab"
-          aria-selected={mode === "environmental"}
           className={cn(
             "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all",
             mode === "environmental"
@@ -584,8 +568,6 @@ export function ExecutiveReports() {
         </button>
         <button
           onClick={() => setMode("operations")}
-          role="tab"
-          aria-selected={mode === "operations"}
           className={cn(
             "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all",
             mode === "operations"
@@ -612,7 +594,6 @@ export function ExecutiveReports() {
                 setSelectedType(rt.key);
                 setReportData(null);
               }}
-              aria-pressed={selectedType === rt.key}
               className={cn(
                 "text-left rounded-xl p-4 border transition-all",
                 selectedType === rt.key

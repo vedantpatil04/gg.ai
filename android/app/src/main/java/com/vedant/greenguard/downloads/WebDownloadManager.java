@@ -25,6 +25,8 @@ import androidx.core.content.FileProvider;
 import com.getcapacitor.Bridge;
 import com.getcapacitor.WebViewListener;
 
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -45,16 +47,35 @@ import java.io.OutputStream;
  * `<a download>` + `.click()` pattern (see dashboard.tsx, reports.tsx,
  * reports-center-page.tsx, executive-reports.tsx, authority-analytics.tsx,
  * simulator.tsx). This is a well-known WebView/Capacitor limitation, not a
- * GreenGuard bug, so no frontend changes were made or are required - this
- * class makes the existing behavior work as-is.
+ * GreenGuard bug, so this class makes the existing behavior work as-is.
+ *
+ * Root cause of the observed "PDF downloaded successfully but no file in
+ * Downloads" bug (two parts, both fixed here):
+ *
+ * 1. The first version of this bridge re-fetched the blob via `fetch(blob
+ *    URL)` after the click was intercepted. Every GreenGuard download site
+ *    calls `URL.revokeObjectURL(url)` synchronously immediately after
+ *    `a.click()`, which can invalidate the blob URL before the async
+ *    fetch-and-save finishes - a classic blob-URL revocation race. Fixed by
+ *    hooking `URL.createObjectURL`/`revokeObjectURL` to keep a direct
+ *    reference to the actual Blob object, so the save no longer depends on
+ *    the URL staying valid.
+ * 2. `a.click()` is a synchronous, void DOM call. GreenGuard's download code
+ *    (e.g. executive-reports.tsx) treats it finishing without throwing as
+ *    "downloaded successfully", but the real save now happens
+ *    asynchronously on the native side, so that assumption no longer holds.
+ *    Fixed by threading a request id from a small frontend change
+ *    (src/lib/download-file.ts) through to this bridge, which calls back
+ *    into the page once the save genuinely succeeds or fails, so the UI's
+ *    success state is only ever set from a real outcome.
  *
  * Approach: a small page-load script (injected via Capacitor's supported
  * `Bridge.addWebViewListener` extension point, so Capacitor's own
  * WebViewClient/WebChromeClient are never replaced) intercepts anchor clicks
- * on `blob:` URLs with a `download` attribute, reads the blob as base64, and
- * hands it to a narrowly-scoped JavaScript interface that saves it natively.
- * A standard WebView DownloadListener is also registered as a defensive
- * fallback for any direct (non-blob) file URL.
+ * on `blob:` URLs with a `download` attribute, reads the already-held Blob
+ * as base64, and hands it to a narrowly-scoped JavaScript interface that
+ * saves it natively. A standard WebView DownloadListener is also registered
+ * as a defensive fallback for any direct (non-blob) file URL.
  */
 public final class WebDownloadManager {
 
@@ -71,25 +92,42 @@ public final class WebDownloadManager {
     };
 
     // Intercepts anchor clicks on blob: URLs with a `download` attribute -
-    // exactly how jsPDF#save() and GreenGuard's own blob-download helpers
-    // trigger a save - converts the blob to base64, and forwards it to the
-    // JS interface below. Falls back to the original click on any failure
-    // so existing behavior is never made worse.
+    // exactly how jsPDF#save() and GreenGuard's own blob-download helper
+    // (src/lib/download-file.ts) trigger a save. Keeps a direct reference to
+    // each Blob at creation time (via a createObjectURL/revokeObjectURL
+    // hook) so reading it later never depends on the URL still being valid,
+    // then converts it to base64 and forwards it to the JS interface below.
+    // Falls back to the original click on any failure so existing behavior
+    // is never made worse. The optional `data-greenguard-request-id`
+    // attribute (set by download-file.ts) is echoed back so native can
+    // report the real outcome to the page once the save finishes.
     private static final String BLOB_DOWNLOAD_HOOK_JS =
             "(function(){" +
                     "if(window.__greenguardDownloadHookInstalled){return;}" +
                     "window.__greenguardDownloadHookInstalled=true;" +
-                    "function toBase64(blob,filename){" +
+                    "var blobRegistry=new Map();" +
+                    "var origCreateObjectURL=URL.createObjectURL.bind(URL);" +
+                    "URL.createObjectURL=function(obj){" +
+                    "var url=origCreateObjectURL(obj);" +
+                    "if(typeof Blob!=='undefined'&&obj instanceof Blob){blobRegistry.set(url,obj);}" +
+                    "return url;" +
+                    "};" +
+                    "var origRevokeObjectURL=URL.revokeObjectURL.bind(URL);" +
+                    "URL.revokeObjectURL=function(url){" +
+                    "blobRegistry.delete(url);" +
+                    "return origRevokeObjectURL(url);" +
+                    "};" +
+                    "function toBase64(blob,filename,requestId){" +
                     "var reader=new FileReader();" +
                     "reader.onloadend=function(){" +
                     "var result=String(reader.result||'');" +
                     "var idx=result.indexOf(',');" +
                     "var base64=idx>=0?result.substring(idx+1):'';" +
                     "if(window." + JS_INTERFACE_NAME + "){" +
-                    "window." + JS_INTERFACE_NAME + ".saveBase64File(base64,filename||'download',blob.type||'application/octet-stream');" +
+                    "window." + JS_INTERFACE_NAME + ".saveBase64File(requestId||'',base64,filename||'download',blob.type||'application/octet-stream');" +
                     "}};" +
                     "reader.onerror=function(){" +
-                    "if(window." + JS_INTERFACE_NAME + "){window." + JS_INTERFACE_NAME + ".onDownloadError('read failed');}" +
+                    "if(window." + JS_INTERFACE_NAME + "){window." + JS_INTERFACE_NAME + ".onDownloadError(requestId||'','read failed');}" +
                     "};" +
                     "reader.readAsDataURL(blob);" +
                     "}" +
@@ -97,13 +135,12 @@ public final class WebDownloadManager {
                     "HTMLAnchorElement.prototype.click=function(){" +
                     "try{" +
                     "if(this.href&&this.href.indexOf('blob:')===0&&this.download){" +
-                    "var anchor=this;" +
-                    "fetch(this.href).then(function(res){return res.blob();}).then(function(blob){" +
-                    "toBase64(blob,anchor.download);" +
-                    "}).catch(function(){" +
-                    "if(window." + JS_INTERFACE_NAME + "){window." + JS_INTERFACE_NAME + ".onDownloadError('fetch failed');}" +
-                    "});" +
+                    "var blob=blobRegistry.get(this.href);" +
+                    "if(blob){" +
+                    "var requestId=this.getAttribute('data-greenguard-request-id')||'';" +
+                    "toBase64(blob,this.download,requestId);" +
                     "return;" +
+                    "}" +
                     "}" +
                     "}catch(e){}" +
                     "return originalClick.apply(this,arguments);" +
@@ -140,13 +177,14 @@ public final class WebDownloadManager {
         });
     }
 
-    // ── Blob downloads: jsPDF#save() / fetch-blob + anchor click ───────────────
+    // ── Blob downloads: jsPDF#save() / GreenGuard's downloadBlob() helper ──────
 
     /** Called from the injected page script with the file's base64 contents. */
     @JavascriptInterface
-    public void saveBase64File(String base64Data, String filename, String mimeType) {
+    public void saveBase64File(String requestId, String base64Data, String filename, String mimeType) {
         if (webView == null || !isTrustedOrigin(webView.getUrl())) {
             Log.w(TAG, "Ignoring saveBase64File from an untrusted or unknown origin.");
+            resolveJs(requestId, false, "Untrusted origin");
             return;
         }
         try {
@@ -155,22 +193,46 @@ public final class WebDownloadManager {
             String type = (mimeType == null || mimeType.isEmpty()) ? "application/octet-stream" : mimeType;
             Uri savedUri = writeToDownloads(activity, data, safeName, type);
             activity.runOnUiThread(() -> openOrNotify(savedUri, safeName, type));
+            resolveJs(requestId, true, null);
         } catch (Exception e) {
             Log.w(TAG, "Failed to save downloaded file", e);
             notifyFailure();
+            resolveJs(requestId, false, "Could not save the file");
         }
     }
 
-    /** Called from the injected page script when it could not read/fetch the blob. */
+    /** Called from the injected page script when it could not read the blob. */
     @JavascriptInterface
-    public void onDownloadError(String reason) {
+    public void onDownloadError(String requestId, String reason) {
         Log.w(TAG, "Blob download failed in page script: " + reason);
         notifyFailure();
+        resolveJs(requestId, false, "Could not read the file for download");
     }
 
     private void notifyFailure() {
         activity.runOnUiThread(() ->
                 Toast.makeText(activity, "Download failed. Please try again.", Toast.LENGTH_LONG).show());
+    }
+
+    /**
+     * Reports the real outcome of a download back to the page, so
+     * GreenGuard's UI (see src/lib/download-file.ts) only ever shows a
+     * success state once the file has genuinely been saved. No-ops if the
+     * caller didn't supply a request id (e.g. jsPDF's own internal saves,
+     * which aren't awaited by any GreenGuard UI code).
+     */
+    private void resolveJs(@Nullable String requestId, boolean success, @Nullable String message) {
+        if (requestId == null || requestId.isEmpty() || webView == null) {
+            return;
+        }
+        String js = "window.__greenguardResolveDownload && window.__greenguardResolveDownload(" +
+                JSONObject.quote(requestId) + "," + success + "," +
+                (message != null ? JSONObject.quote(message) : "null") + ");";
+        activity.runOnUiThread(() -> {
+            if (webView != null) {
+                webView.evaluateJavascript(js, null);
+            }
+        });
     }
 
     // ── Direct (non-blob) downloads - defensive fallback, unused by any ────────

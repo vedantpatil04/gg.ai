@@ -5,6 +5,7 @@ import { Panel, Pill } from "@/components/ui-bits";
 import { Download, FileText, Search, Filter, Sparkles, Loader2, CheckCircle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { reportApi, complaintApi } from "@/lib/api/services.api";
+import { downloadBlob } from "@/lib/download-file";
 import { useCity } from "@/lib/city-context";
 import { useAuth } from "@/lib/auth-context";
 import { useState } from "react";
@@ -282,18 +283,7 @@ function Reports() {
                   onClick={async () => {
                     try {
                       const blob = await reportApi.download(generatedReport._id || "");
-
-                      const url = window.URL.createObjectURL(blob);
-
-                      const a = document.createElement("a");
-                      a.href = url;
-                      a.download = `${generatedReport.title}.pdf`;
-
-                      document.body.appendChild(a);
-                      a.click();
-                      a.remove();
-
-                      window.URL.revokeObjectURL(url);
+                      await downloadBlob(blob, `${generatedReport.title}.pdf`);
                     } catch (err) {
                       console.error("Download failed", err);
                     }

@@ -892,41 +892,30 @@
   }
 }
 
-/* ─── Preset rail — mobile: horizontal scroll, desktop: wrap ─────────────── */
-.sim-preset-section-responsive {
+/* ─── Scenario section — compact summary + "View Presets" selector ──────── */
+/* The selector itself (Drawer on mobile / Dialog on desktop) is rendered via
+   the shared shadcn primitives, so it already inherits theme tokens. These
+   rules only style the option rows shown inside it. */
+.sim-scenario-list {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.sim-preset-label {
-  display: block;
+.sim-scenario-option {
+  cursor: pointer;
+  transition:
+    transform var(--sim-t-fast) var(--sim-ease),
+    box-shadow var(--sim-t-fast) var(--sim-ease);
+  -webkit-tap-highlight-color: transparent;
 }
 
-.sim-preset-chips-rail {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  overflow-x: auto;
-  overflow-y: visible;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  padding-bottom: 2px; /* room for focus rings */
-}
+.sim-scenario-option:hover { transform: translateY(-1px); }
+.sim-scenario-option:active { transform: scale(0.99); }
 
-.sim-preset-chips-rail::-webkit-scrollbar {
-  display: none;
-}
-
-@media (min-width: 1024px) {
-  .sim-preset-section-responsive {
-    flex-direction: row;
-    align-items: center;
-  }
-  .sim-preset-chips-rail {
-    overflow-x: visible;
-    flex-wrap: wrap;
-  }
+.sim-scenario-option:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
 }
 
 /* ─── Charts — no fixed widths, prevent overflow ─────────────────────────── */
@@ -1150,16 +1139,20 @@
      padding     ≈ 20px
      safe-area   env()
    Total collapsed ≈ 36px, expanded ≈ 180px worst-case.
-   Use 200px + safe-area to be generous. */
-@media (max-width: 1023px) {
+   Use 200px + safe-area to be generous.
+   Breakpoint matches the panel's xl:hidden Tailwind class (1280px) — the
+   two-column desktop grid only kicks in at xl, so the sticky panel (and this
+   padding) must stay active through the whole tablet range up to that point. */
+@media (max-width: 1279px) {
   .sim-page-content {
     padding-bottom: calc(200px + env(safe-area-inset-bottom, 0px));
   }
 }
 
-/* Hide sticky panel on desktop — handled by lg:hidden Tailwind class,
-   but belt-and-suspenders here */
-@media (min-width: 1024px) {
+/* Hide sticky panel on desktop — handled by xl:hidden Tailwind class
+   (matches the xl:grid-cols-12 breakpoint where the two-column desktop
+   layout takes over), but belt-and-suspenders here */
+@media (min-width: 1280px) {
   .sim-mobile-sticky-panel {
     display: none !important;
   }
