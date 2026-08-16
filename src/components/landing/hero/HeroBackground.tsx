@@ -2,15 +2,21 @@ import type { CSSProperties } from "react";
 import { useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useMouseGlow } from "@/hooks/use-mouse-glow";
+import { HERO_AMBIENT_IMAGE } from "@/assets/landing/imagery";
 
 /**
- * The hero's layered backdrop: soft aurora-colored glow, a masked data grid,
- * a cursor-follow light on desktop, and a faint noise texture on top for
- * depth. No stock photography — this sandbox has no network access to
- * source real environmental imagery, so the system is built entirely from
- * the app's existing color tokens and gradients instead. It's a single
- * drop-in layer, so a real photo can be added later as one extra element
- * here without touching the Hero component itself.
+ * The hero's layered backdrop: a real (but heavily blurred and masked)
+ * environmental photo for ambient color and texture, soft aurora-colored
+ * glow on top, a masked data grid, a cursor-follow light on desktop, and a
+ * faint noise texture for depth.
+ *
+ * Phase 3 note: earlier phases had no network access to source real
+ * imagery, so this was built entirely from color tokens and gradients. The
+ * project now ships real city photography (`public/images/cities/**`), so
+ * one pre-blurred, low-opacity crop has been added as the base layer —
+ * masked toward the lower-right, away from the hero copy, so it reads as
+ * ambient color rather than a competing image. Swap `HERO_AMBIENT_IMAGE` in
+ * `src/assets/landing/imagery.ts` to change it; nothing here needs to change.
  */
 export function HeroBackground() {
   const reducedMotion = useReducedMotion();
@@ -27,6 +33,27 @@ export function HeroBackground() {
       className="absolute inset-0 -z-10 overflow-hidden bg-background"
       style={{ "--mx": "62%", "--my": "18%" } as CSSProperties}
     >
+      {/* Real-world ambient photo — pre-blurred and tiny (a few KB), so it's
+          safe to load eagerly even though it's above the fold. Masked so it
+          only shows through toward the lower-right, behind where the
+          product preview sits, and kept low-opacity in both themes. */}
+      <div
+        className="absolute inset-0 opacity-[0.16] dark:opacity-[0.1]"
+        style={{
+          maskImage: "radial-gradient(ellipse 65% 75% at 80% 65%, black 0%, transparent 72%)",
+          WebkitMaskImage:
+            "radial-gradient(ellipse 65% 75% at 80% 65%, black 0%, transparent 72%)",
+        }}
+      >
+        <img
+          src={HERO_AMBIENT_IMAGE.src}
+          alt=""
+          className="h-full w-full object-cover"
+          loading="eager"
+          decoding="async"
+        />
+      </div>
+
       {/* Aurora glow blobs */}
       <div
         className={cn(

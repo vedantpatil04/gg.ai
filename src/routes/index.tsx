@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import {
   ArrowRight,
   Brain,
-  MessageSquare,
   FileBarChart,
   Leaf,
   GitBranch,
@@ -18,6 +17,8 @@ import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { Hero } from "@/components/landing/hero/Hero";
 import { TrustStrip } from "@/components/landing/TrustStrip";
+import { RealWorldSection } from "@/components/landing/RealWorldSection";
+import { CitizenImpactSection } from "@/components/landing/CitizenImpactSection";
 import { LANDING_CONTAINER } from "@/components/landing/shared";
 import { SectionDivider } from "@/components/landing/experiences/shared";
 import { EnvironmentalOverviewExperience } from "@/components/landing/experiences/EnvironmentalOverviewExperience";
@@ -51,6 +52,10 @@ function Landing() {
       <LandingHeader />
       <Hero />
       <TrustStrip />
+
+      {/* ── Phase 3: real world opener ── */}
+      <RealWorldSection />
+
       <PlatformOverview />
       <LiveOperations />
 
@@ -62,6 +67,9 @@ function Landing() {
       <ForecastIntelligenceExperience />
       <SectionDivider tone="chart5" />
       <AICopilotExperience />
+
+      {/* ── Phase 3: citizen action beat ── */}
+      <CitizenImpactSection />
 
       <Modules />
       <HowItWorks />
@@ -293,13 +301,6 @@ function LiveOperations() {
 function Modules() {
   const modules = [
     {
-      to: "/citizen",
-      icon: MessageSquare,
-      name: "Citizen Hub",
-      desc: "Crowdsource ground-truth from residents. Verify, triage and resolve complaints.",
-      tag: "Community",
-    },
-    {
       to: "/reports",
       icon: FileBarChart,
       name: "Reports",
@@ -327,18 +328,18 @@ function Modules() {
       <div className={LANDING_CONTAINER}>
         <SectionHead
           eyebrow="The Rest Of The Platform"
-          title="Four more modules, same data fabric."
-          sub="Environmental Overview, Smart Map, Forecast and GreenGuard Intelligence Center are above — every module shares the same underlying data, so insight in one place is immediately actionable in the next."
+          title="Three more modules, same data fabric."
+          sub="Environmental Overview, Smart Map, Forecast, GreenGuard Intelligence Center and the Citizen Hub are above — every module shares the same underlying data, so insight in one place is immediately actionable in the next."
         />
 
-        <div className="mt-12 grid gap-px bg-border/60 rounded-2xl overflow-hidden border border-border/60 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-12 grid gap-px bg-border/60 rounded-2xl overflow-hidden border border-border/60 sm:grid-cols-3">
           {modules.map((m, i) => (
             <motion.div
               key={m.to}
               initial={{ opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 0.4, delay: (i % 4) * 0.05 }}
+              transition={{ duration: 0.4, delay: (i % 3) * 0.05 }}
               className="group bg-card"
             >
               <Link

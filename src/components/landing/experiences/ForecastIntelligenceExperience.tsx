@@ -4,6 +4,7 @@ import { useCity } from "@/lib/city-context";
 import { ForecastAISummary } from "@/components/forecast/forecast-ai-summary";
 import { ForecastDayCards } from "@/components/forecast/forecast-day-cards";
 import { LANDING_CONTAINER } from "@/components/landing/shared";
+import { FORECAST_BACKDROP } from "@/assets/landing/imagery";
 import { ExperienceHeader, ExperienceCTA } from "./shared";
 import { cn } from "@/lib/utils";
 
@@ -24,12 +25,29 @@ export function ForecastIntelligenceExperience() {
 
   return (
     <section className="relative overflow-hidden py-16 lg:py-20">
-      {/* Atmospheric backdrop — a layered cloud silhouette standing in for
-          real weather/radar photography, since this sandbox has no network
-          access to source it. */}
+      {/* Atmospheric backdrop: a real sky photograph (Kolkata — see
+          src/assets/landing/imagery.ts) fading in low-opacity along the top
+          edge, under the same soft info-tinted glow used before. Purely
+          decorative, so it's aria-hidden with empty alt text. */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-gradient-to-b from-background via-[color:var(--color-info)]/[0.05] to-background" />
-        <CloudLayers reducedMotion={!!reducedMotion} />
+        <div
+          className="absolute inset-x-0 top-0 h-[60%] opacity-[0.14] dark:opacity-[0.08]"
+          style={{
+            maskImage: "linear-gradient(to bottom, black 0%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black 0%, transparent 100%)",
+          }}
+        >
+          <img
+            src={FORECAST_BACKDROP.src}
+            alt=""
+            className="h-full w-full object-cover"
+            style={{ objectPosition: FORECAST_BACKDROP.position }}
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
+        <AtmosphereGlow reducedMotion={!!reducedMotion} />
       </div>
 
       <div className={`${LANDING_CONTAINER} flex flex-col gap-10`}>
@@ -58,8 +76,8 @@ export function ForecastIntelligenceExperience() {
   );
 }
 
-/** Two soft, slow-drifting cloud-layer shapes — illustration, not a photo. */
-function CloudLayers({ reducedMotion }: { reducedMotion: boolean }) {
+/** Two soft, slow-drifting color blobs that sit over the real sky photo above. */
+function AtmosphereGlow({ reducedMotion }: { reducedMotion: boolean }) {
   return (
     <>
       <div
@@ -83,16 +101,6 @@ function CloudLayers({ reducedMotion }: { reducedMotion: boolean }) {
           animationDelay: "-10s",
         }}
       />
-      <svg
-        className="absolute inset-x-0 top-1/4 h-40 w-full opacity-[0.4]"
-        viewBox="0 0 1200 160"
-        preserveAspectRatio="none"
-        fill="none"
-      >
-        <ellipse cx="180" cy="80" rx="220" ry="46" fill="color-mix(in oklab, var(--color-info) 10%, transparent)" />
-        <ellipse cx="620" cy="50" rx="300" ry="54" fill="color-mix(in oklab, var(--color-info) 8%, transparent)" />
-        <ellipse cx="1040" cy="90" rx="240" ry="44" fill="color-mix(in oklab, var(--color-info) 10%, transparent)" />
-      </svg>
     </>
   );
 }
