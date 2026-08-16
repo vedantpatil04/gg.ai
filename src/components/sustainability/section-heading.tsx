@@ -5,11 +5,16 @@ export function SustainabilitySectionHeading({
   title,
   description,
   accent = "var(--color-primary)",
+  headingId,
 }: {
   icon: LucideIcon;
   title: string;
   description?: string;
   accent?: string;
+  /** Optional id on the underlying <h2>, so callers can wire a section's
+   *  aria-labelledby to a real element instead of an id that doesn't exist.
+   *  Omitted by default — existing callers are unaffected. */
+  headingId?: string;
 }) {
   return (
     <div className="mb-6 pt-4 sm:pt-6">
@@ -21,7 +26,7 @@ export function SustainabilitySectionHeading({
           <Icon className="size-4.5 sm:size-5" />
         </div>
         <div>
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">{title}</h2>
+          <h2 id={headingId} className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">{title}</h2>
           {description && (
             <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 leading-relaxed">
               {description}

@@ -21,6 +21,7 @@ import { Route as DocsRouteImport } from './routes/docs'
 import { Route as EnvironmentRouteImport } from './routes/environment'
 import { Route as ForecastRouteImport } from './routes/forecast'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as GreenActionsRouteImport } from './routes/green-actions'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as IntelligenceRouteImport } from './routes/intelligence'
 import { Route as LoginRouteImport } from './routes/login'
@@ -123,6 +124,11 @@ const ForecastRoute = ForecastRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GreenActionsRoute = GreenActionsRouteImport.update({
+  id: '/green-actions',
+  path: '/green-actions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HelpRoute = HelpRouteImport.update({
@@ -358,6 +364,7 @@ export interface FileRoutesByFullPath {
   '/environment': typeof EnvironmentRoute
   '/forecast': typeof ForecastRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/green-actions': typeof GreenActionsRoute
   '/help': typeof HelpRouteWithChildren
   '/intelligence': typeof IntelligenceRoute
   '/login': typeof LoginRoute
@@ -414,6 +421,7 @@ export interface FileRoutesByTo {
   '/environment': typeof EnvironmentRoute
   '/forecast': typeof ForecastRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/green-actions': typeof GreenActionsRoute
   '/intelligence': typeof IntelligenceRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
@@ -471,6 +479,7 @@ export interface FileRoutesById {
   '/environment': typeof EnvironmentRoute
   '/forecast': typeof ForecastRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/green-actions': typeof GreenActionsRoute
   '/help': typeof HelpRouteWithChildren
   '/intelligence': typeof IntelligenceRoute
   '/login': typeof LoginRoute
@@ -530,6 +539,7 @@ export interface FileRouteTypes {
     | '/environment'
     | '/forecast'
     | '/forgot-password'
+    | '/green-actions'
     | '/help'
     | '/intelligence'
     | '/login'
@@ -586,6 +596,7 @@ export interface FileRouteTypes {
     | '/environment'
     | '/forecast'
     | '/forgot-password'
+    | '/green-actions'
     | '/intelligence'
     | '/login'
     | '/map'
@@ -642,6 +653,7 @@ export interface FileRouteTypes {
     | '/environment'
     | '/forecast'
     | '/forgot-password'
+    | '/green-actions'
     | '/help'
     | '/intelligence'
     | '/login'
@@ -700,6 +712,7 @@ export interface RootRouteChildren {
   EnvironmentRoute: typeof EnvironmentRoute
   ForecastRoute: typeof ForecastRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  GreenActionsRoute: typeof GreenActionsRoute
   HelpRoute: typeof HelpRouteWithChildren
   IntelligenceRoute: typeof IntelligenceRoute
   LoginRoute: typeof LoginRoute
@@ -801,6 +814,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/green-actions': {
+      id: '/green-actions'
+      path: '/green-actions'
+      fullPath: '/green-actions'
+      preLoaderRoute: typeof GreenActionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/help': {
@@ -1192,6 +1212,7 @@ const rootRouteChildren: RootRouteChildren = {
   EnvironmentRoute: EnvironmentRoute,
   ForecastRoute: ForecastRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  GreenActionsRoute: GreenActionsRoute,
   HelpRoute: HelpRouteWithChildren,
   IntelligenceRoute: IntelligenceRoute,
   LoginRoute: LoginRoute,

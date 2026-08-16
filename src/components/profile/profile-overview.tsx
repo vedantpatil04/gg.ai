@@ -21,6 +21,7 @@ import { InfoRow, InfoList } from "./profile-info-row";
 import { profileApi } from "@/lib/api/profile.api";
 import {
   type EnterpriseProfile,
+  formatApprovalStatus,
   formatDate,
   formatDateTime,
   formatRole,
@@ -202,6 +203,7 @@ function SectionLabel({ children }: { children: string }) {
 export function ProfileOverview({ profile }: { profile: EnterpriseProfile }) {
   const memberSince = formatDate(profile.createdAt);
   const lastLogin = formatDateTime(profile.lastLogin);
+  const accountStatus = formatApprovalStatus(profile.approvalStatus);
   const hasContact =
     hasValue(profile.phone) ||
     hasValue(profile.city) ||
@@ -285,6 +287,11 @@ export function ProfileOverview({ profile }: { profile: EnterpriseProfile }) {
               className="hover:shadow-lg transition-shadow duration-200 h-full p-6"
             >
               <InfoList>
+                <InfoRow
+                  icon={<ShieldCheck className="size-4" aria-hidden="true" />}
+                  label="Account status"
+                  value={accountStatus}
+                />
                 <InfoRow
                   icon={<Calendar className="size-4" aria-hidden="true" />}
                   label="Member since"

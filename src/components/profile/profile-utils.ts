@@ -61,6 +61,15 @@ export function formatRole(role: string): string {
   return role.charAt(0).toUpperCase() + role.slice(1);
 }
 
+/** "pending" -> "Pending". Real field (`approvalStatus`), meaningful mainly
+ *  for Authority accounts (Citizen/Administrator are always "approved") —
+ *  see the AuthUser type comment. Governance value only; never editable by
+ *  the account itself. */
+export function formatApprovalStatus(status?: string | null): string | null {
+  if (!status) return null;
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 /** Pill color tone matched to role, mirroring the convention already used
  *  for role badges elsewhere in the app. */
 export function roleTone(role: AuthUser["role"]): "destructive" | "primary" | "success" {

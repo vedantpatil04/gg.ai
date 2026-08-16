@@ -6,21 +6,36 @@ import type { IUser } from "../models/User";
  *
  * The spec's per-role field lists (Department, Division, Office, Region,
  * Designation, Assigned Region/District, Jurisdiction, Created By...) name
- * several concepts the schema has no column for. Rather than fabricate
- * values for them, every row below maps onto something real:
+ * several concepts. Every row below maps onto something real:
  *   - "Authority ID" / "Employee ID": derived from the account's own
  *     MongoDB _id (real, unique, stable — not a stored field, same
  *     approach as the Personal Information tab's derived "Username").
  *   - "Employment Status" (Authority): the real `approvalStatus` field.
+ *   - "Department" / "Designation" (Authority): the real `User.department`
+ *     / `User.designation` fields — department is a required field at
+ *     Authority signup (see auth.controller.ts registration) but was never
+ *     surfaced anywhere in the profile UI until now.
+ *   - "Assigned Jurisdiction" (Authority): the real `User.assignedCities`
+ *     array (the same field Smart Routing/Automation 2 uses for eligibility
+ *     — see smartRouting.service.ts), resolved to city names. This
+ *     replaces an earlier version of this row that read the legacy
+ *     single-value `User.city` field instead — that field is actually the
+ *     account's freely-editable home-address city (shared with
+ *     Citizen/Administrator via the Personal Information tab), not the
+ *     authority's operational jurisdiction, so showing it here was
+ *     mislabeling an editable, unrelated field as read-only governance
+ *     data. `assignedCities` itself is administrator-controlled and has no
+ *     edit affordance anywhere in this profile/organization surface.
+ *   - "Specializations" (Authority): the real `User.specializations` array.
  *   - "Managed Cities" (Administrator): a real query against the City
  *     collection — administrators aren't tied to a subset of cities in
  *     this schema (see Phase 2's platform statistics for the same note),
  *     so this is platform-wide, same as "Authorities Managed" etc.
  *   - "Created Date" (Administrator): the real `createdAt`.
- * Department/Division/Office/Region/Designation/Assigned Region-District/
- * Jurisdiction/Created By have nothing to back them and are simply never
- * added to the row list — which is what makes them "hide automatically"
- * per the spec, rather than a frontend check on an always-empty field.
+ * Division/Office/Region/Assigned Region-District/Created By have nothing
+ * to back them and are simply never added to the row list — which is what
+ * makes them "hide automatically" per the spec, rather than a frontend
+ * check on an always-empty field.
  */
 
 export interface OrganizationInfoRow {
@@ -55,7 +70,16 @@ function formatDate(date?: Date): string | undefined {
 
 type OrgSource = Pick<
   IUser,
-  "_id" | "role" | "organization" | "approvalStatus" | "city" | "createdAt"
+  | "_id"
+  | "role"
+  | "organization"
+  | "approvalStatus"
+  | "city"
+  | "createdAt"
+  | "department"
+  | "designation"
+  | "assignedCities"
+  | "specializations"
 >;
 
 export async function getOrganizationProfile(user: OrgSource): Promise<OrganizationProfileData> {
@@ -82,13 +106,33 @@ export async function getOrganizationProfile(user: OrgSource): Promise<Organizat
         label: "Employment Status",
         value: employmentStatus,
       });
+    if (user.designation?.trim())
+      employment.push({ key: "designation", label: "Designation", value: user.designation.trim() });
+    if (user.department?.trim())
+      employment.push({ key: "department", label: "Department", value: user.department.trim() });
 
     const assignment: OrganizationInfoRow[] = [];
-    if (user.city)
+    const assignedCityIds = Array.isArray(user.assignedCities) ? user.assignedCities : [];
+    if (assignedCityIds.length > 0) {
+      // Real Smart Routing jurisdiction (Automation 2), resolved to display
+      // names. Read-only here — assignment is administrator-controlled and
+      // has no edit affordance anywhere in the profile/organization surface.
+      const cities = await City.find({ cityId: { $in: assignedCityIds } })
+        .select("cityId name")
+        .lean();
+      const nameByCityId = new Map(cities.map((c) => [c.cityId, c.name]));
+      const jurisdictionNames = assignedCityIds.map((id) => nameByCityId.get(id) ?? capitalize(id));
       assignment.push({
-        key: "assignedCity",
-        label: "Assigned City",
-        value: capitalize(user.city),
+        key: "assignedJurisdiction",
+        label: jurisdictionNames.length > 1 ? "Assigned Jurisdictions" : "Assigned Jurisdiction",
+        items: jurisdictionNames,
+      });
+    }
+    if (user.specializations && user.specializations.length > 0)
+      assignment.push({
+        key: "specializations",
+        label: "Specializations",
+        items: user.specializations.map(capitalize),
       });
 
     return {

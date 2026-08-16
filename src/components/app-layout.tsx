@@ -31,6 +31,7 @@ import {
   Pin,
   PinOff,
   Search,
+  ListChecks,
   Maximize2,
   Minimize2,
   ChevronRight,
@@ -107,6 +108,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "groups.community",
     items: [
       { to: "/citizen", label: "citizenHub", icon: Megaphone, public: true },
+      { to: "/green-actions", label: "greenActions", icon: ListChecks, public: true },
       { to: "/sustainability", label: "sustainability", icon: Leaf, public: true },
       { to: "/simulator", label: "simulator", icon: SlidersHorizontal, public: true },
     ],
