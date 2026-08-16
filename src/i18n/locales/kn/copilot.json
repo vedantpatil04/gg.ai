@@ -3,8 +3,9 @@
   "subtitle": "Gemini ಚಾಲಿತ ಪರಿಸರ ಇಂಟೆಲಿಜೆನ್ಸ್।",
   "tabs": {
     "chat": "ಸಹಾಯಕ",
-    "intelligence": "ಇಂಟೆಲಿಜೆನ್ಸ್",
-    "health": "ಆರೋಗ್ಯ",
+    "intelligence": "ಬುದ್ಧಿವಂತಿಕೆ",
+    "health": "ಆರೋಗ್ಯ",
+    "insights": "ಒಳನೋಟಗಳು",
     "actions": "ಕ್ರಮಗಳು"
   },
   "chat": {

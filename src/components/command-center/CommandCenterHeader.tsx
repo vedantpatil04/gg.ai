@@ -106,7 +106,10 @@ export function CommandCenterHeader({
 
         {/* Center: Primary Navigation (Desktop) */}
         {topTabs && topTabs.length > 0 && (
-          <nav className="hidden lg:flex items-center gap-1 bg-muted/50 p-1 rounded-xl border border-border/60">
+          <nav
+            className="hidden lg:flex items-center gap-1 bg-muted/50 p-1 rounded-xl border border-border/60"
+            aria-label="Mission Control sections"
+          >
             {topTabs.map((tab) => {
               const isActive = activeTop === tab.id;
               const Icon = tab.icon;
@@ -114,6 +117,7 @@ export function CommandCenterHeader({
                 <button
                   key={tab.id}
                   onClick={() => onTopChange?.(tab.id)}
+                  aria-current={isActive ? "page" : undefined}
                   className={cn(
                     "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 shrink-0",
                     isActive
@@ -155,6 +159,7 @@ export function CommandCenterHeader({
             variant="ghost"
             size="icon"
             onClick={() => setSearchOpen(true)}
+            aria-label="Search operations"
             className="sm:hidden size-8 text-muted-foreground"
           >
             <Search className="size-4" />
@@ -166,7 +171,10 @@ export function CommandCenterHeader({
           {/* Profile Dropdown (Enterprise Grade) */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 p-1 pl-1.5 pr-2 rounded-xl border border-border/60 hover:bg-muted/50 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+              <button
+                aria-label={`Account menu for ${userName}`}
+                className="flex items-center gap-2 p-1 pl-1.5 pr-2 rounded-xl border border-border/60 hover:bg-muted/50 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+              >
                 <div className="size-7 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-bold text-xs grid place-items-center shadow-xs shrink-0">
                   {initials}
                 </div>
@@ -252,6 +260,9 @@ export function CommandCenterHeader({
               variant="ghost"
               size="icon"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="command-center-mobile-nav"
               className="lg:hidden size-8 text-muted-foreground"
             >
               {mobileMenuOpen ? <X className="size-4" /> : <Menu className="size-4" />}
@@ -262,7 +273,10 @@ export function CommandCenterHeader({
 
       {/* Mobile Navigation Dropdown Bar */}
       {mobileMenuOpen && topTabs && (
-        <div className="lg:hidden mt-2 pt-2 border-t border-border/60 space-y-1">
+        <div
+          id="command-center-mobile-nav"
+          className="lg:hidden mt-2 pt-2 border-t border-border/60 space-y-1"
+        >
           {topTabs.map((tab) => {
             const isActive = activeTop === tab.id;
             const Icon = tab.icon;
@@ -273,6 +287,7 @@ export function CommandCenterHeader({
                   onTopChange?.(tab.id);
                   setMobileMenuOpen(false);
                 }}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors",
                   isActive

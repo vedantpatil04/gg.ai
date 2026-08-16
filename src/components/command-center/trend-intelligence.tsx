@@ -94,6 +94,7 @@ export function TrendIntelligence() {
                 size="sm"
                 variant={granularity === g ? "default" : "outline"}
                 onClick={() => setGranularity(g)}
+                aria-pressed={granularity === g}
                 className="text-xs capitalize"
               >
                 {g}

@@ -32,6 +32,6 @@ export interface AuthBackgroundImage {
 }
 
 export const AUTH_BACKGROUND_IMAGE: AuthBackgroundImage = {
-  url: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=2400&q=80&fit=crop",
+  url: "/images/login/gg.bg.webp",
   alt: "Modern city skyline with green parks under a clear sky",
 };

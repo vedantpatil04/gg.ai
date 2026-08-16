@@ -122,6 +122,7 @@ export function AuthorityAnalytics() {
                   size="sm"
                   variant={days === n ? "default" : "outline"}
                   onClick={() => setDays(n)}
+                  aria-pressed={days === n}
                   className="text-xs"
                 >
                   {n}D

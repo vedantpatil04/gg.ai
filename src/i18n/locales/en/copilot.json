@@ -5,6 +5,7 @@
     "chat": "Assistant",
     "intelligence": "Intelligence",
     "health": "Health",
+    "insights": "Insights",
     "actions": "Actions"
   },
   "chat": {

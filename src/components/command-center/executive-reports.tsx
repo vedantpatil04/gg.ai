@@ -374,6 +374,7 @@ function OperationsReportSection() {
                 size="sm"
                 variant={days === n ? "default" : "outline"}
                 onClick={() => setDays(n)}
+                aria-pressed={days === n}
                 className="text-xs"
               >
                 {n} Days
@@ -562,9 +563,15 @@ export function ExecutiveReports() {
         description="Generate and export official environmental intelligence and complaint operations reports."
       />
 
-      <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl w-fit border border-border">
+      <div
+        className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl w-fit border border-border"
+        role="tablist"
+        aria-label="Report category"
+      >
         <button
           onClick={() => setMode("environmental")}
+          role="tab"
+          aria-selected={mode === "environmental"}
           className={cn(
             "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all",
             mode === "environmental"
@@ -577,6 +584,8 @@ export function ExecutiveReports() {
         </button>
         <button
           onClick={() => setMode("operations")}
+          role="tab"
+          aria-selected={mode === "operations"}
           className={cn(
             "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all",
             mode === "operations"
@@ -603,6 +612,7 @@ export function ExecutiveReports() {
                 setSelectedType(rt.key);
                 setReportData(null);
               }}
+              aria-pressed={selectedType === rt.key}
               className={cn(
                 "text-left rounded-xl p-4 border transition-all",
                 selectedType === rt.key

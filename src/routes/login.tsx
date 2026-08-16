@@ -35,82 +35,116 @@ export const Route = createFileRoute("/login")({
  *  actually accepts. */
 type Role = LoginPortal;
 type View = "login" | "fp-email" | "fp-done";
-type Accent = "primary" | "warning" | "info";
+type Accent = "primary" | "info" | "chart-5";
 
 // ─── Role config ──────────────────────────────────────────────────────────────
-// Copy per GreenGuard AI Step 2 spec §9 — short and concrete, not a marketing
-// panel. Accents reuse the design system's existing semantic tokens (the same
-// ones already used for status tags in signup.tsx and throughout admin/
-// command-center) rather than introducing a new palette.
+// Left-panel copy vs. card copy are deliberately distinct (refinement spec
+// §5/§6): the left panel explains what the role is for; the card is a
+// shorter, sign-in-specific framing. Accents reuse existing design-system
+// tokens — primary/info are already used this way elsewhere (signup.tsx,
+// admin, command-center); chart-5 (violet) is the same token already used as
+// a distinct secondary brand accent on the landing page's AI Copilot section
+// (AICopilotExperience.tsx), reused here rather than inventing a new color.
 
 const ROLES: Record<
   Role,
   {
     tab: string;
-    portal: string;
+    badge: string;
     icon: LucideIcon;
     headline: string;
     supporting: string;
+    secondary: string;
+    capabilities: string;
+    cardHeading: string;
+    cardSupporting: string;
     accent: Accent;
   }
 > = {
   citizen: {
     tab: "Citizen",
-    portal: "Citizen Portal",
+    badge: "Citizen Portal",
     icon: User,
     headline: "Your environment. Your voice.",
     supporting: "Monitor your surroundings, report environmental issues, and stay informed.",
+    secondary: "Stay connected to the environmental conditions and issues around your community.",
+    capabilities: "Monitor · Report · Track · Stay informed",
+    cardHeading: "Welcome back",
+    cardSupporting: "Monitor your surroundings, report environmental issues, and stay informed.",
     accent: "primary",
   },
   authority: {
     tab: "Authority",
-    portal: "Authority Portal",
+    badge: "Authority Portal",
     icon: ShieldCheck,
-    headline: "From environmental incident to resolution.",
+    headline: "From incident to resolution.",
     supporting: "Investigate environmental incidents and manage environmental response workflows.",
-    accent: "warning",
+    secondary: "Move environmental cases from verification through investigation and resolution.",
+    capabilities: "Investigate · Monitor · Respond · Resolve",
+    cardHeading: "Authority Sign In",
+    cardSupporting: "Access your environmental investigation and management workspace.",
+    accent: "info",
   },
   admin: {
     tab: "Administrator",
-    portal: "Administrator Portal",
+    badge: "Administration",
     icon: Settings2,
     headline: "Govern the intelligence behind GreenGuard.",
     supporting: "Manage platform operations, governance, access, and environmental intelligence.",
-    accent: "info",
+    secondary: "Control platform operations, access, governance, and enterprise intelligence.",
+    capabilities: "Manage · Verify · Assign · Govern",
+    cardHeading: "Administrator Sign In",
+    cardSupporting: "Access GreenGuard platform administration and governance.",
+    accent: "chart-5",
   },
 };
 
 // Literal per-role class strings. Tailwind's scanner needs complete class
 // names in source, not ones built via "text-" + accent — so nothing below is
-// assembled dynamically.
-const ACCENT: Record<Role, { tabActive: string; text: string; chip: string; focus: string }> = {
+// assembled dynamically. `primary`/`info` are common tokens and take the
+// plain utility form (already proven in this file and in verify-2fa.tsx);
+// `chart-5` is only ever used via the explicit `[color:var(--color-chart-5)]`
+// form elsewhere in this codebase (AICopilotExperience.tsx), so admin
+// matches that proven form instead of an unproven plain `chart-5` utility.
+// `cssVar` is the raw custom-property reference (not a class) used for the
+// role-tinted button glow below.
+const ACCENT: Record<
+  Role,
+  { tabActive: string; text: string; chip: string; focus: string; cssVar: string }
+> = {
   citizen: {
     tabActive: "bg-primary/10 text-primary",
     text: "text-primary",
     chip: "bg-primary/12 text-primary",
     focus: "focus:border-primary focus:ring-primary/20",
+    cssVar: "var(--color-primary)",
   },
   authority: {
-    tabActive: "bg-warning/10 text-warning",
-    text: "text-warning",
-    chip: "bg-warning/12 text-warning",
-    focus: "focus:border-warning focus:ring-warning/20",
-  },
-  admin: {
     tabActive: "bg-info/10 text-info",
     text: "text-info",
     chip: "bg-info/12 text-info",
     focus: "focus:border-info focus:ring-info/20",
+    cssVar: "var(--color-info)",
+  },
+  admin: {
+    tabActive: "bg-[color:var(--color-chart-5)]/10 text-[color:var(--color-chart-5)]",
+    text: "text-[color:var(--color-chart-5)]",
+    chip: "bg-[color:var(--color-chart-5)]/12 text-[color:var(--color-chart-5)]",
+    focus: "focus:border-[color:var(--color-chart-5)] focus:ring-[color:var(--color-chart-5)]/20",
+    cssVar: "var(--color-chart-5)",
   },
 };
 
 const ROLE_ORDER: Role[] = ["citizen", "authority", "admin"];
 
+// Desktop gets a moderately larger, more comfortable form (refinement spec
+// §3); mobile is intentionally left at its existing, already-good size
+// (spec §2/§22) by gating the increase behind `lg:`.
 const inputClass =
-  "h-11 w-full rounded-lg border border-input bg-background/40 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus:ring-2";
+  "h-11 w-full rounded-lg border border-input bg-background/40 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus:ring-2 lg:h-12 lg:px-4 lg:text-[15px]";
 
 const ctaClass =
-  "inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 lg:h-12 lg:text-[15px]";
 
 // ─── Brand lockup ─────────────────────────────────────────────────────────────
 // Same lockup as the marketing header (LandingHeader.tsx) — same gradient
@@ -187,6 +221,14 @@ function LoginPage() {
 
   const rc = ROLES[role];
   const ac = ACCENT[role];
+  // Role-tinted ambient glow for the CTA buttons — mirrors the structure of
+  // the app's own --shadow-glow token (a thin 1px outline + a soft drop
+  // shadow), just swapping in the selected role's accent color so the
+  // primary button visibly, but subtly, reflects the selected role
+  // (refinement spec §8) without touching its fill or text color.
+  const glowStyle = {
+    boxShadow: `0 0 0 1px oklch(from ${ac.cssVar} l c h / 0.3), 0 20px 60px -20px oklch(from ${ac.cssVar} l c h / 0.45)`,
+  };
 
   if (isLoading || isAuthenticated) {
     return (
@@ -305,8 +347,10 @@ function LoginPage() {
                 setError("");
               }}
               className={cn(
-                "rounded-lg px-1.5 py-2.5 text-center text-[11px] font-medium leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-xs",
-                active ? ACCENT[r].tabActive : "text-muted-foreground hover:text-foreground",
+                "rounded-lg px-1.5 py-2.5 text-center text-[11px] leading-tight transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-xs lg:px-2 lg:py-3 lg:text-xs",
+                active
+                  ? cn(ACCENT[r].tabActive, "font-semibold shadow-sm")
+                  : "font-medium text-muted-foreground hover:text-foreground",
               )}
             >
               {ROLES[r].tab}
@@ -315,8 +359,12 @@ function LoginPage() {
         })}
       </div>
 
-      <h1 className="text-xl font-semibold tracking-tight text-foreground">Welcome back</h1>
-      <p className="mb-6 mt-1 text-sm leading-relaxed text-muted-foreground">{rc.supporting}</p>
+      <div key={role} className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-300">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground lg:text-2xl">
+          {rc.cardHeading}
+        </h1>
+        <p className="mb-6 mt-1 text-sm leading-relaxed text-muted-foreground">{rc.cardSupporting}</p>
+      </div>
 
       {role === "authority" && (
         <div className="mb-5 flex items-start gap-2 rounded-lg border border-warning/25 bg-warning/8 px-3.5 py-2.5 text-xs leading-relaxed text-foreground/75">
@@ -384,7 +432,7 @@ function LoginPage() {
         </div>
 
         {/* Turnstile security verification */}
-        <div className="flex justify-center py-1">
+        <div className="flex justify-center py-2 lg:py-3">
           <TurnstileWidget
             ref={turnstileRef}
             theme={resolvedTheme}
@@ -402,7 +450,12 @@ function LoginPage() {
           />
         </div>
 
-        <button type="submit" disabled={loading} className={cn(ctaClass, "aurora")}>
+        <button
+          type="submit"
+          disabled={loading}
+          style={glowStyle}
+          className={cn(ctaClass, "aurora")}
+        >
           {loading ? (
             <>
               <Loader2 className="size-4 animate-spin" />
@@ -443,7 +496,9 @@ function LoginPage() {
         Back to sign in
       </button>
 
-      <h1 className="text-xl font-semibold tracking-tight text-foreground">Reset your password</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-foreground lg:text-2xl">
+        Reset your password
+      </h1>
       <p className="mb-6 mt-1 text-sm leading-relaxed text-muted-foreground">
         Enter your account email and we&rsquo;ll send a link to reset your password.
       </p>
@@ -468,7 +523,12 @@ function LoginPage() {
             className={cn(inputClass, ac.focus)}
           />
         </div>
-        <button type="submit" disabled={fpLoading} className={cn(ctaClass, "aurora")}>
+        <button
+          type="submit"
+          disabled={fpLoading}
+          style={glowStyle}
+          className={cn(ctaClass, "aurora")}
+        >
           {fpLoading ? (
             <>
               <Loader2 className="size-4 animate-spin" />
@@ -500,13 +560,15 @@ function LoginPage() {
         <CheckCircle2 className="size-5 text-primary" />
       </div>
 
-      <h1 className="text-xl font-semibold tracking-tight text-foreground">Check your inbox</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-foreground lg:text-2xl">
+        Check your inbox
+      </h1>
       <p className="mb-7 mt-1 text-sm leading-relaxed text-muted-foreground">
         If <span className="text-foreground">{fpEmail}</span> is registered, a reset link is on its
         way. It expires in 1 hour — check spam if you don&rsquo;t see it.
       </p>
 
-      <button type="button" onClick={resetFp} className={cn(ctaClass, "aurora")}>
+      <button type="button" onClick={resetFp} style={glowStyle} className={cn(ctaClass, "aurora")}>
         Back to sign in
       </button>
     </>
@@ -522,32 +584,70 @@ function LoginPage() {
     <AuthBackground accent={rc.accent}>
       <div className="flex flex-1 flex-col lg:flex-row">
         {/* Context panel — desktop only. On mobile the photograph plus the
-            card's own heading/supporting copy carry the role context instead. */}
-        <div className="relative hidden flex-1 flex-col justify-between p-10 lg:flex xl:p-14">
+            card's own heading/supporting copy carry the role context instead.
+            Composition (refinement spec §4–§6): BrandMark sits at the top;
+            role-aware context block is positioned in the intentional
+            lower-middle area (not flush to the bottom) via flex layout with
+            auto-margin. The content uses vertical breathing room so it reads
+            as purposeful rather than incidental. */}
+        <div className="relative hidden flex-1 flex-col p-10 lg:flex xl:p-14">
           <BrandMark />
 
-          <div className="max-w-md">
+          {/* Spacer — pushes context block down into the lower-middle zone.
+              flex-[2] vs flex-[3] gives roughly a 40/60 split so the content
+              lands noticeably below centre, not at the very bottom. */}
+          <div className="flex-[2]" aria-hidden="true" />
+
+          <div
+            key={role}
+            className="max-w-lg motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-300"
+          >
+            {/* Role label chip */}
             <div
               className={cn(
-                "mb-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium uppercase tracking-wider",
+                "mb-5 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-widest",
                 ac.chip,
               )}
             >
-              <rc.icon className="size-3" />
-              {rc.portal}
+              <rc.icon className="size-3.5" />
+              {rc.badge}
             </div>
-            <h2 className="text-3xl font-semibold leading-tight tracking-tight text-foreground xl:text-4xl">
+
+            {/* Primary role headline — visually prominent to balance the
+                larger auth card; restrained enough to not become hero copy. */}
+            <h2 className="text-3xl font-semibold leading-[1.15] tracking-tight text-foreground xl:text-[2.6rem]">
               {rc.headline}
             </h2>
-            <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
+
+            {/* Supporting description */}
+            <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-muted-foreground">
               {rc.supporting}
             </p>
+
+            {/* Secondary sentence — concise, natural over the photograph */}
+            <p className="mt-2.5 max-w-sm text-sm leading-relaxed text-muted-foreground/80">
+              {rc.secondary}
+            </p>
+
+            {/* Capability line */}
+            <p className={cn("mt-5 text-xs font-medium tracking-widest", ac.text)}>
+              {rc.capabilities}
+            </p>
           </div>
+
+          {/* Bottom spacer — flex-[3] makes the lower spacer larger so the
+              content sits in the lower-middle, not the true middle. */}
+          <div className="flex-[3]" aria-hidden="true" />
         </div>
 
-        {/* Auth column */}
-        <div className="flex flex-1 items-center justify-center px-4 py-10 sm:px-6 lg:max-w-[26rem] lg:flex-none lg:px-10 xl:max-w-[28rem]">
-          <div className="w-full max-w-sm rounded-2xl glass-panel p-6 sm:p-8">
+        {/* Auth column — widened moderately per refinement spec §2–§3.
+            lg:max-w-[38rem] gives the column enough room for the card to
+            breathe without covering the environmental photograph. The inner
+            card uses lg:max-w-[30rem] (~480px) for a substantial but
+            proportionate authentication surface. lg:px-12 creates comfortable
+            inset from the right viewport edge. */}
+        <div className="flex flex-1 items-center justify-center px-4 py-10 sm:px-6 lg:max-w-[38rem] lg:flex-none lg:px-12 lg:py-12">
+          <div className="w-full max-w-sm rounded-2xl glass-panel p-6 sm:p-8 lg:max-w-[30rem] lg:p-10 xl:p-11">
             <div
               key={view}
               className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-300"

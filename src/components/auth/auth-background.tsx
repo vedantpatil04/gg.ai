@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { AUTH_BACKGROUND_IMAGE } from "@/lib/auth-background";
 import { cn } from "@/lib/utils";
 
-type AuthAccent = "primary" | "warning" | "info";
+type AuthAccent = "primary" | "info" | "chart-5";
 
 interface AuthBackgroundProps {
   children: ReactNode;

@@ -30,7 +30,10 @@ export function CommandCenterNavigation({
   return (
     <div className="w-full space-y-2">
       {/* Top tabs row (visible on medium & small screens, or as backup overflow bar) */}
-      <nav className="flex lg:hidden items-center gap-1 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1 mt-1">
+      <nav
+        className="flex lg:hidden items-center gap-1 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1 mt-1"
+        aria-label="Mission Control sections"
+      >
         {topTabs.map((tab) => {
           const isActive = activeTop === tab.id;
           const Icon = tab.icon;
@@ -38,6 +41,7 @@ export function CommandCenterNavigation({
             <button
               key={tab.id}
               onClick={() => onTopChange(tab.id)}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all shrink-0",
                 isActive
@@ -59,7 +63,10 @@ export function CommandCenterNavigation({
 
       {/* Sub-tabs bar (when top tab has multiple sub-views, e.g. Environmental Monitoring) */}
       {hasSubNav && (
-        <nav className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide pt-1 border-t border-border/50">
+        <nav
+          className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide pt-1 border-t border-border/50"
+          aria-label="Module views"
+        >
           <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mr-1 shrink-0">
             View:
           </span>
@@ -70,6 +77,7 @@ export function CommandCenterNavigation({
               <button
                 key={sub.id}
                 onClick={() => onSubChange(sub.id)}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-all shrink-0 border",
                   isActive

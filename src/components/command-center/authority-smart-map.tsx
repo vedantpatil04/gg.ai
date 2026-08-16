@@ -457,6 +457,7 @@ export function AuthoritySmartMap({
                     type="button"
                     onClick={resetView}
                     title="Reset view"
+                    aria-label="Reset map view"
                     className="p-1.5 rounded-lg border border-border/60 text-muted-foreground hover:bg-muted/40"
                   >
                     <RotateCcw className="size-3.5" />
@@ -465,6 +466,7 @@ export function AuthoritySmartMap({
                     type="button"
                     onClick={toggleFullscreen}
                     title="Fullscreen"
+                    aria-label="Toggle fullscreen map"
                     className="p-1.5 rounded-lg border border-border/60 text-muted-foreground hover:bg-muted/40"
                   >
                     <Maximize2 className="size-3.5" />
@@ -522,6 +524,7 @@ export function AuthoritySmartMap({
                     </div>
                     <button
                       onClick={() => setSelected(null)}
+                      aria-label="Close location details"
                       className="text-muted-foreground hover:text-foreground shrink-0"
                     >
                       <X className="size-3.5" />
@@ -577,6 +580,7 @@ export function AuthoritySmartMap({
                     </div>
                     <button
                       onClick={() => setSelected(null)}
+                      aria-label="Close complaint details"
                       className="text-muted-foreground hover:text-foreground shrink-0"
                     >
                       <X className="size-3.5" />

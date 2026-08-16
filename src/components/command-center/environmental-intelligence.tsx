@@ -43,6 +43,7 @@ function RiskZoneCard({
     <div className="glass rounded-xl border border-border overflow-hidden">
       <button
         onClick={() => setExpanded((e) => !e)}
+        aria-expanded={expanded}
         className="w-full flex items-center justify-between gap-4 p-4 hover:bg-muted/30 transition-colors text-left"
       >
         <div className="flex items-center gap-3 min-w-0">

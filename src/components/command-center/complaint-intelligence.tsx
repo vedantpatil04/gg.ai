@@ -113,9 +113,18 @@ function ComplaintQueueRow({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.12 }}
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      aria-label={`Open complaint ${refCode(complaint._id)}: ${complaint.title}`}
       className={cn(
-        "group flex items-start sm:items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-3 cursor-pointer transition-colors hover:border-primary/40 hover:bg-muted/30",
+        "group flex items-start sm:items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-3 cursor-pointer transition-colors hover:border-primary/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
         isRework && "border-destructive/30 bg-destructive/[0.03]",
       )}
     >

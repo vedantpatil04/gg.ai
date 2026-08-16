@@ -207,6 +207,14 @@ function WorkspaceSkeleton() {
 
 // ─── Lightbox ─────────────────────────────────────────────────────────────────
 function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
   return (
     <AnimatePresence>
       <motion.div
@@ -214,6 +222,9 @@ function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Evidence image preview"
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 cursor-zoom-out"
       >
         <motion.img
@@ -227,6 +238,7 @@ function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
         />
         <button
           onClick={onClose}
+          aria-label="Close image preview"
           className="absolute top-4 right-4 size-9 rounded-full bg-white/10 hover:bg-white/20 grid place-items-center"
         >
           <X className="size-5 text-white" />
@@ -334,6 +346,7 @@ function EvidenceCard({
         {canEdit && (
           <button
             onClick={onRemove}
+            aria-label="Remove evidence"
             className="absolute top-1.5 right-1.5 size-6 rounded-full bg-background/80 hover:bg-destructive/90 hover:text-white grid place-items-center border border-border transition-colors"
           >
             {removing ? <Loader2 className="size-3 animate-spin" /> : <X className="size-3" />}
@@ -345,8 +358,17 @@ function EvidenceCard({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={() => onOpen(src)}
-      className="relative group rounded-xl overflow-hidden border border-border bg-muted/30 aspect-video cursor-pointer"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen(src);
+        }
+      }}
+      aria-label={`Open evidence ${index + 1}`}
+      className="relative group rounded-xl overflow-hidden border border-border bg-muted/30 aspect-video cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
     >
       <img
         src={src}
@@ -364,6 +386,7 @@ function EvidenceCard({
             e.stopPropagation();
             onRemove();
           }}
+          aria-label="Remove evidence"
           className="absolute top-1.5 right-1.5 size-7 rounded-full bg-destructive/90 hover:bg-destructive grid place-items-center opacity-0 group-hover:opacity-100 transition-all shadow-lg"
         >
           {removing ? (
@@ -651,6 +674,8 @@ function InvestigationChecklist({
           <button
             key={i}
             onClick={() => toggle(i)}
+            role="checkbox"
+            aria-checked={checked.includes(i)}
             className={cn(
               "w-full flex items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-all",
               checked.includes(i)
