@@ -3,9 +3,11 @@ import { EnvironmentalData } from "../models/EnvironmentalData";
 import { MapLocation } from "../models/MapLocation";
 import { CityMapConfig } from "../models/CityMapConfig";
 import { Complaint } from "../models/Complaint";
+import { City } from "../models/City";
 import { AppError } from "../middleware/errorHandler";
 import { computeLocationProfile } from "../services/locationEnvironment.service";
 import { computeEcoScore } from "../services/ecoScore.service";
+import { getCityForecast } from "../services/forecastProvider.service";
 
 // ─── Get all cities (latest reading per city) ────────────────────────────────
 export async function getCities(_req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -663,6 +665,63 @@ export async function getMapComplaints(
         createdAt: c.createdAt,
         assignedTo: c.assignedTo ? String(c.assignedTo) : undefined,
       })),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ─── Phase 1 (GreenGuard Forecast Center — Real Data Foundation) ─────────────
+// GET /environmental/cities/:cityId/forecast
+// This route was already called by the frontend (see
+// src/components/environment/env-forecast-overview.tsx via
+// environmentalApi.getCityWeatherForecast) but had no backend handler, so the
+// gateway card always fell back to its "Limited data" state. It now returns
+// a real 7-day daily forecast (reusing the same Open-Meteo-backed forecast
+// service as the Forecast Center) instead of remaining a dead endpoint.
+export async function getCityWeatherForecast(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const cityId = req.params.cityId.toLowerCase();
+
+    const city = await City.findOne({ cityId, isActive: true }).lean();
+    if (!city) return next(new AppError("City not found", 404));
+
+    const timezone = city.timezone || "UTC";
+    const bundle = await getCityForecast({
+      cityId: city.cityId,
+      lat: city.lat,
+      lng: city.lng,
+      timezone,
+      hours: 168,
+    });
+
+    if (!bundle || bundle.daily.length === 0) {
+      return next(new AppError("Forecast data is temporarily unavailable for this city", 503));
+    }
+
+    const days = bundle.daily.map((d) => ({
+      date: d.date,
+      avgAqi: d.aqi,
+      maxTemp: d.temperatureMax,
+      minTemp: d.temperatureMin,
+      humidity: d.humidity,
+      windSpeed: d.windSpeed,
+      precipitation: d.precipitation,
+      weatherCode: d.weatherCode,
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        cityId: city.cityId,
+        cityName: city.name,
+        days,
+        metadata: { source: bundle.source, fetchedAt: bundle.fetchedAt },
+      },
     });
   } catch (err) {
     next(err);

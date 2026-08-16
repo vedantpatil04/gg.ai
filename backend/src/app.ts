@@ -176,7 +176,7 @@ async function bootstrap() {
   app.listen(PORT, () => {
     logger.info(`🚀 GreenGuard API v6.0 → http://localhost:${PORT}`);
     logger.info(`🤖 Gemini AI: ${process.env.GEMINI_API_KEY ? "✅ enabled" : "⚠️ disabled — set GEMINI_API_KEY"}`);
-    logger.info(`🌍 Real-time data: ${process.env.OPENWEATHER_API_KEY ? "✅ OpenWeather enabled" : "⚠️ no API key — using seeded data"}`);
+    logger.info(`🌍 Real-time data: Open-Meteo ✅ (no API key required) — weather ${process.env.OPEN_METEO_WEATHER_BASE_URL || "https://api.open-meteo.com/v1/forecast"}`);
   });
   startScheduler();
 }

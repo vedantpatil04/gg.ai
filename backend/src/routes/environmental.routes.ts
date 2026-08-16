@@ -13,6 +13,8 @@ import {
   getNetworkSummary,
   // Phase 2 GIS upgrade
   getMapComplaints,
+  // Phase 1: Real Forecast Data Foundation
+  getCityWeatherForecast,
 } from "../controllers/environmental.controller";
 
 const router = Router();
@@ -23,6 +25,11 @@ router.get("/cities/:cityId", getCity);
 router.get("/cities/:cityId/trend", getCityTrend);
 router.get("/cities/:cityId/hotspots", getHotspots); // ← now DB-backed
 router.get("/cities/:cityId/dashboard", getDashboardStats);
+
+// ─── Phase 1: Real Forecast Data Foundation ──────────────────────────────────
+// GET /environmental/cities/:cityId/forecast — real 7-day daily forecast,
+// previously expected by the frontend but unimplemented (always 404'd).
+router.get("/cities/:cityId/forecast", getCityWeatherForecast);
 
 // ─── Smart Map: rich city data (locations + water bodies + zones) ─────────────
 // GET /environmental/cities/:cityId/map-data
