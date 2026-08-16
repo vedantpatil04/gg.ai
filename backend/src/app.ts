@@ -163,7 +163,9 @@ const handleHealthCheck = (_req: express.Request, res: express.Response) => {
   });
 };
 
+app.get("/",           handleHealthCheck);
 app.get("/health",     handleHealthCheck);
+app.get("/api",        handleHealthCheck);
 app.get("/api/health", handleHealthCheck);
 
 // ─── Error Handling ───────────────────────────────────────────────────────────
