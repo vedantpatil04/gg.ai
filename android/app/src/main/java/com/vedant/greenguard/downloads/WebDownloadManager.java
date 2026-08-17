@@ -50,7 +50,9 @@ import java.io.OutputStream;
  * GreenGuard bug, so this class makes the existing behavior work as-is.
  *
  * Root cause of the observed "PDF downloaded successfully but no file in
- * Downloads" bug (two parts, both fixed here):
+ * Downloads" bug, then the follow-up "generated but could not be saved"
+ * bug (three parts, all fixed - the first two here, the third in
+ * src/lib/download-file.ts):
  *
  * 1. The first version of this bridge re-fetched the blob via `fetch(blob
  *    URL)` after the click was intercepted. Every GreenGuard download site
@@ -68,14 +70,30 @@ import java.io.OutputStream;
  *    (src/lib/download-file.ts) through to this bridge, which calls back
  *    into the page once the save genuinely succeeds or fails, so the UI's
  *    success state is only ever set from a real outcome.
+ * 3. downloadBlob() in the page relied on the click-interception script
+ *    above having already been injected via `onPageLoaded` before it fired
+ *    `a.click()`. That injection and `addJavascriptInterface` below are two
+ *    independent calls with no ordering guarantee between them, so on any
+ *    load where the page-load script lagged, the click silently no-opped
+ *    (WebView doesn't natively handle blob: downloads) and the page's save
+ *    confirmation just timed out after 20s - generation had already
+ *    succeeded, so this surfaced as a save failure. Fixed on the page side:
+ *    downloadBlob() now calls `saveBase64File` below directly instead of
+ *    going through a click this class may not have intercepted yet. No
+ *    change was needed here - it's the exact same native method as before.
  *
- * Approach: a small page-load script (injected via Capacitor's supported
- * `Bridge.addWebViewListener` extension point, so Capacitor's own
- * WebViewClient/WebChromeClient are never replaced) intercepts anchor clicks
- * on `blob:` URLs with a `download` attribute, reads the already-held Blob
- * as base64, and hands it to a narrowly-scoped JavaScript interface that
- * saves it natively. A standard WebView DownloadListener is also registered
- * as a defensive fallback for any direct (non-blob) file URL.
+ * Approach: `saveBase64File` below is called two ways:
+ *  1. Directly from `src/lib/download-file.ts` (every GreenGuard PDF/report
+ *     download) - the page hands over a base64-encoded Blob it already
+ *     holds, with no dependency on any separately-timed page script.
+ *  2. As a defensive fallback via a small page-load script (injected
+ *     through Capacitor's supported `Bridge.addWebViewListener` extension
+ *     point, so Capacitor's own WebViewClient/WebChromeClient are never
+ *     replaced) that intercepts any other `blob:` anchor click with a
+ *     `download` attribute GreenGuard code doesn't already route through
+ *     download-file.ts.
+ * A standard WebView DownloadListener is also registered for any direct
+ * (non-blob) file URL.
  */
 public final class WebDownloadManager {
 
@@ -195,9 +213,15 @@ public final class WebDownloadManager {
             activity.runOnUiThread(() -> openOrNotify(savedUri, safeName, type));
             resolveJs(requestId, true, null);
         } catch (Exception e) {
-            Log.w(TAG, "Failed to save downloaded file", e);
+            // Surface the real exception message (not just a generic string)
+            // so a save failure is actually diagnosable from the page/UI
+            // side instead of always showing the same text regardless of
+            // cause (permission denial, MediaStore insert failure, disk
+            // full, etc).
+            String reason = e.getMessage();
+            Log.w(TAG, "Failed to save downloaded file: " + reason, e);
             notifyFailure();
-            resolveJs(requestId, false, "Could not save the file");
+            resolveJs(requestId, false, reason != null && !reason.isEmpty() ? reason : "Could not save the file");
         }
     }
 
@@ -206,7 +230,7 @@ public final class WebDownloadManager {
     public void onDownloadError(String requestId, String reason) {
         Log.w(TAG, "Blob download failed in page script: " + reason);
         notifyFailure();
-        resolveJs(requestId, false, "Could not read the file for download");
+        resolveJs(requestId, false, reason != null && !reason.isEmpty() ? reason : "Could not read the file for download");
     }
 
     private void notifyFailure() {
@@ -276,6 +300,12 @@ public final class WebDownloadManager {
             ContentValues values = new ContentValues();
             values.put(MediaStore.Downloads.DISPLAY_NAME, filename);
             values.put(MediaStore.Downloads.MIME_TYPE, mimeType);
+            // Explicit target directory. Relying on the MediaStore default
+            // (unset RELATIVE_PATH) has been unreliable on some OEM storage
+            // providers, occasionally landing outside the public Downloads
+            // folder or failing the insert outright - being explicit removes
+            // that ambiguity so the file reliably lands in Files > Downloads.
+            values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
             values.put(MediaStore.Downloads.IS_PENDING, 1);
 
             Uri itemUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);

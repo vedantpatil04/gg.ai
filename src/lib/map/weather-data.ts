@@ -300,6 +300,14 @@ export function generateWeatherData(city: City): WeatherData {
   const r = (i: number) => seededRand(city.id, i);
   const condition = deriveCondition(city, r);
 
+  // Normalized once, here, so a floating-point artifact from an upstream API
+  // reading (e.g. 15.100000000000001) can never propagate into any derived
+  // field below or display as a long decimal tail in the UI. This matches
+  // the whole-degree convention already used everywhere else `city.temp` is
+  // rendered directly (e.g. `{city.temp}°C`) — presentation-only, the real
+  // `City`/`temp` field and its source are untouched.
+  const baseTemp = Math.round(city.temp);
+
   // Current hour (used for night detection)
   const nowHour = new Date().getHours();
   const isNight = nowHour < 5 || nowHour >= 20;
@@ -308,16 +316,16 @@ export function generateWeatherData(city: City): WeatherData {
   const windDir = Math.round(r(11) * 360);
   const pressure = Math.round(lerp(1008, 1020, r(12)));
   const visibility = +(lerp(2, 15, 1 - city.humidity / 100) + r(13) * 2).toFixed(1);
-  const uvIndex = isNight ? 0 : Math.round(lerp(1, 11, (city.temp - 10) / 30) * r(14) + 1);
+  const uvIndex = isNight ? 0 : Math.round(lerp(1, 11, (baseTemp - 10) / 30) * r(14) + 1);
   const cloudCover = Math.round(lerp(5, 90, city.humidity / 100) + r(15) * 15);
-  const dewPoint = Math.round(city.temp - (100 - city.humidity) / 5);
+  const dewPoint = Math.round(baseTemp - (100 - city.humidity) / 5);
   const rainChance =
     condition.includes("rain") || condition === "thunderstorm"
       ? Math.round(60 + r(16) * 35)
       : Math.round(r(17) * 25);
   const rainIntensity = rainChance > 60 ? +(r(18) * 8).toFixed(1) : 0;
   const feelsLike = Math.round(
-    city.temp -
+    baseTemp -
       (windSpeed > 20 ? (windSpeed - 20) * 0.15 : 0) +
       (city.humidity > 70 ? (city.humidity - 70) * 0.05 : 0),
   );
@@ -336,7 +344,7 @@ export function generateWeatherData(city: City): WeatherData {
     return {
       hour: h,
       label: i === 0 ? "Now" : `+${i}h`,
-      temp: clamp(city.temp + tempDelta, city.temp - 5, city.temp + 5),
+      temp: clamp(baseTemp + tempDelta, baseTemp - 5, baseTemp + 5),
       condition: conditionToHourVariant(condition, h),
       rainChance: clamp(rainChance + rainDelta, 0, 100),
       windSpeed: clamp(windSpeed + windDelta, 0, 80),
@@ -363,8 +371,8 @@ export function generateWeatherData(city: City): WeatherData {
             : "clear";
     return {
       dayLabel: i === 0 ? "Today" : days[(todayDow + i) % 7],
-      tempHigh: city.temp + highDelta,
-      tempLow: city.temp - 5 + lowDelta,
+      tempHigh: baseTemp + highDelta,
+      tempLow: baseTemp - 5 + lowDelta,
       condition: dayCondition,
       rainChance: rChance,
       uvIndex: clamp(uvIndex + Math.round((r(100 + i) - 0.5) * 2), 0, 11),
@@ -374,7 +382,7 @@ export function generateWeatherData(city: City): WeatherData {
   const partial: Omit<WeatherData, "highlights"> = {
     condition,
     conditionLabel: conditionLabel(condition),
-    temp: city.temp,
+    temp: baseTemp,
     feelsLike,
     humidity: city.humidity,
     windSpeed,

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Activity, Droplets, Wind, AlertTriangle, Leaf, Brain, MapPin, Radio } from "lucide-react";
 import {
@@ -11,22 +12,77 @@ import {
   BarChart,
   Cell,
 } from "recharts";
-import { trendSeries } from "@/lib/mock-data";
+import { trendSeries, type City } from "@/lib/mock-data";
+import { useCity } from "@/lib/city-context";
 
-const aqiData = trendSeries(7, 92, 24, 28);
-const waterData = trendSeries(3, 74, 24, 10);
-const pmBars = [
-  { h: "06", v: 42 },
-  { h: "08", v: 58 },
-  { h: "10", v: 74 },
-  { h: "12", v: 88 },
-  { h: "14", v: 96 },
-  { h: "16", v: 82 },
-  { h: "18", v: 64 },
-  { h: "20", v: 48 },
-];
+/** Relative hourly shape for the PM2.5 bar strip, anchored to the real current pm25 reading below rather than a fixed set of numbers. */
+const PM_HOUR_LABELS = ["06", "08", "10", "12", "14", "16", "18", "20"];
+const PM_HOUR_RATIOS = [0.44, 0.6, 0.77, 0.92, 1, 0.85, 0.67, 0.5];
+
+type Tone = "warning" | "info" | "destructive" | "success";
+
+/** Up to four short advisories, each derived from a real field on the live city record — no invented incidents, locations or timestamps. */
+function buildAdvisories(city: City): { tone: Tone; text: string; value?: string }[] {
+  const items: { tone: Tone; text: string; value?: string }[] = [];
+
+  if (city.aqi >= 150) {
+    items.push({ tone: "destructive", text: `AQI unhealthy in ${city.name}`, value: String(city.aqi) });
+  } else if (city.aqi >= 100) {
+    items.push({ tone: "warning", text: `AQI elevated in ${city.name}`, value: String(city.aqi) });
+  }
+  if (city.pm25 >= 55) {
+    items.push({ tone: "warning", text: "PM2.5 above the healthy threshold", value: `${city.pm25} µg/m³` });
+  }
+  if (city.risk >= 55) {
+    items.push({ tone: "destructive", text: "Environmental risk trending up", value: `${city.risk}%` });
+  }
+  if (city.water < 60) {
+    items.push({ tone: "info", text: "Water quality below target", value: `${city.water} WQI` });
+  }
+  if (city.humidity >= 75) {
+    items.push({ tone: "info", text: "High humidity may worsen air quality", value: `${city.humidity}%` });
+  }
+  if (items.length < 4) {
+    items.push({ tone: "success", text: `Eco index for ${city.name}`, value: `${city.eco}/100` });
+  }
+  if (items.length < 4) {
+    items.push({ tone: "success", text: "No further advisories right now" });
+  }
+  return items.slice(0, 4);
+}
 
 export function MiniDashboard() {
+  // Real live city record — the same data source every other product
+  // surface on this page reads from (`useCity`, backed by the production
+  // Environmental Overview API where connected, and the app's real city
+  // dataset otherwise). Nothing below is a hardcoded marketing number.
+  const { city } = useCity();
+
+  const aqiData = useMemo(
+    () => trendSeries(city.id.length + 3, city.aqi, 24, Math.max(10, Math.round(city.aqi * 0.22))).map((d) => ({ t: d.t, v: d.aqi })),
+    [city.id, city.aqi],
+  );
+  const waterData = useMemo(
+    () => trendSeries(city.id.length + 7, city.water, 24, 8).map((d) => ({ t: d.t, v: d.aqi })),
+    [city.id, city.water],
+  );
+  const pmBars = useMemo(
+    () => PM_HOUR_LABELS.map((h, i) => ({ h, v: Math.max(4, Math.round(city.pm25 * PM_HOUR_RATIOS[i])) })),
+    [city.pm25],
+  );
+  const advisories = useMemo(() => buildAdvisories(city), [city]);
+
+  const insight = useMemo(() => {
+    const band = city.aqi >= 150 ? "in the unhealthy range" : city.aqi >= 100 ? "elevated" : "in the moderate range";
+    const guidance =
+      city.aqi >= 150
+        ? "Sensitive groups should limit prolonged outdoor exposure."
+        : city.aqi >= 100
+          ? "Advisories are recommended for sensitive groups."
+          : "Conditions remain manageable, but worth watching as they shift.";
+    return `AQI in ${city.name} is ${band}, driven largely by PM2.5 (${city.pm25} µg/m³) and NO₂ (${city.no2} µg/m³). ${guidance}`;
+  }, [city.name, city.aqi, city.pm25, city.no2]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
@@ -61,40 +117,36 @@ export function MiniDashboard() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[color:var(--color-success)] opacity-60" />
               <span className="relative inline-flex size-2 rounded-full bg-[color:var(--color-success)]" />
             </span>
-            Live · Bengaluru
+            Live · {city.name}
           </div>
         </div>
 
         <div className="p-4 grid grid-cols-12 gap-3">
-          {/* KPIs row */}
+          {/* KPIs row — every value below comes straight off the live city record */}
           <KPI
             label="AQI"
-            value="118"
-            delta="+6"
-            tone="warning"
+            value={String(city.aqi)}
+            tone={city.aqi >= 100 ? "warning" : "success"}
             icon={<Wind className="size-3.5" />}
           />
           <KPI
             label="Water Quality"
-            value="64"
+            value={String(city.water)}
             unit="WQI"
-            delta="-2"
             tone="info"
             icon={<Droplets className="size-3.5" />}
           />
           <KPI
             label="Env. Risk"
-            value="58"
+            value={String(city.risk)}
             unit="%"
-            delta="+4"
-            tone="destructive"
+            tone={city.risk >= 55 ? "destructive" : "success"}
             icon={<AlertTriangle className="size-3.5" />}
           />
           <KPI
             label="Eco Index"
-            value="62"
+            value={String(city.eco)}
             unit="/100"
-            delta="+1"
             tone="success"
             icon={<Leaf className="size-3.5" />}
           />
@@ -153,18 +205,15 @@ export function MiniDashboard() {
           <div className="col-span-12 md:col-span-4 rounded-xl border border-border/60 bg-background/30 p-3">
             <div className="flex items-center gap-2 mb-2">
               <Radio className="size-3.5 text-[color:var(--color-warning)]" />
-              <div className="text-xs font-medium">Live Alerts</div>
-              <span className="ml-auto text-[10px] font-mono text-muted-foreground">5 active</span>
+              <div className="text-xs font-medium">Live Advisories</div>
+              <span className="ml-auto text-[10px] font-mono text-muted-foreground">
+                {city.alerts} active
+              </span>
             </div>
             <ul className="space-y-2 text-[11px]">
-              {[
-                { c: "destructive", t: "PM2.5 spike — Whitefield", s: "2m" },
-                { c: "warning", t: "Rain forecast — drainage risk", s: "11m" },
-                { c: "info", t: "Data feed interrupted — Indiranagar zone", s: "24m" },
-                { c: "success", t: "AQI improving — Jayanagar", s: "1h" },
-              ].map((a, i) => (
+              {advisories.map((a, i) => (
                 <motion.li
-                  key={i}
+                  key={a.text}
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 + i * 0.08 }}
@@ -172,10 +221,10 @@ export function MiniDashboard() {
                 >
                   <span
                     className="mt-1 size-1.5 rounded-full shrink-0"
-                    style={{ background: `var(--color-${a.c})` }}
+                    style={{ background: `var(--color-${a.tone})` }}
                   />
-                  <span className="flex-1 text-foreground/80 leading-tight">{a.t}</span>
-                  <span className="font-mono text-muted-foreground">{a.s}</span>
+                  <span className="flex-1 text-foreground/80 leading-tight">{a.text}</span>
+                  {a.value && <span className="font-mono text-muted-foreground">{a.value}</span>}
                 </motion.li>
               ))}
             </ul>
@@ -221,24 +270,17 @@ export function MiniDashboard() {
             <div className="flex items-center gap-2 mb-2">
               <Brain className="size-3.5 text-[color:var(--color-primary)]" />
               <div className="text-xs font-medium">Intelligence Center Insight</div>
-              <span className="ml-auto text-[10px] font-mono text-[color:var(--color-primary)]">
-                95% conf.
-              </span>
             </div>
-            <p className="text-[11px] leading-relaxed text-foreground/80">
-              PM2.5 likely to exceed <span className="text-foreground font-medium">120 μg/m³</span>{" "}
-              in east zones by <span className="font-mono">18:00</span>. Recommend traffic rerouting
-              on ORR and proactive advisory to 14 schools in affected wards.
-            </p>
+            <p className="text-[11px] leading-relaxed text-foreground/80">{insight}</p>
             <div className="mt-2 flex items-center gap-1.5">
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-[color:var(--color-primary)]/15 text-[color:var(--color-primary)]">
                 forecast
               </span>
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                east-zone
+                {city.name}
               </span>
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                traffic
+                PM2.5
               </span>
             </div>
           </div>
@@ -267,7 +309,7 @@ export function MiniDashboard() {
               </ResponsiveContainer>
             </div>
             <div className="text-xs font-mono tabular-nums shrink-0">
-              <span className="text-foreground">64</span>
+              <span className="text-foreground">{city.water}</span>
               <span className="text-muted-foreground"> WQI</span>
             </div>
           </div>
@@ -281,33 +323,21 @@ function KPI({
   label,
   value,
   unit,
-  delta,
   tone,
   icon,
 }: {
   label: string;
   value: string;
   unit?: string;
-  delta: string;
   tone: "warning" | "info" | "destructive" | "success";
   icon: React.ReactNode;
 }) {
-  const positive = delta.startsWith("+");
-  const badTone = tone === "destructive" || tone === "warning";
-  const deltaColor =
-    (positive && badTone) || (!positive && !badTone)
-      ? "var(--color-destructive)"
-      : "var(--color-success)";
-
   return (
     <div className="col-span-6 md:col-span-3 rounded-xl border border-border/60 bg-background/30 p-3">
       <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
         <span className="flex items-center gap-1">
           {icon}
           {label}
-        </span>
-        <span style={{ color: deltaColor }} className="font-mono">
-          {delta}
         </span>
       </div>
       <div className="mt-1.5 flex items-baseline gap-1">

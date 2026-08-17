@@ -48,8 +48,13 @@ export interface LandingImage {
 
 /**
  * REAL WORLD — the carousel in `RealWorldSection`.
- * Five real, monitored cities, chosen for geographic and visual variety.
- * Order = slide order.
+ * Five real cities spanning five distinct regions (South Asia, Europe, the
+ * Middle East, Southeast Asia, East Asia), chosen deliberately so the
+ * carousel reads as global environmental context — not a single country's
+ * product demo. This is separate from the platform's current live product
+ * data (see `useCity()` / `CITIES[0]`, which is Belagavi, India, and is
+ * shown elsewhere as exactly that: a live data example, not the brand
+ * story). Order = slide order.
  */
 export const REAL_WORLD_IMAGES: LandingImage[] = [
   {
@@ -59,16 +64,16 @@ export const REAL_WORLD_IMAGES: LandingImage[] = [
     caption: "Bengaluru, India",
   },
   {
-    src: "/images/landing/real-world/mumbai.webp",
-    alt: "Traffic streaming past an illuminated heritage building at night in Mumbai, India",
-    position: "50% 30%",
-    caption: "Mumbai, India",
+    src: "/images/landing/real-world/london.webp",
+    alt: "Tower Bridge over the River Thames in London, United Kingdom",
+    position: "50% 42%",
+    caption: "London, United Kingdom",
   },
   {
-    src: "/images/landing/real-world/delhi.webp",
-    alt: "India Gate framed by evening traffic in New Delhi, India",
-    position: "50% 22%",
-    caption: "Delhi, India",
+    src: "/images/landing/real-world/dubai.webp",
+    alt: "Aerial view of the Burj Al Arab and Dubai's coastline, United Arab Emirates",
+    position: "50% 55%",
+    caption: "Dubai, UAE",
   },
   {
     src: "/images/landing/real-world/singapore.webp",

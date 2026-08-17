@@ -56,10 +56,10 @@ export function CitizenImpactSection() {
               The people closest to the problem are part of the solution.
             </h2>
             <p className="mt-4 max-w-md text-base leading-relaxed text-muted-foreground lg:text-lg">
-              Every street, market and neighbourhood carries ground-truth that sensors
-              alone miss. The Citizen Hub turns resident reports into verified,
-              geo-tagged signal — triaged alongside the same data authorities already
-              act on.
+              Residents contribute localized reports and observations that complement
+              environmental data — the Citizen Hub verifies and triages each one alongside the
+              same data authorities already act on, so nothing gets lost between a street-level
+              report and a real response.
             </p>
             <Link
               to="/citizen"

@@ -101,8 +101,9 @@ export function RealWorldSection() {
               The environment doesn't exist inside a dashboard.
             </h2>
             <p className="mt-3 max-w-md text-sm leading-relaxed text-white/80 lg:text-base">
-              {CITIES.length} real cities, each with their own streets, weather and air —
-              GreenGuard turns what's happening out here into one live picture.
+              Environmental intelligence has to work wherever people live — from dense urban
+              corridors to coastlines and watersheds. GreenGuard already turns real conditions in{" "}
+              {CITIES.length} cities into one live operating picture.
             </p>
           </motion.div>
 

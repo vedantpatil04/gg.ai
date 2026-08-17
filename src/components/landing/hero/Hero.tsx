@@ -72,7 +72,7 @@ export function Hero() {
               variants={FADE_UP}
               className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground"
             >
-              GreenGuard AI unifies real-time sensor data, forecasting, citizen reports and AI
+              GreenGuard AI unifies environmental data, forecasting, citizen reports and AI
               insight into a single operating picture — so authorities can monitor, predict and
               act on environmental risk before it becomes a crisis.
             </motion.p>

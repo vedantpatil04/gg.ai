@@ -1,22 +1,95 @@
 /**
- * green-actions-data.ts — Green Actions, Phase 1
+ * green-actions-data.ts — Green Actions, Phase 1 + Phase 2
  *
  * Curated, static environmental-prevention content for the Green Actions
  * page. Mirrors the pattern already used for curated content elsewhere in
  * the app (e.g. INSIGHTS / RECOMMENDATIONS in lib/mock-data.ts) — plain
  * hardcoded data, no fabricated live statistics, no invented impact
- * numbers. Where a value genuinely comes from live data (AQI), it is read
- * from the existing city context in the components that use this file,
- * never stored here.
+ * numbers. Where a value genuinely comes from live data (AQI, Water
+ * Quality Index), it is read from the existing city context in
+ * green-actions-page.tsx — once, at the top of the page — and passed down
+ * as props, never re-fetched or recomputed per-section.
+ *
+ * Phase 2 adds a small "what's most relevant right now" layer
+ * (FocusTopic / resolveFocusTopic below) on top of this same curated
+ * content — it only ever *selects and orders* existing approved guidance
+ * based on two already-available real readings (AQI and Water Quality
+ * Index). It never generates new copy and never invents a data point that
+ * isn't already on the City record — see the comment on resolveFocusTopic
+ * for why rainfall/precipitation is deliberately not one of the signals.
  *
  * This file intentionally contains no components and no data fetching —
- * it is pure content so the six Green Actions sections can stay small and
- * focused on presentation.
+ * it is pure content + pure selection logic so the six Green Actions
+ * sections can stay small and focused on presentation.
  */
 
 import type { LucideIcon } from "lucide-react";
 import { Wind, Recycle, Droplets, Zap, Car, Trees, Home, Waves } from "lucide-react";
 import type { Tone } from "@/components/map/intelligence-ui";
+
+// ─── Phase 2 — contextual signal ──────────────────────────────────────────────
+//
+// The single source of truth for "what's most relevant right now" across
+// all six sections. Built from two real, already-available per-city
+// readings — nothing here is fetched, computed, or invented specifically
+// for Green Actions.
+
+export type FocusTopic = "air" | "water" | "general";
+
+/** Water Quality Index threshold below which water-related guidance takes
+ *  priority over the general everyday baseline. Set well below the
+ *  Sustainability page's 75% target (routes/sustainability.tsx) so this
+ *  only fires for cities genuinely in need of attention — air quality
+ *  already owns the more common "below target" case via its own tone
+ *  scale below. */
+const WATER_ATTENTION_THRESHOLD = 60;
+
+/**
+ * Resolves which real-data signal is most relevant right now.
+ *
+ * Air quality takes priority whenever its tone needs care, matching the
+ * Phase 2 PRD's leading example ("if AQI is elevated, prioritize air
+ * guidance"). Water Quality Index (city.water) is the fallback signal,
+ * since it's the next most reliable per-city reading already surfaced
+ * elsewhere in the app (Sustainability, Dashboard).
+ *
+ * Rainfall/precipitation is deliberately NOT a signal here: no such field
+ * is reliably populated anywhere in the existing City or forecast data
+ * (DailyForecast.precipitationChance is optional and only appears behind
+ * the Forecast page's own range-specific queries). Using it would mean
+ * fabricating a value that isn't really there, which Phase 2 explicitly
+ * rules out — so Green Actions sticks to the two signals it can actually
+ * back up.
+ */
+export function resolveFocusTopic(tone: Tone, waterScore: number): FocusTopic {
+  if (tone === "warning" || tone === "critical") return "air";
+  if (waterScore < WATER_ATTENTION_THRESHOLD) return "water";
+  return "general";
+}
+
+/** Intelligent default for Section 3's category selector — applied once,
+ *  from whatever conditions are active when the page mounts. Manual
+ *  category selection afterward is never overridden by this. */
+export function defaultCategoryForTopic(topic: FocusTopic): EnvCategoryId {
+  return topic === "water" ? "water" : "air";
+}
+
+/** Short, factual framing shown above Section 4 when the category the
+ *  citizen is currently viewing is the one today's conditions flagged as
+ *  relevant — omitted entirely otherwise, which is the "no strong
+ *  condition exists" fallback the PRD asks for. */
+export function whyThisMattersContextNote(topic: FocusTopic): string | undefined {
+  if (topic === "air") return "Especially relevant with today's air quality.";
+  if (topic === "water") return "Especially relevant given today's water quality reading.";
+  return undefined;
+}
+
+/** Same idea as whyThisMattersContextNote, for Section 6. */
+export function tipsTodayContextNote(topic: FocusTopic): string | undefined {
+  if (topic === "air") return "Chosen for today's air quality.";
+  if (topic === "water") return "Chosen for today's water quality reading.";
+  return undefined;
+}
 
 // ─── Environmental Areas (Section 3) ──────────────────────────────────────────
 
@@ -264,30 +337,50 @@ export interface AvoidBetterPair {
   id: string;
   avoid: string;
   better: string;
+  /** Which contextual signal (see FocusTopic below) this pair is most
+   *  useful for. Used only to reorder — never to hide — pairs in
+   *  DoThisInstead, so the most relevant behaviors surface first when
+   *  today's conditions call for it. "general" pairs aren't tied to a
+   *  specific condition and stay in their curated position. */
+  topic: FocusTopic;
 }
 
 export const DO_THIS_INSTEAD: AvoidBetterPair[] = [
-  { id: "burn-waste", avoid: "Burn household waste", better: "Use the appropriate disposal route" },
+  {
+    id: "burn-waste",
+    avoid: "Burn household waste",
+    better: "Use the appropriate disposal route",
+    topic: "air",
+  },
   {
     id: "idling",
     avoid: "Leave the engine idling at a long stop",
     better: "Switch off the engine during extended stops",
+    topic: "air",
   },
-  { id: "mix-waste", avoid: "Mix wet and dry waste", better: "Separate waste at the source" },
+  {
+    id: "mix-waste",
+    avoid: "Mix wet and dry waste",
+    better: "Separate waste at the source",
+    topic: "general",
+  },
   {
     id: "running-tap",
     avoid: "Let a tap run while not using it",
     better: "Use only the water you need",
+    topic: "water",
   },
   {
     id: "chemicals-drain",
     avoid: "Pour chemicals or used oil down the drain",
     better: "Store them for proper disposal at a collection point",
+    topic: "water",
   },
   {
     id: "short-trip",
     avoid: "Take a private vehicle for a short trip",
     better: "Walk, cycle, or use public transport where practical",
+    topic: "air",
   },
 ];
 
@@ -348,12 +441,13 @@ export const EVERYDAY_ACTIONS: EverydayGroup[] = [
 
 // ─── Today's Environmental Focus + GreenGuard Tips (Sections 1 & 6) ──────────
 //
-// Both sections read the city's live/fallback AQI (via useCity() +
-// findAqiBand() in the components that use this data) and key off the same
-// three-tone scale already used across Sustainability and the Smart Map, so
-// "dynamic where data supports it" never means inventing a new metric —
-// it means presenting the one reliable, already-available reading (AQI)
-// with tone-appropriate curated guidance layered on top.
+// Both sections read the city's live/fallback AQI and Water Quality Index
+// (passed down from green-actions-page.tsx, which is the only place that
+// calls useCity()) and key off the same tone scale already used across
+// Sustainability and the Smart Map, so "dynamic where data supports it"
+// never means inventing a new metric — it means presenting the reliable,
+// already-available readings with tone/topic-appropriate curated guidance
+// layered on top.
 
 /** Mirrors the AQI-band → tone mapping already used in routes/sustainability.tsx,
  *  kept local here since the mapping itself isn't exported from mock-data.ts. */
@@ -421,13 +515,37 @@ export const AIR_FOCUS_BY_TONE: Record<Tone, FocusContent> = {
   },
 };
 
+/** Shown instead of the air-quality content when resolveFocusTopic() finds
+ *  the Water Quality Index is the more relevant signal today. Same
+ *  approved-guidance actions already curated elsewhere in this file (see
+ *  the "water" EnvCategory and the water-tagged DO_THIS_INSTEAD pairs) —
+ *  restated here as a focus panel rather than new content. */
+export const WATER_FOCUS: FocusContent = {
+  headline: "Water quality needs attention today",
+  explanation:
+    "Today's water quality reading is below the healthy target. Avoid adding unnecessary waste or chemicals to local water sources.",
+  actions: [
+    "Avoid pouring chemicals or oil down the drain",
+    "Keep waste away from drains and water bodies",
+    "Turn taps off between uses instead of letting them run",
+  ],
+};
+
+/** Section 1's single entry point: picks air-quality or water-quality
+ *  guidance depending on which signal resolveFocusTopic() found relevant,
+ *  falling back to the plain AQI-tone content (including the "good"
+ *  everyday case) otherwise. */
+export function getTodaysFocusContent(topic: FocusTopic, tone: Tone): FocusContent {
+  return topic === "water" ? WATER_FOCUS : AIR_FOCUS_BY_TONE[tone];
+}
+
 export interface TipItem {
   emoji: string;
   title: string;
   detail: string;
 }
 
-/** Evergreen curated tips shown alongside (or instead of) the AQI-specific
+/** Evergreen curated tips shown alongside (or instead of) the topic-specific
  *  guidance, so the section always has something useful even without a
  *  live reading. Same underlying guidance as Sections 1–3, restated as a
  *  short title + one-line detail rather than a plain numbered sentence. */
@@ -459,9 +577,9 @@ export const EVERGREEN_TIP_ITEMS: TipItem[] = [
   },
 ];
 
-/** AQI-specific tip shown first when today's air quality needs some care —
- *  same tone scale and same underlying guidance as Section 1, just framed
- *  as a title + detail to match the rest of this section. */
+/** Lead tip shown first when today's air quality needs some care — same
+ *  tone scale and same underlying guidance as Section 1, just framed as a
+ *  title + detail to match the rest of this section. */
 export const AIR_TIP_BY_TONE: Partial<Record<Tone, TipItem>> = {
   warning: {
     emoji: "🌫️",
@@ -475,11 +593,34 @@ export const AIR_TIP_BY_TONE: Partial<Record<Tone, TipItem>> = {
   },
 };
 
-/** Returns 3–4 tips for "GreenGuard Tips Today": leads with the AQI-specific
- *  tip when air quality needs care, then fills the rest from the evergreen
- *  curated pool — never inventing a new dynamic value. */
-export function getTipsToday(tone: Tone): TipItem[] {
-  const lead = AIR_TIP_BY_TONE[tone];
-  const fill = EVERGREEN_TIP_ITEMS.filter((tip) => tip.title !== lead?.title);
-  return (lead ? [lead, ...fill] : fill).slice(0, 4);
+/** Lead tips shown first when today's Water Quality Index is the more
+ *  relevant signal — same approved guidance as WATER_FOCUS above, restated
+ *  as two short tips. */
+export const WATER_TIP_ITEMS: TipItem[] = [
+  {
+    emoji: "💧",
+    title: "Keep drains clear of waste",
+    detail: "Avoid letting loose waste or debris wash into drains and water bodies.",
+  },
+  {
+    emoji: "🧴",
+    title: "Store chemicals for proper disposal",
+    detail:
+      "Don't pour chemicals, oil, or paint down the drain — save them for a collection point.",
+  },
+];
+
+/** Returns 3–5 tips for "GreenGuard Tips Today": leads with whichever
+ *  topic-specific tip(s) match today's conditions, then fills the rest
+ *  from the evergreen curated pool — never inventing a new dynamic value.
+ *  Falls back to the evergreen pool alone when neither signal is elevated. */
+export function getTipsToday(topic: FocusTopic, tone: Tone): TipItem[] {
+  const lead: TipItem[] =
+    topic === "air"
+      ? [AIR_TIP_BY_TONE[tone]].filter((tip): tip is TipItem => Boolean(tip))
+      : topic === "water"
+        ? WATER_TIP_ITEMS
+        : [];
+  const fill = EVERGREEN_TIP_ITEMS.filter((tip) => !lead.some((l) => l.title === tip.title));
+  return [...lead, ...fill].slice(0, 5);
 }

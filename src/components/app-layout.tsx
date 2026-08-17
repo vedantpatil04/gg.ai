@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { NotificationBell } from "@/components/notifications/notification-center";
-import { LocationIntelligenceButton, ensureDefaultCity } from "@/components/location/location-intelligence";
+import { LocationIntelligenceButton, LocationIntelligenceSidebarWidget, ensureDefaultCity } from "@/components/location/location-intelligence";
 import { CommandPaletteProvider, useCommandPalette } from "@/components/command-palette/command-palette";
 import { PlatformStatusBar } from "@/components/status-bar/platform-status-bar";
 import { useTheme } from "@/lib/theme";
@@ -516,6 +516,13 @@ function FloatingSidebar({ mobileOpen, onMobileClose }: FloatingSidebarProps) {
           </button>
         )}
       </div>
+
+      {/* ── Mobile location switcher (accessible from mobile navigation drawer) ── */}
+      {isMobile && (
+        <div className="px-3 pt-3 pb-1 shrink-0 border-b border-sidebar-border/40">
+          <LocationIntelligenceSidebarWidget onSelect={onMobileClose} />
+        </div>
+      )}
 
       {/* ── Scrollable nav body ──────────────────────────────────────── */}
       <nav
@@ -1144,27 +1151,27 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
         </div>
 
         {/* Mobile: current page label */}
-        <div className="lg:hidden flex-1 min-w-0">
+        <div className="lg:hidden flex-1 min-w-0 px-1">
           <span className="text-sm font-semibold text-foreground truncate block">
             {breadcrumbs[breadcrumbs.length - 1]?.label ?? "GreenGuard AI"}
           </span>
         </div>
 
         {/* ══ RIGHT GROUP — Location · Theme · Fullscreen · Notifications · Profile ══ */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
 
           {/* Location selector */}
           <LocationIntelligenceButton />
 
           {/* Separator */}
-          <div className="hidden sm:block w-px h-5 bg-border/60 mx-1" />
+          <div className="hidden sm:block w-px h-5 bg-border/60 mx-0.5 sm:mx-1" />
 
           {/* Theme toggle */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={toggle}
-                className="size-9 grid place-items-center rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-150 hover:scale-105"
+                className="size-8 sm:size-9 grid place-items-center rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-150 hover:scale-105 shrink-0"
                 aria-label={theme === "dark" ? t("switchToLight") : t("switchToDark")}
               >
                 {theme === "dark"
@@ -1197,11 +1204,11 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
 
           {/* Notifications */}
           <NotificationBell
-            className="rounded-xl text-muted-foreground hover:text-foreground transition-all duration-150 hover:scale-105"
+            className="size-8 sm:size-9 rounded-xl text-muted-foreground hover:text-foreground transition-all duration-150 hover:scale-105 shrink-0"
           />
 
           {/* Separator */}
-          <div className="w-px h-5 bg-border/60 mx-1" />
+          <div className="w-px h-5 bg-border/60 mx-0.5 sm:mx-1" />
 
           {/* User profile menu / sign-in */}
           {isAuthenticated ? (
@@ -1209,7 +1216,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
               <button
                 onClick={() => setProfileOpen((o) => !o)}
                 className={cn(
-                  "flex items-center gap-2 rounded-xl pl-1.5 pr-2.5 h-9",
+                  "flex items-center gap-1.5 sm:gap-2 rounded-xl pl-1 sm:pl-1.5 pr-1 sm:pr-2.5 h-8 sm:h-9",
                   "hover:bg-muted transition-colors duration-150",
                   profileOpen && "bg-muted",
                 )}
@@ -1217,7 +1224,7 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
                 aria-expanded={profileOpen}
               >
                 {/* Avatar */}
-                <div className="size-7 rounded-lg aurora grid place-items-center text-primary-foreground text-[11px] font-bold shrink-0">
+                <div className="size-6 sm:size-7 rounded-lg aurora grid place-items-center text-primary-foreground text-[10px] sm:text-[11px] font-bold shrink-0">
                   {initials}
                 </div>
                 {/* Name + role — desktop */}

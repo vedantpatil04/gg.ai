@@ -204,16 +204,26 @@ function CityCard({ city, selected, favorited, onSelect, onToggleFavorite }: Cit
     : null;
 
   return (
-    <button
+    <div
       onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
       className={cn(
-        "group w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left",
-        "transition-colors duration-150",
+        "group w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left cursor-pointer",
+        "transition-colors duration-150 select-none",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
         selected
           ? "bg-primary/10 text-primary"
           : "hover:bg-muted/70 text-foreground",
       )}
       aria-pressed={selected}
+      aria-label={`Select ${city.name}, AQI ${city.aqi}`}
     >
       {/* Flag */}
       <span className="text-xl leading-none shrink-0" aria-hidden="true">{flag}</span>
@@ -253,18 +263,20 @@ function CityCard({ city, selected, favorited, onSelect, onToggleFavorite }: Cit
 
       {/* Favorite star */}
       <button
+        type="button"
         onClick={onToggleFavorite}
         className={cn(
-          "shrink-0 size-6 grid place-items-center rounded-md",
-          "opacity-0 group-hover:opacity-100 transition-opacity",
-          favorited && "opacity-100 text-amber-400",
-          !favorited && "text-muted-foreground hover:text-amber-400",
+          "shrink-0 size-7 grid place-items-center rounded-lg",
+          "transition-opacity duration-150",
+          favorited
+            ? "opacity-100 text-amber-400"
+            : "opacity-40 hover:opacity-100 group-hover:opacity-100 text-muted-foreground hover:text-amber-400",
         )}
         aria-label={favorited ? `Remove ${city.name} from favorites` : `Add ${city.name} to favorites`}
       >
         <Star className={cn("size-3.5", favorited && "fill-amber-400")} />
       </button>
-    </button>
+    </div>
   );
 }
 
@@ -419,10 +431,10 @@ export function LocationDrawer({ open, onClose }: LocationDrawerProps) {
     <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-sm p-0 flex flex-col"
+        className="w-full sm:max-w-md p-0 flex flex-col max-w-[92vw] h-full"
       >
         {/* Header */}
-        <SheetHeader className="px-4 pt-4 pb-3 border-b border-border shrink-0">
+        <SheetHeader className="px-4 pt-4 pb-3 border-b border-border shrink-0 pr-10">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-base font-semibold flex items-center gap-2">
               <Globe className="size-4 text-primary" />
@@ -434,10 +446,15 @@ export function LocationDrawer({ open, onClose }: LocationDrawerProps) {
           </div>
 
           {/* Active city summary */}
-          <div className="flex items-center gap-2 mt-2 px-3 py-2 rounded-xl bg-muted/50">
-            <span className="text-xl leading-none">{countryFlag(activeCity.country)}</span>
+          <div className="flex items-center gap-2 mt-2 px-3 py-2 rounded-xl bg-muted/50 text-left">
+            <span className="text-xl leading-none shrink-0">{countryFlag(activeCity.country)}</span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate">{activeCity.name}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-semibold truncate">{activeCity.name}</p>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-medium shrink-0 leading-none">
+                  Active
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground truncate">{cityRegionLabel(activeCity)}</p>
             </div>
             <div className="text-right shrink-0">
@@ -576,7 +593,7 @@ export function LocationDrawer({ open, onClose }: LocationDrawerProps) {
 // ─── Trigger pill ─────────────────────────────────────────────────────────────
 //
 // Renders the navbar button that opens the drawer.
-// Styled to match Phase 3 quick-action buttons.
+// Fully responsive across mobile, tablet, and desktop viewports.
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface LocationIntelligenceButtonProps {
@@ -596,9 +613,9 @@ export function LocationIntelligenceButton({ className }: LocationIntelligenceBu
       <button
         onClick={() => setOpen(true)}
         className={cn(
-          "hidden sm:flex items-center gap-1.5 rounded-xl px-2.5 h-9 text-sm",
-          "border border-border/60 bg-muted/40 hover:bg-muted",
-          "transition-colors duration-150",
+          "flex items-center gap-1 sm:gap-1.5 rounded-xl px-2 sm:px-2.5 h-8 sm:h-9 text-xs sm:text-sm shrink-0",
+          "border border-border/60 bg-muted/40 hover:bg-muted active:scale-[0.98]",
+          "transition-all duration-150",
           className,
         )}
         aria-label={`Selected region: ${city.name}, ${cityRegionLabel(city)}`}
@@ -606,12 +623,14 @@ export function LocationIntelligenceButton({ className }: LocationIntelligenceBu
         aria-expanded={open}
       >
         {/* Flag */}
-        <span className="text-base leading-none" aria-hidden="true">{flag}</span>
+        <span className="text-sm sm:text-base leading-none shrink-0" aria-hidden="true">{flag}</span>
 
-        {/* City name */}
-        <span className="font-medium hidden lg:inline">{city.name}</span>
+        {/* City name — visible across all breakpoints, gracefully truncated on small screens */}
+        <span className="font-medium truncate max-w-[68px] xs:max-w-[100px] sm:max-w-none">
+          {city.name}
+        </span>
 
-        {/* AQI with bullet separator */}
+        {/* AQI with bullet separator — desktop only */}
         <span className="text-muted-foreground/50 hidden xl:inline">·</span>
         <span
           className="text-xs font-semibold hidden xl:inline tabular-nums"
@@ -622,7 +641,7 @@ export function LocationIntelligenceButton({ className }: LocationIntelligenceBu
 
         <ChevronDown
           className={cn(
-            "size-3.5 text-muted-foreground transition-transform duration-200",
+            "size-3 sm:size-3.5 text-muted-foreground transition-transform duration-200 shrink-0",
             open && "rotate-180",
           )}
         />
@@ -630,6 +649,65 @@ export function LocationIntelligenceButton({ className }: LocationIntelligenceBu
 
       {/* Drawer (rendered via Radix Portal — always above Smart Map) */}
       <LocationDrawer open={open} onClose={() => setOpen(false)} />
+    </>
+  );
+}
+
+// ─── Sidebar Quick Widget (Mobile Navigation Drawer) ──────────────────────────
+//
+// Renders an interactive current-city card inside the mobile navigation drawer.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function LocationIntelligenceSidebarWidget({ onSelect }: { onSelect?: () => void }) {
+  const { city } = useCity();
+  const [open, setOpen] = useState(false);
+  const band = findAqiBand(city.aqi);
+  const flag = countryFlag(city.country);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={cn(
+          "w-full flex items-center justify-between gap-2.5 p-2.5 rounded-xl text-left",
+          "border border-sidebar-border/60 bg-sidebar-accent/50 hover:bg-sidebar-accent",
+          "transition-colors duration-150 group",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+        )}
+        aria-label={`Active City: ${city.name}. Tap to change city.`}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="text-lg leading-none shrink-0" aria-hidden="true">{flag}</span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-foreground truncate">{city.name}</span>
+              <span
+                className="text-[10px] font-medium px-1.5 py-0.5 rounded-md leading-none shrink-0"
+                style={{
+                  backgroundColor: `color-mix(in oklab, ${band.color} 15%, transparent)`,
+                  color: band.color,
+                }}
+              >
+                AQI {city.aqi}
+              </span>
+            </div>
+            <span className="text-[10px] text-muted-foreground truncate block">
+              {cityRegionLabel(city)} · Tap to switch
+            </span>
+          </div>
+        </div>
+
+        <ChevronDown className="size-3.5 text-muted-foreground group-hover:text-foreground shrink-0 transition-colors" />
+      </button>
+
+      <LocationDrawer
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          onSelect?.();
+        }}
+      />
     </>
   );
 }

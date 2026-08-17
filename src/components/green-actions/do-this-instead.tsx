@@ -1,23 +1,36 @@
 import { X, Check, ArrowRight } from "lucide-react";
-import { DO_THIS_INSTEAD } from "./green-actions-data";
+import { DO_THIS_INSTEAD, type AvoidBetterPair, type FocusTopic } from "./green-actions-data";
+
+/** Reorders pairs so ones tagged for today's relevant topic appear first —
+ *  same six curated pairs either way, never hidden, never rewritten. Falls
+ *  back to the original curated order when no topic is elevated ("general"),
+ *  or if nothing happens to match a topic that is. */
+function prioritize(pairs: AvoidBetterPair[], topic: FocusTopic): AvoidBetterPair[] {
+  if (topic === "general") return pairs;
+  const matched = pairs.filter((p) => p.topic === topic);
+  if (matched.length === 0) return pairs;
+  const rest = pairs.filter((p) => p.topic !== topic);
+  return [...matched, ...rest];
+}
 
 /**
  * DoThisInstead — Green Actions, Section 2.
  *
- * The primary visual focus of the page: a set of concrete Avoid → Better
- * Choice pairs. Presented as one cohesive panel with divided rows rather
- * than a grid of repeated cards, so the behaviour-transformation pattern
- * reads clearly across all six pairs at once. Deliberately plain — no
- * fabricated impact numbers, no scoring — just the realistic alternative
- * for each behaviour.
+ * A set of concrete Avoid → Better Choice pairs, presented as one cohesive
+ * panel with divided rows rather than a grid of repeated cards. Phase 2:
+ * the pairs most relevant to today's conditions (see `topic`, resolved
+ * once in green-actions-page.tsx) surface first — the interaction and
+ * content are otherwise unchanged from Phase 1.1.
  */
-export function DoThisInstead() {
+export function DoThisInstead({ topic }: { topic: FocusTopic }) {
+  const pairs = prioritize(DO_THIS_INSTEAD, topic);
+
   return (
     <div
       className="rounded-2xl divide-y divide-border/60 overflow-hidden"
       style={{ border: "1px solid var(--card-border)", background: "var(--card-bg)" }}
     >
-      {DO_THIS_INSTEAD.map((pair) => (
+      {pairs.map((pair) => (
         <div
           key={pair.id}
           className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-5 px-4 sm:px-6 py-3.5 sm:py-4"

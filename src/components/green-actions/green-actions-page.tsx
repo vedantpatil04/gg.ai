@@ -7,6 +7,8 @@ import {
   ListChecks,
   Sparkles,
 } from "lucide-react";
+import { useCity } from "@/lib/city-context";
+import { findAqiBand } from "@/lib/mock-data";
 import { GreenActionsSectionHeading } from "./section-heading";
 import { TodaysEnvironmentalFocus } from "./today-focus";
 import { DoThisInstead } from "./do-this-instead";
@@ -14,29 +16,58 @@ import { EnvironmentalAreas } from "./environmental-areas";
 import { WhyThisMatters } from "./why-this-matters";
 import { EverydayActions } from "./everyday-actions";
 import { GreenGuardTipsToday } from "./tips-today";
-import type { EnvCategoryId } from "./green-actions-data";
+import {
+  bandToneFromLabel,
+  resolveFocusTopic,
+  defaultCategoryForTopic,
+  whyThisMattersContextNote,
+  type EnvCategoryId,
+} from "./green-actions-data";
 
 /**
- * GreenActionsPage — Phase 1.1: UI/UX Refinement & Real-World Presentation.
+ * GreenActionsPage — Phase 1 content model, Phase 1.1 visual refinement,
+ * Phase 2 contextual intelligence + full-width web layout.
  *
  * A citizen environmental prevention and awareness page — practical
  * guidance on what to do, what to avoid, and what the better alternative
  * is. Not a complaints module, not a map, not a dashboard, not an AI
  * chatbot: see the Green Actions PRD for the full boundary.
  *
- * Phase 1.1 keeps the exact six-section content model from Phase 1 and
- * refines presentation only: less card-repetition, more breathing room,
- * a lighter section heading scoped to this page (see ./section-heading),
- * and stronger visual hierarchy inside each section.
+ * ─── Phase 2 architecture ──────────────────────────────────────────────
+ * This page is the ONLY place in the module that calls useCity(). AQI
+ * banding + tone + the "what's most relevant right now" topic (see
+ * resolveFocusTopic in green-actions-data.ts) are all resolved once, here,
+ * and passed down as plain props — Sections 1, 2, and 6 used to each call
+ * useCity() independently in Phase 1.1; consolidating that avoids the
+ * duplicate reads the Phase 2 PRD explicitly asks to avoid, and gives the
+ * whole page one auditable source of truth for its contextual behavior.
  *
- * Section 3 (Environmental Areas) and Section 4 (Why This Matters) share
- * the selected category so switching categories updates both at once.
+ * `topic` only ever reflects two real, already-available per-city
+ * readings — AQI and Water Quality Index — never a fabricated signal (see
+ * the comment on resolveFocusTopic for why rainfall isn't one of them).
+ * Section 3's default category follows `topic` once, on mount; manual
+ * category selection after that is never overridden by it.
  */
 export function GreenActionsPage() {
-  const [selectedCategory, setSelectedCategory] = useState<EnvCategoryId>("air");
+  const { city } = useCity();
+  const band = findAqiBand(city.aqi);
+  const tone = bandToneFromLabel(band.label);
+  const topic = resolveFocusTopic(tone, city.water);
+
+  const [selectedCategory, setSelectedCategory] = useState<EnvCategoryId>(() =>
+    defaultCategoryForTopic(topic),
+  );
+
+  // Section 4 only gets a context note when the category currently in view
+  // is the one today's conditions actually flagged — otherwise it would be
+  // showing a note that doesn't match what's on screen.
+  const whyContextNote =
+    selectedCategory === defaultCategoryForTopic(topic)
+      ? whyThisMattersContextNote(topic)
+      : undefined;
 
   return (
-    <div className="px-4 md:px-8 py-6 sm:py-8 space-y-12 md:space-y-14 max-w-[1400px] mx-auto w-full">
+    <div className="px-4 sm:px-6 md:px-8 xl:px-10 2xl:px-12 py-6 sm:py-8 space-y-12 md:space-y-14 w-full">
       {/* ── Page identity ── */}
       <header>
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Green Actions</h1>
@@ -53,7 +84,7 @@ export function GreenActionsPage() {
           title="Today's Environmental Focus"
           description="What's most relevant right now, based on current conditions."
         />
-        <TodaysEnvironmentalFocus />
+        <TodaysEnvironmentalFocus city={city} band={band} tone={tone} topic={topic} />
       </section>
 
       {/* ═══ SECTION 2 — DO THIS INSTEAD ══════════════════════════════════ */}
@@ -65,7 +96,7 @@ export function GreenActionsPage() {
           description="Common habits to avoid, and the practical alternative."
           accent="var(--color-info)"
         />
-        <DoThisInstead />
+        <DoThisInstead topic={topic} />
       </section>
 
       {/* ═══ SECTION 3 — ENVIRONMENTAL AREAS ══════════════════════════════ */}
@@ -88,7 +119,7 @@ export function GreenActionsPage() {
           description="The reasoning behind the recommendations for this area."
           accent="var(--color-info)"
         />
-        <WhyThisMatters category={selectedCategory} />
+        <WhyThisMatters category={selectedCategory} contextNote={whyContextNote} />
       </section>
 
       {/* ═══ SECTION 5 — EVERYDAY ACTIONS ═════════════════════════════════ */}
@@ -110,7 +141,7 @@ export function GreenActionsPage() {
           title="GreenGuard Tips Today"
           accent="var(--color-primary)"
         />
-        <GreenGuardTipsToday />
+        <GreenGuardTipsToday topic={topic} tone={tone} />
       </section>
 
       <div className="h-8" aria-hidden="true" />
