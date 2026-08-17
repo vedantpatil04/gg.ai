@@ -51,7 +51,7 @@ public final class WebDownloadManager {
 
     // Trusted origins for download requests. Kept in sync with allowNavigation.
     private static final String[] TRUSTED_HOST_SUFFIXES = {
-            "gg-ai-woad.vercel.app",
+            "gg-ai-system.vercel.app",
             ".vercel.app",
             "gg-ai-11ja.onrender.com",
             ".onrender.com",

@@ -8,10 +8,10 @@ const config: CapacitorConfig = {
   webDir: 'dist',
 
   server: {
-    url: 'https://gg-ai-woad.vercel.app',
+    url: 'https://gg-ai-system.vercel.app',
     cleartext: false,
     allowNavigation: [
-      'gg-ai-woad.vercel.app',
+      'gg-ai-system.vercel.app',
       '*.vercel.app',
       'gg-ai-11ja.onrender.com',
       '*.onrender.com',

@@ -49,7 +49,7 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 
 const allowedOrigins = [
   process.env.FRONTEND_URL,
-  "https://gg-ai-woad.vercel.app",
+  "https://gg-ai-system.vercel.app",
   "http://localhost:5173",
   "http://localhost:3000",
   "capacitor://localhost",
