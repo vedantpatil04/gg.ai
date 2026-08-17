@@ -12,6 +12,7 @@ import {
 } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { simulatorApi } from "@/lib/api/services.api";
+import { downloadBlob } from "@/lib/download-file";
 import {
   Area,
   AreaChart,
@@ -588,16 +589,13 @@ function Simulator() {
         : { cityId: city.id, levers: vals, presetId: activePresetId ?? undefined },
     ),
     onMutate: () => { setExportState("pending"); },
-    onSuccess: (blob) => {
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `greenguard-simulation-${city.id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-      setExportState("success");
+    onSuccess: async (blob) => {
+      try {
+        await downloadBlob(blob, `greenguard-simulation-${city.id}.pdf`);
+        setExportState("success");
+      } catch {
+        setExportState("error");
+      }
       if (exportTimerRef.current) clearTimeout(exportTimerRef.current);
       exportTimerRef.current = setTimeout(() => setExportState("idle"), 3000);
     },
