@@ -438,6 +438,5 @@ UserSchema.index({ city: 1 });
 UserSchema.index({ role: 1, approvalStatus: 1 });
 UserSchema.index({ role: 1, isActive: 1 });
 UserSchema.index({ assignedCities: 1 });
-UserSchema.index({ employeeId: 1 }, { sparse: true });
 
 export const User = mongoose.model<IUser>("User", UserSchema);

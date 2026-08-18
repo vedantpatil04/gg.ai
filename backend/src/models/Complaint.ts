@@ -163,7 +163,6 @@ const ComplaintSchema = new Schema<IComplaint>(
 );
 
 ComplaintSchema.index({ cityId: 1, status: 1 });
-ComplaintSchema.index({ submittedBy: 1 });
 ComplaintSchema.index({ assignedTo: 1, status: 1 });
 ComplaintSchema.index({ status: 1, resolvedAt: -1 }); // verification queue
 ComplaintSchema.index({ createdAt: -1 });

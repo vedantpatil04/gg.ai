@@ -79,15 +79,36 @@ function getEventMeta(type: string) {
 function EventRow({
   event,
   isLast,
+  onClick,
 }: {
   event: ActivityEvent;
   isLast: boolean;
+  onClick?: (entityId?: string) => void;
 }) {
   const meta = getEventMeta(event.type);
   const Icon = meta.icon;
+  const isClickable = !!onClick && !!event.entityId;
 
   return (
-    <div className="flex gap-3 relative">
+    <div
+      className={cn(
+        "flex gap-3 relative rounded-xl transition-colors",
+        isClickable && "cursor-pointer hover:bg-muted/30 p-1.5 -ml-1.5",
+      )}
+      onClick={isClickable ? () => onClick(event.entityId) : undefined}
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={
+        isClickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick(event.entityId);
+              }
+            }
+          : undefined
+      }
+    >
       {/* Timeline line */}
       {!isLast && (
         <div className="absolute left-4 top-8 bottom-0 w-px bg-border" aria-hidden />
@@ -149,6 +170,7 @@ interface ActivityFeedProps {
   isLoading?: boolean;
   isError?: boolean;
   onRetry?: () => void;
+  onEventClick?: (entityId?: string) => void;
   maxItems?: number;
   className?: string;
   compact?: boolean;
@@ -159,6 +181,7 @@ export function ActivityFeed({
   isLoading,
   isError,
   onRetry,
+  onEventClick,
   maxItems = 20,
   className,
   compact,
@@ -175,7 +198,12 @@ export function ActivityFeed({
   return (
     <div className={cn("space-y-0", className)}>
       {displayEvents.map((event, i) => (
-        <EventRow key={event.id} event={event} isLast={i === displayEvents.length - 1} />
+        <EventRow
+          key={event.id}
+          event={event}
+          isLast={i === displayEvents.length - 1}
+          onClick={onEventClick}
+        />
       ))}
     </div>
   );

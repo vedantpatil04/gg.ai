@@ -1,39 +1,28 @@
 /**
- * citizen-submit-form.tsx — Phase 12
+ * citizen-submit-form.tsx
  *
- * Enterprise-grade AI-powered complaint reporting form.
+ * Citizen-first Environmental Complaint Form for GreenGuard AI.
  *
- * New features vs Phase 1:
- *   1. AI Complaint Assistant (real-time analysis panel)
- *   2. Interactive MapLibre location picker (GPS + search + drag pin)
- *   3. Duplicate complaint detection
- *   4. Complaint Preview / review screen
- *   5. Draft system (auto-save + manual save + resume)
- *
- * Architecture:
- *  - Reuses existing complaintApi, useSubmitComplaint, useUploadComplaintImages
- *  - Reuses existing humanizeIssueType, getSeverityMeta
- *  - New sub-components kept in sibling files to this one
- *  - No backend changes required
+ * Flow:
+ * 1. What happened? (Issue Type, Title, Priority, Description)
+ * 2. Where did it happen? (ComplaintLocationMap with concise copy)
+ * 3. Add Evidence (Take Photo / Gallery)
+ * 4. Optional AI Assistance
+ * 5. Review Complaint (ComplaintPreview)
+ * 6. Submit & Track
  */
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Upload,
-  Camera,
-  X,
-  CheckCircle2,
-  Loader2,
-  MapPin,
-  ChevronDown,
+  FileText,
   Sparkles,
   Save,
-  FileText,
   Clock,
   Eye,
-  Trash2,
   AlertCircle,
+  ChevronDown,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +32,7 @@ import { useSubmitComplaint, useUploadComplaintImages } from "./citizen-queries"
 import { humanizeIssueType } from "./citizen-status-utils";
 import { ComplaintAIAssistant, type AIComplaintAnalysis } from "./complaint-ai-assistant";
 import { ComplaintLocationMap, type LocationSelection } from "./complaint-location-map";
+import { EvidenceCameraCapture } from "./evidence-camera-capture";
 import { ComplaintDuplicateDetector } from "./complaint-duplicate-detector";
 import { ComplaintPreview } from "./complaint-preview";
 import { useComplaintDraft } from "./use-complaint-draft";
@@ -62,11 +52,9 @@ const ISSUE_TYPES = [
 const SEVERITY_OPTIONS = [
   { value: "low", label: "Low", description: "Minor nuisance, not urgent", color: "muted-foreground" },
   { value: "medium", label: "Medium", description: "Noticeable impact", color: "info" },
-  { value: "high", label: "High", description: "Significant risk", color: "warning" },
-  { value: "critical", label: "Critical", description: "Immediate hazard", color: "destructive" },
+  { value: "high", label: "High", description: "Significant risk to community", color: "warning" },
+  { value: "critical", label: "Critical", description: "Immediate health or safety hazard", color: "destructive" },
 ] as const;
-
-// ─── Form state ───────────────────────────────────────────────────────────────
 
 interface FormState {
   title: string;
@@ -81,62 +69,8 @@ interface CitizenSubmitFormProps {
   initialDraftId?: string;
 }
 
-// ─── Draft resume banner ──────────────────────────────────────────────────────
-
-function DraftResumeBanner({
-  savedAt,
-  onResume,
-  onDiscard,
-}: {
-  savedAt: Date;
-  onResume: () => void;
-  onDiscard: () => void;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="glass rounded-2xl p-4 border"
-      style={{
-        borderColor: "color-mix(in oklab, var(--color-info) 40%, transparent)",
-        background: "color-mix(in oklab, var(--color-info) 5%, transparent)",
-      }}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <FileText className="size-4 text-info shrink-0 mt-0.5" />
-          <div>
-            <div className="text-sm font-semibold">Resume Draft</div>
-            <div className="text-xs text-muted-foreground mt-0.5">
-              You have an unsaved draft from {savedAt.toLocaleTimeString("en", { hour: "numeric", minute: "2-digit" })}.
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-2 shrink-0">
-          <Button type="button" variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={onResume}>
-            Resume
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="text-xs h-7 text-muted-foreground gap-1"
-            onClick={onDiscard}
-          >
-            <Trash2 className="size-3" />
-            Discard
-          </Button>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-// ─── Main form ────────────────────────────────────────────────────────────────
-
 export function CitizenSubmitForm({ onSuccess, initialDraftId }: CitizenSubmitFormProps) {
   const { city } = useCity();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<FormState>({
     title: "",
@@ -148,15 +82,17 @@ export function CitizenSubmitForm({ onSuccess, initialDraftId }: CitizenSubmitFo
   const [location, setLocation] = useState<LocationSelection | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [aiAnalysis, setAiAnalysis] = useState<AIComplaintAnalysis | null>(null);
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
+
   const [showPreview, setShowPreview] = useState(false);
   const [submittedId, setSubmittedId] = useState<string | null>(null);
   const [showDraftBanner, setShowDraftBanner] = useState(false);
-  const [pendingResumeDraft, setPendingResumeDraft] = useState<ReturnType<typeof useComplaintDraft>["drafts"][0] | null>(null);
-  const [showDraftsList, setShowDraftsList] = useState(false);
+  const [pendingResumeDraft, setPendingResumeDraft] = useState<
+    ReturnType<typeof useComplaintDraft>["drafts"][0] | null
+  >(null);
 
   const submitMutation = useSubmitComplaint();
   const uploadMutation = useUploadComplaintImages();
-
   const draft = useComplaintDraft({ autoSaveIntervalMs: 15_000 });
 
   // ── Auto-save on form change ──────────────────────────────────────────────
@@ -171,7 +107,7 @@ export function CitizenSubmitForm({ onSuccess, initialDraftId }: CitizenSubmitFo
       location,
       fileNames: files.map((f) => f.name),
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form, location]);
 
   // ── Check for existing draft on mount ────────────────────────────────────
@@ -183,12 +119,11 @@ export function CitizenSubmitForm({ onSuccess, initialDraftId }: CitizenSubmitFo
       const latest = draft.drafts[draft.drafts.length - 1];
       const ageMs = Date.now() - new Date(latest.savedAt).getTime();
       if (ageMs < 24 * 60 * 60 * 1000) {
-        // Less than 24 hours old
         setPendingResumeDraft(latest);
         setShowDraftBanner(true);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const resumeDraft = useCallback(() => {
@@ -215,13 +150,8 @@ export function CitizenSubmitForm({ onSuccess, initialDraftId }: CitizenSubmitFo
     setPendingResumeDraft(null);
   }, [pendingResumeDraft, draft]);
 
-  // ── Field setters ─────────────────────────────────────────────────────────
   const set = (key: keyof FormState) => (val: string) =>
     setForm((prev) => ({ ...prev, [key]: val }));
-
-  function removeFile(index: number) {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
-  }
 
   // ── Apply AI suggestions ──────────────────────────────────────────────────
   const applyAITitle = (title: string) => set("title")(title);
@@ -233,7 +163,9 @@ export function CitizenSubmitForm({ onSuccess, initialDraftId }: CitizenSubmitFo
     if (!form.description.trim()) return;
 
     const title =
-      form.title.trim() || `${humanizeIssueType(form.issueType)} — ${city.name}`;
+      form.title.trim() || `${humanizeIssueType(form.issueType)} — ${city.name || "City"}`;
+
+    const effectiveAddress = location?.address ?? form.address.trim() ?? undefined;
 
     submitMutation.mutate(
       {
@@ -242,7 +174,7 @@ export function CitizenSubmitForm({ onSuccess, initialDraftId }: CitizenSubmitFo
         issueType: form.issueType,
         severity: form.severity,
         cityId: city.id,
-        address: (location?.address ?? form.address.trim()) || undefined,
+        address: effectiveAddress,
         ...(location
           ? {
               location: {
@@ -251,8 +183,8 @@ export function CitizenSubmitForm({ onSuccess, initialDraftId }: CitizenSubmitFo
                 lng: location.lng,
               },
             }
-          : form.address.trim()
-            ? { location: { address: form.address.trim() } }
+          : effectiveAddress
+            ? { location: { address: effectiveAddress } }
             : {}),
       },
       {
@@ -274,9 +206,9 @@ export function CitizenSubmitForm({ onSuccess, initialDraftId }: CitizenSubmitFo
     );
   }
 
-  async function handleFormSubmit(e: React.FormEvent) {
+  function handlePreviewStep(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.description.trim()) return;
+    if (!form.description.trim() || form.description.trim().length < 10) return;
     setShowPreview(true);
   }
 
@@ -288,29 +220,29 @@ export function CitizenSubmitForm({ onSuccess, initialDraftId }: CitizenSubmitFo
           initial={{ scale: 0.7, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="size-14 rounded-full flex items-center justify-center"
-          style={{ background: "color-mix(in oklab, var(--color-success) 15%, transparent)" }}
+          className="size-14 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
         >
-          <CheckCircle2 className="size-7" style={{ color: "var(--color-success)" }} />
+          <CheckCircle2 className="size-7" />
         </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
+          className="space-y-1"
         >
-          <h3 className="text-lg font-semibold">Complaint Submitted</h3>
-          <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-            Your report has been logged and will be reviewed shortly. Track its
-            progress in your complaint history.
+          <h3 className="text-lg font-bold text-foreground">Complaint Submitted Successfully</h3>
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-sm mx-auto">
+            Your environmental report has been registered. You can track investigation milestones,
+            message the authority, and download an official report when completed.
           </p>
         </motion.div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 pt-2">
           <Button variant="outline" size="sm" onClick={() => setSubmittedId(null)}>
-            Submit Another
+            Submit Another Report
           </Button>
           {onSuccess && (
             <Button size="sm" onClick={() => onSuccess(submittedId)}>
-              View Complaint
+              View Complaint Details
             </Button>
           )}
         </div>
@@ -323,7 +255,7 @@ export function CitizenSubmitForm({ onSuccess, initialDraftId }: CitizenSubmitFo
     return (
       <ComplaintPreview
         data={{
-          title: form.title || `${humanizeIssueType(form.issueType)} — ${city.name}`,
+          title: form.title || `${humanizeIssueType(form.issueType)} — ${city.name || "City"}`,
           issueType: form.issueType,
           severity: form.severity,
           description: form.description,
@@ -339,44 +271,58 @@ export function CitizenSubmitForm({ onSuccess, initialDraftId }: CitizenSubmitFo
     );
   }
 
-  // ── Main form layout ──────────────────────────────────────────────────────
+  // ── Main Form ─────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-0">
-      {/* Draft resume banner */}
+    <div className="space-y-5">
+      {/* Draft Resume Banner */}
       <AnimatePresence>
         {showDraftBanner && pendingResumeDraft && (
-          <div className="mb-5">
-            <DraftResumeBanner
-              savedAt={new Date(pendingResumeDraft.savedAt)}
-              onResume={resumeDraft}
-              onDiscard={discardDraft}
-            />
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl p-4 border border-info/30 bg-info/5 flex items-center justify-between gap-3 shadow-2xs"
+          >
+            <div className="flex items-center gap-3">
+              <FileText className="size-4 text-info shrink-0" />
+              <div>
+                <div className="text-sm font-semibold text-foreground">Resume Unsaved Draft</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  Saved at {new Date(pendingResumeDraft.savedAt).toLocaleTimeString("en", { hour: "numeric", minute: "2-digit" })}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <Button type="button" variant="outline" size="sm" className="text-xs h-7" onClick={resumeDraft}>
+                Resume
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-xs h-7 text-muted-foreground"
+                onClick={discardDraft}
+              >
+                Discard
+              </Button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Two-column desktop layout, single col mobile */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* ── Left column: Form ── */}
+      <form onSubmit={handlePreviewStep} className="space-y-6">
+        {/* ── STEP 1: WHAT HAPPENED? ── */}
         <div className="space-y-4">
-          <form onSubmit={handleFormSubmit} className="space-y-4">
-            {/* Optional title */}
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground font-medium">
-                Title{" "}
-                <span className="text-muted-foreground/60 font-normal">(optional — AI will suggest one)</span>
-              </label>
-              <Input
-                placeholder="e.g. Industrial smoke near East Bridge"
-                value={form.title}
-                onChange={(e) => set("title")(e.target.value)}
-                className="text-sm"
-              />
-            </div>
+          <div className="border-b border-border/50 pb-2">
+            <h3 className="text-sm font-semibold text-foreground">1. What happened?</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Select the issue category and describe what you observed.
+            </p>
+          </div>
 
-            {/* Issue type */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Issue Type */}
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground font-medium">Issue Type</label>
+              <label className="text-xs font-medium text-foreground/80">Issue Category</label>
               <div className="relative">
                 <select
                   className="w-full appearance-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm pr-8 outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
@@ -393,357 +339,201 @@ export function CitizenSubmitForm({ onSuccess, initialDraftId }: CitizenSubmitFo
               </div>
             </div>
 
-            {/* Severity */}
+            {/* Optional Title */}
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground font-medium">Priority</label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {SEVERITY_OPTIONS.map((s) => (
-                  <button
-                    key={s.value}
-                    type="button"
-                    onClick={() => set("severity")(s.value)}
-                    className={cn(
-                      "flex flex-col gap-0.5 rounded-xl border p-3 text-left transition-all",
-                      form.severity === s.value
-                        ? "border-primary bg-primary/8 shadow-sm"
-                        : "border-border bg-muted/30 hover:border-foreground/20",
-                    )}
-                  >
-                    <span
-                      className="text-xs font-semibold"
-                      style={
-                        form.severity === s.value
-                          ? { color: `var(--color-${s.color})` }
-                          : undefined
-                      }
-                    >
-                      {s.label}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground leading-tight">
-                      {s.description}
-                    </span>
-                  </button>
-                ))}
-              </div>
+              <label className="text-xs font-medium text-foreground/80">
+                Title <span className="text-muted-foreground/60 font-normal">(optional)</span>
+              </label>
+              <Input
+                placeholder="e.g. Waste accumulation near municipal market"
+                value={form.title}
+                onChange={(e) => set("title")(e.target.value)}
+                className="h-10 text-sm rounded-xl"
+              />
             </div>
+          </div>
 
-            {/* Description */}
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground font-medium">
+          {/* Priority */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground/80">Priority Level</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {SEVERITY_OPTIONS.map((s) => (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => set("severity")(s.value)}
+                  className={cn(
+                    "flex flex-col gap-0.5 rounded-xl border p-3 text-left transition-all",
+                    form.severity === s.value
+                      ? "border-primary bg-primary/10 shadow-2xs"
+                      : "border-border bg-muted/20 hover:border-foreground/20",
+                  )}
+                >
+                  <span
+                    className="text-xs font-semibold"
+                    style={
+                      form.severity === s.value
+                        ? { color: `var(--color-${s.color})` }
+                        : undefined
+                    }
+                  >
+                    {s.label}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground leading-tight">
+                    {s.description}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-foreground/80">
                 Description <span className="text-destructive">*</span>
               </label>
-              <textarea
-                rows={5}
-                placeholder="Describe what you observed — include time, frequency, and any visible impact. The more detail, the better."
-                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm resize-none outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                value={form.description}
-                onChange={(e) => set("description")(e.target.value)}
-                required
-                minLength={10}
-              />
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] text-muted-foreground">Minimum 10 characters</span>
-                <span
-                  className={cn(
-                    "text-[10px] tabular-nums",
-                    form.description.length > 1800
-                      ? "text-warning"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {form.description.length}/2000
-                </span>
-              </div>
-            </div>
-
-            {/* Fallback manual address (shown when no map pin selected) */}
-            {!location && (
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground font-medium">
-                  Address{" "}
-                  <span className="text-muted-foreground/60 font-normal">(or use the map below)</span>
-                </label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                  <Input
-                    className="pl-8 text-sm"
-                    placeholder="Street address or landmark (optional)"
-                    value={form.address}
-                    onChange={(e) => set("address")(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Evidence upload */}
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground font-medium">Evidence (optional)</label>
-              <div
-                className={cn(
-                  "rounded-xl border border-dashed p-5 text-center space-y-2 transition-colors cursor-pointer",
-                  "border-border hover:border-primary/40 hover:bg-primary/3",
-                )}
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const dropped = Array.from(e.dataTransfer.files).filter((f) =>
-                    f.type.startsWith("image/"),
-                  );
-                  setFiles((prev) => [...prev, ...dropped].slice(0, 5));
-                }}
-              >
-                <div className="size-10 rounded-full bg-muted/60 flex items-center justify-center mx-auto">
-                  <Upload className="size-4 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-sm text-foreground/70">Drop photos here or</p>
-                  <label className="inline-flex items-center gap-1.5 mt-1 text-xs font-medium text-primary cursor-pointer hover:underline">
-                    <Camera className="size-3.5" />
-                    Choose files
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      multiple
-                      className="hidden"
-                      onChange={(e) => {
-                        const selected = Array.from(e.target.files ?? []);
-                        setFiles((prev) => [...prev, ...selected].slice(0, 5));
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
-                </div>
-                <p className="text-[10px] text-muted-foreground">
-                  JPG, PNG, WebP · Max 5 files · 10 MB each
-                </p>
-              </div>
-
-              <AnimatePresence>
-                {files.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="space-y-1.5 mt-1"
-                  >
-                    {files.map((f, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between rounded-xl border border-border px-3 py-2"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="size-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                            <Camera className="size-3.5 text-primary" />
-                          </div>
-                          <span className="text-xs truncate">{f.name}</span>
-                          <span className="text-[10px] text-muted-foreground shrink-0">
-                            {(f.size / 1024).toFixed(0)}KB
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeFile(i)}
-                          className="text-muted-foreground hover:text-destructive ml-2 shrink-0 transition-colors"
-                        >
-                          <X className="size-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Action row */}
-            <div className="flex items-center justify-between gap-3 pt-2 flex-wrap">
-              <div className="flex items-center gap-3">
-                {/* Manual save draft */}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="gap-1.5 text-xs text-muted-foreground"
-                  onClick={() =>
-                    draft.saveDraft(
-                      {
-                        title: form.title,
-                        issueType: form.issueType,
-                        severity: form.severity,
-                        description: form.description,
-                        address: form.address,
-                        location,
-                        fileNames: files.map((f) => f.name),
-                      },
-                      true,
-                    )
-                  }
-                >
-                  <Save className="size-3.5" />
-                  Save Draft
-                </Button>
-
-                {draft.hasDraftSaved && draft.lastSavedAt && (
-                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <Clock className="size-3" />
-                    Saved {draft.lastSavedAt.toLocaleTimeString("en", { hour: "numeric", minute: "2-digit" })}
-                  </span>
-                )}
-              </div>
-
-              <Button
-                type="submit"
-                disabled={!form.description.trim() || form.description.length < 10}
-                className="gap-2"
-              >
-                <Eye className="size-3.5" />
-                Preview & Submit
-              </Button>
-            </div>
-
-            {submitMutation.isError && (
-              <div className="flex items-center gap-2 text-xs text-destructive">
-                <AlertCircle className="size-3.5 shrink-0" />
-                Something went wrong. Please try again.
-              </div>
-            )}
-          </form>
-
-          {/* Drafts list (collapsible) */}
-          {draft.drafts.filter((d) => !d.isAutoSave).length > 0 && (
-            <div className="glass rounded-2xl overflow-hidden">
               <button
                 type="button"
-                onClick={() => setShowDraftsList((v) => !v)}
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition-colors"
+                onClick={() => setShowAIAssistant((v) => !v)}
+                className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline"
               >
-                <div className="flex items-center gap-2">
-                  <FileText className="size-3.5 text-muted-foreground" />
-                  <span className="text-xs font-medium">
-                    Saved Drafts ({draft.drafts.filter((d) => !d.isAutoSave).length})
-                  </span>
-                </div>
-                <ChevronDown
-                  className={cn(
-                    "size-3.5 text-muted-foreground transition-transform",
-                    showDraftsList && "rotate-180",
-                  )}
-                />
+                <Sparkles className="size-3.5" />
+                <span>Need help? Ask GreenGuard AI</span>
               </button>
-              <AnimatePresence>
-                {showDraftsList && (
-                  <motion.div
-                    initial={{ height: 0 }}
-                    animate={{ height: "auto" }}
-                    exit={{ height: 0 }}
-                    className="overflow-hidden border-t border-border/40"
-                  >
-                    <div className="px-3 pb-3 pt-2 space-y-1.5">
-                      {draft.drafts
-                        .filter((d) => !d.isAutoSave)
-                        .slice()
-                        .reverse()
-                        .map((d) => (
-                          <div
-                            key={d.id}
-                            className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-2 bg-muted/20"
-                          >
-                            <div className="min-w-0">
-                              <div className="text-xs font-medium truncate">
-                                {d.title || humanizeIssueType(d.issueType)}
-                              </div>
-                              <div className="text-[10px] text-muted-foreground">
-                                {new Date(d.savedAt).toLocaleDateString("en", {
-                                  month: "short",
-                                  day: "numeric",
-                                  hour: "numeric",
-                                  minute: "2-digit",
-                                })}
-                              </div>
-                            </div>
-                            <div className="flex gap-1.5 ml-2 shrink-0">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="text-xs h-7 px-2"
-                                onClick={() => {
-                                  setForm({
-                                    title: d.title,
-                                    issueType: d.issueType,
-                                    severity: d.severity,
-                                    description: d.description,
-                                    address: d.address,
-                                  });
-                                  if (d.location) setLocation(d.location);
-                                  setShowDraftsList(false);
-                                }}
-                              >
-                                Resume
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="text-xs h-7 px-2 text-muted-foreground hover:text-destructive"
-                                onClick={() => draft.deleteDraft(d.id)}
-                              >
-                                <Trash2 className="size-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
-          )}
+            <textarea
+              rows={4}
+              placeholder="Tell us what you observed, where it happened, and how often you noticed it."
+              className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm resize-none outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+              value={form.description}
+              onChange={(e) => set("description")(e.target.value)}
+              required
+              minLength={10}
+            />
+            <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+              <span>Minimum 10 characters</span>
+              <span className="tabular-nums">{form.description.length}/2000</span>
+            </div>
+          </div>
+
+          {/* AI Assistant expandable panel */}
+          <AnimatePresence>
+            {showAIAssistant && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden pt-1"
+              >
+                <ComplaintAIAssistant
+                  description={form.description}
+                  currentCategory={form.issueType}
+                  onApplyTitle={applyAITitle}
+                  onApplyCategory={applyAICategory}
+                  onApplyPriority={applyAIPriority}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* ── Right column: AI + Map ── */}
-        <div className="space-y-4">
-          {/* AI Assistant */}
-          <ComplaintAIAssistant
-            description={form.description}
-            currentCategory={form.issueType}
-            onApplyTitle={applyAITitle}
-            onApplyCategory={applyAICategory}
-            onApplyPriority={applyAIPriority}
-          />
+        {/* ── STEP 2: WHERE DID IT HAPPEN? ── */}
+        <div className="space-y-3">
+          <div className="border-b border-border/50 pb-2">
+            <h3 className="text-sm font-semibold text-foreground">2. Where did it happen?</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Add the location where you noticed the issue.
+            </p>
+          </div>
 
-          {/* Interactive Map */}
           <ComplaintLocationMap
             value={location}
             onChange={setLocation}
-            defaultCenter={[77.5946, 12.9716]} // Bangalore fallback
-            defaultZoom={5}
+            defaultCenter={[77.5946, 12.9716]}
+            defaultZoom={13}
           />
 
-          {/* Duplicate detection */}
+          {/* Duplicate detector */}
           <ComplaintDuplicateDetector
             location={location}
             issueType={form.issueType}
             onJoinExisting={(id) => {
-              // Navigate to the existing complaint's detail
               if (onSuccess) onSuccess(id);
             }}
-            onContinueNew={() => {
-              /* user confirmed they want to create new — no-op */
-            }}
+            onContinueNew={() => {}}
           />
-
-          {/* AI assistant notice on small screens (shows it's active) */}
-          {form.description.trim().length > 5 && (
-            <div
-              className="lg:hidden flex items-center gap-2 text-xs text-muted-foreground px-1"
-            >
-              <Sparkles className="size-3 shrink-0" style={{ color: "var(--color-primary)" }} />
-              AI analysis is running — see the assistant panel above.
-            </div>
-          )}
         </div>
-      </div>
+
+        {/* ── STEP 3: ADD EVIDENCE ── */}
+        <div className="space-y-3">
+          <div className="border-b border-border/50 pb-2">
+            <h3 className="text-sm font-semibold text-foreground">3. Add Evidence</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Attach photographs to help authorities evaluate and resolve the issue.
+            </p>
+          </div>
+
+          <EvidenceCameraCapture
+            files={files}
+            onChange={setFiles}
+            maxFiles={5}
+            maxSizeMB={10}
+          />
+        </div>
+
+        {/* ── ACTION FOOTER ── */}
+        <div className="border-t border-border/60 pt-4 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() =>
+                draft.saveDraft(
+                  {
+                    title: form.title,
+                    issueType: form.issueType,
+                    severity: form.severity,
+                    description: form.description,
+                    address: form.address,
+                    location,
+                    fileNames: files.map((f) => f.name),
+                  },
+                  true,
+                )
+              }
+            >
+              <Save className="size-3.5" />
+              Save Draft
+            </Button>
+
+            {draft.hasDraftSaved && draft.lastSavedAt && (
+              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <Clock className="size-3" />
+                Saved {draft.lastSavedAt.toLocaleTimeString("en", { hour: "numeric", minute: "2-digit" })}
+              </span>
+            )}
+          </div>
+
+          <Button
+            type="submit"
+            disabled={!form.description.trim() || form.description.length < 10}
+            className="gap-2 px-5 h-10 font-semibold shadow-sm"
+          >
+            <Eye className="size-4" />
+            Review Complaint
+          </Button>
+        </div>
+
+        {submitMutation.isError && (
+          <div className="flex items-center gap-2 text-xs text-destructive">
+            <AlertCircle className="size-3.5 shrink-0" />
+            Something went wrong submitting your report. Please try again.
+          </div>
+        )}
+      </form>
     </div>
   );
 }

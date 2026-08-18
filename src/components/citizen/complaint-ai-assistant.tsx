@@ -268,7 +268,7 @@ export function ComplaintAIAssistant({
   const isEmpty = description.trim().length < 5;
 
   return (
-    <div className={cn("glass rounded-2xl overflow-hidden", className)}>
+    <div className={cn("rounded-2xl border border-border/80 bg-card/60 backdrop-blur overflow-hidden shadow-2xs", className)}>
       {/* Header */}
       <button
         type="button"

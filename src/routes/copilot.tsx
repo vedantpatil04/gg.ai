@@ -1,18 +1,18 @@
 /**
- * GreenGuard Intelligence Center — Full-Viewport Enterprise AI Workspace
+ * GreenGuard Intelligence Center — Phase 1 Simplified Workspace
  * Route: /copilot
  *
  * Dedicated AI-first environmental intelligence workspace designed to understand,
  * analyze, explain, compare, and interpret environmental information using AI.
  *
- * Full-Viewport Architecture:
- *  - 100% full-width and full-height workspace occupying the entire application shell
- *  - No restrictive max-width or narrow centered page containers
- *  - Compact AI contextual header with telemetry & city switcher
- *  - Full-width workspace navigation (Assistant | Intelligence | Health | Insights)
- *  - High-efficiency compact prompt launcher replacing bulky empty-state cards
- *  - Wide, dominant conversation stream with anchored enterprise AI composer (75-90% width)
- *  - Full-width multi-column layouts for Intelligence, Health, and Insights
+ * Architecture:
+ *  - Three primary destinations: Assistant | Health | Insights
+ *  - Compact single-line environmental context (AQI + temp) instead of a metric grid
+ *  - Curated 5-suggestion empty state — no always-visible prompt/category toolbar
+ *  - Insights absorbs the former "Intelligence" tab's trend/risk/sustainability/
+ *    comparison signals so findings aren't split across two overlapping tabs
+ *  - Wide, dominant conversation stream with anchored composer
+ *  - Real data only — no fabricated fallback content; honest empty states instead
  *  - Preserves all existing APIs, authentication, Gemini integration, and city context
  */
 
@@ -23,10 +23,10 @@ import { Pill } from "@/components/ui-bits";
 import {
   Sparkles, Leaf, Send, TrendingUp, Lightbulb,
   Loader2, Heart, Wind, AlertTriangle, ChevronRight,
-  Activity, Thermometer, Eye, Copy, RefreshCw, CheckCircle,
+  Activity, Copy, RefreshCw, CheckCircle,
   MessageSquare, ThumbsUp, ThumbsDown, ArrowDown,
   MapPin, RotateCcw, Globe2, FileText, Search, ShieldCheck,
-  BarChart3, HelpCircle, Compass, Layers, Check,
+  BarChart3, Layers,
 } from "lucide-react";
 import { useCity } from "@/lib/city-context";
 import { useAuth } from "@/lib/auth-context";
@@ -61,9 +61,7 @@ export const Route = createFileRoute("/copilot")({
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = "chat" | "intelligence" | "health" | "insights";
-
-type PromptCategory = "all" | "understand" | "investigate" | "compare" | "summarize" | "health";
+type Tab = "chat" | "health" | "insights";
 
 type ChatMsg = {
   id:        string;
@@ -116,49 +114,6 @@ function riskColor(r: number): string {
 function riskTone(lvl?: string): "destructive" | "warning" | "info" | "success" {
   return lvl === "Severe" ? "destructive" : lvl === "High" ? "warning" : lvl === "Moderate" ? "info" : "success";
 }
-
-// ─── Prompt Categories System ─────────────────────────────────────────────────
-
-interface PromptItem {
-  id: string;
-  category: "understand" | "investigate" | "compare" | "summarize" | "health";
-  label: string;
-  prompt: (cityName: string) => string;
-}
-
-const PROMPT_DEFINITIONS: PromptItem[] = [
-  // Understand
-  { id: "u1", category: "understand", label: "What does today's AQI mean?", prompt: (c) => `What does today's AQI mean for ${c}? Break down the main pollutants and their severity.` },
-  { id: "u2", category: "understand", label: "Explain PM2.5 risk", prompt: (c) => `Explain the current PM2.5 levels in ${c} and why fine particulate matter poses a biological health risk.` },
-  { id: "u3", category: "understand", label: "What is the EcoScore?", prompt: (c) => `Explain the EcoScore for ${c} and how municipal environmental efficiency is calculated.` },
-
-  // Investigate
-  { id: "i1", category: "investigate", label: "What is affecting air quality?", prompt: (c) => `What specific meteorological, industrial, or vehicular factors are affecting air quality in ${c} today?` },
-  { id: "i2", category: "investigate", label: "Explain latest trend", prompt: (c) => `Explain the latest environmental trend in ${c}. Is air pollution improving or deteriorating, and what caused the shift?` },
-  { id: "i3", category: "investigate", label: "What changed recently?", prompt: (c) => `What significant environmental or air quality anomalies changed in ${c} over the last 24-48 hours?` },
-
-  // Compare
-  { id: "c1", category: "compare", label: "Compare with another city", prompt: (c) => `Compare the environmental conditions of ${c} with other major regional cities.` },
-  { id: "c2", category: "compare", label: "Compare AQI vs WHO limits", prompt: (c) => `How do current PM2.5 and AQI levels in ${c} compare against WHO safety thresholds?` },
-  { id: "c3", category: "compare", label: "Compare with last week", prompt: (c) => `How does today's environmental profile in ${c} compare with the same day last week?` },
-
-  // Summarize
-  { id: "s1", category: "summarize", label: "Summarize today's status", prompt: (c) => `Provide a concise executive summary of today's environmental and air quality status for ${c}.` },
-  { id: "s2", category: "summarize", label: "Weekly environmental brief", prompt: (c) => `Give me a structured weekly environmental briefing for ${c}, highlighting key risk windows.` },
-
-  // Health
-  { id: "h1", category: "health", label: "Health advice for outdoor activity", prompt: (c) => `Is it safe for outdoor exercise or sports in ${c} today? What precautions are advised?` },
-  { id: "h2", category: "health", label: "Sensitive groups guidance", prompt: (c) => `What health guidance should children, elderly citizens, and individuals with respiratory conditions follow in ${c} right now?` },
-];
-
-const CATEGORY_TABS = [
-  { id: "all",         label: "All Prompts",   icon: Compass },
-  { id: "understand",  label: "Understand",    icon: HelpCircle },
-  { id: "investigate", label: "Investigate",   icon: Search },
-  { id: "compare",     label: "Compare",       icon: Layers },
-  { id: "summarize",   label: "Summarize",     icon: FileText },
-  { id: "health",      label: "Health",        icon: Heart },
-] as const;
 
 // ─── Motion Variants ──────────────────────────────────────────────────────────
 
@@ -263,7 +218,7 @@ function AIFallback({ onRetry, onExplore, onSwitchCity }: {
           onClick={onExplore}
           className="inline-flex items-center gap-1.5 text-xs glass text-muted-foreground hover:text-foreground rounded-lg px-3 py-1.5 transition-colors border border-border/60"
         >
-          <TrendingUp className="size-3.5" /> View Intelligence
+          <TrendingUp className="size-3.5" /> View Insights
         </button>
         <button
           onClick={onSwitchCity}
@@ -473,7 +428,6 @@ function CompactPromptLauncher({
     { label: "What's affecting air quality?", icon: Search, prompt: `What specific meteorological, industrial, or vehicular factors are affecting air quality in ${cityName} today?` },
     { label: "Compare cities", icon: Layers, prompt: `Compare the environmental conditions of ${cityName} with other major regional cities.` },
     { label: "Summarize today", icon: FileText, prompt: `Provide a concise executive summary of today's environmental and air quality status for ${cityName}.` },
-    { label: "Explain the latest trend", icon: TrendingUp, prompt: `Explain the latest environmental trend in ${cityName}. Is air pollution improving or deteriorating, and what caused the shift?` },
   ];
 
   return (
@@ -517,304 +471,6 @@ function CompactPromptLauncher({
           })}
         </div>
       </div>
-    </div>
-  );
-}
-
-// ─── TAB 2: Structured Intelligence Workspace ─────────────────────────────────
-
-function IntelligenceDashboard({
-  city,
-  isApiConnected,
-  onExplain,
-}: {
-  city: { id: string; name: string; aqi: number; pm25: number; water: number; risk: number; eco: number };
-  isApiConnected: boolean;
-  onExplain: (p: string) => void;
-}) {
-  const { cities } = useCity();
-  const [compareA, setCompareA] = useState(city.id);
-  const [compareB, setCompareB] = useState(cities.find((c) => c.id !== city.id)?.id ?? city.id);
-  const opts = { enabled: isApiConnected, staleTime: 5 * 60_000, throwOnError: false as const };
-
-  const aqiTrend  = useQuery({ queryKey: ["intel-aqi",     city.id], queryFn: () => intelligenceApi.getAQITrend(city.id).then((r: any) => r?.data?.data ?? r?.data),       ...opts });
-  const hotspots  = useQuery({ queryKey: ["intel-hotspot", city.id], queryFn: () => intelligenceApi.getHotspotAnalysis(city.id).then((r: any) => r?.data?.data ?? r?.data),        ...opts });
-  const risk      = useQuery({ queryKey: ["intel-risk",    city.id], queryFn: () => intelligenceApi.getRiskAnalysis(city.id).then((r: any) => r?.data?.data ?? r?.data),     ...opts });
-  const sustain   = useQuery({ queryKey: ["intel-sustain", city.id], queryFn: () => intelligenceApi.getSustainabilityRecommendations(city.id).then((r: any) => r?.data?.data ?? r?.data),   ...opts });
-  const executive = useQuery({ queryKey: ["intel-exec"],              queryFn: () => intelligenceApi.getExecutiveInsights().then((r: any) => r?.data?.data ?? r?.data),        ...opts });
-  const compare   = useQuery({
-    queryKey: ["intel-compare", compareA, compareB],
-    queryFn:  () => intelligenceApi.getCityComparison([compareA, compareB]).then((r: any) => r?.data?.data ?? r?.data),
-    enabled: isApiConnected && compareA !== compareB,
-    staleTime: 5 * 60_000,
-    throwOnError: false,
-  });
-
-  const explainSection = (label: string, data: unknown) =>
-    onExplain(`Explain the ${label} intelligence for ${city.name} with contextual reasoning: ${JSON.stringify(data).slice(0, 400)}`);
-
-  if (!isApiConnected) {
-    return (
-      <div className="glass rounded-xl p-8 flex flex-col items-center gap-4 text-center max-w-md mx-auto my-8">
-        <Sparkles className="size-8 text-muted-foreground" />
-        <div>
-          <div className="text-sm font-semibold">Intelligence Engine Offline</div>
-          <p className="text-xs text-muted-foreground mt-1 max-w-xs">
-            Start the backend server and configure GEMINI_API_KEY to activate full AI environmental reasoning.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const IntelCard = ({
-    eyebrow,
-    title,
-    accent,
-    icon: Icon,
-    onExplainClick,
-    loading,
-    children,
-  }: {
-    eyebrow: string;
-    title: string;
-    accent: string;
-    icon?: typeof TrendingUp;
-    onExplainClick?: () => void;
-    loading?: boolean;
-    children: React.ReactNode;
-  }) => (
-    <motion.div
-      variants={CARD_IN}
-      whileHover={{ y: -2 }}
-      className="rounded-xl border overflow-hidden flex flex-col justify-between glass shadow-sm"
-      style={{
-        borderColor: `color-mix(in oklab, ${accent} 25%, var(--border))`,
-      }}
-    >
-      <div>
-        <div className="h-0.5 w-full" style={{ background: accent }} />
-        <div className="p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-2 mb-1.5">
-            <span className="text-[10px] uppercase font-bold tracking-wider" style={{ color: accent }}>
-              {eyebrow}
-            </span>
-            {Icon && <Icon className="size-4" style={{ color: accent }} />}
-          </div>
-          <div className="text-sm sm:text-base font-semibold text-foreground mb-2.5">{title}</div>
-          <div className="text-xs text-muted-foreground leading-relaxed space-y-2">
-            {loading ? <SkeletonCard lines={2} /> : children}
-          </div>
-        </div>
-      </div>
-      {onExplainClick && !loading && (
-        <div className="p-4 sm:p-5 pt-0">
-          <button
-            onClick={onExplainClick}
-            className="w-full inline-flex items-center justify-center gap-1.5 text-xs aurora text-primary-foreground font-medium rounded-lg px-3.5 py-2 transition-all shadow-sm"
-          >
-            <Sparkles className="size-3" /> Explain with AI
-          </button>
-        </div>
-      )}
-    </motion.div>
-  );
-
-  return (
-    <div className="space-y-6">
-      <SectionHeader
-        eyebrow="Intelligence Engine"
-        title={`Environmental Reasoning & Multi-Signal Synthesis · ${city.name}`}
-        subtitle="Multi-factor atmospheric reasoning, trend trajectories, and comparative models powered by AI."
-        icon={TrendingUp}
-      />
-
-      <motion.div variants={CARD_STAGGER()} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {/* Card 1: AQI Trend & Trajectory */}
-        <IntelCard
-          eyebrow="Trend Analysis"
-          title={aqiTrend.data?.trendSummary ?? "AQI Trend & Trajectory"}
-          accent="var(--color-primary)"
-          icon={Wind}
-          loading={aqiTrend.isLoading}
-          onExplainClick={() => explainSection("AQI trend trajectory", aqiTrend.data)}
-        >
-          <div className="font-medium text-foreground">
-            Direction: {aqiTrend.data?.trendDirection ?? "Stabilizing"}
-          </div>
-          {(aqiTrend.data?.keyObservations ?? [
-            "Particulate concentrations peak in morning inversion hours",
-            "Wind dispersal index improves significantly in afternoon windows",
-          ]).slice(0, 2).map((o: string, i: number) => (
-            <p key={i} className="flex items-start gap-1.5">
-              <span className="text-primary mt-0.5">•</span>
-              <span>{o}</span>
-            </p>
-          ))}
-        </IntelCard>
-
-        {/* Card 2: Pollution Hotspots & Zones */}
-        <IntelCard
-          eyebrow="Anomaly & Hotspots"
-          title="High-Risk Activity Zones"
-          accent="var(--color-destructive)"
-          icon={AlertTriangle}
-          loading={hotspots.isLoading}
-          onExplainClick={() => explainSection("pollution hotspots", hotspots.data)}
-        >
-          {(hotspots.data?.hotspots ?? hotspots.data?.highRiskZones ?? [
-            { name: "Industrial Corridor East", severity: "High" },
-            { name: "Central Transit Junction", severity: "Moderate" },
-          ]).slice(0, 3).map((z: { name?: string; zone?: string; severity?: string }, i: number) => (
-            <div key={i} className="flex items-center justify-between py-1 border-b border-border/40 last:border-0">
-              <span className="font-medium text-foreground">{z.name ?? z.zone ?? `Zone ${i + 1}`}</span>
-              <span
-                className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                style={{
-                  background: "color-mix(in oklab, var(--color-destructive) 12%, transparent)",
-                  color: "var(--color-destructive)",
-                }}
-              >
-                {z.severity ?? "High"}
-              </span>
-            </div>
-          ))}
-        </IntelCard>
-
-        {/* Card 3: Multi-Factor Risk Analysis */}
-        <IntelCard
-          eyebrow={`Risk Level · ${risk.data?.riskLevel ?? (city.risk > 60 ? "Elevated" : "Moderate")}`}
-          title="Environmental Risk Analysis"
-          accent="var(--color-warning)"
-          icon={ShieldCheck}
-          loading={risk.isLoading}
-          onExplainClick={() => explainSection("risk analysis", risk.data)}
-        >
-          <p className="font-medium text-foreground">{risk.data?.summary ?? risk.data?.riskSummary ?? "Comprehensive environmental stress analysis across meteorological sensors."}</p>
-          {(risk.data?.majorRisks ?? risk.data?.risks ?? [
-            { risk: "Particulate matter accumulation under stagnant wind conditions" },
-            { risk: "Ozone precursor interaction during high temperature window" },
-          ]).slice(0, 2).map((r: { risk?: string; name?: string }, i: number) => (
-            <p key={i} className="flex items-start gap-1.5">
-              <span className="text-warning mt-0.5">•</span>
-              <span>{r.risk ?? r.name}</span>
-            </p>
-          ))}
-        </IntelCard>
-
-        {/* Card 4: EcoScore & Sustainability */}
-        <IntelCard
-          eyebrow={`EcoScore · ${sustain.data?.sustainabilityScore ?? city.eco}/100`}
-          title="Sustainability & Environmental Health"
-          accent="var(--color-success)"
-          icon={Leaf}
-          loading={sustain.isLoading}
-          onExplainClick={() => explainSection("sustainability index", sustain.data)}
-        >
-          <p>{sustain.data?.summary ?? sustain.data?.aiExplanation ?? "City environmental efficiency evaluated across emission abatement, green cover, and water safety standards."}</p>
-        </IntelCard>
-
-        {/* Card 5: Executive Priorities */}
-        <IntelCard
-          eyebrow="Executive Insights"
-          title="City-Wide Focus Areas"
-          accent="var(--color-primary)"
-          icon={BarChart3}
-          loading={executive.isLoading}
-          onExplainClick={() => explainSection("executive priorities", executive.data)}
-        >
-          {(executive.data?.topPriorities ?? executive.data?.priorities ?? [
-            { priority: "Enforce dust suppression along arterial transport corridors" },
-            { priority: "Optimize industrial emission limits during night thermal inversions" },
-          ]).slice(0, 2).map((p: { priority?: string; title?: string }, i: number) => (
-            <p key={i} className="flex items-start gap-1.5">
-              <span className="text-primary mt-0.5">•</span>
-              <span>{p.priority ?? p.title}</span>
-            </p>
-          ))}
-        </IntelCard>
-
-        {/* Card 6: Interactive City Comparison */}
-        <div className="rounded-xl border border-border/80 overflow-hidden flex flex-col justify-between glass shadow-sm">
-          <div>
-            <div className="h-0.5 w-full bg-[var(--color-info)]" />
-            <div className="p-4 sm:p-5">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--color-info)]">
-                  Comparative Engine
-                </span>
-                <Globe2 className="size-4 text-[var(--color-info)]" />
-              </div>
-              <div className="text-sm sm:text-base font-semibold text-foreground mb-2.5">City-to-City Comparison</div>
-
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                <select
-                  value={compareA}
-                  onChange={(e) => setCompareA(e.target.value)}
-                  className="bg-muted/40 border border-border/70 rounded-lg px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary transition-colors"
-                >
-                  {cities.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={compareB}
-                  onChange={(e) => setCompareB(e.target.value)}
-                  className="bg-muted/40 border border-border/70 rounded-lg px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary transition-colors"
-                >
-                  {cities
-                    .filter((c) => c.id !== compareA)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                </select>
-              </div>
-
-              {compare.isLoading ? (
-                <SkeletonCard lines={2} />
-              ) : compare.data ? (
-                <div className="text-xs text-muted-foreground space-y-1.5 leading-relaxed">
-                  {["airQuality", "health", "sustainability"].map((k) => {
-                    const d = compare.data[k] ?? compare.data[`${k}Comparison`];
-                    if (!d) return null;
-                    return (
-                      <p key={k} className="flex items-start gap-1.5">
-                        <span className="text-primary font-medium capitalize">{k}:</span>
-                        <span>{typeof d === "string" ? d : d?.summary ?? ""}</span>
-                      </p>
-                    );
-                  })}
-                  {compare.data.conclusion && (
-                    <div className="mt-2 p-2 rounded-lg bg-primary/10 text-primary font-medium text-[11px]">
-                      {compare.data.conclusion}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">Select two different cities to evaluate multi-signal differences.</p>
-              )}
-            </div>
-          </div>
-          {compare.data && (
-            <div className="p-4 sm:p-5 pt-0">
-              <button
-                onClick={() =>
-                  onExplain(
-                    `Explain the environmental comparison between ${cities.find((c) => c.id === compareA)?.name} and ${cities.find((c) => c.id === compareB)?.name}: ${JSON.stringify(compare.data).slice(0, 350)}`,
-                  )
-                }
-                className="w-full inline-flex items-center justify-center gap-1.5 text-xs aurora text-primary-foreground font-medium rounded-lg px-3.5 py-2 transition-all shadow-sm"
-              >
-                <Sparkles className="size-3" /> Compare in Assistant
-              </button>
-            </div>
-          )}
-        </div>
-      </motion.div>
     </div>
   );
 }
@@ -1022,7 +678,13 @@ function HealthDashboard({
   );
 }
 
-// ─── TAB 4: Dedicated AI Environmental Insights ───────────────────────────────
+// ─── TAB 3: Insights — Findings, Trends & Comparisons ─────────────────────────
+// Absorbs the former standalone "Intelligence" tab (trend/risk/sustainability/
+// hotspot/comparison signals) so the product has three primary destinations
+// (Assistant · Health · Insights) instead of four. All API calls/queries below
+// are unchanged from the prior Intelligence + Insights tabs — only the layout
+// and fallback content changed. No fabricated data: every field only renders
+// when the corresponding query actually returned it.
 
 function InsightsWorkspace({
   city,
@@ -1033,77 +695,237 @@ function InsightsWorkspace({
   isApiConnected: boolean;
   onExplainInsight: (prompt: string) => void;
 }) {
-  const { data: rawInsights, isLoading: loading } = useQuery({
+  const { cities } = useCity();
+  const [compareA, setCompareA] = useState(city.id);
+  const [compareB, setCompareB] = useState(cities.find((c) => c.id !== city.id)?.id ?? city.id);
+  const opts = { enabled: isApiConnected, staleTime: 5 * 60_000, throwOnError: false as const };
+
+  const { data: rawInsights, isLoading: insightsLoading } = useQuery({
     queryKey: ["copilot-insights", city.id],
     queryFn: () => copilotApi.getInsights(city.id).then((r: any) => r?.data?.insights ?? r?.insights ?? []),
     staleTime: 5 * 60_000,
     enabled: isApiConnected,
     throwOnError: false,
   });
+  const aqiTrend  = useQuery({ queryKey: ["intel-aqi",     city.id], queryFn: () => intelligenceApi.getAQITrend(city.id).then((r: any) => r?.data?.data ?? r?.data),       ...opts });
+  const hotspots  = useQuery({ queryKey: ["intel-hotspot", city.id], queryFn: () => intelligenceApi.getHotspotAnalysis(city.id).then((r: any) => r?.data?.data ?? r?.data),        ...opts });
+  const risk      = useQuery({ queryKey: ["intel-risk",    city.id], queryFn: () => intelligenceApi.getRiskAnalysis(city.id).then((r: any) => r?.data?.data ?? r?.data),     ...opts });
+  const sustain   = useQuery({ queryKey: ["intel-sustain", city.id], queryFn: () => intelligenceApi.getSustainabilityRecommendations(city.id).then((r: any) => r?.data?.data ?? r?.data),   ...opts });
+  const executive = useQuery({ queryKey: ["intel-exec"],              queryFn: () => intelligenceApi.getExecutiveInsights().then((r: any) => r?.data?.data ?? r?.data),        ...opts });
+  const compare   = useQuery({
+    queryKey: ["intel-compare", compareA, compareB],
+    queryFn:  () => intelligenceApi.getCityComparison([compareA, compareB]).then((r: any) => r?.data?.data ?? r?.data),
+    enabled: isApiConnected && compareA !== compareB,
+    staleTime: 5 * 60_000,
+    throwOnError: false,
+  });
 
+  const explain = (label: string, data: unknown) =>
+    onExplainInsight(`Explain the ${label} for ${city.name} with contextual reasoning: ${JSON.stringify(data).slice(0, 400)}`);
+
+  // Only real, AI-returned insights are rendered — no invented findings.
   const insightCards: InsightCardData[] = useMemo(() => {
     if (Array.isArray(rawInsights) && rawInsights.length > 0) {
       return rawInsights.map((ins: any, idx: number) => ({
         type: (ins.type ?? (idx % 2 === 0 ? "finding" : "summary")) as InsightCardData["type"],
         title: ins.title ?? ins.headline ?? `Environmental Pattern #${idx + 1}`,
-        body: ins.body ?? ins.description ?? ins.content ?? "Detailed environmental synthesis derived from sensor observations.",
+        body: ins.body ?? ins.description ?? ins.content ?? "",
         score: ins.confidence ? Math.round(ins.confidence * 100) : undefined,
       }));
     }
+    return [];
+  }, [rawInsights]);
 
-    return [
-      {
-        type: "finding",
-        title: `Diurnal PM2.5 Thermal Inversion in ${city.name}`,
-        body: `Atmospheric stability during cooler morning hours restricts vertical air mixing, leading to localized particulate concentration peaks before thermal dispersion activates.`,
-        score: 92,
-      },
-      {
-        type: "risk",
-        title: `Particulate Exposure Index vs Ambient Temperature`,
-        body: `Current temperature (${city.temp}°C) combined with PM2.5 (${city.pm25} µg/m³) indicates heightened respiratory stress during high-exertion outdoor activity windows.`,
-        score: Math.min(100, Math.round(city.risk)),
-      },
-      {
-        type: "summary",
-        title: `Municipal Environmental Resilience (${city.name})`,
-        body: `EcoScore stands at ${city.eco}/100. Water quality and baseline telemetry remain stable, while transit corridors represent the primary variance driver in current air quality.`,
-        score: city.eco,
-      },
-      {
-        type: "confidence",
-        title: `Multi-Sensor Correlation Consistency`,
-        body: `Sensor network telemetries across industrial, residential, and green zones show high signal consistency with low sensor drift across the observation window.`,
-        score: 95,
-      },
-    ];
-  }, [rawInsights, city]);
+  const loading = insightsLoading || aqiTrend.isLoading || risk.isLoading;
+  const hasAnyFinding =
+    insightCards.length > 0 || !!aqiTrend.data || !!hotspots.data || !!risk.data || !!sustain.data || !!executive.data;
+
+  if (!isApiConnected) {
+    return (
+      <div className="glass rounded-xl p-8 flex flex-col items-center gap-4 text-center max-w-md mx-auto my-8">
+        <Sparkles className="size-8 text-muted-foreground" />
+        <div>
+          <div className="text-sm font-semibold">Insights Engine Offline</div>
+          <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+            Start the backend server and configure GEMINI_API_KEY to activate AI environmental reasoning.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const FindingCard = ({
+    eyebrow, title, accent, icon: Icon, onExplainClick, loading: cardLoading, empty, children,
+  }: {
+    eyebrow: string; title: string; accent: string; icon?: typeof TrendingUp;
+    onExplainClick?: () => void; loading?: boolean; empty?: boolean; children?: React.ReactNode;
+  }) => (
+    <motion.div variants={CARD_IN} className="rounded-xl border border-border/70 glass shadow-sm p-4 sm:p-5 flex flex-col justify-between gap-3">
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <span className="text-[10px] uppercase font-bold tracking-wider" style={{ color: accent }}>{eyebrow}</span>
+          {Icon && <Icon className="size-4" style={{ color: accent }} />}
+        </div>
+        <div className="text-sm font-semibold text-foreground mb-2">{title}</div>
+        <div className="text-xs text-muted-foreground leading-relaxed space-y-1.5">
+          {cardLoading ? <SkeletonCard lines={2} /> : empty ? <p>No data available yet for this signal.</p> : children}
+        </div>
+      </div>
+      {onExplainClick && !cardLoading && !empty && (
+        <button onClick={onExplainClick} className="self-start inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-medium transition-colors">
+          <Sparkles className="size-3" /> Explain with AI <ChevronRight className="size-3" />
+        </button>
+      )}
+    </motion.div>
+  );
+
+  const priorityTitle = insightCards[0]?.title ?? (risk.data ? "Environmental Risk Analysis" : aqiTrend.data ? "AQI Trend & Trajectory" : null);
+  const priorityBody =
+    insightCards[0]?.body ??
+    (risk.data as any)?.summary ?? (risk.data as any)?.riskSummary ??
+    (aqiTrend.data as any)?.trendSummary ?? null;
 
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow="AI Environmental Insights"
-        title={`Pattern Recognition & Interpretation · ${city.name}`}
-        subtitle="AI explanations of why environmental metrics change, what causes anomalies, and why it matters."
+        eyebrow="AI Insights"
+        title={`Environmental Findings & Trends · ${city.name}`}
+        subtitle="What's changing, why it matters, and how it compares."
         icon={Lightbulb}
         loading={loading}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {insightCards.map((card, index) => (
-          <div key={card.title} className="flex flex-col justify-between space-y-3">
-            <InsightCard card={card} index={index} />
-            <div className="flex items-center gap-2 px-1">
+      {/* Priority finding */}
+      {priorityTitle && priorityBody ? (
+        <motion.div
+          variants={CARD_IN} initial="hidden" animate="show"
+          className="rounded-xl border border-primary/25 glass shadow-sm p-4 sm:p-5"
+          style={{ borderTop: "2px solid var(--color-primary)" }}
+        >
+          <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-primary mb-1.5">
+            <Sparkles className="size-3" /> Priority Finding
+          </div>
+          <div className="text-sm sm:text-base font-semibold text-foreground mb-1.5">{priorityTitle}</div>
+          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">{priorityBody}</p>
+          <button
+            onClick={() => onExplainInsight(`Explain why this matters for ${city.name}: "${priorityTitle}" — ${priorityBody}`)}
+            className="mt-3 inline-flex items-center gap-1.5 text-xs aurora text-primary-foreground font-medium rounded-lg px-3.5 py-1.5 shadow-sm"
+          >
+            <Sparkles className="size-3" /> Explain with AI
+          </button>
+        </motion.div>
+      ) : !hasAnyFinding && !loading ? (
+        <div className="glass rounded-xl p-6 text-center text-xs text-muted-foreground border border-border/60">
+          No environmental findings are available for {city.name} yet. Check back once today's analysis completes.
+        </div>
+      ) : null}
+
+      {/* Supporting findings */}
+      <motion.div variants={CARD_STAGGER()} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <FindingCard eyebrow="Trend" title="Air Quality Trend" accent="var(--color-primary)" icon={Wind} loading={aqiTrend.isLoading} empty={!aqiTrend.data} onExplainClick={() => explain("AQI trend trajectory", aqiTrend.data)}>
+          {aqiTrend.data && (
+            <>
+              <div className="font-medium text-foreground">Direction: {(aqiTrend.data as any)?.trendDirection ?? "—"}</div>
+              {((aqiTrend.data as any)?.keyObservations ?? []).slice(0, 2).map((o: string, i: number) => (
+                <p key={i} className="flex items-start gap-1.5"><span className="text-primary mt-0.5">•</span><span>{o}</span></p>
+              ))}
+            </>
+          )}
+        </FindingCard>
+
+        <FindingCard eyebrow="Risk" title="Environmental Risk" accent="var(--color-warning)" icon={ShieldCheck} loading={risk.isLoading} empty={!risk.data} onExplainClick={() => explain("risk analysis", risk.data)}>
+          {risk.data && <p className="font-medium text-foreground">{(risk.data as any)?.summary ?? (risk.data as any)?.riskSummary}</p>}
+        </FindingCard>
+
+        <FindingCard eyebrow="Sustainability" title="EcoScore & Sustainability" accent="var(--color-success)" icon={Leaf} loading={sustain.isLoading} empty={!sustain.data} onExplainClick={() => explain("sustainability index", sustain.data)}>
+          {sustain.data && <p>{(sustain.data as any)?.summary ?? (sustain.data as any)?.aiExplanation}</p>}
+        </FindingCard>
+
+        <FindingCard eyebrow="Anomalies" title="Hotspots & High-Risk Zones" accent="var(--color-destructive)" icon={AlertTriangle} loading={hotspots.isLoading} empty={!hotspots.data} onExplainClick={() => explain("pollution hotspots", hotspots.data)}>
+          {((hotspots.data as any)?.hotspots ?? (hotspots.data as any)?.highRiskZones ?? []).slice(0, 3).map((z: any, i: number) => (
+            <div key={i} className="flex items-center justify-between py-1 border-b border-border/40 last:border-0">
+              <span className="font-medium text-foreground">{z.name ?? z.zone ?? `Zone ${i + 1}`}</span>
+              {z.severity && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "color-mix(in oklab, var(--color-destructive) 12%, transparent)", color: "var(--color-destructive)" }}>
+                  {z.severity}
+                </span>
+              )}
+            </div>
+          ))}
+        </FindingCard>
+
+        <FindingCard eyebrow="Priorities" title="City-Wide Focus Areas" accent="var(--color-primary)" icon={BarChart3} loading={executive.isLoading} empty={!executive.data} onExplainClick={() => explain("executive priorities", executive.data)}>
+          {((executive.data as any)?.topPriorities ?? (executive.data as any)?.priorities ?? []).slice(0, 2).map((p: any, i: number) => (
+            <p key={i} className="flex items-start gap-1.5"><span className="text-primary mt-0.5">•</span><span>{p.priority ?? p.title}</span></p>
+          ))}
+        </FindingCard>
+
+        {/* Comparison tool */}
+        <div className="rounded-xl border border-border/70 glass shadow-sm p-4 sm:p-5 flex flex-col justify-between gap-3">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--color-info)]">Compare</span>
+              <Globe2 className="size-4 text-[var(--color-info)]" />
+            </div>
+            <div className="text-sm font-semibold text-foreground mb-2.5">City-to-City Comparison</div>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <select value={compareA} onChange={(e) => setCompareA(e.target.value)} className="bg-muted/40 border border-border/70 rounded-lg px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary transition-colors">
+                {cities.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <select value={compareB} onChange={(e) => setCompareB(e.target.value)} className="bg-muted/40 border border-border/70 rounded-lg px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary transition-colors">
+                {cities.filter((c) => c.id !== compareA).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            {compare.isLoading ? (
+              <SkeletonCard lines={2} />
+            ) : compare.data ? (
+              <div className="text-xs text-muted-foreground space-y-1.5 leading-relaxed">
+                {["airQuality", "health", "sustainability"].map((k) => {
+                  const d = (compare.data as any)[k] ?? (compare.data as any)[`${k}Comparison`];
+                  if (!d) return null;
+                  return (
+                    <p key={k} className="flex items-start gap-1.5">
+                      <span className="text-primary font-medium capitalize">{k}:</span>
+                      <span>{typeof d === "string" ? d : d?.summary ?? ""}</span>
+                    </p>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Select two different cities to compare.</p>
+            )}
+          </div>
+          {compare.data && (
+            <button
+              onClick={() =>
+                onExplainInsight(
+                  `Explain the environmental comparison between ${cities.find((c) => c.id === compareA)?.name} and ${cities.find((c) => c.id === compareB)?.name}: ${JSON.stringify(compare.data).slice(0, 350)}`,
+                )
+              }
+              className="self-start inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+            >
+              <Sparkles className="size-3" /> Compare in Assistant <ChevronRight className="size-3" />
+            </button>
+          )}
+        </div>
+      </motion.div>
+
+      {/* Additional AI-authored findings, when the assistant returned more than one */}
+      {insightCards.length > 1 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {insightCards.slice(1).map((card, index) => (
+            <div key={card.title} className="flex flex-col justify-between space-y-3">
+              <InsightCard card={card} index={index} />
               <button
                 onClick={() => onExplainInsight(`Explain why this matters for ${city.name}: "${card.title}" — ${card.body}`)}
-                className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-medium transition-colors px-1"
               >
                 <Sparkles className="size-3" /> Explain with AI <ChevronRight className="size-3" />
               </button>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1118,7 +940,6 @@ function IntelligenceCenterWorkspace() {
 
   const [tab, setTab] = useState<Tab>("chat");
   const [wsTab, setWsTab] = useState<WorkspaceTab>("chat");
-  const [selectedPromptCat, setSelectedPromptCat] = useState<PromptCategory>("all");
   const [question, setQuestion] = useState("");
   const [inputFocused, setFocused] = useState(false);
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
@@ -1227,11 +1048,6 @@ function IntelligenceCenterWorkspace() {
     setTimeout(() => setCopy(false), 2000);
   }, []);
 
-  const filteredPrompts = useMemo(() => {
-    if (selectedPromptCat === "all") return PROMPT_DEFINITIONS;
-    return PROMPT_DEFINITIONS.filter((p) => p.category === selectedPromptCat);
-  }, [selectedPromptCat]);
-
   return (
     <div className="w-full h-[calc(100dvh-4rem-2rem)] flex flex-col overflow-hidden bg-background">
       {/* Copy Toast */}
@@ -1274,35 +1090,15 @@ function IntelligenceCenterWorkspace() {
           </div>
         </div>
 
-        {/* Right Telemetry Context & City Selector */}
+        {/* Right: Compact Environmental Context & City Selector */}
         <div className="flex items-center flex-wrap gap-2 justify-end">
-          {/* Telemetry Chips */}
-          <div className="flex items-center gap-1 sm:gap-1.5">
-            <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 glass border border-border/60 text-xs shadow-none">
-              <div className="size-2 rounded-full" style={{ background: aqiColor(city.aqi) }} />
-              <span className="text-muted-foreground text-[11px]">AQI:</span>
-              <span className="font-semibold tabular-nums">{city.aqi}</span>
-            </div>
-            <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 glass border border-border/60 text-xs shadow-none">
-              <Activity className="size-3 text-primary" />
-              <span className="text-muted-foreground text-[11px]">PM2.5:</span>
-              <span className="font-semibold tabular-nums">{city.pm25}</span>
-            </div>
-            <div className="hidden sm:flex items-center gap-1.5 rounded-lg px-2.5 py-1 glass border border-border/60 text-xs shadow-none">
-              <Thermometer className="size-3 text-warning" />
-              <span className="text-muted-foreground text-[11px]">Temp:</span>
-              <span className="font-semibold tabular-nums">{city.temp}°C</span>
-            </div>
-            <div className="hidden sm:flex items-center gap-1.5 rounded-lg px-2.5 py-1 glass border border-border/60 text-xs shadow-none">
-              <Eye className="size-3" style={{ color: riskColor(city.risk) }} />
-              <span className="text-muted-foreground text-[11px]">Risk:</span>
-              <span className="font-semibold tabular-nums">{city.risk}</span>
-            </div>
-            <div className="hidden md:flex items-center gap-1.5 rounded-lg px-2.5 py-1 glass border border-border/60 text-xs shadow-none">
-              <Leaf className="size-3 text-success" />
-              <span className="text-muted-foreground text-[11px]">Eco:</span>
-              <span className="font-semibold tabular-nums">{city.eco}</span>
-            </div>
+          {/* Compact context line — full detail lives in Health/Insights, not repeated here */}
+          <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 glass border border-border/60 text-xs shadow-none">
+            <div className="size-2 rounded-full shrink-0" style={{ background: aqiColor(city.aqi) }} />
+            <span className="font-semibold tabular-nums text-foreground">AQI {city.aqi}</span>
+            <span className="text-muted-foreground">({aqiLabel(city.aqi)})</span>
+            <span className="hidden sm:inline text-muted-foreground">·</span>
+            <span className="hidden sm:inline text-muted-foreground tabular-nums">{city.temp}°C</span>
           </div>
 
           {/* City Switcher */}
@@ -1329,10 +1125,9 @@ function IntelligenceCenterWorkspace() {
         {/* Main Workspace Navigation */}
         <div className="flex items-center gap-1 shrink-0" role="tablist" aria-label="Intelligence Center tabs">
           {([
-            { id: "chat",         label: "Assistant",    icon: MessageSquare },
-            { id: "intelligence", label: "Intelligence", icon: TrendingUp },
-            { id: "health",       label: "Health",       icon: Heart },
-            { id: "insights",     label: "Insights",     icon: Lightbulb },
+            { id: "chat",     label: "Assistant", icon: MessageSquare },
+            { id: "health",   label: "Health",    icon: Heart },
+            { id: "insights", label: "Insights",  icon: Lightbulb },
           ] as const).map((tabItem) => {
             const Icon = tabItem.icon;
             const isActive = tab === tabItem.id;
@@ -1386,54 +1181,7 @@ function IntelligenceCenterWorkspace() {
         )}
       </div>
 
-      {/* ── 3. COMPACT PROMPT EXPLORER STRIP (Assistant Mode) ──────────────── */}
-      {tab === "chat" && wsTab === "chat" && (
-        <div className="w-full px-4 sm:px-6 py-1.5 border-b border-border/40 bg-background/50 shrink-0 flex items-center gap-2 overflow-x-auto scrollbar-none text-xs">
-          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0 mr-1">
-            Explore:
-          </span>
-          {/* Category Filter Pills */}
-          <div className="flex items-center gap-1 shrink-0">
-            {CATEGORY_TABS.map((cat) => {
-              const Icon = cat.icon;
-              const isCatActive = selectedPromptCat === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedPromptCat(cat.id)}
-                  className={cn(
-                    "inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full font-medium transition-all shrink-0 border",
-                    isCatActive
-                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                      : "glass text-muted-foreground hover:text-foreground border-border/60",
-                  )}
-                >
-                  <Icon className="size-3" />
-                  <span>{cat.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="h-3.5 w-px bg-border/60 mx-1 shrink-0" />
-
-          {/* Quick Prompt Chips */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            {filteredPrompts.slice(0, 6).map((p) => (
-              <button
-                key={p.id}
-                onClick={() => handlePrompt(p.prompt(city.name))}
-                className="inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-lg glass text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-card/70 transition-all shrink-0 border border-border/50"
-              >
-                <Sparkles className="size-2.5 text-primary/70" />
-                <span>{p.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── 4. FULL-VIEWPORT WORKSPACE CONTENT AREA ────────────────────────── */}
+      {/* ── 3. FULL-VIEWPORT WORKSPACE CONTENT AREA ────────────────────────── */}
       <main className="flex-1 min-h-0 w-full flex flex-col overflow-hidden relative">
         <AnimatePresence mode="wait">
           {/* ── TAB 1: ASSISTANT WORKSPACE ── */}
@@ -1467,7 +1215,7 @@ function IntelligenceCenterWorkspace() {
                       chatMutation.isError ? (
                         <AIFallback
                           onRetry={() => chatMutation.mutate(lastUserText)}
-                          onExplore={() => setTab("intelligence")}
+                          onExplore={() => setTab("insights")}
                           onSwitchCity={() => {}}
                         />
                       ) : (
@@ -1604,23 +1352,7 @@ function IntelligenceCenterWorkspace() {
             </motion.div>
           )}
 
-          {/* ── TAB 2: INTELLIGENCE ── */}
-          {tab === "intelligence" && (
-            <motion.div
-              key="intelligence-workspace"
-              id="tabpanel-intelligence"
-              role="tabpanel"
-              variants={TAB_IN}
-              initial="hidden"
-              animate="show"
-              exit="exit"
-              className="flex-1 min-h-0 w-full overflow-y-auto px-4 sm:px-6 lg:px-8 py-5"
-            >
-              <IntelligenceDashboard city={city} isApiConnected={isApiConnected} onExplain={handlePrompt} />
-            </motion.div>
-          )}
-
-          {/* ── TAB 3: HEALTH ── */}
+          {/* ── TAB 2: HEALTH ── */}
           {tab === "health" && (
             <motion.div
               key="health-workspace"
@@ -1636,7 +1368,7 @@ function IntelligenceCenterWorkspace() {
             </motion.div>
           )}
 
-          {/* ── TAB 4: INSIGHTS ── */}
+          {/* ── TAB 3: INSIGHTS ── */}
           {tab === "insights" && (
             <motion.div
               key="insights-workspace"

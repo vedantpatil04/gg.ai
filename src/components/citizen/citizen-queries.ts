@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { useCity } from "@/lib/city-context";
 import { useAuth } from "@/lib/auth-context";
 import { complaintApi } from "@/lib/api/services.api";
+import { messageApi, type MessageRecord } from "@/lib/api/message.api";
 import client from "@/lib/api/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -81,12 +82,16 @@ export interface CategoryBreakdownItem {
   count: number;
 }
 
+export { type MessageRecord } from "@/lib/api/message.api";
+
 // ─── Query keys ───────────────────────────────────────────────────────────────
 
 export const CITIZEN_KEYS = {
   stats: ["citizen-stats"] as const,
   complaints: (params: Record<string, unknown>) => ["citizen-complaints", params] as const,
   complaint: (id: string) => ["citizen-complaint", id] as const,
+  unreadCounts: ["citizen-unread-counts"] as const,
+  messages: (complaintId: string) => ["complaint-messages", complaintId] as const,
 };
 
 // ─── Stats hook ───────────────────────────────────────────────────────────────
@@ -155,6 +160,68 @@ export function useCitizenComplaint(id: string | null) {
     staleTime: 15_000,
     enabled: isAuthenticated && isApiConnected && !!id,
     throwOnError: false,
+  });
+}
+
+// ─── Bulk unread counts across citizen's own complaints ───────────────────────
+
+export function useMyComplaintUnreadCounts() {
+  const { isAuthenticated } = useAuth();
+  const { isApiConnected } = useCity();
+  return useQuery({
+    queryKey: CITIZEN_KEYS.unreadCounts,
+    queryFn: () => messageApi.getUnreadCounts().then((r) => r.data?.counts ?? {}),
+    staleTime: 15_000,
+    refetchInterval: 25_000,
+    enabled: isAuthenticated && isApiConnected,
+    throwOnError: false,
+  });
+}
+
+// ─── Messages within a complaint ──────────────────────────────────────────────
+
+export function useComplaintMessages(complaintId: string | null) {
+  const { isAuthenticated } = useAuth();
+  const { isApiConnected } = useCity();
+  return useQuery({
+    queryKey: CITIZEN_KEYS.messages(complaintId ?? ""),
+    queryFn: () => messageApi.getMessages(complaintId!).then((r) => r.data),
+    staleTime: 10_000,
+    refetchInterval: 15_000,
+    enabled: isAuthenticated && isApiConnected && !!complaintId,
+    throwOnError: false,
+  });
+}
+
+// ─── Send message mutation ────────────────────────────────────────────────────
+
+export function useSendComplaintMessage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ complaintId, body }: { complaintId: string; body: string }) =>
+      messageApi.sendMessage(complaintId, body),
+    onSuccess: (_res, vars) => {
+      qc.invalidateQueries({ queryKey: CITIZEN_KEYS.messages(vars.complaintId) });
+      qc.invalidateQueries({ queryKey: CITIZEN_KEYS.unreadCounts });
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast(msg ?? "Failed to send message. Please try again.");
+    },
+  });
+}
+
+// ─── Mark messages read mutation ──────────────────────────────────────────────
+
+export function useMarkComplaintMessagesRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (complaintId: string) => messageApi.markRead(complaintId),
+    onSuccess: (_res, complaintId) => {
+      qc.invalidateQueries({ queryKey: CITIZEN_KEYS.unreadCounts });
+      qc.invalidateQueries({ queryKey: ["complaint-unread-count", complaintId] });
+    },
   });
 }
 

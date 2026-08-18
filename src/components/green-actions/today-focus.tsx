@@ -34,6 +34,12 @@ function ConditionRow({ label, value }: { label: string; value: string }) {
  * desktop layouts, a compact "Today's conditions" panel fills the extra
  * width with the two real readings behind the guidance (PM2.5, Water
  * Quality Index) rather than just stretching the existing content.
+ *
+ * Phase 3 folds the PRD's "Most relevant for you today" element in here
+ * rather than adding a second, near-duplicate panel: the first curated
+ * action is promoted to a distinct highlighted line ("Most useful today"),
+ * and the other two remain the supporting checklist — same three curated
+ * actions as before, just given a clearer single-recommendation hierarchy.
  */
 export function TodaysEnvironmentalFocus({
   city,
@@ -49,6 +55,7 @@ export function TodaysEnvironmentalFocus({
   const focus = getTodaysFocusContent(topic, tone);
   const color = topic === "water" ? "var(--color-info)" : TONE_COLOR[tone];
   const Icon = topic === "water" ? Droplets : Wind;
+  const [topAction, ...otherActions] = focus.actions;
 
   return (
     <div
@@ -86,14 +93,25 @@ export function TodaysEnvironmentalFocus({
               {focus.explanation}
             </p>
 
-            <ul className="flex flex-col sm:flex-row sm:flex-wrap gap-x-6 gap-y-2 pt-1">
-              {focus.actions.map((action) => (
-                <li key={action} className="flex items-start gap-2 text-sm">
-                  <CircleCheck className="size-4 text-[var(--color-success)] shrink-0 mt-0.5" />
-                  <span>{action}</span>
-                </li>
-              ))}
-            </ul>
+            {topAction && (
+              <p className="text-sm">
+                <span className="font-semibold" style={{ color }}>
+                  Most useful today:{" "}
+                </span>
+                <span>{topAction}</span>
+              </p>
+            )}
+
+            {otherActions.length > 0 && (
+              <ul className="flex flex-col sm:flex-row sm:flex-wrap gap-x-6 gap-y-2 pt-1">
+                {otherActions.map((action) => (
+                  <li key={action} className="flex items-start gap-2 text-sm">
+                    <CircleCheck className="size-4 text-[var(--color-success)] shrink-0 mt-0.5" />
+                    <span>{action}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
 

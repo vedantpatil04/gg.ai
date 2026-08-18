@@ -1,17 +1,24 @@
 /**
- * citizen-hub-page.tsx — Phase 12
+ * citizen-hub-page.tsx
  *
- * Changes vs Phase 8:
- *   - "New Complaint" tab renders full-width (no narrow Panel wrapper) to
- *     accommodate the two-column form + AI + map layout.
- *   - Improved responsive tab bar.
- *   - Minor layout/spacing polish.
- *   - All other tabs unchanged.
+ * Citizen Hub Information Architecture:
+ * - Desktop & Mobile Navigation:
+ *   1. Home (Citizen Dashboard: Welcome, Status Cards, Quick Actions, My Complaints, City Environment Snapshot, Recent Activity)
+ *   2. Complaints (My Complaints list with search, filters, unread badges)
+ *   3. + Report (Practical civic-service complaint form)
+ *
+ * - Profile accessible via global avatar menu & Quick Actions.
+ * - Messaging is complaint-scoped inside Complaint Workspace.
  */
 
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Plus, LogIn, LayoutDashboard, FileText, BarChart3, PenLine } from "lucide-react";
+import {
+  Plus,
+  LogIn,
+  Home as HomeIcon,
+  FileText,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
@@ -21,33 +28,25 @@ import { CitizenDashboard } from "./citizen-dashboard";
 import { CitizenComplaintList } from "./citizen-complaint-list";
 import { CitizenComplaintWorkspace } from "./citizen-complaint-workspace";
 import { CitizenSubmitForm } from "./citizen-submit-form";
-import { CitizenAnalytics } from "./citizen-analytics";
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
-type TabId = "dashboard" | "new" | "history" | "analytics";
-
-const TABS: Array<{ id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-  { id: "dashboard", label: "Overview", icon: LayoutDashboard },
-  { id: "new", label: "New Complaint", icon: PenLine },
-  { id: "history", label: "My Complaints", icon: FileText },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
-];
+type TabId = "home" | "complaints" | "new";
 
 // ─── Unauthenticated banner ───────────────────────────────────────────────────
 
 function UnauthenticatedBanner() {
   return (
-    <div className="glass rounded-2xl p-6 border border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div className="rounded-2xl p-6 border border-border/80 bg-card/60 backdrop-blur flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
       <div>
-        <h3 className="font-semibold">Sign in to access the Citizen Hub</h3>
+        <h3 className="font-semibold text-foreground">Sign in to access the Citizen Hub</h3>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Submit complaints, track your reports, and view your analytics.
+          Submit environmental reports, track progress with authorities, and download official case records.
         </p>
       </div>
       <Link
         to="/login"
-        className="shrink-0 inline-flex items-center gap-2 aurora text-primary-foreground rounded-xl px-5 py-2.5 text-sm font-medium"
+        className="shrink-0 inline-flex items-center gap-2 bg-primary text-primary-foreground rounded-xl px-5 py-2.5 text-sm font-medium shadow-sm hover:bg-primary/90 transition-colors"
       >
         <LogIn className="size-4" />
         Sign In
@@ -56,7 +55,7 @@ function UnauthenticatedBanner() {
   );
 }
 
-// ─── Tab navigation ───────────────────────────────────────────────────────────
+// ─── Tab navigation (Home | Complaints | + Report) ─────────────────────────────
 
 function TabBar({
   active,
@@ -65,55 +64,62 @@ function TabBar({
   active: TabId;
   onChange: (t: TabId) => void;
 }) {
-  const { t } = useTranslation("citizen");
   const tabs: Array<{ id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-    { id: "dashboard", label: t("environmentalStatus"), icon: LayoutDashboard },
-    { id: "new", label: t("submitComplaint"), icon: PenLine },
-    { id: "history", label: t("myComplaints"), icon: FileText },
-    { id: "analytics", label: "Analytics", icon: BarChart3 },
+    { id: "home", label: "Home", icon: HomeIcon },
+    { id: "complaints", label: "Complaints", icon: FileText },
+    { id: "new", label: "+ Report", icon: Plus },
   ];
 
   return (
-    <div className="flex items-center gap-0.5 p-1 bg-muted/50 rounded-2xl border border-border w-fit overflow-x-auto">
+    <nav
+      aria-label="Citizen Hub Navigation"
+      className="flex items-center gap-1 p-1 bg-muted/60 rounded-2xl border border-border/80 w-fit overflow-x-auto"
+    >
       {tabs.map(({ id, label, icon: Icon }) => (
         <button
           key={id}
+          type="button"
           onClick={() => onChange(id)}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap",
+            "flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap",
             active === id
-              ? "bg-card shadow-sm text-foreground"
+              ? "bg-card shadow-sm text-foreground border border-border/60"
               : "text-muted-foreground hover:text-foreground",
+            id === "new" && active !== "new" && "text-primary hover:text-primary font-bold",
           )}
         >
           <Icon className="size-3.5 shrink-0" />
-          <span className="hidden sm:inline">{label}</span>
+          <span>{label}</span>
         </button>
       ))}
-    </div>
+    </nav>
   );
 }
 
 // ─── New Complaint tab header ─────────────────────────────────────────────────
 
-function NewComplaintHeader({ onViewHistory }: { onViewHistory: () => void }) {
-  const { t } = useTranslation("citizen");
+function NewComplaintHeader({ onViewComplaints }: { onViewComplaints: () => void }) {
   return (
     <div className="flex items-start justify-between gap-4 flex-wrap">
       <div>
-        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{t("title")}</div>
-        <h2 className="text-xl font-semibold tracking-tight mt-0.5">{t("complaints.new")}</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {t("complaints.description")}
+        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">
+          Report Issue
+        </div>
+        <h2 className="text-xl font-bold tracking-tight text-foreground mt-0.5">
+          New Environmental Complaint
+        </h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Report an environmental concern in your area. Your submission will be routed to the appropriate civic authority.
         </p>
       </div>
       <Button
-        variant="ghost"
+        variant="outline"
         size="sm"
-        className="text-xs shrink-0"
-        onClick={onViewHistory}
+        className="text-xs h-8 shrink-0"
+        onClick={onViewComplaints}
       >
-        {t("myComplaints")}
+        <FileText className="size-3.5 mr-1" />
+        My Complaints
       </Button>
     </div>
   );
@@ -124,8 +130,9 @@ function NewComplaintHeader({ onViewHistory }: { onViewHistory: () => void }) {
 export function CitizenHubPage() {
   const { t } = useTranslation("citizen");
   const { user, isAuthenticated } = useAuth();
-  const [tab, setTab] = useState<TabId>("dashboard");
+  const [tab, setTab] = useState<TabId>("home");
   const [openComplaintId, setOpenComplaintId] = useState<string | null>(null);
+  const [statusFilterPreset, setStatusFilterPreset] = useState<string | null>(null);
 
   function handleOpenComplaint(id: string) {
     setOpenComplaintId(id);
@@ -135,46 +142,49 @@ export function CitizenHubPage() {
     setTab("new");
   }
 
-  function handleViewHistoryFromDashboard() {
-    setTab("history");
+  function handleViewComplaintsFromDashboard(statusFilter?: string) {
+    setStatusFilterPreset(statusFilter ?? "");
+    setTab("complaints");
   }
 
   // Non-authenticated welcome screen
   if (!isAuthenticated) {
     return (
-      <div className="px-4 md:px-8 py-8 space-y-6 max-w-[1400px] mx-auto">
+      <div className="px-4 md:px-8 py-8 space-y-6 max-w-[1200px] mx-auto">
         <header>
-          <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            {t("title")}
+          <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-semibold">
+            {t("title") || "Citizen Hub"}
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight mt-1">{t("title")}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mt-1">
+            Citizen Environmental Protection Hub
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Help your city respond faster — every report becomes a signal.
+            Report environmental violations, track investigation milestones, and collaborate with municipal authorities.
           </p>
         </header>
         <UnauthenticatedBanner />
         <div className="grid sm:grid-cols-3 gap-4">
           {[
             {
-              title: "Submit a Complaint",
-              desc: "Report environmental issues in your city with AI-assisted evidence and location.",
+              title: "Report an Issue",
+              desc: "File complaints with photographic camera evidence, GPS location, and link support.",
               icon: "📝",
             },
             {
-              title: "Track Progress",
-              desc: "Follow your complaint through every stage of the investigation lifecycle.",
+              title: "Track Case Milestones",
+              desc: "Follow your report through assignment, on-site investigation, and resolution.",
               icon: "🔍",
             },
             {
-              title: "View Analytics",
-              desc: "Understand your impact with personal statistics and trends.",
-              icon: "📊",
+              title: "Official Verification Records",
+              desc: "Direct communication with assigned authorities and official downloadable PDF reports.",
+              icon: "📄",
             },
           ].map((item) => (
             <Panel key={item.title}>
               <div className="text-2xl mb-3">{item.icon}</div>
-              <h3 className="font-semibold text-sm">{item.title}</h3>
-              <p className="text-xs text-muted-foreground mt-1">{item.desc}</p>
+              <h3 className="font-semibold text-sm text-foreground">{item.title}</h3>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{item.desc}</p>
             </Panel>
           ))}
         </div>
@@ -185,14 +195,14 @@ export function CitizenHubPage() {
   // Role guard
   if (user && user.role !== "citizen") {
     return (
-      <div className="px-4 md:px-8 py-8 w-full">
-        <div className="glass rounded-2xl p-8 text-center space-y-3">
-          <h2 className="text-lg font-semibold">This page is for citizens.</h2>
+      <div className="px-4 md:px-8 py-8 w-full max-w-2xl mx-auto">
+        <div className="rounded-2xl border border-border/80 bg-card p-8 text-center space-y-3 shadow-sm">
+          <h2 className="text-lg font-semibold text-foreground">Citizen Hub Access</h2>
           <p className="text-sm text-muted-foreground">
-            The Citizen Hub is designed for residents reporting environmental complaints.
+            The Citizen Hub is designed for residents to file and track environmental complaints.
           </p>
           <Button asChild variant="outline">
-            <Link to="/dashboard">Go to Dashboard</Link>
+            <Link to="/dashboard">Go to Operations Dashboard</Link>
           </Button>
         </div>
       </div>
@@ -200,54 +210,57 @@ export function CitizenHubPage() {
   }
 
   return (
-    <div className="px-4 md:px-8 py-6 space-y-5 w-full">
-      {/* ── Top bar ── */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+    <div className="px-4 md:px-8 py-6 space-y-6 w-full max-w-[1400px] mx-auto">
+      {/* ── Top Navigation Bar: ONLY Home | Complaints | + Report ── */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <TabBar active={tab} onChange={setTab} />
-        <Button onClick={() => setTab("new")} className="gap-2 shrink-0" size="sm">
-          <Plus className="size-3.5" />
-          New Complaint
-        </Button>
       </div>
 
-      {/* ── Content ── */}
-      {tab === "dashboard" && (
+      {/* ── Content Panes ── */}
+      {tab === "home" && (
         <CitizenDashboard
           userName={user?.name ?? "Citizen"}
           onNewComplaint={handleNewComplaintFromDashboard}
-          onViewHistory={handleViewHistoryFromDashboard}
+          onViewHistory={handleViewComplaintsFromDashboard}
           onOpenComplaint={handleOpenComplaint}
         />
       )}
 
+      {tab === "complaints" && (
+        <div className="rounded-2xl border border-border/80 bg-card/60 backdrop-blur p-5 space-y-4 shadow-sm">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">
+              Complaint History
+            </div>
+            <h2 className="text-lg font-bold tracking-tight text-foreground mt-0.5">
+              My Environmental Complaints
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              All complaints filed by you with real-time status and authority updates.
+            </p>
+          </div>
+          <div className="border-t border-border/50 pt-2" />
+          <CitizenComplaintList
+            initialStatusFilter={statusFilterPreset}
+            onOpenComplaint={handleOpenComplaint}
+          />
+        </div>
+      )}
+
       {tab === "new" && (
-        /* Full-width container — no Panel wrapper to avoid narrow centering */
-        <div className="glass rounded-2xl p-5 space-y-5 w-full">
-          <NewComplaintHeader onViewHistory={() => setTab("history")} />
-          {/* Divider */}
-          <div className="border-t border-border/40" />
+        <div className="rounded-2xl border border-border/80 bg-card/60 backdrop-blur p-5 sm:p-6 space-y-5 w-full shadow-sm">
+          <NewComplaintHeader onViewComplaints={() => setTab("complaints")} />
+          <div className="border-t border-border/50" />
           <CitizenSubmitForm
             onSuccess={(id) => {
-              setTab("history");
+              setTab("complaints");
               setOpenComplaintId(id);
             }}
           />
         </div>
       )}
 
-      {tab === "history" && (
-        <Panel eyebrow="History" title="My Complaints">
-          <CitizenComplaintList onOpenComplaint={handleOpenComplaint} />
-        </Panel>
-      )}
-
-      {tab === "analytics" && (
-        <Panel eyebrow="Personal" title="My Analytics">
-          <CitizenAnalytics />
-        </Panel>
-      )}
-
-      {/* ── Complaint Workspace Drawer ── */}
+      {/* ── Single Source of Truth: Complaint Detail & Workspace Drawer ── */}
       <CitizenComplaintWorkspace
         complaintId={openComplaintId}
         onClose={() => setOpenComplaintId(null)}

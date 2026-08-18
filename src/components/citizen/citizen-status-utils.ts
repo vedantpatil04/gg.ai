@@ -20,56 +20,59 @@ export function safeFormatDate(
 
 // ─── Status presentation ──────────────────────────────────────────────────────
 
-export const STATUS_META: Record<
-  ComplaintStatus,
-  { label: string; tone: "muted" | "warning" | "info" | "success" | "destructive" | "primary" }
-> = {
-  // "pending" covers two real backend situations — received-but-unassigned
-  // and assigned-but-investigation-not-started (there is no separate
-  // "assigned" status in this project; see constants/smartRouting.ts on the
-  // backend). getStatusMeta() below picks the accurate label using
-  // assignedTo; this entry is the fallback when assignment info isn't known.
-  pending: { label: "Pending", tone: "warning" },
-  "in-progress": { label: "In Progress", tone: "info" },
-  // Authority's first resolution — the citizen is the next actor.
-  awaiting_citizen_review: { label: "Ready for Review", tone: "primary" },
-  // Only reached after a rework resubmission — genuinely awaiting the admin.
-  resolved: { label: "Awaiting Verification", tone: "primary" },
-  // Reached when the citizen rejects the authority's first resolution — the
-  // complaint is now an administrator-controlled governance case (Phase 5).
-  rework: { label: "Rework Requested", tone: "warning" },
-  rejected: { label: "Rejected", tone: "destructive" },
-  closed: { label: "Closed", tone: "success" },
+export interface StatusMeta {
+  label: string;
+  tone: "muted" | "warning" | "info" | "success" | "destructive" | "primary";
+  symbol: string;
+}
+
+export const STATUS_META: Record<ComplaintStatus, StatusMeta> = {
+  pending: { label: "Pending Dispatch", tone: "warning", symbol: "●" },
+  "in-progress": { label: "Under Investigation", tone: "info", symbol: "●" },
+  awaiting_citizen_review: { label: "Ready for Your Review", tone: "primary", symbol: "●" },
+  resolved: { label: "Awaiting Verification", tone: "primary", symbol: "✓" },
+  rework: { label: "Rework Requested", tone: "warning", symbol: "●" },
+  rejected: { label: "Rejected", tone: "destructive", symbol: "✕" },
+  closed: { label: "Closed", tone: "success", symbol: "✓" },
 };
 
-// isAssigned should be true when the complaint's assignedTo is populated.
-// Only affects the "pending" status, where it distinguishes "received, not
-// yet assigned" from "assigned, investigation not yet started" — both are
-// the same backend status, but citizens should see different wording.
-export function getStatusMeta(status: string, isAssigned?: boolean) {
+export function getStatusMeta(status: string, isAssigned?: boolean): StatusMeta {
   if (status === "pending" && isAssigned) {
-    return { label: "Assigned", tone: "info" as const };
+    return { label: "Assigned to Authority", tone: "info", symbol: "●" };
   }
   return (
-    STATUS_META[status as ComplaintStatus] ?? { label: status ?? "", tone: "muted" as const }
+    STATUS_META[status as ComplaintStatus] ?? {
+      label: status ?? "Processing",
+      tone: "muted",
+      symbol: "●",
+    }
   );
+}
+
+export function getStatusSymbol(status: string, isAssigned?: boolean): string {
+  return getStatusMeta(status, isAssigned).symbol;
 }
 
 // ─── Severity presentation ────────────────────────────────────────────────────
 
-export const SEVERITY_META: Record<
-  ComplaintSeverity,
-  { label: string; tone: "muted" | "warning" | "destructive" | "info" }
-> = {
+export interface SeverityMeta {
+  label: string;
+  tone: "muted" | "warning" | "destructive" | "info";
+}
+
+export const SEVERITY_META: Record<ComplaintSeverity, SeverityMeta> = {
   low: { label: "Low", tone: "muted" },
   medium: { label: "Medium", tone: "info" },
   high: { label: "High", tone: "warning" },
   critical: { label: "Critical", tone: "destructive" },
 };
 
-export function getSeverityMeta(severity: string) {
+export function getSeverityMeta(severity: string): SeverityMeta {
   return (
-    SEVERITY_META[severity as ComplaintSeverity] ?? { label: severity ?? "", tone: "muted" as const }
+    SEVERITY_META[severity as ComplaintSeverity] ?? {
+      label: severity ?? "Standard",
+      tone: "muted",
+    }
   );
 }
 
@@ -82,7 +85,7 @@ const ISSUE_TYPE_LABELS: Record<string, string> = {
   noise: "Noise",
   waste_dumping: "Waste Dumping",
   chemical_spill: "Chemical Spill",
-  other: "Other",
+  other: "Other Concern",
 };
 
 export function humanizeIssueType(issueType: string): string {
@@ -119,4 +122,3 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 export function monthLabel(month: number): string {
   return MONTHS[month - 1] ?? String(month ?? "");
 }
-

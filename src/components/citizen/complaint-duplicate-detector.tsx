@@ -136,7 +136,7 @@ export function ComplaintDuplicateDetector({
         className={cn("space-y-2", className)}
       >
         {isLoading ? (
-          <div className="glass rounded-2xl px-4 py-3 flex items-center gap-3">
+          <div className="rounded-2xl border border-border/80 bg-card/60 backdrop-blur px-4 py-3 flex items-center gap-3 shadow-2xs">
             <Loader2 className="size-4 text-muted-foreground animate-spin shrink-0" />
             <span className="text-xs text-muted-foreground">
               Checking for similar complaints nearby…
@@ -153,12 +153,7 @@ export function ComplaintDuplicateDetector({
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="glass rounded-2xl overflow-hidden"
-                style={{
-                  borderColor: "color-mix(in oklab, var(--color-warning) 40%, transparent)",
-                  borderWidth: 1,
-                  borderStyle: "solid",
-                }}
+                className="rounded-2xl border border-warning/30 bg-card/80 backdrop-blur overflow-hidden shadow-2xs"
               >
                 {/* Header */}
                 <div

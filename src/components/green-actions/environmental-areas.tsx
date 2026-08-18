@@ -1,6 +1,7 @@
 import { CircleCheck, CircleX, Lightbulb } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ENV_CATEGORIES, type EnvCategoryId } from "./green-actions-data";
+import { cn } from "@/lib/utils";
+import { ENV_CATEGORIES, COMMON_SITUATIONS, type EnvCategoryId } from "./green-actions-data";
 
 function PlainList({
   items,
@@ -33,16 +34,61 @@ function PlainList({
  * called out visually rather than matching the other two columns.
  * Controlled from the parent page so Section 4 (Why This Matters) can stay
  * in sync with whichever category is selected here.
+ *
+ * Phase 3 adds two small, real-life-phrased entry points into this same
+ * state rather than any new guidance content: an "I am..." situation row
+ * (see COMMON_SITUATIONS) that just calls `onSelect` with the matching
+ * category, and an optional dot on `highlightedCategory`'s tab noting it's
+ * recommended based on today's conditions (from Phase 2's
+ * defaultCategoryForTopic) — shown whether or not it's currently selected,
+ * so switching tabs doesn't lose the "why this was pre-selected" context.
  */
 export function EnvironmentalAreas({
   selected,
   onSelect,
+  highlightedCategory,
 }: {
   selected: EnvCategoryId;
   onSelect: (id: EnvCategoryId) => void;
+  highlightedCategory?: EnvCategoryId;
 }) {
   return (
     <Tabs value={selected} onValueChange={(v) => onSelect(v as EnvCategoryId)}>
+      <div className="mb-4">
+        <div className="text-xs font-medium text-muted-foreground mb-2">I am...</div>
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label="Jump to guidance for a common situation"
+        >
+          {COMMON_SITUATIONS.map((s) => {
+            const active = selected === s.category;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => onSelect(s.category)}
+                aria-pressed={active}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                  active
+                    ? "border-[var(--color-primary)] text-foreground"
+                    : "border-border/60 text-muted-foreground hover:text-foreground hover:border-border",
+                )}
+                style={
+                  active
+                    ? { background: "color-mix(in oklab, var(--color-primary) 10%, transparent)" }
+                    : undefined
+                }
+              >
+                <span aria-hidden="true">{s.emoji}</span>
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="overflow-x-auto -mx-1 px-1 pb-1 border-b border-border/60">
         <TabsList className="w-max min-w-full sm:w-auto h-auto bg-transparent p-0 gap-1 rounded-none">
           {ENV_CATEGORIES.map((c) => (
@@ -53,6 +99,16 @@ export function EnvironmentalAreas({
             >
               <span aria-hidden="true">{c.emoji}</span>
               {c.label}
+              {highlightedCategory === c.id && (
+                <>
+                  <span
+                    className="size-1.5 rounded-full ml-0.5"
+                    style={{ background: "var(--color-primary)" }}
+                    aria-hidden="true"
+                  />
+                  <span className="sr-only">— recommended based on today's conditions</span>
+                </>
+              )}
             </TabsTrigger>
           ))}
         </TabsList>

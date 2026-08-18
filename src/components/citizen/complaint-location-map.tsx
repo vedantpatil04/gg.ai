@@ -1,36 +1,45 @@
 /**
- * complaint-location-map.tsx — Phase 12
+ * complaint-location-map.tsx
  *
- * Interactive MapLibre map for complaint location selection.
- * Features: GPS location, drop/drag pin, address search, reverse geocoding,
- * dark/light mode support matching the existing SmartMapCanvas style.
+ * Citizen-first Location Selection Experience for GreenGuard AI.
+ *
+ * Requirements:
+ * 1. Map/drop-pin is OPTIONAL and non-intrusive.
+ * 2. Priority order:
+ *    - PRIMARY: Search for a place or address
+ *    - SECONDARY: Use my current location (GPS)
+ *    - SECONDARY: Paste a location link (Google Maps, OpenStreetMap, Apple Maps, geo:, coordinates)
+ *    - OPTIONAL: Select on map (expandable)
+ * 3. Concise, non-duplicate copy.
+ * 4. Selected location card with clear human-readable address & "Change" action.
  */
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  useCallback,
-} from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import {
   MapPin,
-  Locate,
   Search,
+  Navigation2,
+  Link as LinkIcon,
+  Map as MapIcon,
   X,
   Loader2,
-  Navigation2,
+  CheckCircle2,
+  AlertCircle,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { OSM_DARK_STYLE } from "@/lib/map/base-map-config";
+import { parseLocationLinkOrCoords, reverseGeocodeCoords } from "@/lib/location-link-parser";
 
-// ─── Light map style (public OSM raster, brightness-boosted) ─────────────────
+// ─── Light map style ─────────────────────────────────────────────────────────
 
 const OSM_LIGHT_STYLE: maplibregl.StyleSpecification = {
   version: 8 as const,
@@ -85,53 +94,21 @@ interface ComplaintLocationMapProps {
   className?: string;
 }
 
-// ─── Reverse geocoding via Nominatim (OpenStreetMap, free, no key) ─────────
-
-async function reverseGeocode(lat: number, lng: number): Promise<{ address: string; ward?: string }> {
-  try {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
-    const res = await fetch(url, { headers: { "Accept-Language": "en" } });
-    if (!res.ok) throw new Error("Nominatim error");
-    const data = await res.json() as {
-      display_name?: string;
-      address?: {
-        suburb?: string;
-        neighbourhood?: string;
-        city_district?: string;
-        ward?: string;
-        road?: string;
-        county?: string;
-        city?: string;
-        town?: string;
-        village?: string;
-        state?: string;
-        country?: string;
-      };
-    };
-    const a = data.address ?? {};
-    const line1 = [a.road, a.suburb ?? a.neighbourhood].filter(Boolean).join(", ");
-    const line2 = [a.city ?? a.town ?? a.village, a.county, a.state].filter(Boolean).join(", ");
-    const address = line1 ? `${line1}, ${line2}` : (data.display_name ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-    const ward = a.city_district ?? a.ward ?? a.suburb;
-    return { address, ward };
-  } catch {
-    return { address: `${lat.toFixed(5)}, ${lng.toFixed(5)}` };
-  }
-}
+// ─── Forward geocoding via Nominatim ──────────────────────────────────────────
 
 async function geocodeSearch(query: string): Promise<Array<{ lat: number; lng: number; label: string }>> {
   try {
     const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}&limit=5`;
     const res = await fetch(url, { headers: { "Accept-Language": "en" } });
     if (!res.ok) return [];
-    const data = await res.json() as Array<{ lat: string; lon: string; display_name: string }>;
+    const data = (await res.json()) as Array<{ lat: string; lon: string; display_name: string }>;
     return data.map((d) => ({ lat: parseFloat(d.lat), lng: parseFloat(d.lon), label: d.display_name }));
   } catch {
     return [];
   }
 }
 
-// ─── Custom pin marker HTML ───────────────────────────────────────────────────
+// ─── Custom Pin Marker HTML ───────────────────────────────────────────────────
 
 function buildPinHTML(dragging: boolean): string {
   return `
@@ -155,68 +132,39 @@ function buildPinHTML(dragging: boolean): string {
 export function ComplaintLocationMap({
   value,
   onChange,
-  defaultCenter = [0, 20],
-  defaultZoom = 2,
+  defaultCenter = [77.5946, 12.9716],
+  defaultZoom = 12,
   className,
 }: ComplaintLocationMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const markerElRef = useRef<HTMLDivElement | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { resolvedTheme } = useTheme();
   const geo = useGeolocation();
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  // Mode toggles
+  const [activeMode, setActiveMode] = useState<"search" | "link" | "map">("search");
+  const [showOptionalMap, setShowOptionalMap] = useState(false);
+
+  // Search state
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Array<{ lat: number; lng: number; label: string }>>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [isGeocoding, setIsGeocoding] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Map init ──────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
-    const style = resolvedTheme === "light" ? OSM_LIGHT_STYLE : OSM_DARK_STYLE;
+  // Link parsing state
+  const [linkInput, setLinkInput] = useState("");
+  const [isParsingLink, setIsParsingLink] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
-    const map = new maplibregl.Map({
-      container: mapContainerRef.current,
-      style,
-      center: value ? [value.lng, value.lat] : defaultCenter,
-      zoom: value ? 14 : defaultZoom,
-      attributionControl: false,
-    });
+  // Geocoding status
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [gpsError, setGpsError] = useState<string | null>(null);
 
-    map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
-    mapRef.current = map;
-
-    // Place initial pin if value provided
-    if (value) {
-      placePin(value.lng, value.lat);
-    }
-
-    // Click to drop pin
-    map.on("click", async (e) => {
-      await placePinAndGeocode(e.lngLat.lng, e.lngLat.lat);
-    });
-
-    return () => {
-      map.remove();
-      mapRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ── Theme change → update map style ──────────────────────────────────────
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const style = resolvedTheme === "light" ? OSM_LIGHT_STYLE : OSM_DARK_STYLE;
-    map.setStyle(style);
-  }, [resolvedTheme]);
-
-  // ── Place pin without geocoding ───────────────────────────────────────────
+  // ── Place pin on map ───────────────────────────────────────────────────────
   const placePin = useCallback((lng: number, lat: number) => {
     const map = mapRef.current;
     if (!map) return;
@@ -250,39 +198,84 @@ export function ComplaintLocationMap({
     markerRef.current = marker;
   }, []);
 
-  // ── Place pin + reverse geocode ───────────────────────────────────────────
   const placePinAndGeocode = useCallback(
     async (lng: number, lat: number, flyTo = true) => {
       const map = mapRef.current;
-      if (!map) return;
-
-      placePin(lng, lat);
-
-      if (flyTo) {
-        map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 14), duration: 500 });
+      if (map) {
+        placePin(lng, lat);
+        if (flyTo) {
+          map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 14), duration: 500 });
+        }
       }
 
       setIsGeocoding(true);
-      const { address, ward } = await reverseGeocode(lat, lng);
+      const { address, ward } = await reverseGeocodeCoords(lat, lng);
       setIsGeocoding(false);
       onChange({ lat, lng, address, ward });
     },
     [placePin, onChange],
   );
 
-  // ── GPS locate ────────────────────────────────────────────────────────────
-  const handleLocate = useCallback(() => {
+  // ── Init map when optional map is expanded ─────────────────────────────────
+  useEffect(() => {
+    if (!showOptionalMap || !mapContainerRef.current || mapRef.current) return;
+    const style = resolvedTheme === "light" ? OSM_LIGHT_STYLE : OSM_DARK_STYLE;
+
+    const center: [number, number] = value ? [value.lng, value.lat] : defaultCenter;
+    const map = new maplibregl.Map({
+      container: mapContainerRef.current,
+      style,
+      center,
+      zoom: value ? 14 : defaultZoom,
+      attributionControl: false,
+    });
+
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
+    mapRef.current = map;
+
+    if (value) {
+      placePin(value.lng, value.lat);
+    }
+
+    map.on("click", async (e) => {
+      await placePinAndGeocode(e.lngLat.lng, e.lngLat.lat);
+    });
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showOptionalMap]);
+
+  // ── Theme change → update map style ──────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const style = resolvedTheme === "light" ? OSM_LIGHT_STYLE : OSM_DARK_STYLE;
+    map.setStyle(style);
+  }, [resolvedTheme]);
+
+  // ── GPS Geolocation Handler ───────────────────────────────────────────────
+  const handleUseCurrentLocation = () => {
+    setGpsError(null);
+    if (!navigator.geolocation) {
+      setGpsError("Geolocation is not supported by your browser.");
+      return;
+    }
     geo.locate();
-  }, [geo]);
+  };
 
   useEffect(() => {
     if (geo.status === "granted" && geo.position) {
       placePinAndGeocode(geo.position.lng, geo.position.lat);
+    } else if (geo.status === "denied") {
+      setGpsError("Location permission was denied. Please enable location or search by address.");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geo.status, geo.position?.lat, geo.position?.lng]);
 
-  // ── Address search ────────────────────────────────────────────────────────
+  // ── Address search handler ────────────────────────────────────────────────
   const handleSearchChange = (q: string) => {
     setSearchQuery(q);
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
@@ -297,187 +290,286 @@ export function ComplaintLocationMap({
       setSearchResults(results);
       setShowResults(results.length > 0);
       setIsSearching(false);
-    }, 500);
+    }, 450);
   };
 
-  const handleSearchSelect = async (result: { lat: number; lng: number; label: string }) => {
-    setSearchQuery(result.label.split(",")[0]);
+  const handleSelectSearchResult = async (result: { lat: number; lng: number; label: string }) => {
+    setSearchQuery("");
     setShowResults(false);
     setSearchResults([]);
     await placePinAndGeocode(result.lng, result.lat);
   };
 
-  const handleClearLocation = () => {
+  // ── Location link parser handler ───────────────────────────────────────────
+  const handleParseLink = async () => {
+    if (!linkInput.trim()) return;
+    setLinkError(null);
+    setIsParsingLink(true);
+
+    try {
+      const parsed = await parseLocationLinkOrCoords(linkInput);
+      if (parsed.isValid && parsed.lat != null && parsed.lng != null) {
+        await placePinAndGeocode(parsed.lng, parsed.lat);
+        setLinkInput("");
+      } else if (parsed.isValid && parsed.address) {
+        // Named place without raw coordinates
+        const matches = await geocodeSearch(parsed.address);
+        if (matches.length > 0) {
+          await placePinAndGeocode(matches[0].lng, matches[0].lat);
+        } else {
+          onChange({
+            lat: defaultCenter[1],
+            lng: defaultCenter[0],
+            address: parsed.address,
+          });
+        }
+        setLinkInput("");
+      } else {
+        setLinkError(parsed.error || "Could not parse this location link.");
+      }
+    } catch {
+      setLinkError("An error occurred while parsing the link.");
+    } finally {
+      setIsParsingLink(false);
+    }
+  };
+
+  // ── Clear location ────────────────────────────────────────────────────────
+  const handleClear = () => {
     onChange(null);
     if (markerRef.current) {
       markerRef.current.remove();
       markerRef.current = null;
     }
     setSearchQuery("");
+    setLinkInput("");
+    setLinkError(null);
+    setGpsError(null);
   };
 
   return (
-    <div className={cn("glass rounded-2xl overflow-hidden", className)}>
-      {/* Header */}
-      <button
-        type="button"
-        onClick={() => setIsCollapsed((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition-colors"
-      >
-        <div className="flex items-center gap-2.5">
-          <div
-            className="size-7 rounded-lg flex items-center justify-center shrink-0"
-            style={{ background: "color-mix(in oklab, var(--color-info) 15%, transparent)" }}
-          >
-            <MapPin className="size-3.5" style={{ color: "var(--color-info)" }} />
-          </div>
-          <div className="text-left">
-            <div className="text-sm font-semibold leading-tight">Location</div>
-            <div className="text-[10px] text-muted-foreground">
-              {isGeocoding
-                ? "Getting address…"
-                : value
-                  ? value.address.slice(0, 45) + (value.address.length > 45 ? "…" : "")
-                  : "Click map or use GPS to select location"}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {value && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); handleClearLocation(); }}
-              className="size-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
-            >
-              <X className="size-3" />
-            </button>
-          )}
-          {isCollapsed ? (
-            <ChevronDown className="size-3.5 text-muted-foreground" />
-          ) : (
-            <ChevronUp className="size-3.5 text-muted-foreground" />
-          )}
-        </div>
-      </button>
-
-      {/* Body */}
-      <AnimatePresence initial={false}>
-        {!isCollapsed && (
-          <motion.div
-            initial={{ height: 0 }}
-            animate={{ height: "auto" }}
-            exit={{ height: 0 }}
-            transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="overflow-hidden"
-          >
-            <div className="border-t border-border/50">
-              {/* Search bar */}
-              <div className="px-3 py-2 relative">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="Search address or landmark…"
-                    value={searchQuery}
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                    className="w-full pl-8 pr-8 py-2 text-xs rounded-xl border border-border bg-background/80 outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                  />
-                  {isSearching ? (
-                    <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground animate-spin" />
-                  ) : searchQuery ? (
-                    <button
-                      type="button"
-                      onClick={() => { setSearchQuery(""); setShowResults(false); }}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  ) : null}
+    <div className={cn("rounded-2xl border border-border/80 bg-card/60 backdrop-blur p-4 space-y-3.5", className)}>
+      {/* Selected Location Banner (When location is chosen) */}
+      {value ? (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3.5 space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2 className="size-4 text-primary shrink-0 mt-0.5" />
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                  Selected Location
                 </div>
-
-                {/* Search results dropdown */}
-                <AnimatePresence>
-                  {showResults && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                      className="absolute left-3 right-3 top-full mt-1 glass rounded-xl border border-border shadow-lg z-50 overflow-hidden"
-                    >
-                      {searchResults.slice(0, 5).map((r, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => handleSearchSelect(r)}
-                          className="w-full text-left px-3 py-2 text-xs hover:bg-muted/60 transition-colors flex items-start gap-2 border-b border-border/40 last:border-0"
-                        >
-                          <MapPin className="size-3 shrink-0 mt-0.5 text-muted-foreground" />
-                          <span className="line-clamp-2 text-foreground/80">{r.label}</span>
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <p className="text-sm font-medium text-foreground mt-0.5 leading-snug">
+                  {value.address}
+                </p>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px] text-muted-foreground font-mono">
+                  <span>
+                    {value.lat.toFixed(5)}° N, {value.lng.toFixed(5)}° E
+                  </span>
+                  {value.ward && <span>· Ward: {value.ward}</span>}
+                </div>
               </div>
-
-              {/* Map container */}
-              <div className="relative" style={{ height: "240px" }}>
-                <div ref={mapContainerRef} className="absolute inset-0" />
-
-                {/* GPS button */}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleClear}
+              className="text-xs h-7 px-2.5 shrink-0"
+            >
+              Change
+            </Button>
+          </div>
+        </div>
+      ) : (
+        /* Location Selection Interface when no location is chosen */
+        <div className="space-y-3">
+          {/* PRIMARY: Search for a place or address */}
+          <div className="space-y-1.5 relative">
+            <label className="text-xs font-medium text-foreground/80">
+              Search for a place or address
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+              <Input
+                type="text"
+                placeholder="Search area, landmark, or street..."
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="pl-9 pr-9 h-10 text-sm rounded-xl"
+              />
+              {isSearching ? (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground animate-spin" />
+              ) : searchQuery ? (
                 <button
                   type="button"
-                  onClick={handleLocate}
-                  disabled={geo.status === "requesting"}
-                  className={cn(
-                    "absolute top-2 right-2 size-8 rounded-xl glass border border-border/60 flex items-center justify-center transition-all z-10",
-                    "hover:border-primary/40 hover:bg-primary/10",
-                    geo.status === "requesting" && "opacity-60 cursor-wait",
-                  )}
-                  title="Use current location"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setShowResults(false);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 size-5 text-muted-foreground hover:text-foreground flex items-center justify-center"
+                  aria-label="Clear search query"
                 >
-                  {geo.status === "requesting" ? (
-                    <Loader2 className="size-3.5 text-muted-foreground animate-spin" />
-                  ) : (
-                    <Navigation2 className="size-3.5 text-muted-foreground" />
-                  )}
+                  <X className="size-3.5" />
                 </button>
+              ) : null}
+            </div>
 
-                {/* Hint overlay when no pin */}
-                {!value && (
-                  <div className="absolute inset-x-0 bottom-3 flex justify-center pointer-events-none z-10">
-                    <div className="glass rounded-full px-3 py-1.5 text-[10px] text-muted-foreground border border-border/40">
-                      Click map to drop a pin
-                    </div>
-                  </div>
-                )}
-              </div>
+            {/* Autocomplete dropdown */}
+            <AnimatePresence>
+              {showResults && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="absolute left-0 right-0 top-full mt-1 bg-popover rounded-xl border border-border shadow-xl z-50 overflow-hidden"
+                >
+                  {searchResults.map((r, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => handleSelectSearchResult(r)}
+                      className="w-full text-left px-3.5 py-2.5 text-xs hover:bg-muted/70 transition-colors flex items-start gap-2.5 border-b border-border/40 last:border-0"
+                    >
+                      <MapPin className="size-3.5 shrink-0 mt-0.5 text-primary" />
+                      <span className="line-clamp-2 text-foreground">{r.label}</span>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
-              {/* Location details */}
-              {value && (
-                <div className="px-3 pb-3 pt-2 space-y-1">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="rounded-xl bg-muted/30 px-2.5 py-1.5">
-                      <div className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground">Latitude</div>
-                      <div className="text-xs font-mono font-medium">{value.lat.toFixed(5)}</div>
-                    </div>
-                    <div className="rounded-xl bg-muted/30 px-2.5 py-1.5">
-                      <div className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground">Longitude</div>
-                      <div className="text-xs font-mono font-medium">{value.lng.toFixed(5)}</div>
-                    </div>
+          {/* SECONDARY ACTIONS: Current Location & Paste Link */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+            {/* GPS Current Location */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleUseCurrentLocation}
+              disabled={geo.status === "requesting" || isGeocoding}
+              className="h-9.5 rounded-xl gap-2 text-xs font-medium border-border/80 hover:border-primary/50 hover:bg-primary/5"
+            >
+              {geo.status === "requesting" || isGeocoding ? (
+                <Loader2 className="size-3.5 animate-spin text-primary" />
+              ) : (
+                <Navigation2 className="size-3.5 text-primary" />
+              )}
+              <span>Use my current location</span>
+            </Button>
+
+            {/* Paste a location link toggle */}
+            <Button
+              type="button"
+              variant={activeMode === "link" ? "default" : "outline"}
+              onClick={() => setActiveMode((prev) => (prev === "link" ? "search" : "link"))}
+              className="h-9.5 rounded-xl gap-2 text-xs font-medium"
+            >
+              <LinkIcon className="size-3.5" />
+              <span>Paste a location link</span>
+            </Button>
+          </div>
+
+          {/* GPS Error alert */}
+          {gpsError && (
+            <div className="flex items-center gap-2 p-2.5 rounded-xl border border-warning/30 bg-warning/5 text-warning text-xs">
+              <AlertCircle className="size-3.5 shrink-0" />
+              <span>{gpsError}</span>
+            </div>
+          )}
+
+          {/* Link Parser Input */}
+          <AnimatePresence>
+            {activeMode === "link" && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden space-y-2 pt-1"
+              >
+                <div className="p-3 rounded-xl border border-border bg-muted/20 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-foreground">Paste Map URL or Coordinates</span>
+                    <span className="text-[10px] text-muted-foreground">Google Maps, OSM, Apple Maps, GPS</span>
                   </div>
-                  {value.ward && (
-                    <div className="rounded-xl bg-muted/30 px-2.5 py-1.5">
-                      <div className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground">Ward / Area</div>
-                      <div className="text-xs font-medium">{value.ward}</div>
-                    </div>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder="https://maps.google.com/?q=... or 15.8497, 74.4977"
+                      value={linkInput}
+                      onChange={(e) => setLinkInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleParseLink()}
+                      className="text-xs h-9 rounded-lg"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleParseLink}
+                      disabled={!linkInput.trim() || isParsingLink}
+                      className="h-9 px-3 text-xs shrink-0"
+                    >
+                      {isParsingLink ? <Loader2 className="size-3.5 animate-spin" /> : "Apply"}
+                    </Button>
+                  </div>
+                  {linkError && (
+                    <p className="text-[11px] text-destructive flex items-center gap-1.5">
+                      <AlertCircle className="size-3 shrink-0" />
+                      {linkError}
+                    </p>
                   )}
                 </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Divider with 'or' */}
+          <div className="relative flex items-center justify-center my-1.5">
+            <div className="border-t border-border/60 w-full" />
+            <span className="bg-card px-3 text-[10px] text-muted-foreground uppercase tracking-wider absolute">
+              or
+            </span>
+          </div>
+
+          {/* OPTIONAL: Select on map */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowOptionalMap((v) => !v)}
+              className="w-full flex items-center justify-between p-2.5 rounded-xl border border-border/80 bg-muted/20 hover:bg-muted/40 transition-colors text-xs font-medium"
+            >
+              <div className="flex items-center gap-2">
+                <MapIcon className="size-3.5 text-primary" />
+                <span>Select on map (optional)</span>
+              </div>
+              {showOptionalMap ? (
+                <ChevronUp className="size-3.5 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="size-3.5 text-muted-foreground" />
               )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </button>
+
+            <AnimatePresence>
+              {showOptionalMap && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden pt-2"
+                >
+                  <div className="rounded-xl border border-border overflow-hidden relative" style={{ height: "220px" }}>
+                    <div ref={mapContainerRef} className="absolute inset-0" />
+                    <div className="absolute top-2 left-2 pointer-events-none z-10">
+                      <div className="bg-background/90 backdrop-blur px-2.5 py-1 rounded-lg text-[10px] font-medium border shadow-sm">
+                        Tap anywhere or drag pin to adjust
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

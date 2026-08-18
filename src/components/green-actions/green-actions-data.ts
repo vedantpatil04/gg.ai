@@ -331,6 +331,33 @@ export function getEnvCategory(id: EnvCategoryId): EnvCategory {
   return ENV_CATEGORIES.find((c) => c.id === id) ?? ENV_CATEGORIES[0];
 }
 
+/**
+ * Phase 3 — "Common Situations" (Section 3's "I am..." quick-select).
+ *
+ * A friendlier, real-life-phrased entry point into the SAME six
+ * EnvCategory guidance sheets — not a new content subsystem. Selecting a
+ * situation just sets Section 3's existing selected-category state, so the
+ * Do / Don't / Better Choice guidance shown is the identical, already-
+ * curated content the matching topic tab already shows. "Air Quality"
+ * isn't offered as a situation since it's already the category the page
+ * highlights automatically when AQI needs attention (see
+ * defaultCategoryForTopic above).
+ */
+export interface Situation {
+  id: string;
+  label: string;
+  emoji: string;
+  category: EnvCategoryId;
+}
+
+export const COMMON_SITUATIONS: Situation[] = [
+  { id: "home", label: "At Home", emoji: "🏠", category: "energy" },
+  { id: "travel", label: "Travelling", emoji: "🚗", category: "transport" },
+  { id: "waste", label: "Handling Waste", emoji: "♻️", category: "waste" },
+  { id: "water", label: "Using Water", emoji: "💧", category: "water" },
+  { id: "greenery", label: "Caring for Greenery", emoji: "🌳", category: "greenery" },
+];
+
 // ─── Do This Instead (Section 2) ──────────────────────────────────────────────
 
 export interface AvoidBetterPair {
@@ -438,6 +465,53 @@ export const EVERYDAY_ACTIONS: EverydayGroup[] = [
     ],
   },
 ];
+
+/**
+ * Phase 3 — "Habit to build" (Section 5 gets a small featured habit).
+ *
+ * One deterministic, rotating habit shown above the Everyday Actions grid
+ * — education, not gamification: no streaks, no counters, no saved
+ * progress. Reuses the same TipItem shape already used for GreenGuard Tips
+ * Today rather than introducing a new content type. Rotation is a pure
+ * function of the calendar date, so it needs no new persistence layer.
+ */
+export const HABITS_TO_BUILD: TipItem[] = [
+  {
+    emoji: "🚗",
+    title: "Switch off unnecessary vehicle idling",
+    detail: "A simple habit that avoids unnecessary emissions during extended waits.",
+  },
+  {
+    emoji: "♻️",
+    title: "Separate waste as it's created",
+    detail: "Sort wet and dry waste in the moment instead of all at once later.",
+  },
+  {
+    emoji: "💧",
+    title: "Do a monthly leak check",
+    detail: "A few minutes checking taps and pipes can catch small leaks before they grow.",
+  },
+  {
+    emoji: "💡",
+    title: "Unplug chargers once they're done",
+    detail: "Idle chargers still draw a small amount of power when left plugged in.",
+  },
+  {
+    emoji: "🌳",
+    title: "Water plants in the cooler hours",
+    detail: "Watering in the early morning or evening reduces water lost to evaporation.",
+  },
+];
+
+/** Picks one habit per calendar day — deterministic, no randomness, no AI,
+ *  nothing stored. Same habit for everyone on a given day, changes the
+ *  next; not personalized to the individual citizen, which keeps this
+ *  honest rather than implying tracking that doesn't exist. */
+export function getHabitOfTheDay(date: Date = new Date()): TipItem {
+  const startOfYear = new Date(date.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((date.getTime() - startOfYear.getTime()) / 86_400_000);
+  return HABITS_TO_BUILD[dayOfYear % HABITS_TO_BUILD.length];
+}
 
 // ─── Today's Environmental Focus + GreenGuard Tips (Sections 1 & 6) ──────────
 //

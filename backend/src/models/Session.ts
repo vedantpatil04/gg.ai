@@ -65,7 +65,6 @@ const SessionSchema = new Schema<ISession>(
 );
 
 SessionSchema.index({ userId: 1, revoked: 1, lastActive: -1 });
-SessionSchema.index({ sessionId: 1 }, { unique: true });
 SessionSchema.index({ revoked: 1 });
 // Documents without expiresAt (pre-Phase-4 sessions) are simply ignored by
 // this index — MongoDB TTL indexes skip docs missing the indexed field, so
