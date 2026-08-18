@@ -1,12 +1,23 @@
 import { City } from "../models/City";
 import { EnvironmentalData } from "../models/EnvironmentalData";
-import { fetchAirQuality } from "./airQuality.service";
+import {
+  fetchAirQuality,
+  fetchAirQualityBatch,
+  AirQualityReading,
+} from "./airQuality.service";
 import {
   fetchWeather,
   fetchWeatherBatch,
   WeatherReading,
 } from "./weather.service";
+import { openMeteoRateLimiter } from "../utils/openMeteoRateLimiter";
 import { logger } from "../utils/logger";
+
+// ─── Freshness Threshold Constants ───────────────────────────────────────────
+// Minimum interval between database ingestion runs. If data was already
+// ingested within the last 20 minutes (e.g. by another instance or prior to
+// a server restart), scheduled cycles safely skip upstream calls.
+export const MIN_INGESTION_FRESHNESS_MINUTES = 20;
 
 // ─── Derive AQI-based composite scores (no hardcoded city values) ─────────────
 function deriveRiskScore(aqi: number, pm25: number): number {
@@ -29,6 +40,33 @@ function deriveCarbonEstimate(aqi: number, baseCarbon: number): number {
   return Math.round(baseCarbon * factor * 100) / 100;
 }
 
+/**
+ * Check if the database already contains fresh environmental data from a recent run.
+ * Protects against restart storms and multi-instance redundant fetching.
+ */
+export async function checkDatabaseFreshness(
+  minMinutes: number = MIN_INGESTION_FRESHNESS_MINUTES,
+): Promise<{ isFresh: boolean; lastTimestamp: Date | null; ageMinutes: number | null }> {
+  try {
+    const latest = await EnvironmentalData.findOne()
+      .sort({ timestamp: -1 })
+      .select("timestamp")
+      .lean();
+
+    if (!latest || !latest.timestamp) {
+      return { isFresh: false, lastTimestamp: null, ageMinutes: null };
+    }
+
+    const ageMs = Date.now() - new Date(latest.timestamp).getTime();
+    const ageMinutes = Math.round(ageMs / 60000);
+    const isFresh = ageMs < minMinutes * 60 * 1000;
+
+    return { isFresh, lastTimestamp: new Date(latest.timestamp), ageMinutes };
+  } catch {
+    return { isFresh: false, lastTimestamp: null, ageMinutes: null };
+  }
+}
+
 // ─── Ingest one city ──────────────────────────────────────────────────────────
 async function ingestCity(
   city: {
@@ -39,10 +77,13 @@ async function ingestCity(
     lng: number;
   },
   preloadedWx?: WeatherReading | null,
+  preloadedAq?: AirQualityReading | null,
 ): Promise<boolean> {
   try {
     const [aq, wx] = await Promise.all([
-      fetchAirQuality(city.lat, city.lng),
+      preloadedAq !== undefined
+        ? Promise.resolve(preloadedAq)
+        : fetchAirQuality(city.lat, city.lng, "UTC", city.cityId),
       preloadedWx !== undefined
         ? Promise.resolve(preloadedWx)
         : fetchWeather(city.lat, city.lng, "UTC", city.cityId),
@@ -99,7 +140,6 @@ async function ingestCity(
     };
 
     await EnvironmentalData.create(doc);
-    logger.info(`[ingestion] ✅ ${city.name} — AQI ${aqi}, PM2.5 ${pm25}`);
     return true;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -108,8 +148,15 @@ async function ingestCity(
   }
 }
 
+export interface IngestionRunOptions {
+  force?: boolean;
+}
+
 // ─── Main ingestion run — iterates all active cities from DB ─────────────────
-export async function runIngestion(): Promise<{ success: number; failed: number; total: number }> {
+export async function runIngestion(
+  options: IngestionRunOptions = {},
+): Promise<{ success: number; failed: number; total: number; skipped?: boolean }> {
+  const startTime = Date.now();
   logger.info("[ingestion] Starting environmental data ingestion run...");
 
   const cities = await City.find({ isActive: true }).lean();
@@ -118,21 +165,42 @@ export async function runIngestion(): Promise<{ success: number; failed: number;
     return { success: 0, failed: 0, total: 0 };
   }
 
-  // Pre-fetch weather for all active cities in a single batched request (with cache check)
-  const weatherMap = await fetchWeatherBatch(
-    cities.map((c) => ({
-      cityId: c.cityId,
-      lat: c.lat,
-      lng: c.lng,
-    })),
-  );
+  // Cross-instance / restart check: Skip if database data is already fresh (unless forced)
+  if (!options.force) {
+    const freshness = await checkDatabaseFreshness(MIN_INGESTION_FRESHNESS_MINUTES);
+    if (freshness.isFresh) {
+      logger.info(
+        `[ingestion] ⚡ Database readings are fresh (last ingested ${freshness.ageMinutes}m ago < ${MIN_INGESTION_FRESHNESS_MINUTES}m threshold) — skipping upstream calls for ${cities.length} cities`,
+      );
+      return { success: cities.length, failed: 0, total: cities.length, skipped: true };
+    }
+  }
+
+  // If rate limit cooldown is active, inform logs
+  if (openMeteoRateLimiter.isRateLimitActive()) {
+    logger.warn(
+      `[ingestion] ⚠️ Rate limit cooldown active (${openMeteoRateLimiter.getCooldownRemainingSeconds()}s remaining) — serving cached/stale data for ${cities.length} cities`,
+    );
+  }
+
+  const targets = cities.map((c) => ({
+    cityId: c.cityId,
+    lat: c.lat,
+    lng: c.lng,
+  }));
+
+  // Pre-fetch weather and air quality concurrently in batched requests (1 request each)
+  const [weatherMap, aqMap] = await Promise.all([
+    fetchWeatherBatch(targets),
+    fetchAirQualityBatch(targets),
+  ]);
 
   let success = 0;
   let failed = 0;
 
-  // Process cities with a small delay between calls to avoid rate limits on air quality
   for (const city of cities) {
     const wx = weatherMap.get(city.cityId) ?? null;
+    const aq = aqMap.get(city.cityId) ?? null;
     const ok = await ingestCity(
       {
         cityId: city.cityId,
@@ -142,17 +210,15 @@ export async function runIngestion(): Promise<{ success: number; failed: number;
         lng: city.lng,
       },
       wx,
+      aq,
     );
     if (ok) success++;
     else failed++;
-
-    // 500ms between cities to avoid API rate limiting on air quality
-    await new Promise((r) => setTimeout(r, 500));
   }
 
+  const durationMs = Date.now() - startTime;
   logger.info(
-    `[ingestion] Run complete — ${success} success, ${failed} failed of ${cities.length} cities`,
+    `[ingestion] Ingestion complete in ${durationMs}ms — ${success} success, ${failed} failed across ${cities.length} cities`,
   );
-  return { success, failed, total: cities.length };
+  return { success, failed, total: cities.length, skipped: false };
 }
-

@@ -1,6 +1,7 @@
 import axios from "axios";
 import { logger } from "../utils/logger";
 import { TtlCache } from "../utils/ttlCache";
+import { openMeteoRateLimiter } from "../utils/openMeteoRateLimiter";
 
 // ─── Open-Meteo Current Weather API ──────────────────────────────────────────
 // Docs: https://open-meteo.com/en/docs#current
@@ -75,24 +76,15 @@ interface OpenMeteoLocationItem {
   current?: OpenMeteoCurrentBlock;
 }
 
-// ─── Multi-tier TTL Cache for current weather (15m fresh, 24h stale fallback) ───
-// Avoids repeated per-city and burst requests across scheduler ticks or callers.
-const weatherCache = new TtlCache<WeatherReading>(15 * 60 * 1000, 24 * 60 * 60 * 1000);
+// ─── Multi-tier TTL Cache for current weather (30m fresh, 24h stale fallback) ───
+// 30m fresh window (aligned with 30m scheduler cycle), 24h stale fallback.
+const weatherCache = new TtlCache<WeatherReading>(
+  30 * 60 * 1000,
+  24 * 60 * 60 * 1000,
+);
 
 // In-flight batch fetch promise to prevent duplicate concurrent network requests
 let inFlightBatchPromise: Promise<Map<string, WeatherReading>> | null = null;
-let weatherRateLimitCooldownUntil = 0;
-
-function isWeatherRateLimitActive(): boolean {
-  return Date.now() < weatherRateLimitCooldownUntil;
-}
-
-function triggerWeatherRateLimitCooldown(): void {
-  weatherRateLimitCooldownUntil = Date.now() + 60_000;
-  logger.warn(
-    `[weather] Open-Meteo weather rate limit (HTTP 429) active until ${new Date(weatherRateLimitCooldownUntil).toISOString()}. Using stale/fallback weather readings.`,
-  );
-}
 
 function toFinite(v: unknown): number | null {
   const n = Number(v);
@@ -106,7 +98,7 @@ function coordKey(lat: number, lng: number): string {
 /**
  * Generate a safe deterministic baseline weather reading for unprimed cities on 429/failure.
  */
-function generateFallbackWeatherReading(lat: number, lng: number): WeatherReading {
+export function generateFallbackWeatherReading(lat: number, lng: number): WeatherReading {
   const baseTemp = 24 + Math.sin(lat) * 4;
   return {
     temp: Math.round(baseTemp * 10) / 10,
@@ -247,11 +239,17 @@ export async function fetchWeatherBatch(
 
   // All cities satisfied from fresh cache — no network request needed
   if (toFetch.length === 0) {
+    logger.debug(
+      `[weather] ${cities.length} cities served from fresh cache (0 upstream requests)`,
+    );
     return finalMap;
   }
 
   // If rate limit cooldown is actively in effect, immediately serve stale data or fallback
-  if (isWeatherRateLimitActive()) {
+  if (openMeteoRateLimiter.isRateLimitActive()) {
+    logger.info(
+      `[weather] Skipped upstream fetch for ${toFetch.length} cities — rate limit cooldown active (${openMeteoRateLimiter.getCooldownRemainingSeconds()}s remaining)`,
+    );
     for (const city of toFetch) {
       const stale =
         weatherCache.getStale(city.cityId) ||
@@ -299,6 +297,8 @@ export async function fetchWeatherBatch(
         },
       });
 
+      openMeteoRateLimiter.recordSuccess();
+
       const items: OpenMeteoLocationItem[] = Array.isArray(data)
         ? data
         : data
@@ -311,12 +311,12 @@ export async function fetchWeatherBatch(
       }
 
       logger.info(
-        `[weather] Batched fetch successful for ${mapped.size}/${toFetch.length} uncached cities (Open-Meteo)`,
+        `[weather] Batched fetch successful for ${mapped.size}/${toFetch.length} uncached cities (1 upstream request)`,
       );
       return finalMap;
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.status === 429) {
-        triggerWeatherRateLimitCooldown();
+        openMeteoRateLimiter.triggerRateLimitCooldown("weather");
       } else {
         const msg = err instanceof Error ? err.message : String(err);
         logger.warn(
@@ -385,5 +385,3 @@ export async function fetchWeather(
     weatherCache.getStale(coordKey(lat, lng));
   return stale ?? generateFallbackWeatherReading(lat, lng);
 }
-
-

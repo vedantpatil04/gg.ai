@@ -1,6 +1,7 @@
 import axios from "axios";
 import { logger } from "../utils/logger";
 import { TtlCache } from "../utils/ttlCache";
+import { openMeteoRateLimiter } from "../utils/openMeteoRateLimiter";
 
 // ─── Real Forecast Data Foundation (Phase 1) ──────────────────────────────────
 // Source: Open-Meteo (https://open-meteo.com) — chosen because it requires no
@@ -157,27 +158,12 @@ function toFiniteNumber(v: unknown): number | null {
 const MAX_FORECAST_DAYS = 7;
 const MAX_FORECAST_HOURS = 168;
 
-// ─── Provider fetch helpers & Rate-limit Circuit Breaker ─────────────────────
-
-let rateLimitCooldownUntil = 0;
-
-function isRateLimitActive(): boolean {
-  return Date.now() < rateLimitCooldownUntil;
-}
-
-function triggerRateLimitCooldown(endpointName: string): void {
-  rateLimitCooldownUntil = Date.now() + 60_000; // 60s cooldown
-  logger.warn(
-    `[forecastProvider] Open-Meteo ${endpointName} rate limit (HTTP 429) encountered. Cooldown activated until ${new Date(rateLimitCooldownUntil).toISOString()}. Serving stale/fallback data.`,
-  );
-}
-
 async function fetchWeatherForecast(
   lat: number,
   lng: number,
   timezone: string,
 ): Promise<OpenMeteoWeatherResponse | null> {
-  if (isRateLimitActive()) {
+  if (openMeteoRateLimiter.isRateLimitActive()) {
     return null;
   }
   try {
@@ -196,10 +182,11 @@ async function fetchWeatherForecast(
         daily: DAILY_WEATHER_VARS,
       },
     });
+    openMeteoRateLimiter.recordSuccess();
     return data;
   } catch (err: unknown) {
     if (axios.isAxiosError(err) && err.response?.status === 429) {
-      triggerRateLimitCooldown("weather");
+      openMeteoRateLimiter.triggerRateLimitCooldown("forecast-weather");
     } else {
       const msg = err instanceof Error ? err.message : String(err);
       logger.warn(`[forecastProvider] Open-Meteo weather forecast failed: ${msg}`);
@@ -213,7 +200,7 @@ async function fetchAirQualityForecast(
   lng: number,
   timezone: string,
 ): Promise<OpenMeteoAirQualityResponse | null> {
-  if (isRateLimitActive()) {
+  if (openMeteoRateLimiter.isRateLimitActive()) {
     return null;
   }
   try {
@@ -231,10 +218,11 @@ async function fetchAirQualityForecast(
         },
       },
     );
+    openMeteoRateLimiter.recordSuccess();
     return data;
   } catch (err: unknown) {
     if (axios.isAxiosError(err) && err.response?.status === 429) {
-      triggerRateLimitCooldown("air-quality");
+      openMeteoRateLimiter.triggerRateLimitCooldown("forecast-air-quality");
     } else {
       const msg = err instanceof Error ? err.message : String(err);
       logger.warn(
@@ -494,8 +482,11 @@ function generateDeterministicForecastBundle(
 // ─── Multi-tier cache & In-flight request deduplication ────────────────────────
 // Avoids hitting the external provider on every frontend render.
 // Keyed per cityId + timezone. One 7-day bundle per city.
-// Fresh TTL: 15 minutes, Stale fallback TTL: 24 hours.
-const forecastCache = new TtlCache<ForecastBundle>(15 * 60 * 1000, 24 * 60 * 60 * 1000);
+// Fresh TTL: 30 minutes, Stale fallback TTL: 24 hours.
+const forecastCache = new TtlCache<ForecastBundle>(
+  30 * 60 * 1000,
+  24 * 60 * 60 * 1000,
+);
 
 // In-flight deduplication map: coalesces concurrent requests for the same city
 const inFlightForecasts = new Map<string, Promise<ForecastBundle | null>>();
@@ -531,7 +522,7 @@ export async function getCityForecast(
   }
 
   // 3. If rate limit cooldown is actively in effect, immediately serve stale data or fallback
-  if (isRateLimitActive()) {
+  if (openMeteoRateLimiter.isRateLimitActive()) {
     const stale = forecastCache.getStale(cacheKey);
     if (stale) {
       return stale;
@@ -591,4 +582,3 @@ export async function getCityForecast(
     inFlightForecasts.delete(cacheKey);
   }
 }
-

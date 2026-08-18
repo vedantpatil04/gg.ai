@@ -1,6 +1,7 @@
 import axios from "axios";
 import { logger } from "../utils/logger";
 import { TtlCache } from "../utils/ttlCache";
+import { openMeteoRateLimiter } from "../utils/openMeteoRateLimiter";
 
 // ─── Open-Meteo Air Quality API (current conditions) ─────────────────────────
 // Docs: https://open-meteo.com/en/docs/air-quality-api
@@ -15,6 +16,12 @@ import { TtlCache } from "../utils/ttlCache";
 // so that ingestion.service.ts can carry forward the most-recent measured
 // value via its existing `aq?.so2 ?? prev?.so2` / `aq?.co ?? prev?.co`
 // fallback — returning 0 would be a fabricated measurement.
+
+export interface CityCoordinateTarget {
+  cityId: string;
+  lat: number;
+  lng: number;
+}
 
 // ─── Normalised output matching ingestion.service.ts expectations ─────────────
 export interface AirQualityReading {
@@ -55,32 +62,29 @@ const CURRENT_AQI_VARS = [
   "ozone",
 ].join(",");
 
-interface OpenMeteoCurrentAirQualityResponse {
-  current?: {
-    time?: string;
-    us_aqi?: number;
-    pm2_5?: number;
-    pm10?: number;
-    nitrogen_dioxide?: number;
-    ozone?: number;
-  };
+interface OpenMeteoAirQualityCurrentBlock {
+  time?: string;
+  us_aqi?: number;
+  pm2_5?: number;
+  pm10?: number;
+  nitrogen_dioxide?: number;
+  ozone?: number;
+}
+
+interface OpenMeteoAirQualityLocationItem {
+  latitude?: number;
+  longitude?: number;
+  location_id?: number;
+  current?: OpenMeteoAirQualityCurrentBlock;
 }
 
 // ─── Multi-tier cache & in-flight deduplication for current air quality ──────
-const airQualityCache = new TtlCache<AirQualityReading>(15 * 60 * 1000, 24 * 60 * 60 * 1000);
-const inFlightAirQuality = new Map<string, Promise<AirQualityReading | null>>();
-let airQualityRateLimitCooldownUntil = 0;
-
-function isAirQualityRateLimitActive(): boolean {
-  return Date.now() < airQualityRateLimitCooldownUntil;
-}
-
-function triggerAirQualityRateLimitCooldown(): void {
-  airQualityRateLimitCooldownUntil = Date.now() + 60_000;
-  logger.warn(
-    `[airQuality] Open-Meteo air-quality rate limit (HTTP 429) active until ${new Date(airQualityRateLimitCooldownUntil).toISOString()}. Using stale/fallback air quality data.`,
-  );
-}
+// 30m fresh window (aligned with 30m scheduler cycle), 24h stale fallback.
+const airQualityCache = new TtlCache<AirQualityReading>(
+  30 * 60 * 1000,
+  24 * 60 * 60 * 1000,
+);
+let inFlightAirQualityBatchPromise: Promise<Map<string, AirQualityReading>> | null = null;
 
 function toFinite(v: unknown): number | null {
   const n = Number(v);
@@ -94,7 +98,7 @@ function coordKey(lat: number, lng: number): string {
 /**
  * Generate a safe deterministic baseline air quality reading for unprimed cities on 429/failure.
  */
-function generateFallbackAirQualityReading(lat: number, lng: number): AirQualityReading {
+export function generateFallbackAirQualityReading(lat: number, lng: number): AirQualityReading {
   const baseAqi = 65 + Math.abs(Math.round((lat * 7 + lng * 13) % 40));
   return {
     aqi: baseAqi,
@@ -108,11 +112,239 @@ function generateFallbackAirQualityReading(lat: number, lng: number): AirQuality
 }
 
 /**
+ * Parse an Open-Meteo `current` air quality block into a normalized AirQualityReading.
+ * Returns null if both AQI and PM2.5 are missing.
+ */
+function parseCurrentAirQuality(
+  c?: OpenMeteoAirQualityCurrentBlock,
+): AirQualityReading | null {
+  if (!c) return null;
+
+  const aqi = toFinite(c.us_aqi);
+  const pm25 = toFinite(c.pm2_5);
+
+  if (aqi === null && pm25 === null) {
+    return null;
+  }
+
+  return {
+    aqi: Math.round(aqi ?? 0),
+    aqiStandard: "US_AQI",
+    pm25: Math.round((pm25 ?? 0) * 10) / 10,
+    pm10: Math.round((toFinite(c.pm10) ?? 0) * 10) / 10,
+    no2: Math.round((toFinite(c.nitrogen_dioxide) ?? 0) * 10) / 10,
+    o3: Math.round((toFinite(c.ozone) ?? 0) * 10) / 10,
+    source: "api",
+  };
+}
+
+/**
+ * Deterministically map Open-Meteo multi-location AQ responses to requested cities.
+ */
+function mapResponseToCities(
+  targets: CityCoordinateTarget[],
+  items: OpenMeteoAirQualityLocationItem[],
+): Map<string, AirQualityReading> {
+  const results = new Map<string, AirQualityReading>();
+  const unassignedTargets = new Set(targets.map((t) => t.cityId));
+
+  // Step 1: Match by location_id or array index if lengths match
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const locId =
+      item.location_id ?? (items.length === targets.length ? i : undefined);
+
+    if (locId !== undefined && locId >= 0 && locId < targets.length) {
+      const target = targets[locId];
+      if (unassignedTargets.has(target.cityId)) {
+        const latDiff = Math.abs((item.latitude ?? target.lat) - target.lat);
+        const lngDiff = Math.abs((item.longitude ?? target.lng) - target.lng);
+        if (latDiff < 1.5 && lngDiff < 1.5) {
+          const reading = parseCurrentAirQuality(item.current);
+          if (reading) {
+            results.set(target.cityId, reading);
+            airQualityCache.set(target.cityId, reading);
+            airQualityCache.set(coordKey(target.lat, target.lng), reading);
+            unassignedTargets.delete(target.cityId);
+            continue;
+          }
+        }
+      }
+    }
+  }
+
+  // Step 2: Fallback nearest-coordinate matching for any unassigned targets
+  for (const target of targets) {
+    if (!unassignedTargets.has(target.cityId)) continue;
+
+    let closestItem: OpenMeteoAirQualityLocationItem | null = null;
+    let minDistance = Infinity;
+
+    for (const item of items) {
+      if (item.latitude === undefined || item.longitude === undefined) continue;
+      const d = Math.hypot(
+        item.latitude - target.lat,
+        item.longitude - target.lng,
+      );
+      if (d < minDistance) {
+        minDistance = d;
+        closestItem = item;
+      }
+    }
+
+    if (closestItem && minDistance < 2.0) {
+      const reading = parseCurrentAirQuality(closestItem.current);
+      if (reading) {
+        results.set(target.cityId, reading);
+        airQualityCache.set(target.cityId, reading);
+        airQualityCache.set(coordKey(target.lat, target.lng), reading);
+        unassignedTargets.delete(target.cityId);
+      }
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Fetch current air quality for multiple cities in a single batched Open-Meteo request.
+ * Automatically checks TtlCache first, and only queries uncached coordinates.
+ * Deterministically maps results to each cityId.
+ */
+export async function fetchAirQualityBatch(
+  cities: CityCoordinateTarget[],
+): Promise<Map<string, AirQualityReading>> {
+  const finalMap = new Map<string, AirQualityReading>();
+  const toFetch: CityCoordinateTarget[] = [];
+
+  for (const city of cities) {
+    const cached =
+      airQualityCache.get(city.cityId) ||
+      airQualityCache.get(coordKey(city.lat, city.lng));
+
+    if (cached) {
+      finalMap.set(city.cityId, cached);
+    } else {
+      toFetch.push(city);
+    }
+  }
+
+  // All cities satisfied from fresh cache — zero upstream network requests needed
+  if (toFetch.length === 0) {
+    logger.debug(
+      `[airQuality] ${cities.length} cities served from fresh cache (0 upstream requests)`,
+    );
+    return finalMap;
+  }
+
+  // If rate limit cooldown is active, serve stale data or baseline fallback immediately
+  if (openMeteoRateLimiter.isRateLimitActive()) {
+    logger.info(
+      `[airQuality] Skipped upstream fetch for ${toFetch.length} cities — rate limit cooldown active (${openMeteoRateLimiter.getCooldownRemainingSeconds()}s remaining)`,
+    );
+    for (const city of toFetch) {
+      const stale =
+        airQualityCache.getStale(city.cityId) ||
+        airQualityCache.getStale(coordKey(city.lat, city.lng));
+      if (stale) {
+        finalMap.set(city.cityId, stale);
+      } else {
+        const fallback = generateFallbackAirQualityReading(city.lat, city.lng);
+        airQualityCache.set(city.cityId, fallback, 5 * 60 * 1000);
+        finalMap.set(city.cityId, fallback);
+      }
+    }
+    return finalMap;
+  }
+
+  // Deduplicate in-flight batch requests if another caller is fetching concurrently
+  if (inFlightAirQualityBatchPromise) {
+    try {
+      const inFlightResults = await inFlightAirQualityBatchPromise;
+      for (const city of toFetch) {
+        const res = inFlightResults.get(city.cityId);
+        if (res) finalMap.set(city.cityId, res);
+      }
+      return finalMap;
+    } catch {
+      // In-flight batch failed; fall through to attempt this batch
+    }
+  }
+
+  const batchExecution = (async () => {
+    try {
+      const lats = toFetch.map((c) => c.lat).join(",");
+      const lngs = toFetch.map((c) => c.lng).join(",");
+
+      const { data } = await axios.get<
+        OpenMeteoAirQualityLocationItem | OpenMeteoAirQualityLocationItem[]
+      >(AIR_QUALITY_BASE_URL, {
+        timeout: 10000,
+        params: {
+          latitude: lats,
+          longitude: lngs,
+          current: CURRENT_AQI_VARS,
+        },
+      });
+
+      openMeteoRateLimiter.recordSuccess();
+
+      const items: OpenMeteoAirQualityLocationItem[] = Array.isArray(data)
+        ? data
+        : data
+          ? [data]
+          : [];
+
+      const mapped = mapResponseToCities(toFetch, items);
+      for (const [cId, reading] of mapped.entries()) {
+        finalMap.set(cId, reading);
+      }
+
+      logger.info(
+        `[airQuality] Batched fetch successful for ${mapped.size}/${toFetch.length} uncached cities (1 upstream request)`,
+      );
+      return finalMap;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.status === 429) {
+        openMeteoRateLimiter.triggerRateLimitCooldown("air-quality");
+      } else {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.warn(
+          `[airQuality] Open-Meteo batched current fetch failed for ${toFetch.length} cities: ${msg}`,
+        );
+      }
+
+      // Populate any remaining uncached cities from stale cache or baseline
+      for (const city of toFetch) {
+        if (!finalMap.has(city.cityId)) {
+          const stale =
+            airQualityCache.getStale(city.cityId) ||
+            airQualityCache.getStale(coordKey(city.lat, city.lng));
+          if (stale) {
+            finalMap.set(city.cityId, stale);
+          } else {
+            const fallback = generateFallbackAirQualityReading(city.lat, city.lng);
+            airQualityCache.set(city.cityId, fallback, 5 * 60 * 1000);
+            finalMap.set(city.cityId, fallback);
+          }
+        }
+      }
+      return finalMap;
+    }
+  })();
+
+  inFlightAirQualityBatchPromise = batchExecution;
+  try {
+    return await batchExecution;
+  } finally {
+    inFlightAirQualityBatchPromise = null;
+  }
+}
+
+/**
  * Fetch current air-quality readings from Open-Meteo for a given coordinate.
- * Returns null if the provider is unavailable or returns no usable data.
- * Missing optional fields (so2, co) are not included in the result so that
- * callers can apply their own fallback logic without risk of using a
- * fabricated zero as a real measurement.
+ * Preserves 100% backward compatibility for single-city callers.
+ * Checks TtlCache first, delegating to batched fetch if uncached.
  *
  * @param lat      Latitude of the city
  * @param lng      Longitude of the city
@@ -126,108 +358,20 @@ export async function fetchAirQuality(
   cityId?: string,
 ): Promise<AirQualityReading | null> {
   const key = cityId || coordKey(lat, lng);
-
-  // 1. Check fresh cache
   const cached =
     (cityId ? airQualityCache.get(cityId) : undefined) ||
     airQualityCache.get(coordKey(lat, lng));
-  if (cached) return cached;
 
-  // 2. Check if a request for this coordinate/city is already in-flight
-  const existingInFlight = inFlightAirQuality.get(key);
-  if (existingInFlight) {
-    return existingInFlight;
+  if (cached) {
+    return cached;
   }
 
-  // 3. If rate limit cooldown is active, serve stale data or fallback immediately
-  if (isAirQualityRateLimitActive()) {
-    const stale =
-      (cityId ? airQualityCache.getStale(cityId) : undefined) ||
-      airQualityCache.getStale(coordKey(lat, lng));
-    if (stale) return stale;
-    return generateFallbackAirQualityReading(lat, lng);
-  }
+  const batchMap = await fetchAirQualityBatch([{ cityId: key, lat, lng }]);
+  const result = batchMap.get(key);
+  if (result) return result;
 
-  // 4. Execute fetch with deduplication
-  const fetchExecution = (async (): Promise<AirQualityReading | null> => {
-    try {
-      const { data } = await axios.get<OpenMeteoCurrentAirQualityResponse>(
-        AIR_QUALITY_BASE_URL,
-        {
-          timeout: 8000,
-          params: {
-            latitude: lat,
-            longitude: lng,
-            timezone,
-            current: CURRENT_AQI_VARS,
-          },
-        },
-      );
-
-      const c = data?.current;
-      if (!c) {
-        logger.warn(
-          `[airQuality] Open-Meteo returned no current block for (${lat}, ${lng})`,
-        );
-        const stale =
-          (cityId ? airQualityCache.getStale(cityId) : undefined) ||
-          airQualityCache.getStale(coordKey(lat, lng));
-        return stale ?? generateFallbackAirQualityReading(lat, lng);
-      }
-
-      const aqi = toFinite(c.us_aqi);
-      const pm25 = toFinite(c.pm2_5);
-
-      if (aqi === null && pm25 === null) {
-        logger.warn(
-          `[airQuality] Open-Meteo missing required AQI/PM2.5 for (${lat}, ${lng})`,
-        );
-        const stale =
-          (cityId ? airQualityCache.getStale(cityId) : undefined) ||
-          airQualityCache.getStale(coordKey(lat, lng));
-        return stale ?? generateFallbackAirQualityReading(lat, lng);
-      }
-
-      logger.info(
-        `[airQuality] Open-Meteo US AQI=${aqi ?? "n/a"} PM2.5=${pm25 ?? "n/a"} for (${lat}, ${lng})`,
-      );
-
-      const reading: AirQualityReading = {
-        aqi: Math.round(aqi ?? 0),
-        aqiStandard: "US_AQI",
-        pm25: Math.round((pm25 ?? 0) * 10) / 10,
-        pm10: Math.round((toFinite(c.pm10) ?? 0) * 10) / 10,
-        no2: Math.round((toFinite(c.nitrogen_dioxide) ?? 0) * 10) / 10,
-        o3: Math.round((toFinite(c.ozone) ?? 0) * 10) / 10,
-        source: "api",
-      };
-
-      airQualityCache.set(coordKey(lat, lng), reading);
-      if (cityId) airQualityCache.set(cityId, reading);
-
-      return reading;
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.status === 429) {
-        triggerAirQualityRateLimitCooldown();
-      } else {
-        const msg = err instanceof Error ? err.message : String(err);
-        logger.warn(
-          `[airQuality] Open-Meteo current fetch failed for (${lat}, ${lng}): ${msg}`,
-        );
-      }
-
-      const stale =
-        (cityId ? airQualityCache.getStale(cityId) : undefined) ||
-        airQualityCache.getStale(coordKey(lat, lng));
-      return stale ?? generateFallbackAirQualityReading(lat, lng);
-    }
-  })();
-
-  inFlightAirQuality.set(key, fetchExecution);
-  try {
-    return await fetchExecution;
-  } finally {
-    inFlightAirQuality.delete(key);
-  }
+  const stale =
+    (cityId ? airQualityCache.getStale(cityId) : undefined) ||
+    airQualityCache.getStale(coordKey(lat, lng));
+  return stale ?? generateFallbackAirQualityReading(lat, lng);
 }
-
