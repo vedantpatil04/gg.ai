@@ -1,24 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import {
-  ArrowRight,
-  Brain,
-  FileBarChart,
-  Leaf,
-  GitBranch,
-  Zap,
-  Database,
-  CheckCircle2,
-  ArrowUpRight,
-  Radio,
-  Globe2,
-} from "lucide-react";
+import { ArrowRight, Brain, Zap, Database, CheckCircle2, Radio, Globe2 } from "lucide-react";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { Hero } from "@/components/landing/hero/Hero";
 import { TrustStrip } from "@/components/landing/TrustStrip";
 import { RealWorldSection } from "@/components/landing/RealWorldSection";
 import { CitizenImpactSection } from "@/components/landing/CitizenImpactSection";
+import { ModuleShowcase } from "@/components/landing/ModuleShowcase";
 import { LANDING_CONTAINER } from "@/components/landing/shared";
 import { SectionDivider } from "@/components/landing/experiences/shared";
 import { EnvironmentalOverviewExperience } from "@/components/landing/experiences/EnvironmentalOverviewExperience";
@@ -318,30 +307,6 @@ function LiveOperations() {
 
 /* ---------------- MODULES ---------------- */
 function Modules() {
-  const modules = [
-    {
-      to: "/reports",
-      icon: FileBarChart,
-      name: "Reports",
-      desc: "Generate auditable, branded environmental reports for stakeholders in seconds.",
-      tag: "Compliance",
-    },
-    {
-      to: "/sustainability",
-      icon: Leaf,
-      name: "Sustainability",
-      desc: "Track carbon, ESG and SDG metrics across your city's operations and initiatives.",
-      tag: "ESG",
-    },
-    {
-      to: "/simulator",
-      icon: GitBranch,
-      name: "Policy Simulator",
-      desc: "Model the environmental impact of policy decisions before you commit to them.",
-      tag: "Decision",
-    },
-  ];
-
   return (
     <section className="py-24 border-t border-border/60">
       <div className={LANDING_CONTAINER}>
@@ -351,38 +316,7 @@ function Modules() {
           sub="Every module — the ones above and the three below — shares the same underlying data, so insight in one place is immediately actionable in the next."
         />
 
-        <div className="mt-12 grid gap-px bg-border/60 rounded-2xl overflow-hidden border border-border/60 sm:grid-cols-3">
-          {modules.map((m, i) => (
-            <motion.div
-              key={m.to}
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 0.4, delay: (i % 3) * 0.05 }}
-              className="group bg-card"
-            >
-              <Link
-                to={m.to}
-                className="block h-full p-6 transition-colors hover:bg-card/60 relative"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="grid size-10 place-items-center rounded-lg bg-[color:var(--color-primary)]/10 text-[color:var(--color-primary)] transition-all group-hover:scale-105 group-hover:bg-[color:var(--color-primary)]/15">
-                    <m.icon className="size-5" />
-                  </div>
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">
-                    {m.tag}
-                  </span>
-                </div>
-                <div className="mt-5 text-[15px] font-semibold tracking-tight">{m.name}</div>
-                <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{m.desc}</p>
-                <div className="mt-5 inline-flex items-center gap-1 text-xs font-medium text-foreground/70 group-hover:text-[color:var(--color-primary)] transition-colors">
-                  Open module
-                  <ArrowUpRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                </div>
-              </Link>
-            </motion.div>
-          ))}
-        </div>
+        <ModuleShowcase />
       </div>
     </section>
   );

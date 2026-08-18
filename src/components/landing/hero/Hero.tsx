@@ -32,6 +32,10 @@ export function Hero() {
   });
   const yRaw = useTransform(scrollYProgress, [0, 1], [0, -80]);
   const opacityRaw = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+  // A very small, controlled scale-up on the product preview as the hero
+  // scrolls past — reinforces that the surface is alive without faking any
+  // data. Deliberately subtle (max +3.5%) per the "restrained motion" brief.
+  const previewScale = useTransform(scrollYProgress, [0, 1], [1, 1.035]);
 
   return (
     <section ref={sectionRef} className="relative overflow-hidden">
@@ -109,7 +113,7 @@ export function Hero() {
 
           {/* Right: platform preview */}
           <div className="lg:pl-4">
-            <HeroPreviewFrame />
+            <HeroPreviewFrame scrollScale={previewScale} />
           </div>
         </motion.div>
       </motion.div>

@@ -26,14 +26,15 @@ import {
   Activity, Copy, RefreshCw, CheckCircle,
   MessageSquare, ThumbsUp, ThumbsDown, ArrowDown,
   MapPin, RotateCcw, Globe2, FileText, Search, ShieldCheck,
-  BarChart3, Layers,
+  BarChart3, Layers, ArrowLeft,
 } from "lucide-react";
 import { useCity } from "@/lib/city-context";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { copilotApi } from "@/lib/api/services.api";
 import { intelligenceApi } from "@/lib/api/environmental.api";
-import { WorkspaceTabs, type WorkspaceTab } from "@/components/intelligence/workspace-tabs";
+import type { WorkspaceTab } from "@/components/intelligence/workspace-tabs";
+import { CapabilityMenu, type Capability } from "@/components/intelligence/capability-menu";
 import { DocumentWorkspace } from "@/components/intelligence/document-workspace";
 import { ImageWorkspace }    from "@/components/intelligence/image-workspace";
 import { DataWorkspace }     from "@/components/intelligence/data-workspace";
@@ -180,6 +181,22 @@ function SectionHeader({
         {loading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
         {action}
       </div>
+    </div>
+  );
+}
+
+function CapabilityPanelHeader({ label, onBack }: { label: string; onBack: () => void }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <button
+        onClick={onBack}
+        aria-label="Back to Assistant conversation"
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground rounded-lg px-2.5 py-1.5 -ml-2.5 hover:bg-muted/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        <ArrowLeft className="size-3.5" /> Assistant
+      </button>
+      <span className="text-muted-foreground/50">/</span>
+      <span className="text-xs font-semibold text-foreground">{label}</span>
     </div>
   );
 }
@@ -434,7 +451,7 @@ function CompactPromptLauncher({
     <div className="flex flex-col items-center justify-center py-6 px-4 text-center max-w-4xl mx-auto w-full my-auto">
       {/* Compact AI Identity */}
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 mb-3">
-        <Sparkles className="size-3" /> GreenGuard Intelligence · Powered by Gemini
+        <Sparkles className="size-3" /> GreenGuard Intelligence Assistant
       </div>
 
       {/* Main Heading */}
@@ -1162,7 +1179,6 @@ function IntelligenceCenterWorkspace() {
         {/* Right side tools when on Assistant tab */}
         {tab === "chat" && (
           <div className="flex items-center gap-2 shrink-0">
-            <WorkspaceTabs active={wsTab} onChange={setWsTab} />
             {wsTab === "chat" && hasMessages && (
               <button
                 onClick={() => {
@@ -1269,12 +1285,22 @@ function IntelligenceCenterWorkspace() {
                     <div className="w-full max-w-[92%] sm:max-w-[88%] lg:max-w-[84%] mx-auto">
                       <div
                         className={cn(
-                          "flex items-end gap-2 rounded-2xl border transition-all duration-200 bg-background/80 p-1.5 shadow-sm",
+                          "flex flex-wrap sm:flex-nowrap items-end gap-2 rounded-2xl border transition-all duration-200 bg-background/80 p-1.5 shadow-sm",
                           inputFocused
                             ? "border-primary shadow-[var(--shadow-glow)]"
                             : "border-border/80 hover:border-primary/40",
                         )}
                       >
+                        {/* + capability menu — Document / Image / Data, reserved model indicator */}
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto shrink-0">
+                          <CapabilityMenu
+                            onSelect={(capability: Capability) => setWsTab(capability)}
+                            disabled={chatMutation.isPending}
+                          />
+                          <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground px-2 py-1.5 rounded-lg border border-border/50">
+                            Gemini 2.5 Flash
+                          </span>
+                        </div>
                         <textarea
                           ref={inputRef}
                           rows={1}
@@ -1318,6 +1344,7 @@ function IntelligenceCenterWorkspace() {
               {/* Multimodal Sub-Workspaces (Docs, Images, Data) */}
               {wsTab === "documents" && (
                 <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6" id="ws-panel-documents" role="tabpanel">
+                  <CapabilityPanelHeader label="Document" onBack={() => setWsTab("chat")} />
                   <DocumentWorkspace
                     cityId={city.id}
                     onAskAI={(p) => {
@@ -1329,6 +1356,7 @@ function IntelligenceCenterWorkspace() {
               )}
               {wsTab === "images" && (
                 <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6" id="ws-panel-images" role="tabpanel">
+                  <CapabilityPanelHeader label="Image" onBack={() => setWsTab("chat")} />
                   <ImageWorkspace
                     cityId={city.id}
                     onAskAI={(p) => {
@@ -1340,6 +1368,7 @@ function IntelligenceCenterWorkspace() {
               )}
               {wsTab === "data" && (
                 <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6" id="ws-panel-data" role="tabpanel">
+                  <CapabilityPanelHeader label="Data" onBack={() => setWsTab("chat")} />
                   <DataWorkspace
                     cityId={city.id}
                     onAskAI={(p) => {

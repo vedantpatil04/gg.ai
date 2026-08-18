@@ -54,10 +54,12 @@ export function HeroBackground() {
         />
       </div>
 
-      {/* Aurora glow blobs */}
+      {/* Aurora glow blobs — kept quiet: smaller, softer and lower-opacity than
+          Phase 3, so the backdrop reads as ambient atmosphere rather than a
+          neon halo competing with the product preview. */}
       <div
         className={cn(
-          "absolute -top-40 left-[-12%] size-[560px] rounded-full opacity-40 blur-[110px]",
+          "absolute -top-40 left-[-12%] size-[480px] rounded-full opacity-[0.22] blur-[120px]",
           !reducedMotion && "drift-blob",
         )}
         style={{
@@ -67,7 +69,7 @@ export function HeroBackground() {
       />
       <div
         className={cn(
-          "absolute -top-24 right-[-10%] size-[520px] rounded-full opacity-30 blur-[110px]",
+          "absolute -top-24 right-[-10%] size-[440px] rounded-full opacity-[0.16] blur-[120px]",
           !reducedMotion && "drift-blob",
         )}
         style={{
@@ -78,7 +80,7 @@ export function HeroBackground() {
       />
       <div
         className={cn(
-          "absolute top-16 left-1/3 size-[420px] rounded-full opacity-20 blur-[100px]",
+          "absolute top-16 left-1/3 size-[360px] rounded-full opacity-[0.12] blur-[110px]",
           !reducedMotion && "drift-blob",
         )}
         style={{
@@ -98,12 +100,13 @@ export function HeroBackground() {
         }}
       />
 
-      {/* Cursor-follow light — desktop only */}
+      {/* Cursor-follow light — desktop only, dialed back so it reads as a
+          faint spotlight rather than a glow source of its own. */}
       <div
-        className="absolute inset-0 hidden opacity-60 lg:block"
+        className="absolute inset-0 hidden opacity-40 lg:block"
         style={{
           background:
-            "radial-gradient(560px circle at var(--mx) var(--my), color-mix(in oklab, var(--color-primary) 10%, transparent), transparent 65%)",
+            "radial-gradient(520px circle at var(--mx) var(--my), color-mix(in oklab, var(--color-primary) 7%, transparent), transparent 65%)",
         }}
       />
 
