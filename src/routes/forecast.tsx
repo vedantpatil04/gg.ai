@@ -292,6 +292,7 @@ function Forecast() {
       return (r?.data?.data ?? r?.data ?? null) as ForecastResponseData | null;
     },
     staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
     enabled: isApiConnected,
     throwOnError: false,
   });
@@ -309,9 +310,11 @@ function Forecast() {
       return (r?.data?.data ?? r?.data ?? null) as WeeklyResponseData | null;
     },
     staleTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
     enabled: isApiConnected,
     throwOnError: false,
   });
+
 
   const series = forecastData?.series ?? [];
   const current = series[0];

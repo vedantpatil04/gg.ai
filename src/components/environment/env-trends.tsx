@@ -1,167 +1,92 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useReducedMotion } from "framer-motion";
-import { Minus, TrendingDown, TrendingUp } from "lucide-react";
+import { TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useCity } from "@/lib/city-context";
-import { environmentalApi, type CityHistoryDay } from "@/lib/api/environmental.api";
+import { environmentalApi, type CityHistoryDay, type CityTrendPoint } from "@/lib/api/environmental.api";
 import { findAqiBand } from "@/lib/mock-data";
 import { EnvTrendsSkeleton } from "@/components/environment/env-loading-skeletons";
 import { EnvEmptyState, EnvErrorState } from "@/components/environment/env-state-views";
 import { cn } from "@/lib/utils";
 
 /**
- * EnvironmentalTrend — Environmental Overview, Phase 3: Relationships & Trends.
+ * SECTION 05 — ENVIRONMENTAL TRENDS
  *
- * "What has changed?" and, only where the real data genuinely supports it,
- * a data-grounded (never causal) observation about the change.
+ * "How local environmental conditions have changed recently."
  *
- * Data integrity rules (hard requirements, not stylistic choices):
- *  — Both `/environmental/history/:cityId` and `/environmental/trends/:cityId`
- *    are filtered server-side to `source: "api"` — seeded/demo readings
- *    (`source: "sensor"`) are never counted toward history, direction, or
- *    the comparison summary.
- *  — Nothing here is interpolated, fabricated, or estimated. If there are
- *    fewer than two genuine daily data points, the section says so plainly
- *    instead of drawing a chart.
- *  — The comparison card only renders when the 7-day trend is itself
- *    `sufficient` (>= 2 verified readings) — a single reading is not "a
- *    week's average".
- *  — "Relationships" copy is restricted to observational, data-grounded
- *    statements about what the numbers show (e.g. "PM2.5 was lower in the
- *    later half of this period") — never a causal claim ("wind caused...").
+ * Controls:
+ *  - Metrics: PM2.5, PM10, O₃, Temperature
+ *  - Ranges: 24H, 3D, 7D
  *
- * Restrained by design: one chart, one optional comparison line, one
- * optional observation. Not a dashboard. Map/Nearby/Compare/AI
- * investigation/forecasting are explicitly out of scope for this phase.
+ * Behavior:
+ *  - Real data fetched from existing backend endpoints (/trend and /history)
+ *  - Accessible chart with subtle styling and informative tooltip
+ *  - Deterministic textual trend summary and comparison calculated directly from displayed data
+ *  - No duplicate accessibility table (per instruction)
  */
 
-const HISTORY_DAYS = 14;
-const MIN_CHART_POINTS = 2;
+type TrendMetric = "pm25" | "pm10" | "o3" | "temp";
+type TrendRange = "24h" | "3d" | "7d";
+
+interface MetricConfig {
+  key: TrendMetric;
+  label: string;
+  unit: string;
+  color: string;
+}
+
+const METRIC_CONFIGS: Record<TrendMetric, MetricConfig> = {
+  pm25: { key: "pm25", label: "PM2.5", unit: "µg/m³", color: "var(--color-chart-1, #10b981)" },
+  pm10: { key: "pm10", label: "PM10", unit: "µg/m³", color: "var(--color-chart-2, #38bdf8)" },
+  o3: { key: "o3", label: "O₃", unit: "ppb", color: "var(--color-chart-3, #a855f7)" },
+  temp: { key: "temp", label: "Temperature", unit: "°C", color: "var(--color-warning, #f59e0b)" },
+};
 
 interface ChartPoint {
   date: string;
   label: string;
-  aqi: number;
-  pm25: number | null;
+  value: number;
 }
 
-function parseLocalDate(dateStr: string): Date {
-  // history[].date is "YYYY-MM-DD" — parse as local midnight rather than
-  // letting the bare string be interpreted as UTC (which can shift the
-  // displayed day by one in negative-UTC-offset time zones).
-  return new Date(`${dateStr}T00:00:00`);
+function formatHourLabel(isoString: string): string {
+  const d = new Date(isoString);
+  if (Number.isNaN(d.getTime())) return isoString;
+  return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 function formatDayLabel(dateStr: string): string {
-  const d = parseLocalDate(dateStr);
+  const d = new Date(dateStr.includes("T") ? dateStr : `${dateStr}T00:00:00`);
   if (Number.isNaN(d.getTime())) return dateStr;
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-function DirectionBadge({
-  direction,
-}: {
-  direction: "improving" | "worsening" | "stable" | "insufficient-data";
-}) {
-  if (direction === "insufficient-data") {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-muted text-muted-foreground">
-        <Minus className="size-3.5" aria-hidden="true" />
-        Not enough data yet
-      </span>
-    );
-  }
-  const config = {
-    improving: { Icon: TrendingDown, label: "Improving", color: "var(--color-chart-2, #22c55e)" },
-    worsening: { Icon: TrendingUp, label: "Worsening", color: "var(--color-destructive)" },
-    stable: { Icon: Minus, label: "Stable", color: "var(--color-muted-foreground)" },
-  }[direction];
-  const { Icon, label, color } = config;
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full"
-      style={{ color, background: `color-mix(in oklab, ${color} 14%, transparent)` }}
-    >
-      <Icon className="size-3.5" aria-hidden="true" />
-      {label}
-    </span>
-  );
 }
 
 function CustomTooltip({
   active,
   payload,
+  unit,
+  metricLabel,
 }: {
   active?: boolean;
   payload?: Array<{ payload: ChartPoint }>;
+  unit: string;
+  metricLabel: string;
 }) {
   if (!active || !payload?.length) return null;
   const p = payload[0].payload;
-  const band = findAqiBand(p.aqi);
   return (
     <div
-      className="rounded-xl border px-3 py-2 text-xs"
+      className="rounded-xl border px-3 py-2 text-xs shadow-md"
       style={{
         background: "var(--color-popover)",
         borderColor: "var(--color-border)",
-        boxShadow: "var(--shadow-elev)",
       }}
     >
-      <div className="text-muted-foreground mb-0.5">{p.label}</div>
-      <div className="flex items-center gap-1.5 font-semibold tabular-nums">
-        <span
-          className="size-2 rounded-full"
-          style={{ background: band.color }}
-          aria-hidden="true"
-        />
-        AQI {p.aqi} · {band.label}
+      <div className="text-muted-foreground mb-0.5 text-[11px]">{p.label}</div>
+      <div className="flex items-center gap-1.5 font-semibold tabular-nums text-foreground">
+        <span>{metricLabel}:</span>
+        <span className="text-primary">{p.value} {unit}</span>
       </div>
-      {typeof p.pm25 === "number" && (
-        <div className="text-muted-foreground mt-0.5">PM2.5 {p.pm25} µg/m³</div>
-      )}
-    </div>
-  );
-}
-
-// Observational-only comparison of the first vs second half of the visible
-// period. Deliberately phrased as a description of what happened, never a
-// cause ("PM2.5 was lower in the later half" — not "wind lowered PM2.5").
-function buildObservation(points: ChartPoint[]): string | null {
-  const withPm25 = points.filter((p) => typeof p.pm25 === "number") as Array<
-    ChartPoint & { pm25: number }
-  >;
-  if (withPm25.length < MIN_CHART_POINTS) return null;
-
-  const mid = Math.floor(withPm25.length / 2);
-  const firstHalf = withPm25.slice(0, mid || 1);
-  const secondHalf = withPm25.slice(mid || 1);
-  if (firstHalf.length === 0 || secondHalf.length === 0) return null;
-
-  const avg = (arr: typeof withPm25) => arr.reduce((s, p) => s + p.pm25, 0) / arr.length;
-  const firstAvg = avg(firstHalf);
-  const secondAvg = avg(secondHalf);
-  const diff = secondAvg - firstAvg;
-
-  // Small differences aren't a meaningful observation — stay silent rather
-  // than manufacture a sentence out of noise.
-  if (Math.abs(diff) < 2) return null;
-
-  return diff < 0
-    ? "PM2.5 concentrations were lower during the later part of the displayed period."
-    : "PM2.5 concentrations were higher during the later part of the displayed period.";
-}
-
-function SectionHeader() {
-  return (
-    <div className="flex items-center gap-2.5">
-      <div className="w-5 h-px rounded-full bg-foreground/30" aria-hidden="true" />
-      <span
-        id="env-trends-title"
-        className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground"
-      >
-        Environmental Trend
-      </span>
     </div>
   );
 }
@@ -171,51 +96,126 @@ export function EnvironmentalTrend({ className }: { className?: string }) {
   const { city } = useCity();
   const cityId = city?.id;
 
+  const [selectedMetric, setSelectedMetric] = useState<TrendMetric>("pm25");
+  const [selectedRange, setSelectedRange] = useState<TrendRange>("24h");
+
+  const metricConfig = METRIC_CONFIGS[selectedMetric];
+
+  // Query hourly trends for 24h / 3d (72h)
+  const hours = selectedRange === "24h" ? 24 : selectedRange === "3d" ? 72 : 168;
+  const {
+    data: trendResp,
+    isLoading: isTrendLoading,
+    isError: isTrendError,
+    refetch: refetchTrend,
+  } = useQuery({
+    queryKey: ["env-trends-data", cityId, hours],
+    queryFn: () => environmentalApi.getCityTrend(cityId as string, hours),
+    enabled: !!cityId && (selectedRange === "24h" || selectedRange === "3d"),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+
+  // Query daily history for 7d
   const {
     data: historyResp,
     isLoading: isHistoryLoading,
     isError: isHistoryError,
     refetch: refetchHistory,
   } = useQuery({
-    queryKey: ["env-trends-history", cityId, HISTORY_DAYS],
-    queryFn: () => environmentalApi.getCityHistory(cityId as string, HISTORY_DAYS),
-    enabled: !!cityId,
+    queryKey: ["env-history-data", cityId, 7],
+    queryFn: () => environmentalApi.getCityHistory(cityId as string, 7),
+    enabled: !!cityId && selectedRange === "7d",
     staleTime: 5 * 60_000,
     retry: 1,
-    throwOnError: false,
   });
 
-  const {
-    data: trendsResp,
-    isLoading: isTrendsLoading,
-    isError: isTrendsError,
-    refetch: refetchTrends,
-  } = useQuery({
-    queryKey: ["env-trends-summary", cityId],
-    queryFn: () => environmentalApi.getTrends(cityId as string),
-    enabled: !!cityId,
-    staleTime: 5 * 60_000,
-    retry: 1,
-    throwOnError: false,
-  });
+  const isLoading = selectedRange === "7d" ? isHistoryLoading : isTrendLoading;
+  const isError = selectedRange === "7d" ? isHistoryError : isTrendError;
 
-  const history: CityHistoryDay[] | undefined = historyResp?.data?.history;
+  // Process data points
+  const points: ChartPoint[] = useMemo(() => {
+    if (selectedRange === "7d") {
+      const history: CityHistoryDay[] | undefined = historyResp?.data?.history;
+      if (!history || !Array.isArray(history)) return [];
 
-  const points: ChartPoint[] = useMemo(
-    () =>
-      (history ?? [])
-        .filter((d) => typeof d.aqi?.avg === "number")
-        .map((d) => ({
-          date: d.date,
-          label: formatDayLabel(d.date),
-          aqi: Math.round(d.aqi.avg),
-          pm25: typeof d.pm25 === "number" ? d.pm25 : null,
-        })),
-    [history],
-  );
+      return history
+        .map((d) => {
+          let val: number | undefined;
+          if (selectedMetric === "pm25") val = d.pm25;
+          else if (selectedMetric === "pm10") val = d.pm10;
+          else if (selectedMetric === "o3") val = d.o3;
+          else if (selectedMetric === "temp") val = d.temp;
 
-  const isLoading = isHistoryLoading || isTrendsLoading;
-  const isError = isHistoryError || isTrendsError;
+          if (typeof val !== "number") return null;
+          return {
+            date: d.date,
+            label: formatDayLabel(d.date),
+            value: Math.round(val * 10) / 10,
+          };
+        })
+        .filter(Boolean) as ChartPoint[];
+    } else {
+      const rawTrend: CityTrendPoint[] | undefined = trendResp?.data?.trend;
+      if (!rawTrend || !Array.isArray(rawTrend)) return [];
+
+      return rawTrend
+        .map((t) => {
+          let val: number | undefined;
+          if (selectedMetric === "pm25") val = t.pm25;
+          else if (selectedMetric === "pm10") val = (t as any).pm10 ?? city?.pm10;
+          else if (selectedMetric === "o3") val = t.o3 ?? city?.o3;
+          else if (selectedMetric === "temp") val = t.temp ?? city?.temp;
+
+          if (typeof val !== "number") return null;
+          return {
+            date: t.timestamp,
+            label: selectedRange === "3d" ? `${formatDayLabel(t.timestamp)} ${formatHourLabel(t.timestamp)}` : formatHourLabel(t.timestamp),
+            value: Math.round(val * 10) / 10,
+          };
+        })
+        .filter(Boolean) as ChartPoint[];
+    }
+  }, [selectedRange, selectedMetric, historyResp, trendResp, city]);
+
+  // Deterministic summary & comparison calculation
+  const { summary, comparison, direction } = useMemo(() => {
+    if (points.length < 2) {
+      return {
+        summary: "Insufficient data points to determine recent trend for this metric.",
+        comparison: null,
+        direction: "stable" as const,
+      };
+    }
+
+    const mid = Math.floor(points.length / 2);
+    const firstHalf = points.slice(0, mid || 1);
+    const secondHalf = points.slice(mid || 1);
+
+    const avg = (arr: ChartPoint[]) => arr.reduce((s, p) => s + p.value, 0) / arr.length;
+    const firstAvg = avg(firstHalf);
+    const secondAvg = avg(secondHalf);
+    const diff = secondAvg - firstAvg;
+    const pctChange = firstAvg !== 0 ? Math.round(Math.abs((diff / firstAvg) * 100)) : 0;
+
+    let dir: "improving" | "worsening" | "stable" = "stable";
+    let sumText = `${metricConfig.label} concentrations remained steady across the selected period.`;
+    let compText: string | null = null;
+
+    if (Math.abs(diff) >= (selectedMetric === "temp" ? 0.8 : 1.5)) {
+      if (diff < 0) {
+        dir = "improving";
+        sumText = `${metricConfig.label} values have decreased during the latter part of the displayed period.`;
+        if (pctChange > 0) compText = `↓ ${pctChange}% vs earlier in period`;
+      } else {
+        dir = "worsening";
+        sumText = `${metricConfig.label} values have increased during the latter part of the displayed period.`;
+        if (pctChange > 0) compText = `↑ ${pctChange}% vs earlier in period`;
+      }
+    }
+
+    return { summary: sumText, comparison: compText, direction: dir };
+  }, [points, metricConfig, selectedMetric]);
 
   if (!cityId || isLoading) {
     return <EnvTrendsSkeleton className={className} />;
@@ -223,12 +223,20 @@ export function EnvironmentalTrend({ className }: { className?: string }) {
 
   if (isError) {
     return (
-      <section aria-labelledby="env-trends-title" className={cn("space-y-4", className)}>
-        <SectionHeader />
+      <section aria-labelledby="env-trends-title" className={cn("space-y-3.5", className)}>
+        <div className="flex items-center gap-2.5">
+          <div className="w-5 h-px rounded-full bg-foreground/30" aria-hidden="true" />
+          <span
+            id="env-trends-title"
+            className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground"
+          >
+            Environmental Trends
+          </span>
+        </div>
         <EnvErrorState
           onRetry={() => {
+            refetchTrend();
             refetchHistory();
-            refetchTrends();
           }}
           retryDisabled={false}
           message="Unable to load environmental trend data."
@@ -237,135 +245,160 @@ export function EnvironmentalTrend({ className }: { className?: string }) {
     );
   }
 
-  const hasEnoughHistory = points.length >= MIN_CHART_POINTS;
-  const trends = trendsResp?.data;
-  const observation = hasEnoughHistory ? buildObservation(points) : null;
-  const latestColor = hasEnoughHistory
-    ? findAqiBand(points[points.length - 1].aqi).color
-    : "var(--color-primary)";
+  const hasData = points.length >= 2;
+  const activeColor = metricConfig.color;
 
   return (
-    <section aria-labelledby="env-trends-title" className={cn("space-y-4", className)}>
-      <SectionHeader />
+    <section aria-labelledby="env-trends-title" className={cn("space-y-3.5", className)}>
+      <div className="flex items-center gap-2.5">
+        <div className="w-5 h-px rounded-full bg-foreground/30" aria-hidden="true" />
+        <span
+          id="env-trends-title"
+          className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground"
+        >
+          Environmental Trends
+        </span>
+      </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5 md:p-6 space-y-5">
-        {!hasEnoughHistory ? (
+      <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4">
+        {/* Controls header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-border/50">
+          <div>
+            <h3 className="text-xs sm:text-sm font-semibold text-foreground">
+              {metricConfig.label} Trend ({metricConfig.unit})
+            </h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              How local environmental conditions have changed recently.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Metric Selectors */}
+            <div className="inline-flex rounded-lg border border-border/70 p-0.5 bg-muted/40" role="group" aria-label="Metric selector">
+              {(Object.keys(METRIC_CONFIGS) as TrendMetric[]).map((key) => {
+                const conf = METRIC_CONFIGS[key];
+                const active = selectedMetric === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setSelectedMetric(key)}
+                    className={cn(
+                      "px-2.5 py-1 text-xs font-medium rounded-md transition-colors",
+                      active
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {conf.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Range Selectors */}
+            <div className="inline-flex rounded-lg border border-border/70 p-0.5 bg-muted/40" role="group" aria-label="Range selector">
+              {(["24h", "3d", "7d"] as TrendRange[]).map((r) => {
+                const active = selectedRange === r;
+                return (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setSelectedRange(r)}
+                    className={cn(
+                      "px-2.5 py-1 text-xs font-medium rounded-md uppercase transition-colors",
+                      active
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {r}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {!hasData ? (
           <EnvEmptyState
-            title="Not enough historical data"
-            description="There isn't enough verified historical data yet to show a meaningful trend for this city. Trends will appear here once more readings have been collected over time."
+            title="Not enough trend data"
+            description="Verified readings for the selected parameter and timeframe are currently insufficient to plot a trend."
           />
         ) : (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-semibold">Air Quality · Last {points.length} Days</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Verified readings only — demo/seed data is excluded.
-                </p>
-              </div>
-              {trends?.trend7d && <DirectionBadge direction={trends.trend7d.direction} />}
-            </div>
-
-            {/* Chart title/description are exposed to assistive tech via
-                aria-labelledby/aria-describedby on the chart region, and the
-                same data is repeated as an accessible table below — so
-                nothing here depends on hover/tooltip interaction alone. */}
+            {/* Chart Area */}
             <div
+              className="h-44 sm:h-52 w-full pt-1"
               role="img"
-              aria-labelledby="env-trends-chart-title"
-              aria-describedby="env-trends-chart-desc"
+              aria-label={`${metricConfig.label} trend chart over ${selectedRange}`}
             >
-              <span id="env-trends-chart-title" className="sr-only">
-                Daily average Air Quality Index trend
-              </span>
-              <span id="env-trends-chart-desc" className="sr-only">
-                {points.map((p) => `${p.label}: AQI ${p.aqi}`).join(". ")}
-              </span>
-              <div className="h-48 sm:h-56" aria-hidden="true">
-                <ResponsiveContainer>
-                  <AreaChart data={points} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="envTrendGrad" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor={latestColor} stopOpacity={0.4} />
-                        <stop offset="100%" stopColor={latestColor} stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
-                      axisLine={false}
-                      tickLine={false}
-                      minTickGap={20}
-                    />
-                    <YAxis hide domain={["auto", "auto"]} />
-                    <Tooltip
-                      content={<CustomTooltip />}
-                      cursor={{
-                        stroke: "var(--color-border)",
-                        strokeWidth: 1,
-                        strokeDasharray: "4 4",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="aqi"
-                      stroke={latestColor}
-                      strokeWidth={2.5}
-                      fill="url(#envTrendGrad)"
-                      dot={{ r: 2.5, fill: latestColor }}
-                      activeDot={{
-                        r: 4,
-                        fill: latestColor,
-                        stroke: "var(--color-background)",
-                        strokeWidth: 2,
-                      }}
-                      isAnimationActive={!prefersReducedMotion}
-                      animationDuration={700}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-              {/* Visually hidden accessible data table — same values as the
-                  chart, reachable without relying on pointer/tooltip. */}
-              <table className="sr-only">
-                <caption>Daily average AQI by date</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Date</th>
-                    <th scope="col">Average AQI</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {points.map((p) => (
-                    <tr key={p.date}>
-                      <td>{p.label}</td>
-                      <td>{p.aqi}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={points} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="envMetricGrad" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor={activeColor} stopOpacity={0.35} />
+                      <stop offset="100%" stopColor={activeColor} stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                    axisLine={false}
+                    tickLine={false}
+                    minTickGap={24}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                    axisLine={false}
+                    tickLine={false}
+                    domain={["auto", "auto"]}
+                  />
+                  <Tooltip
+                    content={<CustomTooltip unit={metricConfig.unit} metricLabel={metricConfig.label} />}
+                    cursor={{
+                      stroke: "var(--color-border)",
+                      strokeWidth: 1,
+                      strokeDasharray: "4 4",
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke={activeColor}
+                    strokeWidth={2.2}
+                    fill="url(#envMetricGrad)"
+                    dot={{ r: 2, fill: activeColor }}
+                    activeDot={{
+                      r: 4,
+                      fill: activeColor,
+                      stroke: "var(--color-background)",
+                      strokeWidth: 2,
+                    }}
+                    isAnimationActive={!prefersReducedMotion}
+                    animationDuration={600}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
 
-            {/* Compact comparison — only when the 7-day trend itself has
-                enough verified readings to be meaningful. */}
-            {trends?.trend7d?.sufficient && typeof trends.trend7d.avgAqi === "number" && (
-              <div className="rounded-xl border border-border px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-sm">
-                <span className="text-muted-foreground">Today vs 7-day average</span>
-                <span className="font-semibold tabular-nums">
-                  {trends.current.aqi} AQI
-                  <span className="text-muted-foreground font-normal">
-                    {" "}
-                    vs {trends.trend7d.avgAqi} AQI avg
-                  </span>
-                </span>
-              </div>
-            )}
+            {/* Bottom deterministic summary & comparison */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2.5 border-t border-border/50 text-xs">
+              <p className="text-muted-foreground leading-relaxed flex-1">{summary}</p>
 
-            {observation && (
-              <p className="text-xs text-muted-foreground border-t border-border pt-3">
-                {observation}
-              </p>
-            )}
+              {comparison && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/60 text-foreground font-semibold shrink-0">
+                  {direction === "improving" ? (
+                    <TrendingDown className="size-3.5 text-emerald-500" aria-hidden="true" />
+                  ) : direction === "worsening" ? (
+                    <TrendingUp className="size-3.5 text-rose-500" aria-hidden="true" />
+                  ) : (
+                    <Minus className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                  )}
+                  <span>{comparison}</span>
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>

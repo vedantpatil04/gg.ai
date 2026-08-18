@@ -8,44 +8,25 @@ import {
   WEATHER_EXPLANATIONS,
 } from "@/lib/environmental-explanations";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { EnvUnderstandingSkeleton } from "@/components/environment/env-loading-skeletons";
 import { cn } from "@/lib/utils";
 
 /**
- * EnvironmentalUnderstanding — Environmental Overview, Phase 2.
+ * SECTION 04 — UNDERSTANDING THE ENVIRONMENT
  *
  * "What do these measurements mean? Why do they matter?"
  *
- * Sits directly beneath Current Conditions (Phase 1) and reuses its data
- * and methodology rather than introducing a parallel one:
- *  — AQI severity comes from the existing `AQI_BANDS` / `findAqiBand`
- *    (the app's single source of truth, also used by Current Conditions
- *    and the City Environmental Context summary).
- *  — Only pollutants Current Conditions actually renders (PM2.5 / PM10 /
- *    O₃ — whichever are present on the live city record) get an
- *    explanation card; nothing is invented for fields the record doesn't
- *    have.
- *  — There is no separate per-pollutant severity system anywhere in the
- *    app, so "today's reading" copy for a pollutant is phrased around the
- *    overall AQI band rather than fabricating one.
- *  — Weather measurements (temperature/humidity/wind/pressure) get short,
- *    non-causal descriptions only — no claims about what's driving today's
- *    AQI, which is Phase 3 (relationships/trends) scope.
- *
- * Interaction model is deliberately contextual, not a stacked "What is
- * AQI? What is PM2.5?" wall: the AQI scale is always visible (compact),
- * pollutant detail expands in place via Collapsible ("Learn more"), and
- * weather context is a small inline Popover per measurement — all
- * keyboard-accessible, none hover-only.
+ * Features:
+ *  - Renamed from "Understanding These Readings" to "Understanding the Environment"
+ *  - Compact AQI meaning and interactive scale
+ *  - Progressive disclosure / expandable explanations for:
+ *      • AQI
+ *      • PM2.5, PM10, O₃ (whichever present in live data)
+ *      • Temperature, Humidity, Wind, Pressure (whichever present in live data)
+ *  - Default state is compact and breathable, never an overwhelming wall of text.
  */
 
 function AqiScale({ aqi, band }: { aqi: number; band: AqiBandInfo }) {
-  // Bounded visual domain: the first five bands have real upper bounds
-  // (50/100/150/200/300); the final "Hazardous" band is open-ended, so it's
-  // given a fixed visual width equal to the previous segment rather than an
-  // arbitrary/fabricated upper bound. The marker position is clamped to this
-  // same domain.
   const domainMax = 400;
   let prevMax = 0;
   const segments = AQI_BANDS.map((b) => {
@@ -61,7 +42,7 @@ function AqiScale({ aqi, band }: { aqi: number; band: AqiBandInfo }) {
   return (
     <div className="space-y-2">
       <div
-        className="relative h-2.5 rounded-full overflow-hidden flex"
+        className="relative h-2 rounded-full overflow-hidden flex"
         role="img"
         aria-label={`Air quality scale. Current reading ${aqi}, in the ${band.label} range.`}
       >
@@ -89,75 +70,82 @@ function AqiScale({ aqi, band }: { aqi: number; band: AqiBandInfo }) {
   );
 }
 
-function AqiUnderstanding({ aqi }: { aqi: number }) {
+function AqiUnderstandingCard({ aqi }: { aqi: number }) {
   const band = findAqiBand(aqi);
-  const interpretation = `Air quality is currently in the ${band.label} range.`;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 md:p-6 space-y-4">
+    <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-3.5 flex flex-col justify-between">
       <div>
-        <h3 className="text-sm font-semibold">Understanding the AQI</h3>
-        <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{AQI_MEANING}</p>
+        <h3 className="text-xs sm:text-sm font-semibold text-foreground">Understanding the AQI</h3>
+        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{AQI_MEANING}</p>
       </div>
 
       <div className="flex items-baseline gap-2">
         <span
-          className="text-2xl font-bold tabular-nums"
+          className="text-2xl sm:text-3xl font-bold tabular-nums"
           style={{ color: band.color, fontFamily: "var(--font-display)" }}
         >
           {aqi}
         </span>
-        <span className="text-sm font-medium text-muted-foreground">· {band.label}</span>
+        <span className="text-xs sm:text-sm font-medium text-muted-foreground">· {band.label}</span>
       </div>
 
       <AqiScale aqi={aqi} band={band} />
 
-      <p className="text-sm leading-relaxed text-foreground/90">{interpretation}</p>
+      <p className="text-xs leading-relaxed text-foreground/80 border-t border-border/50 pt-2.5">
+        Current composite score across all standard monitored particulate and gaseous pollutants.
+      </p>
     </div>
   );
 }
 
-function PollutantCard({
-  pollutantKey,
+function ExpandableItem({
+  label,
   value,
   unit,
-  aqi,
-  band,
+  shortDesc,
+  fullDesc,
+  commonSources,
+  whyItMatters,
+  currentReadingNote,
 }: {
-  pollutantKey: string;
-  value: number;
+  label: string;
+  value?: number;
   unit: string;
-  aqi: number;
-  band: AqiBandInfo;
+  shortDesc: string;
+  fullDesc?: string;
+  commonSources?: string;
+  whyItMatters?: string;
+  currentReadingNote?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const info = POLLUTANT_EXPLANATIONS[pollutantKey];
-  if (!info) return null;
 
   return (
     <Collapsible
       open={open}
       onOpenChange={setOpen}
-      className="rounded-xl border border-border bg-card px-4 py-3"
+      className="rounded-xl border border-border/70 bg-card/60 px-3.5 py-2.5 transition-colors"
     >
       <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-baseline gap-2">
-            <span className="text-sm font-semibold">{info.label}</span>
-            <span className="text-sm tabular-nums text-muted-foreground">
-              {value} {unit}
-            </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-xs sm:text-sm font-semibold text-foreground">{label}</span>
+            {typeof value === "number" && (
+              <span className="text-xs tabular-nums text-muted-foreground font-medium">
+                {value} {unit}
+              </span>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">{info.whatItIs}</p>
+          <p className="text-[11px] text-muted-foreground truncate mt-0.5">{shortDesc}</p>
         </div>
         <CollapsibleTrigger asChild>
           <button
             type="button"
-            className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary cursor-pointer hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1.5 py-1"
+            className="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-primary cursor-pointer hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1.5 py-1"
             aria-expanded={open}
-            aria-label={`${open ? "Hide" : "Learn more about"} ${info.label}`}
+            aria-label={`${open ? "Hide" : "Learn more about"} ${label}`}
           >
-            {open ? "Hide" : "Learn more"}
+            {open ? "Less" : "Learn more"}
             <ChevronDown
               className={cn("size-3.5 transition-transform duration-200", open && "rotate-180")}
               aria-hidden="true"
@@ -167,89 +155,43 @@ function PollutantCard({
       </div>
 
       <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-        <div className="pt-3 mt-3 border-t border-border space-y-2.5 text-sm">
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              What it is
-            </p>
-            <p className="mt-0.5 text-foreground/90 leading-relaxed">{info.whatItIs}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Common sources
-            </p>
-            <p className="mt-0.5 text-foreground/90 leading-relaxed">{info.commonSources}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Why it matters
-            </p>
-            <p className="mt-0.5 text-foreground/90 leading-relaxed">{info.whyItMatters}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Today's reading
-            </p>
-            <p className="mt-0.5 text-foreground/90 leading-relaxed">
-              Today's {info.label} reading is {value} {unit}, measured alongside an overall AQI of{" "}
-              {aqi}, which is currently in the {band.label} range.
-            </p>
-          </div>
+        <div className="pt-3 mt-2.5 border-t border-border/50 space-y-2 text-xs">
+          {fullDesc && (
+            <div>
+              <span className="font-semibold text-muted-foreground text-[10px] uppercase tracking-wider">
+                What it is
+              </span>
+              <p className="mt-0.5 text-foreground/90 leading-relaxed">{fullDesc}</p>
+            </div>
+          )}
+          {commonSources && (
+            <div>
+              <span className="font-semibold text-muted-foreground text-[10px] uppercase tracking-wider">
+                Common sources
+              </span>
+              <p className="mt-0.5 text-foreground/90 leading-relaxed">{commonSources}</p>
+            </div>
+          )}
+          {whyItMatters && (
+            <div>
+              <span className="font-semibold text-muted-foreground text-[10px] uppercase tracking-wider">
+                Why it matters
+              </span>
+              <p className="mt-0.5 text-foreground/90 leading-relaxed">{whyItMatters}</p>
+            </div>
+          )}
+          {currentReadingNote && (
+            <div>
+              <span className="font-semibold text-muted-foreground text-[10px] uppercase tracking-wider">
+                Today&apos;s observation
+              </span>
+              <p className="mt-0.5 text-foreground/90 leading-relaxed">{currentReadingNote}</p>
+            </div>
+          )}
         </div>
       </CollapsibleContent>
     </Collapsible>
   );
-}
-
-function WeatherItem({
-  measureKey,
-  value,
-  unit,
-}: {
-  measureKey: string;
-  value: number;
-  unit: string;
-}) {
-  const info = WEATHER_EXPLANATIONS[measureKey];
-  if (!info) return null;
-
-  return (
-    <div className="flex items-center justify-between gap-2 py-2">
-      <div className="flex items-center gap-1.5 min-w-0">
-        <span className="text-xs text-muted-foreground">{info.label}</span>
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className="text-muted-foreground/70 hover:text-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-full shrink-0"
-              aria-label={`What is ${info.label}?`}
-            >
-              <Info className="size-3.5" aria-hidden="true" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-64 text-xs leading-relaxed p-3">
-            {info.description}
-          </PopoverContent>
-        </Popover>
-      </div>
-      <span className="text-sm font-semibold tabular-nums shrink-0">
-        {value}
-        <span className="text-xs font-normal text-muted-foreground ml-1">{unit}</span>
-      </span>
-    </div>
-  );
-}
-
-interface PollutantField {
-  key: string;
-  value: number;
-  unit: string;
-}
-
-interface WeatherField {
-  key: string;
-  value: number;
-  unit: string;
 }
 
 export function EnvironmentalUnderstanding({ className }: { className?: string }) {
@@ -259,70 +201,136 @@ export function EnvironmentalUnderstanding({ className }: { className?: string }
     return <EnvUnderstandingSkeleton className={className} />;
   }
 
-  // Errors and the fully-empty case are already surfaced by Current
-  // Conditions directly above this section — avoid stacking a second,
-  // redundant empty/error state under it.
   if (isCityError || !city || typeof city.aqi !== "number") {
     return null;
   }
 
   const band = findAqiBand(city.aqi);
 
-  const pollutants: PollutantField[] = [];
-  if (typeof city.pm25 === "number")
-    pollutants.push({ key: "pm25", value: city.pm25, unit: "µg/m³" });
-  if (typeof city.pm10 === "number")
-    pollutants.push({ key: "pm10", value: city.pm10, unit: "µg/m³" });
-  if (typeof city.o3 === "number") pollutants.push({ key: "o3", value: city.o3, unit: "ppb" });
+  // Pollutants present in current city
+  const pollutants = [
+    typeof city.pm25 === "number"
+      ? {
+          key: "pm25",
+          label: "PM2.5",
+          value: city.pm25,
+          unit: "µg/m³",
+          info: POLLUTANT_EXPLANATIONS.pm25,
+        }
+      : null,
+    typeof city.pm10 === "number"
+      ? {
+          key: "pm10",
+          label: "PM10",
+          value: city.pm10,
+          unit: "µg/m³",
+          info: POLLUTANT_EXPLANATIONS.pm10,
+        }
+      : null,
+    typeof city.o3 === "number"
+      ? {
+          key: "o3",
+          label: "O₃",
+          value: city.o3,
+          unit: "ppb",
+          info: POLLUTANT_EXPLANATIONS.o3,
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    key: string;
+    label: string;
+    value: number;
+    unit: string;
+    info: (typeof POLLUTANT_EXPLANATIONS)[string];
+  }>;
 
-  const weatherFields: WeatherField[] = [];
-  if (typeof city.temp === "number")
-    weatherFields.push({ key: "temp", value: city.temp, unit: "°C" });
-  if (typeof city.humidity === "number")
-    weatherFields.push({ key: "humidity", value: city.humidity, unit: "%" });
-  if (typeof city.windSpeed === "number")
-    weatherFields.push({ key: "wind", value: city.windSpeed, unit: "km/h" });
-  if (typeof city.pressure === "number")
-    weatherFields.push({ key: "pressure", value: city.pressure, unit: "hPa" });
+  // Atmospheric items present in current city
+  const atmospheric = [
+    typeof city.temp === "number"
+      ? {
+          key: "temp",
+          label: "Temperature",
+          value: city.temp,
+          unit: "°C",
+          info: WEATHER_EXPLANATIONS.temp,
+        }
+      : null,
+    typeof city.humidity === "number"
+      ? {
+          key: "humidity",
+          label: "Humidity",
+          value: city.humidity,
+          unit: "%",
+          info: WEATHER_EXPLANATIONS.humidity,
+        }
+      : null,
+    typeof city.windSpeed === "number"
+      ? {
+          key: "wind",
+          label: "Wind Speed",
+          value: city.windSpeed,
+          unit: "km/h",
+          info: WEATHER_EXPLANATIONS.wind,
+        }
+      : null,
+    typeof city.pressure === "number"
+      ? {
+          key: "pressure",
+          label: "Atmospheric Pressure",
+          value: city.pressure,
+          unit: "hPa",
+          info: WEATHER_EXPLANATIONS.pressure,
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    key: string;
+    label: string;
+    value: number;
+    unit: string;
+    info: (typeof WEATHER_EXPLANATIONS)[string];
+  }>;
 
   return (
-    <section aria-labelledby="env-understanding-title" className={cn("space-y-4", className)}>
+    <section aria-labelledby="env-understanding-title" className={cn("space-y-3.5", className)}>
       <div className="flex items-center gap-2.5">
         <div className="w-5 h-px rounded-full bg-foreground/30" aria-hidden="true" />
         <span
           id="env-understanding-title"
           className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground"
         >
-          Understanding These Readings
+          Understanding the Environment
         </span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.1fr] gap-4">
-        <AqiUnderstanding aqi={city.aqi} />
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-4 items-start">
+        <AqiUnderstandingCard aqi={city.aqi} />
 
-        <div className="space-y-4">
-          {pollutants.length > 0 && (
-            <div className="space-y-2.5">
-              {pollutants.map((p) => (
-                <PollutantCard
-                  key={p.key}
-                  pollutantKey={p.key}
-                  value={p.value}
-                  unit={p.unit}
-                  aqi={city.aqi}
-                  band={band}
-                />
-              ))}
-            </div>
-          )}
+        <div className="space-y-2">
+          {pollutants.map((p) => (
+            <ExpandableItem
+              key={p.key}
+              label={p.label}
+              value={p.value}
+              unit={p.unit}
+              shortDesc={p.info?.whatItIs ?? ""}
+              fullDesc={p.info?.whatItIs}
+              commonSources={p.info?.commonSources}
+              whyItMatters={p.info?.whyItMatters}
+              currentReadingNote={`Today's ${p.label} is ${p.value} ${p.unit} alongside an overall AQI of ${city.aqi} (${band.label}).`}
+            />
+          ))}
 
-          {weatherFields.length > 0 && (
-            <div className="rounded-xl border border-border bg-card px-4 py-1 divide-y divide-border">
-              {weatherFields.map((w) => (
-                <WeatherItem key={w.key} measureKey={w.key} value={w.value} unit={w.unit} />
-              ))}
-            </div>
-          )}
+          {atmospheric.map((w) => (
+            <ExpandableItem
+              key={w.key}
+              label={w.label}
+              value={w.value}
+              unit={w.unit}
+              shortDesc={w.info?.description ?? ""}
+              fullDesc={w.info?.description}
+              currentReadingNote={`Current recorded ${w.label.toLowerCase()} is ${w.value} ${w.unit}.`}
+            />
+          ))}
         </div>
       </div>
     </section>

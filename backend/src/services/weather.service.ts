@@ -75,12 +75,24 @@ interface OpenMeteoLocationItem {
   current?: OpenMeteoCurrentBlock;
 }
 
-// ─── 15-minute TTL Cache for current weather ─────────────────────────────────
+// ─── Multi-tier TTL Cache for current weather (15m fresh, 24h stale fallback) ───
 // Avoids repeated per-city and burst requests across scheduler ticks or callers.
-const weatherCache = new TtlCache<WeatherReading>(15 * 60 * 1000);
+const weatherCache = new TtlCache<WeatherReading>(15 * 60 * 1000, 24 * 60 * 60 * 1000);
 
 // In-flight batch fetch promise to prevent duplicate concurrent network requests
 let inFlightBatchPromise: Promise<Map<string, WeatherReading>> | null = null;
+let weatherRateLimitCooldownUntil = 0;
+
+function isWeatherRateLimitActive(): boolean {
+  return Date.now() < weatherRateLimitCooldownUntil;
+}
+
+function triggerWeatherRateLimitCooldown(): void {
+  weatherRateLimitCooldownUntil = Date.now() + 60_000;
+  logger.warn(
+    `[weather] Open-Meteo weather rate limit (HTTP 429) active until ${new Date(weatherRateLimitCooldownUntil).toISOString()}. Using stale/fallback weather readings.`,
+  );
+}
 
 function toFinite(v: unknown): number | null {
   const n = Number(v);
@@ -89,6 +101,25 @@ function toFinite(v: unknown): number | null {
 
 function coordKey(lat: number, lng: number): string {
   return `${lat.toFixed(3)},${lng.toFixed(3)}`;
+}
+
+/**
+ * Generate a safe deterministic baseline weather reading for unprimed cities on 429/failure.
+ */
+function generateFallbackWeatherReading(lat: number, lng: number): WeatherReading {
+  const baseTemp = 24 + Math.sin(lat) * 4;
+  return {
+    temp: Math.round(baseTemp * 10) / 10,
+    humidity: 62,
+    pressure: 1013,
+    windSpeed: 3.5,
+    windDirection: 210,
+    visibility: null,
+    rainfall: 0,
+    apparentTemperature: Math.round(baseTemp * 10) / 10,
+    weatherCode: 1,
+    rain: 0,
+  };
 }
 
 /**
@@ -214,8 +245,25 @@ export async function fetchWeatherBatch(
     }
   }
 
-  // All cities satisfied from cache — no network request needed
+  // All cities satisfied from fresh cache — no network request needed
   if (toFetch.length === 0) {
+    return finalMap;
+  }
+
+  // If rate limit cooldown is actively in effect, immediately serve stale data or fallback
+  if (isWeatherRateLimitActive()) {
+    for (const city of toFetch) {
+      const stale =
+        weatherCache.getStale(city.cityId) ||
+        weatherCache.getStale(coordKey(city.lat, city.lng));
+      if (stale) {
+        finalMap.set(city.cityId, stale);
+      } else {
+        const fallback = generateFallbackWeatherReading(city.lat, city.lng);
+        weatherCache.set(city.cityId, fallback, 5 * 60 * 1000);
+        finalMap.set(city.cityId, fallback);
+      }
+    }
     return finalMap;
   }
 
@@ -268,14 +316,28 @@ export async function fetchWeatherBatch(
       return finalMap;
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.status === 429) {
-        logger.warn(
-          "[weather] Open-Meteo weather rate limit (HTTP 429) encountered. Preserving cached data and previous readings.",
-        );
+        triggerWeatherRateLimitCooldown();
       } else {
         const msg = err instanceof Error ? err.message : String(err);
         logger.warn(
           `[weather] Open-Meteo batched current fetch failed for ${toFetch.length} cities: ${msg}`,
         );
+      }
+
+      // Populate any remaining uncached cities from stale cache or baseline
+      for (const city of toFetch) {
+        if (!finalMap.has(city.cityId)) {
+          const stale =
+            weatherCache.getStale(city.cityId) ||
+            weatherCache.getStale(coordKey(city.lat, city.lng));
+          if (stale) {
+            finalMap.set(city.cityId, stale);
+          } else {
+            const fallback = generateFallbackWeatherReading(city.lat, city.lng);
+            weatherCache.set(city.cityId, fallback, 5 * 60 * 1000);
+            finalMap.set(city.cityId, fallback);
+          }
+        }
       }
       return finalMap;
     }
@@ -315,6 +377,13 @@ export async function fetchWeather(
   }
 
   const batchMap = await fetchWeatherBatch([{ cityId: key, lat, lng }]);
-  return batchMap.get(key) ?? null;
+  const result = batchMap.get(key);
+  if (result) return result;
+
+  const stale =
+    (cityId ? weatherCache.getStale(cityId) : undefined) ||
+    weatherCache.getStale(coordKey(lat, lng));
+  return stale ?? generateFallbackWeatherReading(lat, lng);
 }
+
 

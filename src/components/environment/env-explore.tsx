@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { ArrowRight, MapPin } from "lucide-react";
+import { ArrowRight, ChevronDown, MapPin, ShieldAlert, Sparkles, Activity } from "lucide-react";
 import { useCity } from "@/lib/city-context";
 import { useTheme } from "@/lib/theme";
 import { environmentalApi, type MapLocation } from "@/lib/api/environmental.api";
@@ -14,36 +14,18 @@ import { EnvEmptyState, EnvErrorState } from "@/components/environment/env-state
 import { cn } from "@/lib/utils";
 
 /**
- * EnvironmentalExplore — Environmental Overview, Phase 4: Environmental
- * Exploration.
+ * SECTION 07 — ENVIRONMENTAL MONITORING NETWORK
  *
- * "Where are environmental conditions occurring?" — a compact, mostly
- * read-only spatial view of the current city's monitored locations.
+ * "Where are conditions occurring across the city?"
  *
- * Architecture rule (hard requirement): this is NOT a second Smart Map.
- *  — No second MapLibre engine, no second basemap provider: this reuses
- *    `OSM_DARK_STYLE` from lib/map/base-map-config.ts, the exact style
- *    SmartMapCanvas is built on.
- *  — No second GIS/location data source: this reuses
- *    `environmentalApi.getCityMapData`, the same endpoint SmartMapCanvas
- *    and the Digital Twin page use for `MapLocation[]`.
- *  — No second AQI/category color system: this reuses `aqiColor()` /
- *    `categoryColor()` from lib/map/map-visuals.ts.
- *  — `SmartMapCanvas` itself is intentionally NOT embedded here — its
- *    props surface (layer manager, live search, measure tool, fullscreen,
- *    geolocation tracking) is the full Smart Map experience, and wiring
- *    all of that in would just recreate a second Smart Map on this page.
- *    Instead this mounts its own minimal MapLibre instance — pan/zoom
- *    only, no controls beyond that — following the same lightweight
- *    pattern already used by components/citizen/complaint-location-map.tsx.
- *  — Anyone wanting the full spatial toolset is sent to /map via the
- *    "Open Smart Map" link, not given a second copy of it here.
+ * Features:
+ *  - Title: "Environmental Monitoring Network"
+ *  - Dynamic subtitle: "${count} monitored locations across ${city.name}"
+ *  - Minimal, responsive MapLibre canvas with location pins
+ *  - Concise Area Comparison summary (Highest AQI, Lowest AQI, Most Improved / Stable when data exists)
+ *  - "View all monitored locations →" interaction
  */
 
-// ─── Light basemap style (mirrors complaint-location-map.tsx's local copy —
-// no shared light-style export exists in base-map-config.ts yet, so this
-// follows the same established per-component pattern rather than editing
-// that shared config file). ────────────────────────────────────────────────
 const OSM_LIGHT_STYLE: maplibregl.StyleSpecification = {
   version: 8 as const,
   glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
@@ -76,11 +58,9 @@ const OSM_LIGHT_STYLE: maplibregl.StyleSpecification = {
   ],
 };
 
-const MAX_LOCATIONS_SHOWN = 12;
-
 function buildDotHTML(level: number, active: boolean): string {
   const color = aqiColor(level);
-  const size = active ? 22 : 16;
+  const size = active ? 20 : 14;
   return `
     <div aria-hidden="true"
       style="
@@ -93,34 +73,7 @@ function buildDotHTML(level: number, active: boolean): string {
   `;
 }
 
-function SectionHeader() {
-  return (
-    <div className="flex items-center gap-2.5">
-      <div className="w-5 h-px rounded-full bg-foreground/30" aria-hidden="true" />
-      <span
-        id="env-explore-title"
-        className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground"
-      >
-        Explore the Environment
-      </span>
-    </div>
-  );
-}
-
-export function EnvironmentalExplore({
-  className,
-  onSelectionChange,
-}: {
-  className?: string;
-  /** Optional — fired whenever the selected monitored location changes (or
-   *  clears). Purely additive: Phase 4 behaves identically whether or not a
-   *  listener is attached. Lets Phase 5's AI entry point ground a question
-   *  in whichever location the citizen has selected here, without this
-   *  component needing to know anything about AI. */
-  onSelectionChange?: (
-    location: { id: string; name: string; category: string; level: number } | null,
-  ) => void;
-}) {
+export function EnvironmentalExplore({ className }: { className?: string }) {
   const { city } = useCity();
   const cityId = city?.id;
   const { resolvedTheme } = useTheme();
@@ -130,6 +83,7 @@ export function EnvironmentalExplore({
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mapMounted, setMapMounted] = useState(false);
+  const [showAllLocations, setShowAllLocations] = useState(false);
 
   const {
     data: mapResp,
@@ -142,40 +96,25 @@ export function EnvironmentalExplore({
     enabled: !!cityId,
     staleTime: 5 * 60_000,
     retry: 1,
-    throwOnError: false,
   });
 
   const mapData = mapResp?.data;
   const locations: MapLocation[] = useMemo(
-    () =>
-      (mapData?.locations ?? [])
-        .slice()
-        .sort((a, b) => b.level - a.level)
-        .slice(0, MAX_LOCATIONS_SHOWN),
+    () => (mapData?.locations ?? []).slice().sort((a, b) => b.level - a.level),
     [mapData],
   );
+
   const hasLocations = locations.length > 0;
   const selected = locations.find((l) => l.id === selectedId) ?? null;
 
-  // Notify listener on selection change — additive, no effect on Phase 4's
-  // own rendering.
-  useEffect(() => {
-    onSelectionChange?.(
-      selected
-        ? {
-            id: selected.id,
-            name: selected.name,
-            category: selected.category,
-            level: selected.level,
-          }
-        : null,
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.id]);
+  // Derived Area Comparison items (strictly data-dependent)
+  const highestLocation = useMemo(() => (hasLocations ? locations[0] : null), [locations, hasLocations]);
+  const lowestLocation = useMemo(
+    () => (hasLocations ? locations[locations.length - 1] : null),
+    [locations, hasLocations],
+  );
 
-  // ── Map init — (re)mounts whenever the loaded city's data changes, so a
-  // city switch always tears down the previous city's map/markers rather
-  // than repositioning them. ─────────────────────────────────────────────
+  // MapLibre initialization
   useEffect(() => {
     if (!mapContainerRef.current || !mapData || !hasLocations) return;
 
@@ -190,6 +129,7 @@ export function EnvironmentalExplore({
       dragRotate: false,
       touchPitch: false,
     });
+
     map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     mapRef.current = map;
@@ -205,20 +145,16 @@ export function EnvironmentalExplore({
       mapRef.current = null;
       setMapMounted(false);
     };
-    // Re-init only when the city's data actually changes (new cityId) — not
-    // on every selection change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapData?.cityId]);
 
-  // ── Theme change → swap basemap style (markers are DOM overlays, not
-  // style layers, so they survive setStyle untouched). ────────────────────
+  // Handle theme changes
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     map.setStyle(resolvedTheme === "light" ? OSM_LIGHT_STYLE : OSM_DARK_STYLE);
   }, [resolvedTheme]);
 
-  // ── Render markers for the current location set ─────────────────────────
+  // Render markers
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapMounted) return;
@@ -230,10 +166,6 @@ export function EnvironmentalExplore({
       const el = document.createElement("div");
       el.innerHTML = buildDotHTML(loc.level, loc.id === selectedId);
       const child = el.firstElementChild as HTMLElement;
-      // The map region is declared decorative (role="img" on its container,
-      // below) — the accessible list is the real keyboard/screen-reader
-      // path, so these dots are pointer/touch-only and don't join the tab
-      // order (a tabindex here would be a broken, unlabelled duplicate stop).
       child.addEventListener("click", () => setSelectedId(loc.id));
 
       const marker = new maplibregl.Marker({ element: el, anchor: "center" })
@@ -249,111 +181,184 @@ export function EnvironmentalExplore({
 
   if (isError) {
     return (
-      <section aria-labelledby="env-explore-title" className={cn("space-y-4", className)}>
-        <SectionHeader />
+      <section aria-labelledby="env-explore-title" className={cn("space-y-3.5", className)}>
+        <div className="flex items-center gap-2.5">
+          <div className="w-5 h-px rounded-full bg-foreground/30" aria-hidden="true" />
+          <span
+            id="env-explore-title"
+            className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground"
+          >
+            Environmental Monitoring Network
+          </span>
+        </div>
         <EnvErrorState
           onRetry={() => refetch()}
           retryDisabled={false}
-          message="Unable to load location data."
+          message="Unable to load location monitoring network."
         />
       </section>
     );
   }
 
   return (
-    <section aria-labelledby="env-explore-title" className={cn("space-y-4", className)}>
-      <SectionHeader />
+    <section aria-labelledby="env-explore-title" className={cn("space-y-3.5", className)}>
+      <div className="flex items-center gap-2.5">
+        <div className="w-5 h-px rounded-full bg-foreground/30" aria-hidden="true" />
+        <span
+          id="env-explore-title"
+          className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground"
+        >
+          Environmental Monitoring Network
+        </span>
+      </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5 md:p-6 space-y-5">
+      <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4">
         {!hasLocations ? (
           <EnvEmptyState
             title="No location data available"
-            description={`There aren't any monitored locations on record for ${city?.name ?? "this city"} yet.`}
+            description={`There are no monitored locations on record for ${city?.name ?? "this city"} yet.`}
           />
         ) : (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* Header */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-1 border-b border-border/50">
               <div>
-                <h3 className="text-sm font-semibold">Monitored Locations</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {locations.length} location{locations.length === 1 ? "" : "s"} in {city?.name}
+                <h3 className="text-xs sm:text-sm font-semibold text-foreground">
+                  Monitored Environmental Network
+                </h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {locations.length} monitored location{locations.length === 1 ? "" : "s"} across {city?.name}
                 </p>
               </div>
+
               <Link
                 to="/map"
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary py-1.5 px-3 rounded-full border border-primary/20 bg-primary/5 hover:bg-primary/12 hover:border-primary/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary py-1 px-3 rounded-full border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors"
               >
                 Open Smart Map <ArrowRight className="size-3.5" aria-hidden="true" />
               </Link>
             </div>
 
-            {/* Map — decorative/pointer path. Every location it plots is
-                also reachable, with the same info, via the button list
-                below, so nothing here depends on precise-pointer or hover
-                interaction alone (touch + keyboard both work via the list). */}
+            {/* Area Comparison Summary */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {highestLocation && (
+                <div className="flex items-center justify-between p-3 rounded-xl border border-border/70 bg-card/60">
+                  <div className="min-w-0 pr-2">
+                    <span className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block">
+                      Highest AQI
+                    </span>
+                    <span className="text-xs sm:text-sm font-medium text-foreground truncate block mt-0.5">
+                      {highestLocation.name}
+                    </span>
+                  </div>
+                  <span
+                    className="text-xs font-semibold tabular-nums px-2.5 py-0.5 rounded-full shrink-0"
+                    style={{
+                      color: aqiColor(highestLocation.level),
+                      background: `color-mix(in oklab, ${aqiColor(highestLocation.level)} 14%, transparent)`,
+                    }}
+                  >
+                    AQI {highestLocation.level}
+                  </span>
+                </div>
+              )}
+
+              {lowestLocation && (
+                <div className="flex items-center justify-between p-3 rounded-xl border border-border/70 bg-card/60">
+                  <div className="min-w-0 pr-2">
+                    <span className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block">
+                      Lowest AQI
+                    </span>
+                    <span className="text-xs sm:text-sm font-medium text-foreground truncate block mt-0.5">
+                      {lowestLocation.name}
+                    </span>
+                  </div>
+                  <span
+                    className="text-xs font-semibold tabular-nums px-2.5 py-0.5 rounded-full shrink-0"
+                    style={{
+                      color: aqiColor(lowestLocation.level),
+                      background: `color-mix(in oklab, ${aqiColor(lowestLocation.level)} 14%, transparent)`,
+                    }}
+                  >
+                    AQI {lowestLocation.level}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Compact Map Canvas */}
             <div
               ref={mapContainerRef}
               role="img"
               aria-label={`Map of monitored locations in ${city?.name ?? "the current city"}`}
-              className="relative h-64 sm:h-72 w-full rounded-xl overflow-hidden border border-border/60"
+              className="relative h-56 sm:h-64 w-full rounded-xl overflow-hidden border border-border/70"
             />
 
-            {/* Accessible, keyboard/touch-friendly list — the primary way
-                to reach location detail without relying on the map. */}
-            <ul className="space-y-1.5" aria-label="Monitored locations">
-              {locations.map((loc) => {
-                const active = loc.id === selectedId;
-                return (
-                  <li key={loc.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(active ? null : loc.id)}
-                      aria-expanded={active}
-                      className={cn(
-                        "w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-xl border transition-colors",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                        active
-                          ? "border-primary/40 bg-primary/5"
-                          : "border-border/60 hover:border-border hover:bg-muted/30",
-                      )}
-                    >
-                      <span
-                        className="size-2.5 rounded-full shrink-0"
-                        style={{ background: aqiColor(loc.level) }}
-                        aria-hidden="true"
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium truncate">{loc.name}</span>
-                        <span className="block text-[11px] text-muted-foreground">
-                          {CATEGORY_LABEL[loc.category] ?? loc.category}
-                        </span>
-                      </span>
-                      <span
-                        className="text-xs font-semibold tabular-nums px-2 py-0.5 rounded-full shrink-0"
-                        style={{
-                          color: categoryColor(loc.category),
-                          background: `color-mix(in oklab, ${categoryColor(loc.category)} 14%, transparent)`,
-                        }}
-                      >
-                        AQI {loc.level} · {aqiLabel(loc.level)}
-                      </span>
-                    </button>
-                    {active && (
-                      <div className="px-3 py-2.5 text-xs text-muted-foreground border border-t-0 border-primary/40 rounded-b-xl -mt-1 bg-primary/[0.03]">
-                        {loc.description}
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+            {/* Expandable Location List */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowAllLocations((prev) => !prev)}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline cursor-pointer"
+              >
+                <span>{showAllLocations ? "Hide location details" : "View all monitored locations →"}</span>
+                <ChevronDown
+                  className={cn("size-3.5 transition-transform duration-200", showAllLocations && "rotate-180")}
+                  aria-hidden="true"
+                />
+              </button>
 
-            {selected && (
-              <p className="sr-only" role="status">
-                Selected {selected.name}, {CATEGORY_LABEL[selected.category] ?? selected.category},
-                AQI {selected.level}, {aqiLabel(selected.level)}.
-              </p>
-            )}
+              {showAllLocations && (
+                <ul className="mt-3 space-y-1.5" aria-label="Monitored locations list">
+                  {locations.map((loc) => {
+                    const active = loc.id === selectedId;
+                    return (
+                      <li key={loc.id}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(active ? null : loc.id)}
+                          aria-expanded={active}
+                          className={cn(
+                            "w-full flex items-center gap-3 text-left px-3 py-2 rounded-xl border transition-colors",
+                            active
+                              ? "border-primary/40 bg-primary/5"
+                              : "border-border/60 hover:border-border hover:bg-muted/30",
+                          )}
+                        >
+                          <span
+                            className="size-2 rounded-full shrink-0"
+                            style={{ background: aqiColor(loc.level) }}
+                            aria-hidden="true"
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-xs sm:text-sm font-medium truncate text-foreground">
+                              {loc.name}
+                            </span>
+                            <span className="block text-[10px] text-muted-foreground">
+                              {CATEGORY_LABEL[loc.category] ?? loc.category}
+                            </span>
+                          </span>
+                          <span
+                            className="text-xs font-semibold tabular-nums px-2 py-0.5 rounded-full shrink-0"
+                            style={{
+                              color: categoryColor(loc.category),
+                              background: `color-mix(in oklab, ${categoryColor(loc.category)} 14%, transparent)`,
+                            }}
+                          >
+                            AQI {loc.level} · {aqiLabel(loc.level)}
+                          </span>
+                        </button>
+                        {active && (
+                          <div className="px-3 py-2 text-xs text-muted-foreground border border-t-0 border-primary/40 rounded-b-xl -mt-1 bg-primary/[0.03]">
+                            {loc.description}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
           </>
         )}
       </div>

@@ -2,34 +2,24 @@ import { useState } from "react";
 import { ImageOff } from "lucide-react";
 import { useCity } from "@/lib/city-context";
 import { findAqiBand } from "@/lib/mock-data";
-import { resolveHeroImage } from "@/lib/city-images";
-import { getTimeSlot, getWeatherProxy } from "@/lib/hero-scene";
+import { getCityVisual } from "@/lib/city-images";
 import { formatRelativeTime } from "@/lib/format-time";
 import { EnvCityContextSkeleton } from "@/components/environment/env-loading-skeletons";
 import { EnvEmptyState, EnvErrorState } from "@/components/environment/env-state-views";
 import { cn } from "@/lib/utils";
 
 /**
- * CityEnvironmentalContext — Environmental Overview, Phase 1, Area 1.
+ * SECTION 01 — CURRENT ENVIRONMENTAL STATE
  *
  * "Where am I? What is the environmental situation here right now?"
  *
- * Design:
- *  — Compact contextual photograph (220–300px tall on desktop, shorter on
- *    mobile), NOT a full-bleed cinematic hero. Resolved through the
- *    project's existing city-image configuration (`src/lib/city-images.ts`
- *    → `resolveHeroImage()`), the same architecture the Citizen Dashboard
- *    hero already uses — reused here rather than duplicated so a new image
- *    only ever needs to be dropped into one config.
- *  — A city with no configured/loadable photograph falls back to a plain
- *    tinted placeholder rather than a broken image or a fabricated one.
- *  — The natural-language summary is built only from real fields already
- *    present on the city record (AQI band + PM2.5 when available) — no
- *    invented figures.
- *  — Fully theme-aware: no hardcoded dark-only surfaces, so it renders
- *    correctly whether the app is in Light or Dark mode.
+ * Visual hierarchy:
+ *  - Current city title & subtitle
+ *  - Live indicator & real-time update timestamp
+ *  - Concise natural-language environmental summary
+ *  - Data-driven contextual city photograph resolved via `getCityVisual(city.id, city.name)`
+ *    (Belagavi active by default, future-ready for any city configuration)
  */
-
 export function CityEnvironmentalContext({ className }: { className?: string }) {
   const { city, isApiConnected, isCityListLoading, isCityError, cityDataUpdatedAt, refreshCity } =
     useCity();
@@ -61,16 +51,8 @@ export function CityEnvironmentalContext({ className }: { className?: string }) 
   }
 
   const band = findAqiBand(city.aqi);
-
-  // Real-data-derived scene selection — no fabricated weather condition.
-  const hour = new Date().getHours();
-  const slot = getTimeSlot(hour);
-  const weather = getWeatherProxy({
-    humidity: city.humidity,
-    windSpeed: city.windSpeed,
-    temp: city.temp,
-  });
-  const imageUrl = imageFailed ? undefined : resolveHeroImage(city.id, slot, weather);
+  const cityVisual = getCityVisual(city.id, city.name);
+  const imageUrl = imageFailed ? undefined : cityVisual.image;
 
   const hasOwnTimestamp = typeof city.updatedAt === "string" && city.updatedAt.length > 0;
   const updatedLabel = hasOwnTimestamp
@@ -87,17 +69,17 @@ export function CityEnvironmentalContext({ className }: { className?: string }) 
     <section
       aria-labelledby="env-city-context-title"
       className={cn(
-        "grid grid-cols-1 md:grid-cols-[minmax(260px,340px)_1fr] gap-5 md:gap-8 items-stretch",
+        "grid grid-cols-1 md:grid-cols-[minmax(240px,320px)_1fr] gap-4 sm:gap-6 md:gap-8 items-stretch",
         className,
       )}
     >
-      {/* Compact contextual photograph — not a hero */}
-      <div className="relative h-[170px] sm:h-[200px] md:h-[220px] lg:h-[250px] xl:h-[280px] rounded-2xl overflow-hidden border border-border bg-muted">
+      {/* Compact contextual photograph — future-ready, responsive, no layout shift */}
+      <div className="relative h-[160px] sm:h-[180px] md:h-[200px] lg:h-[220px] rounded-2xl overflow-hidden border border-border bg-muted">
         {imageUrl ? (
           <img
             key={imageUrl}
             src={imageUrl}
-            alt={`${city.name} environmental photograph`}
+            alt={cityVisual.alt}
             loading="lazy"
             decoding="async"
             onError={() => setImageFailed(true)}
@@ -117,9 +99,9 @@ export function CityEnvironmentalContext({ className }: { className?: string }) 
             </p>
           </div>
         )}
-        {/* Subtle base-anchored fade — adapts to the active theme automatically */}
+        {/* Subtle base-anchored fade for theme contrast */}
         <div
-          className="absolute inset-x-0 bottom-0 h-14 pointer-events-none"
+          className="absolute inset-x-0 bottom-0 h-12 pointer-events-none"
           style={{
             background:
               "linear-gradient(to top, oklch(from var(--color-background) l c h / 0.55), transparent)",
@@ -129,16 +111,18 @@ export function CityEnvironmentalContext({ className }: { className?: string }) 
       </div>
 
       {/* City identity + live status + summary */}
-      <div className="flex flex-col justify-center gap-3 min-w-0">
+      <div className="flex flex-col justify-center gap-2.5 min-w-0">
         <div>
           <h1
             id="env-city-context-title"
-            className="text-2xl md:text-3xl font-bold tracking-tight"
+            className="text-2xl md:text-3xl font-bold tracking-tight text-foreground"
             style={{ fontFamily: "var(--font-display)" }}
           >
             {city.name}
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Current environmental conditions</p>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+            Current environmental conditions
+          </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap text-xs font-medium">
@@ -159,7 +143,7 @@ export function CityEnvironmentalContext({ className }: { className?: string }) 
           {updatedLabel && <span className="text-muted-foreground">· Updated {updatedLabel}</span>}
         </div>
 
-        <p className="text-sm md:text-base leading-relaxed max-w-prose text-foreground/90">
+        <p className="text-sm md:text-base leading-relaxed max-w-prose text-foreground/90 font-normal">
           {summary}
         </p>
       </div>
