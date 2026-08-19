@@ -52,19 +52,14 @@ public class MainActivity extends BridgeActivity {
                 FirebaseOptions options = FirebaseOptions.fromResource(this);
                 if (options != null) {
                     FirebaseApp.initializeApp(this, options);
+                    Log.i(TAG, "FirebaseApp successfully initialized from google-services resources");
                 } else {
-                    FirebaseOptions fallbackOptions = new FirebaseOptions.Builder()
-                        .setApplicationId("1:103850000000:android:a1b2c3d4e5f60718293a4b")
-                        .setProjectId("greenguard-ai-6")
-                        .setApiKey("AIzaSyDummyKeyForGreenGuardAIApp12345")
-                        .setGcmSenderId("103850000000")
-                        .build();
-                    FirebaseApp.initializeApp(this, fallbackOptions);
+                    FirebaseApp.initializeApp(this);
+                    Log.i(TAG, "FirebaseApp initialized with default configuration");
                 }
-                Log.i(TAG, "FirebaseApp successfully initialized");
             }
         } catch (Exception e) {
-            Log.e(TAG, "FirebaseApp initialization: " + e.getMessage(), e);
+            Log.w(TAG, "FirebaseApp initialization check: " + e.getMessage());
         }
     }
 
