@@ -385,7 +385,7 @@ function ZonePanel({
             <div className="flex gap-2 text-[7.5px] text-muted-foreground/70">
               <span>AQI {z.aqi}</span>
               <span>·</span>
-              <span>{z.sensorCount} sensors</span>
+              <span>{z.sensorCount} points</span>
               <span>·</span>
               <span>{z.complaintCount} complaints</span>
             </div>
@@ -443,7 +443,7 @@ function ZonePanel({
   );
 }
 
-// ─── Sensor operations ────────────────────────────────────────────────────────
+// ─── Monitoring operations ────────────────────────────────────────────────────
 function SensorOpsPanel({
   sensors,
   onSelectSensor,

@@ -12,10 +12,21 @@ import {
   getInsightsFromData,
   generateCityInsights,
   generateSustainabilityIntelligenceResponse,
+  buildCopilotPrompt,
+  SYSTEM_ENV_ANALYST,
   type SustainabilityAIContext,
 } from "../services/gemini.service";
 import { computeEcoScore, ECO_SCORE_WEIGHTS } from "../services/ecoScore.service";
 import { fetchCityHistoryDays } from "./environmental.controller";
+import { intelligenceCenterAIGateway } from "../services/ai/gateway";
+import {
+  PROVIDER_REGISTRY,
+  isValidProviderName,
+  isProviderConfigured,
+  getAvailableProviderConfigs,
+} from "../services/ai/config";
+import { AIProviderError } from "../services/ai/errors";
+import { AIProviderName } from "../services/ai/types";
 
 // ─── Helper: get city data ────────────────────────────────────────────────────
 async function getCityData(cityId: string) {
@@ -28,19 +39,57 @@ async function getCityData(cityId: string) {
 // ─── POST /api/copilot/chat ──────────────────────────────────────────────────
 export async function chat(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { question, cityId, sessionId } = req.body;
+    const { question, cityId, sessionId, provider } = req.body;
     if (!question?.trim()) return next(new AppError("Question is required", 400));
+
+    // Optional Phase 2 provider override — only the Intelligence Center's
+    // Assistant selector ever sends this. Every other caller of this shared
+    // endpoint (Dashboard, Map, Forecast, legacy /intelligence widgets)
+    // omits it and gets the exact unchanged Gemini behavior below.
+    let resolvedProvider: AIProviderName = "gemini";
+    if (provider !== undefined && provider !== null && provider !== "gemini") {
+      if (!isValidProviderName(provider)) {
+        return next(new AppError("Unsupported AI provider", 400));
+      }
+      resolvedProvider = provider;
+    }
 
     const city = cityId || "belagavi";
     const cityData = await getCityData(city);
     if (!cityData) return next(new AppError("City data not found", 404));
 
     const userRole = req.user?.role ?? "citizen";
-    const answer = await generateCopilotResponse(
-      question,
-      cityData as Record<string, unknown>,
-      userRole,
-    );
+
+    let answer: string;
+    let model: string;
+
+    if (resolvedProvider === "gemini") {
+      // Unchanged path — identical to pre-Phase-2 behavior.
+      answer = await generateCopilotResponse(question, cityData as Record<string, unknown>, userRole);
+      model = PROVIDER_REGISTRY.gemini.modelDisplayName;
+    } else {
+      if (!isProviderConfigured(resolvedProvider)) {
+        return next(new AppError("This AI provider is currently unavailable.", 503));
+      }
+      try {
+        const result = await intelligenceCenterAIGateway.generate(
+          {
+            prompt: buildCopilotPrompt(question, cityData as Record<string, unknown>, userRole),
+            systemInstruction: SYSTEM_ENV_ANALYST,
+          },
+          resolvedProvider,
+        );
+        answer = result.text;
+        model = PROVIDER_REGISTRY[resolvedProvider].modelDisplayName;
+      } catch (err) {
+        if (err instanceof AIProviderError) {
+          const status =
+            err.code === "rate_limit_error" ? 429 : err.code === "timeout_error" ? 504 : 503;
+          return next(new AppError(err.message, status));
+        }
+        throw err;
+      }
+    }
 
     // Persist conversation
     const sid = sessionId || uuidv4();
@@ -80,9 +129,46 @@ export async function chat(req: AuthRequest, res: Response, next: NextFunction):
           risk: cityData.risk,
           temp: cityData.temp,
         },
+        provider: resolvedProvider,
+        model,
         timestamp: new Date().toISOString(),
       },
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ─── GET /api/copilot/providers ───────────────────────────────────────────────
+// Metadata for the Assistant's model selector — only providers that are
+// actually configured (have an API key set) are returned (Phase 2 §12).
+// Gemini is included whenever its existing key is present, since it's
+// always available as the default path above.
+export async function getAIProviders(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const configured = getAvailableProviderConfigs();
+    const geminiAvailable = Boolean(process.env.GEMINI_API_KEY);
+
+    const providers = [
+      {
+        name: "gemini" as const,
+        displayName: PROVIDER_REGISTRY.gemini.displayName,
+        model: PROVIDER_REGISTRY.gemini.modelDisplayName,
+        capabilities: PROVIDER_REGISTRY.gemini.capabilities,
+        available: geminiAvailable,
+      },
+      ...configured
+        .filter((c) => c.name !== "gemini")
+        .map((c) => ({
+          name: c.name,
+          displayName: c.displayName,
+          model: c.modelDisplayName,
+          capabilities: c.capabilities,
+          available: true,
+        })),
+    ];
+
+    res.json({ success: true, data: { providers, default: "gemini" } });
   } catch (err) {
     next(err);
   }

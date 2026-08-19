@@ -7,7 +7,7 @@ import { aqiBand } from "@/lib/mock-data";
 import { type LayerId } from "@/lib/map/map-visuals";
 import { SmartMapCanvas } from "@/components/map/SmartMapCanvas";
 
-const DEFAULT_ACTIVE_LAYERS: LayerId[] = ["aqi", "sensors", "water"];
+const DEFAULT_ACTIVE_LAYERS: LayerId[] = ["aqi", "water"];
 
 /**
  * LandingMapPreview — Hero/Landing preview of the Smart Map.

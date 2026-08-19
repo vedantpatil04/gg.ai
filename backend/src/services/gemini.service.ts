@@ -25,7 +25,7 @@ function getModel(systemInstruction: string): GenerativeModel | null {
   });
 }
 
-const SYSTEM_ENV_ANALYST =
+export const SYSTEM_ENV_ANALYST =
   "You are GreenGuard AI — a professional environmental intelligence analyst. " +
   "Speak with authority. Be data-driven, precise, and actionable. " +
   "Never say 'I' — respond as a system. Use metric units. Keep answers under 120 words unless instructed otherwise.";
@@ -80,12 +80,17 @@ function parseJSON<T>(text: string, fallback: T): T {
 // ══════════════════════════════════════════════════════════════════════════════
 // FEATURE 1 — AI ENVIRONMENTAL COPILOT
 // ══════════════════════════════════════════════════════════════════════════════
-export async function generateCopilotResponse(
+// buildCopilotPrompt is a pure extraction of the template literal that used
+// to live inline in generateCopilotResponse below — no wording changed.
+// Exported so the Phase 2 multi-provider path (copilot.controller.ts, for
+// Groq/OpenRouter only) can send Groq/OpenRouter the identical prompt a
+// Gemini request would get, without duplicating or drifting from it.
+export function buildCopilotPrompt(
   question: string,
   cityData: Record<string, unknown>,
-  userRole = "citizen"
-): Promise<string> {
-  const prompt = `
+  userRole = "citizen",
+): string {
+  return `
 CITY: ${cityData.cityName}, ${cityData.country}
 CURRENT CONDITIONS:
   AQI ${cityData.aqi} (PM2.5 ${cityData.pm25} µg/m³ | PM10 ${cityData.pm10} µg/m³)
@@ -98,8 +103,16 @@ USER ROLE: ${userRole}
 QUESTION: ${question}
 
 Answer in 3–5 sentences. Cite specific metric values. If the question is about health or safety, include a concrete recommendation.`;
-  return generate(prompt, SYSTEM_ENV_ANALYST);
 }
+
+export async function generateCopilotResponse(
+  question: string,
+  cityData: Record<string, unknown>,
+  userRole = "citizen"
+): Promise<string> {
+  return generate(buildCopilotPrompt(question, cityData, userRole), SYSTEM_ENV_ANALYST);
+}
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 // FEATURE 1B — GREENGUARD INTELLIGENCE CENTER (Sustainability, Phase 5)

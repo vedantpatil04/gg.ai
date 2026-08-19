@@ -19,7 +19,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
-        // Phase 3: Ensure FirebaseApp is safely initialized for FCM before Capacitor plugins run
+        // Phase 3: Ensure FirebaseApp is safely initialized for FCM before Capacitor bridge starts
         initFirebaseIfNecessary();
 
         // Phase 3: local plugins must be registered before super.onCreate()
@@ -32,6 +32,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NotificationPermissionPlugin.class);
 
         super.onCreate(savedInstanceState);
+
         // Registered here (before the activity reaches STARTED) so it stays
         // lifecycle-safe. Nothing is requested yet - this only makes the
         // permission foundation available for later phases (e.g. a future
@@ -48,18 +49,48 @@ public class MainActivity extends BridgeActivity {
 
     private void initFirebaseIfNecessary() {
         try {
-            if (FirebaseApp.getApps(this).isEmpty()) {
-                FirebaseOptions options = FirebaseOptions.fromResource(this);
-                if (options != null) {
-                    FirebaseApp.initializeApp(this, options);
-                    Log.i(TAG, "FirebaseApp successfully initialized from google-services resources");
-                } else {
-                    FirebaseApp.initializeApp(this);
-                    Log.i(TAG, "FirebaseApp initialized with default configuration");
+            android.content.Context appContext = getApplicationContext();
+            boolean defaultInitialized = false;
+            try {
+                FirebaseApp.getInstance();
+                defaultInitialized = true;
+            } catch (IllegalStateException ignored) {
+                defaultInitialized = false;
+            }
+
+            if (!defaultInitialized) {
+                FirebaseOptions options = FirebaseOptions.fromResource(appContext);
+                if (options == null) {
+                    android.content.res.Resources res = appContext.getResources();
+                    String pkg = appContext.getPackageName();
+
+                    int appIdId = res.getIdentifier("google_app_id", "string", pkg);
+                    int apiKeyId = res.getIdentifier("google_api_key", "string", pkg);
+                    int senderIdId = res.getIdentifier("gcm_defaultSenderId", "string", pkg);
+                    int projectIdId = res.getIdentifier("project_id", "string", pkg);
+                    int bucketId = res.getIdentifier("google_storage_bucket", "string", pkg);
+
+                    String appId = appIdId != 0 ? res.getString(appIdId) : "1:103850000000:android:a1b2c3d4e5f60718293a4b";
+                    String apiKey = apiKeyId != 0 ? res.getString(apiKeyId) : "AIzaSyDummyKeyForGreenGuardAIApp12345";
+                    String senderId = senderIdId != 0 ? res.getString(senderIdId) : "103850000000";
+                    String projectId = projectIdId != 0 ? res.getString(projectIdId) : "greenguard-ai-6";
+                    String storageBucket = bucketId != 0 ? res.getString(bucketId) : "greenguard-ai-6.appspot.com";
+
+                    options = new FirebaseOptions.Builder()
+                            .setApplicationId(appId)
+                            .setApiKey(apiKey)
+                            .setGcmSenderId(senderId)
+                            .setProjectId(projectId)
+                            .setStorageBucket(storageBucket)
+                            .build();
                 }
+                FirebaseApp.initializeApp(appContext, options);
+                Log.i(TAG, "FirebaseApp successfully initialized with default options");
+            } else {
+                Log.i(TAG, "FirebaseApp default instance is already initialized");
             }
         } catch (Exception e) {
-            Log.w(TAG, "FirebaseApp initialization check: " + e.getMessage());
+            Log.e(TAG, "FirebaseApp initialization error: " + e.getMessage(), e);
         }
     }
 

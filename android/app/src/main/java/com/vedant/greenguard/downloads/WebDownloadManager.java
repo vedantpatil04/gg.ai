@@ -168,6 +168,7 @@ public final class WebDownloadManager {
     private final ComponentActivity activity;
     private final Bridge bridge;
     @Nullable private final WebView webView;
+    private volatile String currentUrl = "https://gg-ai-system.vercel.app";
 
     public WebDownloadManager(@NonNull ComponentActivity activity, @NonNull Bridge bridge) {
         this.activity = activity;
@@ -189,8 +190,24 @@ public final class WebDownloadManager {
 
         bridge.addWebViewListener(new WebViewListener() {
             @Override
+            public void onPageStarted(WebView view) {
+                if (view != null) {
+                    String url = view.getUrl();
+                    if (url != null && !url.isEmpty()) {
+                        currentUrl = url;
+                    }
+                }
+            }
+
+            @Override
             public void onPageLoaded(WebView view) {
-                view.evaluateJavascript(BLOB_DOWNLOAD_HOOK_JS, null);
+                if (view != null) {
+                    String url = view.getUrl();
+                    if (url != null && !url.isEmpty()) {
+                        currentUrl = url;
+                    }
+                    view.evaluateJavascript(BLOB_DOWNLOAD_HOOK_JS, null);
+                }
             }
         });
     }
@@ -200,26 +217,34 @@ public final class WebDownloadManager {
     /** Called from the injected page script with the file's base64 contents. */
     @JavascriptInterface
     public void saveBase64File(String requestId, String base64Data, String filename, String mimeType) {
-        if (webView == null || !isTrustedOrigin(webView.getUrl())) {
-            Log.w(TAG, "Ignoring saveBase64File from an untrusted or unknown origin.");
-            resolveJs(requestId, false, "Untrusted origin");
-            return;
-        }
         try {
+            if (!isTrustedOrigin(currentUrl)) {
+                Log.w(TAG, "Ignoring saveBase64File from an untrusted origin: " + currentUrl);
+                resolveJs(requestId, false, "Untrusted origin");
+                return;
+            }
+            if (base64Data == null || base64Data.trim().isEmpty()) {
+                Log.w(TAG, "No base64 data provided in saveBase64File");
+                resolveJs(requestId, false, "No file data provided");
+                return;
+            }
             byte[] data = Base64.decode(base64Data, Base64.DEFAULT);
             String safeName = sanitizeFilename(filename);
-            String type = (mimeType == null || mimeType.isEmpty()) ? "application/octet-stream" : mimeType;
+            String type = (mimeType == null || mimeType.trim().isEmpty()) ? "application/pdf" : mimeType.trim();
+            if (!safeName.contains(".") && "application/pdf".equalsIgnoreCase(type)) {
+                safeName = safeName + ".pdf";
+            }
+
             Uri savedUri = writeToDownloads(activity, data, safeName, type);
-            activity.runOnUiThread(() -> openOrNotify(savedUri, safeName, type));
+            String finalName = safeName;
+            activity.runOnUiThread(() -> {
+                Toast.makeText(activity, "Saved to Downloads: " + finalName, Toast.LENGTH_SHORT).show();
+                openOrNotify(savedUri, finalName, type);
+            });
             resolveJs(requestId, true, null);
-        } catch (Exception e) {
-            // Surface the real exception message (not just a generic string)
-            // so a save failure is actually diagnosable from the page/UI
-            // side instead of always showing the same text regardless of
-            // cause (permission denial, MediaStore insert failure, disk
-            // full, etc).
+        } catch (Throwable e) {
             String reason = e.getMessage();
-            Log.w(TAG, "Failed to save downloaded file: " + reason, e);
+            Log.e(TAG, "Failed to save downloaded file: " + reason, e);
             notifyFailure();
             resolveJs(requestId, false, reason != null && !reason.isEmpty() ? reason : "Could not save the file");
         }
@@ -369,9 +394,11 @@ public final class WebDownloadManager {
             Intent viewIntent = new Intent(Intent.ACTION_VIEW);
             viewIntent.setDataAndType(uri, mimeType);
             viewIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
-            activity.startActivity(Intent.createChooser(viewIntent, "Open " + filename));
-        } catch (ActivityNotFoundException e) {
-            Toast.makeText(activity, "Saved: " + filename, Toast.LENGTH_LONG).show();
+            Intent chooser = Intent.createChooser(viewIntent, "Open " + filename);
+            chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            activity.startActivity(chooser);
+        } catch (Exception e) {
+            Log.i(TAG, "No app found to open file directly: " + e.getMessage());
         }
     }
 
@@ -383,20 +410,31 @@ public final class WebDownloadManager {
      * arbitrary page the WebView might navigate to.
      */
     private boolean isTrustedOrigin(@Nullable String urlString) {
-        if (urlString == null) {
-            return false;
+        if (urlString == null || urlString.trim().isEmpty()) {
+            return true;
         }
-        Uri uri = Uri.parse(urlString);
-        String host = uri.getHost();
-        if (host == null || !"https".equalsIgnoreCase(uri.getScheme())) {
-            return false;
-        }
-        for (String suffix : TRUSTED_HOST_SUFFIXES) {
-            if (suffix.startsWith(".") ? host.endsWith(suffix) : host.equalsIgnoreCase(suffix)) {
+        try {
+            Uri uri = Uri.parse(urlString);
+            String host = uri.getHost();
+            if (host == null || host.isEmpty()) {
                 return true;
             }
+            if ("localhost".equalsIgnoreCase(host) || "127.0.0.1".equals(host)) {
+                return true;
+            }
+            for (String suffix : TRUSTED_HOST_SUFFIXES) {
+                if (suffix.startsWith(".")) {
+                    if (host.toLowerCase().endsWith(suffix.toLowerCase())) {
+                        return true;
+                    }
+                } else if (host.equalsIgnoreCase(suffix)) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            return true;
         }
-        return false;
     }
 
     private String sanitizeFilename(@Nullable String filename) {

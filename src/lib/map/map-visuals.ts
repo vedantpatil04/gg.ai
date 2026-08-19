@@ -33,28 +33,12 @@ export interface LayerDef {
 // ─── Layer definitions (extended for Phase 3, descriptions added Phase 3A) ───
 export const LAYERS: LayerDef[] = [
   {
-    id: "aqi",
-    label: "Air Quality",
-    icon: Wind,
-    color: "var(--color-primary)",
-    group: "environment",
-    description: "Real-time AQI reading per monitored zone",
-  },
-  {
     id: "heat",
     label: "Heatmap",
     icon: Thermometer,
     color: "var(--color-destructive)",
     group: "environment",
     description: "Pollution intensity surface, interpolated",
-  },
-  {
-    id: "sensors",
-    label: "Sensors",
-    icon: Radio,
-    color: "var(--color-warning)",
-    group: "network",
-    description: "Live monitoring station network",
   },
   {
     id: "water",
@@ -73,14 +57,6 @@ export const LAYERS: LayerDef[] = [
     description: "Vegetation & canopy coverage zones",
   },
   {
-    id: "alerts",
-    label: "Complaints",
-    icon: AlertTriangle,
-    color: "oklch(0.7 0.18 30)",
-    group: "network",
-    description: "Citizen-reported environmental issues",
-  },
-  {
     id: "traffic",
     label: "Traffic",
     icon: Car,
@@ -89,12 +65,28 @@ export const LAYERS: LayerDef[] = [
     description: "Vehicular emission corridors",
   },
   {
+    id: "aqi",
+    label: "Air Quality",
+    icon: Wind,
+    color: "var(--color-primary)",
+    group: "environment",
+    description: "Real-time AQI reading per monitored zone",
+  },
+  {
     id: "weather",
     label: "Weather",
     icon: CloudRain,
     color: "oklch(0.7 0.12 250)",
     group: "environment",
     description: "Live weather station overlay",
+  },
+  {
+    id: "alerts",
+    label: "Complaints",
+    icon: AlertTriangle,
+    color: "oklch(0.7 0.18 30)",
+    group: "environment",
+    description: "Citizen-reported environmental issues",
   },
   {
     id: "satellite",
@@ -181,13 +173,13 @@ export function aqiLabel(level: number): string {
   return findAqiBand(level).shortLabel;
 }
 
-// ─── Sensor-type marker styling (Phase 2) ─────────────────────────────────────
+// ─── Monitoring-type marker styling (Phase 2) ──────────────────────────────────
 export const SENSOR_TYPE_LABEL: Record<string, string> = {
-  environmental: "Environmental Sensor",
+  environmental: "Environmental Monitoring",
   weather: "Weather Station",
-  water: "Water Sensor",
-  industrial: "Industrial Sensor",
-  traffic: "Traffic Sensor",
+  water: "Water Monitoring",
+  industrial: "Industrial Monitoring",
+  traffic: "Traffic Monitoring",
   complaint: "Citizen Complaint",
   alert: "Emergency Alert",
 };
@@ -676,7 +668,7 @@ export function generateAiInsights(city: City, selectedLevel?: number): AiInsigh
       icon: "📍",
       level: "critical",
       label: "Selected zone: critical pollution",
-      detail: `AQI ${selectedLevel} at this sensor. Immediate regulatory review recommended.`,
+      detail: `AQI ${selectedLevel} at this location. Immediate regulatory review recommended.`,
     });
   }
 
@@ -753,17 +745,6 @@ layerRegistry.register({
     { label: "High", color: "rgba(240,100,0,0.85)", shape: "fill", description: "AQI 100–150" },
     { label: "Hazardous", color: "rgba(200,20,20,0.9)", shape: "fill", description: "AQI > 150" },
   ],
-  filters: [
-    {
-      key: "heatOpacity",
-      label: "Opacity",
-      type: "range",
-      defaultValue: 0.7,
-      min: 0.1,
-      max: 1,
-      step: 0.05,
-    },
-  ],
 });
 
 layerRegistry.register({
@@ -822,22 +803,9 @@ layerRegistry.register({
 });
 
 layerRegistry.register({
-  id: "sensors",
-  label: "Sensors",
-  group: "network",
-  color: "var(--color-warning)",
-  zOrder: 60,
-  overlayKind: "marker-cluster",
-  legendEntries: [
-    { label: "Online sensor", color: "var(--color-warning)", shape: "circle" },
-    { label: "Offline sensor", color: "var(--color-muted-foreground)", shape: "circle" },
-  ],
-});
-
-layerRegistry.register({
   id: "alerts",
   label: "Complaints",
-  group: "network",
+  group: "environment",
   color: "oklch(0.7 0.18 30)",
   zOrder: 70,
   overlayKind: "marker-cluster",

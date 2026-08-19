@@ -126,7 +126,7 @@ const DEFAULT_PANELS: PanelState[] = [
   { id: "executive", label: "Executive Dashboard", collapsed: false, pinned: true, order: 0 },
   { id: "timeline", label: "Operational Timeline", collapsed: false, pinned: false, order: 1 },
   { id: "zones", label: "Zone Intelligence", collapsed: false, pinned: false, order: 2 },
-  { id: "sensors", label: "Sensor Operations", collapsed: true, pinned: false, order: 3 },
+  { id: "sensors", label: "Monitoring Operations", collapsed: true, pinned: false, order: 3 },
   { id: "authority", label: "Authority Operations", collapsed: true, pinned: false, order: 4 },
   { id: "citizen", label: "Citizen Intelligence", collapsed: false, pinned: false, order: 5 },
   { id: "correlation", label: "Cross-Module Intel", collapsed: true, pinned: false, order: 6 },

@@ -109,8 +109,15 @@ export interface EnvironmentInsightResponse {
 }
 
 export const copilotApi = {
-  chat: (question: string, cityId: string, sessionId?: string) =>
-    client.post("/copilot/chat", { question, cityId, sessionId }).then((r) => r.data),
+  // `provider` is optional and Phase-2-only — every existing caller
+  // (Dashboard, Map, Forecast, legacy /intelligence, and Copilot itself
+  // before a user switches models) omits it and gets unchanged Gemini
+  // behavior server-side.
+  chat: (question: string, cityId: string, sessionId?: string, provider?: string) =>
+    client.post("/copilot/chat", { question, cityId, sessionId, provider }).then((r) => r.data),
+  // PHASE 2 — Intelligence Center Assistant model selector: which AI
+  // providers are actually configured server-side right now.
+  getProviders: () => client.get("/copilot/providers").then((r) => r.data),
   // PHASE 5 — GreenGuard Intelligence Center: Sustainability-page-only chat.
   // Hits a dedicated backend route/handler grounded in the same transparent
   // EcoScore engine and Phase 4 historical data the page renders from — see

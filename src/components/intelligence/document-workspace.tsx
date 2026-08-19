@@ -34,9 +34,12 @@ type Stage  = "idle" | "ready" | "processing" | "done" | "error";
 interface DocumentWorkspaceProps {
   cityId: string;
   onAskAI: (prompt: string) => void;
+  /** Phase 2 — Intelligence Center selected AI provider ("gemini" | "groq" |
+   *  "openrouter"). Optional/omitted falls back to the server default. */
+  provider?: string;
 }
 
-export function DocumentWorkspace({ cityId, onAskAI }: DocumentWorkspaceProps) {
+export function DocumentWorkspace({ cityId, onAskAI, provider }: DocumentWorkspaceProps) {
   const [file, setFile]       = useState<File | null>(null);
   const [fileError, setError] = useState<string | null>(null);
   const [mode, setMode]       = useState<ModeId>("summarize");
@@ -72,14 +75,14 @@ export function DocumentWorkspace({ cityId, onAskAI }: DocumentWorkspaceProps) {
       const text = await file.text();
       const selectedMode = MODES.find(m => m.id === mode)!;
       const prompt = selectedMode.prompt(text.slice(0, 12_000)); // safe token budget
-      const data = await copilotApi.chat(prompt, cityId, undefined).then(r => r.data);
+      const data = await copilotApi.chat(prompt, cityId, undefined, provider).then(r => r.data);
       setResult(data.answer || "No response received.");
       setStage("done");
     } catch {
       setResult("");
       setStage("error");
     }
-  }, [file, mode, cityId, stage]);
+  }, [file, mode, cityId, stage, provider]);
 
   return (
     <div className="space-y-4 p-4">

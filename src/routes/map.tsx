@@ -68,6 +68,7 @@ import {
   TriangleAlert,
   Sparkles,
   Globe,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import * as React from "react";
@@ -288,20 +289,20 @@ function MapPage() {
 
   // Region lookup (mirrors CITY_REGION in location-intelligence.tsx)
   const CITY_REGION_MAP: Record<string, string> = {
-    belagavi:   "Karnataka",
-    bengaluru:  "Karnataka",
-    mumbai:     "Maharashtra",
-    delhi:      "Delhi",
-    hyderabad:  "Telangana",
-    chennai:    "Tamil Nadu",
-    pune:       "Maharashtra",
-    kolkata:    "West Bengal",
-    ahmedabad:  "Gujarat",
-    london:     "England",
-    newyork:    "New York",
-    singapore:  "Singapore",
-    tokyo:      "Tokyo",
-    dubai:      "Dubai Emirate",
+    belagavi: "Karnataka",
+    bengaluru: "Karnataka",
+    mumbai: "Maharashtra",
+    delhi: "Delhi",
+    hyderabad: "Telangana",
+    chennai: "Tamil Nadu",
+    pune: "Maharashtra",
+    kolkata: "West Bengal",
+    ahmedabad: "Gujarat",
+    london: "England",
+    newyork: "New York",
+    singapore: "Singapore",
+    tokyo: "Tokyo",
+    dubai: "Dubai Emirate",
   };
 
   useEffect(() => {
@@ -348,10 +349,11 @@ function MapPage() {
   const [active, setActive] = useState<LayerId[]>(["aqi", "heat"]);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(true);
+  const [activePanel, setActivePanel] = useState<"layers" | "intelligence" | null>(null);
+  const drawerOpen = activePanel === "intelligence";
   const [drawerTab, setDrawerTab] = useState<
     "zones" | "insights" | "stats" | "weather" | "air" | "hazard" | "ai" | "twin"
-  >("zones");
+  >("stats");
   const [sortDesc, setSortDesc] = useState(true);
   const [filterCategory, setFilterCat] = useState<string>("all");
   const [timeRange, setTimeRange] = useState<TimeRange>("live");
@@ -488,21 +490,29 @@ function MapPage() {
       const dir = velocity > 0 ? 1 : -1; // y grows downward
       nearestIdx = Math.min(points.length - 1, Math.max(0, nearestIdx + dir));
     }
-    setDrawerOpen(points[nearestIdx].open);
+    if (points[nearestIdx].open) {
+      setActivePanel("intelligence");
+    } else {
+      setActivePanel((curr) => (curr === "intelligence" ? null : curr));
+    }
     setMobileSheetTall(points[nearestIdx].tall);
   };
 
   const cycleMobileSheet = () => {
-    if (!drawerOpen) {
-      setDrawerOpen(true);
+    if (activePanel !== "intelligence") {
+      setActivePanel("intelligence");
       setMobileSheetTall(false);
     } else if (!mobileSheetTall) {
       setMobileSheetTall(true);
     } else {
-      setDrawerOpen(false);
+      setActivePanel(null);
       setMobileSheetTall(false);
     }
   };
+
+  const toggleIntelligenceDrawer = useCallback(() => {
+    setActivePanel((curr) => (curr === "intelligence" ? null : "intelligence"));
+  }, []);
 
   const handleSelectLocation = useCallback(
     (id: string) => setSelected((s) => (s === id ? null : id)),
@@ -543,7 +553,7 @@ function MapPage() {
     gcTime: 15 * 60_000,
     retry: 2,
     retryDelay: (attempt) => Math.min(1_000 * 2 ** attempt, 8_000),
-    enabled: isApiConnected && timeRange !== "live",
+    enabled: isApiConnected,
     throwOnError: false,
   });
   const hasHistory = (historyResp?.data?.history?.length ?? 0) > 0;
@@ -638,6 +648,42 @@ function MapPage() {
     }
     return { complaint: nearest, distKm: nearestDist * 111 };
   }, [geo.position, allComplaints]);
+
+  // ── Nearby Environmental Intelligence Dismiss & Auto-Collapse (12s) ──────
+  const [nearbyDismissed, setNearbyDismissed] = useState(false);
+  const nearbyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isNearbyHoveredRef = useRef(false);
+
+  const showNearbyIntel =
+    !nearbyDismissed && Boolean(geo.position && (nearestSensor || nearestComplaint));
+
+  // Reset auto-dismiss timer on demand (12 seconds of inactivity)
+  const resetNearbyTimer = useCallback(() => {
+    if (nearbyTimerRef.current) clearTimeout(nearbyTimerRef.current);
+    if (!showNearbyIntel) return;
+    nearbyTimerRef.current = setTimeout(() => {
+      if (!isNearbyHoveredRef.current) {
+        setNearbyDismissed(true);
+      }
+    }, 12000);
+  }, [showNearbyIntel]);
+
+  // Un-dismiss when user gets a fresh GPS fix or explicitly locates
+  useEffect(() => {
+    if (geo.position) {
+      setNearbyDismissed(false);
+    }
+  }, [geo.position?.timestamp]);
+
+  // Start or reset timer whenever the panel is visible or location updates
+  useEffect(() => {
+    if (showNearbyIntel) {
+      resetNearbyTimer();
+    }
+    return () => {
+      if (nearbyTimerRef.current) clearTimeout(nearbyTimerRef.current);
+    };
+  }, [showNearbyIntel, resetNearbyTimer, geo.position?.timestamp]);
 
   const band = aqiBand(city.aqi);
   const sensorsOnline = hotspots.filter((h) => h.sensor).length;
@@ -742,62 +788,62 @@ function MapPage() {
     trend?: { direction: "up" | "down" | "stable"; delta?: number };
     sub?: string;
   }> = [
-    {
-      label: "AQI",
-      value: city.aqi,
-      icon: Wind,
-      accent: band.color,
-      trend: aqiTrend,
-      sub: aqiForecast6h != null ? `→ ${aqiForecast6h} in 6h` : undefined,
-    },
-    {
-      label: "Water QI",
-      value: city.water,
-      unit: "/100",
-      icon: Droplets,
-      accent: "var(--color-info)",
-    },
-    {
-      label: "Temp",
-      value: `${city.temp}°`,
-      unit: "C",
-      icon: Thermometer,
-      accent: "oklch(0.72 0.18 50)",
-    },
-    {
-      label: "Humidity",
-      value: city.humidity,
-      unit: "%",
-      icon: Droplets,
-      accent: "var(--color-info)",
-    },
-    {
-      label: "Alerts",
-      value: city.alerts,
-      icon: AlertTriangle,
-      accent: city.alerts > 5 ? "var(--color-destructive)" : "var(--color-warning)",
-    },
-    {
-      label: "Sensors",
-      value: `${sensorsOnline}/${hotspots.length}`,
-      icon: Cpu,
-      accent: "var(--color-success)",
-    },
-    {
-      label: "Risk",
-      value: city.risk,
-      unit: "/100",
-      icon: Shield,
-      accent: city.risk > 60 ? "var(--color-destructive)" : "var(--color-warning)",
-    },
-    {
-      label: "Coverage",
-      value: `${Math.round((sensorsOnline / Math.max(hotspots.length, 1)) * 100)}`,
-      unit: "%",
-      icon: Gauge,
-      accent: "oklch(0.6 0.02 240)",
-    },
-  ];
+      {
+        label: "AQI",
+        value: city.aqi,
+        icon: Wind,
+        accent: band.color,
+        trend: aqiTrend,
+        sub: aqiForecast6h != null ? `→ ${aqiForecast6h} in 6h` : undefined,
+      },
+      {
+        label: "Water QI",
+        value: city.water,
+        unit: "/100",
+        icon: Droplets,
+        accent: "var(--color-info)",
+      },
+      {
+        label: "Temp",
+        value: `${city.temp}°`,
+        unit: "C",
+        icon: Thermometer,
+        accent: "oklch(0.72 0.18 50)",
+      },
+      {
+        label: "Humidity",
+        value: city.humidity,
+        unit: "%",
+        icon: Droplets,
+        accent: "var(--color-info)",
+      },
+      {
+        label: "Alerts",
+        value: city.alerts,
+        icon: AlertTriangle,
+        accent: city.alerts > 5 ? "var(--color-destructive)" : "var(--color-warning)",
+      },
+      {
+        label: "Active Data",
+        value: `${sensorsOnline}/${hotspots.length}`,
+        icon: Cpu,
+        accent: "var(--color-success)",
+      },
+      {
+        label: "Risk",
+        value: city.risk,
+        unit: "/100",
+        icon: Shield,
+        accent: city.risk > 60 ? "var(--color-destructive)" : "var(--color-warning)",
+      },
+      {
+        label: "Coverage",
+        value: `${Math.round((sensorsOnline / Math.max(hotspots.length, 1)) * 100)}`,
+        unit: "%",
+        icon: Gauge,
+        accent: "oklch(0.6 0.02 240)",
+      },
+    ];
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-background">
@@ -976,6 +1022,10 @@ function MapPage() {
           selectedId={selected}
           onSelectLocation={handleSelectLocation}
           onToggleLayer={toggle}
+          layerPanelOpen={activePanel === "layers"}
+          onToggleLayerPanel={() =>
+            setActivePanel((curr) => (curr === "layers" ? null : "layers"))
+          }
           sensorsOnline={sensorsOnline}
           highRisk={highRisk}
           band={band}
@@ -1004,19 +1054,35 @@ function MapPage() {
             the map feel personally relevant rather than just centred.
         ═════════════════════════════════════════════════════════════════════ */}
         <AnimatePresence>
-          {geo.position && (nearestSensor || nearestComplaint) && (
+          {showNearbyIntel && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 8 }}
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute left-3 right-3 sm:left-4 sm:right-auto sm:w-80 z-30"
+              className="absolute left-3 sm:left-4 z-30 pointer-events-auto w-[calc(100vw-4.5rem)] sm:w-80 max-w-[340px]"
               style={{
-                bottom: `calc(${isMobile ? "var(--nb-bottom, 116px)" : "4rem"} + 0.75rem)`,
+                bottom: isMobile ? "118px" : "calc(4rem + 0.75rem)",
+              }}
+              onPointerEnter={() => {
+                isNearbyHoveredRef.current = true;
+                if (nearbyTimerRef.current) clearTimeout(nearbyTimerRef.current);
+              }}
+              onPointerLeave={() => {
+                isNearbyHoveredRef.current = false;
+                resetNearbyTimer();
+              }}
+              onTouchStart={() => {
+                isNearbyHoveredRef.current = true;
+                if (nearbyTimerRef.current) clearTimeout(nearbyTimerRef.current);
+              }}
+              onTouchEnd={() => {
+                isNearbyHoveredRef.current = false;
+                resetNearbyTimer();
               }}
             >
               <div
-                className="rounded-2xl p-3 flex flex-col gap-2"
+                className="rounded-xl p-2 sm:p-2.5 flex flex-col gap-1.5 backdrop-blur-md"
                 style={{
                   background: "var(--panel-bg)",
                   border: "1px solid var(--panel-border)",
@@ -1024,85 +1090,111 @@ function MapPage() {
                 }}
               >
                 {/* Header */}
-                <div className="flex items-center gap-2">
-                  <span
-                    className="size-6 rounded-lg grid place-items-center shrink-0"
-                    style={{ background: "oklch(0.55 0.18 240 / 0.18)" }}
-                  >
-                    <MapPin className="size-3.5 text-blue-400" />
-                  </span>
-                  <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground flex-1">
-                    Nearby Environmental Intelligence
-                  </span>
-                  <span
-                    className="text-[7.5px] font-medium px-1.5 py-0.5 rounded-full"
-                    style={{
-                      background:
-                        geo.position.accuracyTier === "excellent" ||
-                        geo.position.accuracyTier === "good"
-                          ? "color-mix(in oklab, var(--color-success) 14%, transparent)"
-                          : "color-mix(in oklab, var(--color-warning) 14%, transparent)",
-                      color:
-                        geo.position.accuracyTier === "excellent" ||
-                        geo.position.accuracyTier === "good"
-                          ? "var(--color-success)"
-                          : "var(--color-warning)",
-                    }}
-                  >
-                    GPS {geo.position.accuracyTier} ±{Math.round(geo.position.accuracy)}m
-                  </span>
+                <div className="flex items-center justify-between gap-1.5 leading-none">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span
+                      className="size-4.5 sm:size-5 rounded-md grid place-items-center shrink-0"
+                      style={{ background: "oklch(0.55 0.18 240 / 0.18)" }}
+                    >
+                      <MapPin className="size-2.5 sm:size-3 text-blue-400" />
+                    </span>
+                    <span className="text-[8.5px] sm:text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground truncate">
+                      Nearby Environmental Intelligence
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span
+                      className="text-[7.5px] font-medium font-mono px-1.5 py-0.5 rounded-full shrink-0"
+                      style={{
+                        background:
+                          geo.position?.accuracyTier === "excellent" ||
+                            geo.position?.accuracyTier === "good"
+                            ? "color-mix(in oklab, var(--color-success) 14%, transparent)"
+                            : "color-mix(in oklab, var(--color-warning) 14%, transparent)",
+                        color:
+                          geo.position?.accuracyTier === "excellent" ||
+                            geo.position?.accuracyTier === "good"
+                            ? "var(--color-success)"
+                            : "var(--color-warning)",
+                      }}
+                    >
+                      GPS ±{Math.round(geo.position?.accuracy ?? 0)}m
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setNearbyDismissed(true);
+                      }}
+                      title="Dismiss nearby intelligence"
+                      aria-label="Dismiss nearby environmental intelligence"
+                      className="size-4 rounded grid place-items-center text-muted-foreground/70 hover:text-foreground hover:bg-white/10 active:scale-95 transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
+                    >
+                      <X className="size-2.5" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Nearest sensor */}
                 {nearestSensor && (
-                  <div
-                    className="flex items-center gap-2.5 rounded-xl px-3 py-2"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelected(nearestSensor.sensor.id);
+                      setDrawerTab("stats");
+                    }}
+                    className="w-full text-left flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 transition-colors hover:bg-white/5 active:scale-[0.99]"
                     style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}
                   >
-                    <Activity className="size-3.5 text-muted-foreground shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[9px] font-semibold truncate">
-                        {nearestSensor.sensor.name}
-                      </div>
-                      <div className="text-[8px] text-muted-foreground/70">
-                        Nearest sensor ·{" "}
-                        {nearestSensor.distKm < 1
-                          ? `${Math.round(nearestSensor.distKm * 1000)} m`
-                          : `${nearestSensor.distKm.toFixed(1)} km`}
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className="size-2 rounded-full shrink-0"
+                        style={{ background: aqiColor(nearestSensor.sensor.level ?? city.aqi) }}
+                      />
+                      <div className="min-w-0">
+                        <div className="text-[9.5px] sm:text-[10px] font-semibold truncate leading-tight">
+                          {nearestSensor.sensor.name}
+                        </div>
+                        <div className="text-[7.5px] sm:text-[8px] text-muted-foreground/70 leading-none mt-0.5">
+                          {nearestSensor.distKm < 1
+                            ? `${Math.round(nearestSensor.distKm * 1000)}m away`
+                            : `${nearestSensor.distKm.toFixed(1)} km away`}
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <div
-                        className="text-[13px] font-bold tabular-nums"
-                        style={{ color: band.color }}
+                    <div className="flex items-baseline gap-1 shrink-0 text-right">
+                      <span
+                        className="text-xs sm:text-[13px] font-bold tabular-nums"
+                        style={{ color: aqiColor(nearestSensor.sensor.level ?? city.aqi) }}
                       >
                         {nearestSensor.sensor.level ?? city.aqi}
-                      </div>
-                      <div className="text-[7px] text-muted-foreground/60 text-right">AQI</div>
+                      </span>
+                      <span className="text-[7.5px] text-muted-foreground font-medium">AQI</span>
                     </div>
-                  </div>
+                  </button>
                 )}
 
                 {/* Nearest open complaint */}
                 {nearestComplaint && (
                   <div
-                    className="flex items-center gap-2.5 rounded-xl px-3 py-2"
+                    className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5"
                     style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}
                   >
-                    <AlertTriangle className="size-3.5 text-muted-foreground shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[9px] font-semibold truncate">
-                        {nearestComplaint.complaint.title}
-                      </div>
-                      <div className="text-[8px] text-muted-foreground/70">
-                        Nearby complaint ·{" "}
-                        {nearestComplaint.distKm < 1
-                          ? `${Math.round(nearestComplaint.distKm * 1000)} m`
-                          : `${nearestComplaint.distKm.toFixed(1)} km`}
+                    <div className="flex items-center gap-2 min-w-0">
+                      <AlertTriangle className="size-3 text-warning shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-[9.5px] sm:text-[10px] font-semibold truncate leading-tight">
+                          {nearestComplaint.complaint.title}
+                        </div>
+                        <div className="text-[7.5px] sm:text-[8px] text-muted-foreground/70 leading-none mt-0.5">
+                          {nearestComplaint.distKm < 1
+                            ? `${Math.round(nearestComplaint.distKm * 1000)}m away`
+                            : `${nearestComplaint.distKm.toFixed(1)} km away`}
+                        </div>
                       </div>
                     </div>
                     <span
-                      className="text-[7.5px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                      className="text-[7.5px] font-bold px-1.5 py-0.5 rounded-full shrink-0 uppercase tracking-wider"
                       style={{
                         background:
                           nearestComplaint.complaint.severity === "critical"
@@ -1123,10 +1215,10 @@ function MapPage() {
                 {(geo.status === "denied" ||
                   geo.status === "unavailable" ||
                   geo.status === "timeout") && (
-                  <div className="text-[8.5px] text-muted-foreground/70 text-center py-0.5">
-                    {geo.statusMessage}
-                  </div>
-                )}
+                    <div className="text-[8.5px] text-muted-foreground/70 text-center py-0.5">
+                      {geo.statusMessage}
+                    </div>
+                  )}
               </div>
             </motion.div>
           )}
@@ -1197,7 +1289,7 @@ function MapPage() {
         >
           {/* Desktop toggle (≥1024px) */}
           <button
-            onClick={() => setDrawerOpen((o) => !o)}
+            onClick={toggleIntelligenceDrawer}
             className="hidden lg:flex w-full items-center justify-center py-3 hover:bg-white/5 transition-colors shrink-0 border-b border-border/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset"
             aria-label={drawerOpen ? "Collapse intelligence panel" : "Expand intelligence panel"}
             aria-expanded={drawerOpen}
@@ -1211,7 +1303,7 @@ function MapPage() {
 
           {/* Tablet toggle bar (768–1023px) */}
           <button
-            onClick={() => setDrawerOpen((o) => !o)}
+            onClick={toggleIntelligenceDrawer}
             className="hidden md:flex lg:hidden w-full items-center justify-between px-4 h-12 shrink-0 hover:bg-white/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset"
             aria-label={drawerOpen ? "Collapse intelligence panel" : "Expand intelligence panel"}
             aria-expanded={drawerOpen}
@@ -1220,7 +1312,7 @@ function MapPage() {
               <Shield className="size-3.5 text-primary shrink-0" />
               <span className="text-[11px] font-medium truncate">{city.name} Insights</span>
               <StatusChip tone={highRisk > 0 ? "critical" : "good"} pulse size="xs">
-                {sensorsOnline} online · {highRisk} critical
+                {sensorsOnline} active · {highRisk} critical
               </StatusChip>
             </span>
             <span className="flex items-center gap-2 shrink-0">
@@ -1302,7 +1394,7 @@ function MapPage() {
                       {highRisk > 0 ? `${highRisk} critical` : "All clear"}
                     </StatusChip>
                     <span className="text-[8.5px] text-muted-foreground/55 tabular-nums">
-                      {sensorsOnline} sensors online
+                      {sensorsOnline} active locations
                     </span>
                   </div>
                 </div>
@@ -1338,25 +1430,25 @@ function MapPage() {
                   icon: typeof Gauge;
                   accent: string;
                 }> = [
-                  { id: "stats", label: "Summary", icon: Gauge, accent: "var(--color-primary)" },
-                  { id: "zones", label: "Zones", icon: MapPin, accent: "var(--color-success)" },
-                  { id: "insights", label: "Intel", icon: Zap, accent: "oklch(0.72 0.18 50)" },
-                  {
-                    id: "weather",
-                    label: "Weather",
-                    icon: CloudRain,
-                    accent: "oklch(0.70 0.14 240)",
-                  },
-                  { id: "air", label: "Air", icon: Leaf, accent: "oklch(0.72 0.19 160)" },
-                  {
-                    id: "hazard",
-                    label: "Hazard",
-                    icon: TriangleAlert,
-                    accent: "oklch(0.68 0.22 35)",
-                  },
-                  { id: "ai", label: "AI", icon: Sparkles, accent: "oklch(0.65 0.20 290)" },
-                  { id: "twin", label: "Twin", icon: Globe, accent: "oklch(0.70 0.16 200)" },
-                ];
+                    { id: "stats", label: "Summary", icon: Gauge, accent: "var(--color-primary)" },
+                    { id: "zones", label: "Zones", icon: MapPin, accent: "var(--color-success)" },
+                    { id: "insights", label: "Intel", icon: Zap, accent: "oklch(0.72 0.18 50)" },
+                    {
+                      id: "weather",
+                      label: "Weather",
+                      icon: CloudRain,
+                      accent: "oklch(0.70 0.14 240)",
+                    },
+                    { id: "air", label: "Air", icon: Leaf, accent: "oklch(0.72 0.19 160)" },
+                    {
+                      id: "hazard",
+                      label: "Hazard",
+                      icon: TriangleAlert,
+                      accent: "oklch(0.68 0.22 35)",
+                    },
+                    { id: "ai", label: "AI", icon: Sparkles, accent: "oklch(0.65 0.20 290)" },
+                    { id: "twin", label: "Twin", icon: Globe, accent: "oklch(0.70 0.16 200)" },
+                  ];
                 const activeTab = TABS.find((t) => t.id === drawerTab) ?? TABS[0];
 
                 return (
@@ -1552,7 +1644,7 @@ function MapPage() {
                           accent: "var(--color-destructive)",
                         },
                         {
-                          label: "W/ Sensor",
+                          label: "Live Data",
                           value: drawerHotspots.filter((h) => h.sensor).length,
                           accent: "var(--color-success)",
                         },
@@ -1976,7 +2068,7 @@ function MapPage() {
                         <div className="glass-card rounded-xl p-3 mb-2">
                           <div className="text-[9px] uppercase tracking-[0.14em] text-muted-foreground mb-2 flex items-center gap-1.5">
                             <Activity className="size-3" /> Historical AQI —{" "}
-                            {timeRange !== "live" ? timeRange : "7d"}
+                            {timeRange === "7d" ? "7 Days" : timeRange === "30d" ? "30 Days" : "24 Hours"}
                           </div>
                           <MiniSpark data={historyAqi} color={band.color} height={32} />
                           <div className="flex justify-between text-[8px] text-muted-foreground mt-1">
@@ -2076,12 +2168,12 @@ function MapPage() {
                       </div>
                     </div>
 
-                    {/* ── Sensor Status ───────────────────────────────────────── */}
+                    {/* ── Environmental Data Status ───────────────────────── */}
                     <div>
-                      <SectionHeader icon={Radio} label="Sensor Status" />
+                      <SectionHeader icon={Radio} label="Environmental Data Status" />
                       <div className="grid grid-cols-3 gap-1.5">
                         <MetricTile
-                          label="Online"
+                          label="Active"
                           value={sensorsOnline}
                           unit={`/ ${hotspots.length}`}
                           accent="var(--color-success)"

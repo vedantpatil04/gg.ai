@@ -43,9 +43,23 @@ const MODE_PROMPTS: Record<ModeId, string> = {
 interface ImageWorkspaceProps {
   cityId: string;
   onAskAI: (prompt: string) => void;
+  /** Phase 2 — Intelligence Center selected AI provider ("gemini" | "groq" |
+   *  "openrouter"). Optional/omitted falls back to the server default. */
+  provider?: string;
+  /** Whether the selected provider actually supports image analysis here.
+   *  Defaults to true (Gemini's behavior) when the caller doesn't pass it,
+   *  so nothing changes for any usage that predates Phase 2. */
+  imageCapable?: boolean;
+  providerDisplayName?: string;
 }
 
-export function ImageWorkspace({ cityId, onAskAI }: ImageWorkspaceProps) {
+export function ImageWorkspace({
+  cityId,
+  onAskAI,
+  provider,
+  imageCapable = true,
+  providerDisplayName = "the selected provider",
+}: ImageWorkspaceProps) {
   const reduced           = useReducedMotion();
   const [file, setFile]   = useState<File | null>(null);
   const [fileError, setErr] = useState<string | null>(null);
@@ -106,18 +120,29 @@ export function ImageWorkspace({ cityId, onAskAI }: ImageWorkspaceProps) {
 
       // Fallback: describe the image via text prompt
       const prompt = `${MODE_PROMPTS[mode]}\n\n[Note: Image file selected: ${file.name}, ${(file.size / 1024).toFixed(0)} KB. Provide guidance on what to look for in environmental ${mode} analysis since image content cannot be directly read in this mode.]`;
-      const data = await copilotApi.chat(prompt, cityId, undefined).then(r => r.data);
+      const data = await copilotApi.chat(prompt, cityId, undefined, provider).then(r => r.data);
       setResult(data.answer || "No response received.");
       setStage("done");
     } catch {
       setResult("");
       setStage("error");
     }
-  }, [file, mode, cityId, stage]);
+  }, [file, mode, cityId, stage, provider]);
 
   return (
     <div className="space-y-4 p-4">
-      {stage === "idle" && (
+      {!imageCapable && (
+        <div className="glass rounded-xl border border-border/70 p-4 space-y-1.5" role="status">
+          <p className="text-xs font-medium text-foreground">
+            Image analysis isn't available with {providerDisplayName}.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Switch to Gemini using the model selector in the composer to analyze images, or choose another capability.
+          </p>
+        </div>
+      )}
+
+      {imageCapable && stage === "idle" && (
         <WorkspaceEmpty
           icon="🖼️"
           title="Image Analysis"
@@ -126,45 +151,48 @@ export function ImageWorkspace({ cityId, onAskAI }: ImageWorkspaceProps) {
         />
       )}
 
-      <WorkspaceDropzone
-        validation={VALIDATION}
-        file={file}
-        error={fileError}
-        accent={ACCENT}
-        onFile={handleFile}
-        onClear={handleClear}
-      >
-        {/* Inline image preview inside the file card */}
-        {previewUrl && (
-          <div className="space-y-2">
-            <div className="relative">
-              <motion.img
-                src={previewUrl}
-                alt="Environmental image preview"
-                className={cn(
-                  "w-full rounded-xl object-contain border border-border bg-muted/20 transition-all duration-300 cursor-zoom-in",
-                  zoomed ? "max-h-[400px]" : "max-h-48",
-                )}
-                onClick={() => setZoomed(z => !z)}
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.2 }}
-              />
-              <button
-                onClick={() => setZoomed(z => !z)}
-                className="absolute top-2 right-2 p-1.5 rounded-lg glass text-muted-foreground hover:text-foreground transition-colors"
-                aria-label={zoomed ? "Zoom out" : "Zoom in"}
-              >
-                {zoomed ? <ZoomOut className="size-3.5" /> : <ZoomIn className="size-3.5" />}
-              </button>
+      {imageCapable && (
+        <WorkspaceDropzone
+          validation={VALIDATION}
+          file={file}
+          error={fileError}
+          accent={ACCENT}
+          onFile={handleFile}
+          onClear={handleClear}
+        >
+          {/* Inline image preview inside the file card */}
+          {previewUrl && (
+            <div className="space-y-2">
+              <div className="relative">
+                <motion.img
+                  src={previewUrl}
+                  alt="Environmental image preview"
+                  className={cn(
+                    "w-full rounded-xl object-contain border border-border bg-muted/20 transition-all duration-300 cursor-zoom-in",
+                    zoomed ? "max-h-[400px]" : "max-h-48",
+                  )}
+                  onClick={() => setZoomed(z => !z)}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.2 }}
+                />
+                <button
+                  onClick={() => setZoomed(z => !z)}
+                  className="absolute top-2 right-2 p-1.5 rounded-lg glass text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={zoomed ? "Zoom out" : "Zoom in"}
+                >
+                  {zoomed ? <ZoomOut className="size-3.5" /> : <ZoomIn className="size-3.5" />}
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Image analysis provides observations only. Results cannot confirm pollutant concentrations or legal violations.
+              </p>
             </div>
-            <p className="text-[10px] text-muted-foreground">
-              Image analysis provides observations only. Results cannot confirm pollutant concentrations or legal violations.
-            </p>
-          </div>
-        )}
-      </WorkspaceDropzone>
+          )}
+        </WorkspaceDropzone>
+      )}
 
+      {imageCapable && (
       <AnimatePresence mode="wait">
         {stage === "ready" && (
           <motion.div key="controls" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
@@ -225,6 +253,7 @@ export function ImageWorkspace({ cityId, onAskAI }: ImageWorkspaceProps) {
           />
         )}
       </AnimatePresence>
+      )}
     </div>
   );
 }

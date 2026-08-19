@@ -35,6 +35,7 @@ import { copilotApi } from "@/lib/api/services.api";
 import { intelligenceApi } from "@/lib/api/environmental.api";
 import type { WorkspaceTab } from "@/components/intelligence/workspace-tabs";
 import { CapabilityMenu, type Capability } from "@/components/intelligence/capability-menu";
+import { ModelSelector, AUTO_OPTION, type ProviderOption } from "@/components/intelligence/model-selector";
 import { DocumentWorkspace } from "@/components/intelligence/document-workspace";
 import { ImageWorkspace }    from "@/components/intelligence/image-workspace";
 import { DataWorkspace }     from "@/components/intelligence/data-workspace";
@@ -71,6 +72,7 @@ type ChatMsg = {
   timestamp: string;
   metrics?:  Record<string, unknown>;
   error?:    boolean;
+  provider?: string;
 };
 
 type HealthAdvice = {
@@ -87,6 +89,15 @@ type HealthAdvice = {
 };
 
 // ─── Helper Functions ─────────────────────────────────────────────────────────
+
+// Phase 2 — subtle "GreenGuard AI · Groq" style provider tag on non-default
+// responses. Gemini stays untagged since it's the default and doesn't need
+// calling out per message.
+function providerTagLabel(provider?: string): string | null {
+  if (!provider || provider === "gemini") return null;
+  if (provider === "openrouter") return "OpenRouter";
+  return provider.charAt(0).toUpperCase() + provider.slice(1);
+}
 
 function aqiLabel(aqi: number): string {
   if (aqi <= 50)  return "Good";
@@ -375,7 +386,12 @@ function ChatBubble({
             isUser ? "flex-row-reverse" : "flex-row",
           )}
         >
-          <span className="text-[10px] tabular-nums opacity-60 mr-1">{msg.timestamp}</span>
+          <span className="text-[10px] tabular-nums opacity-60 mr-1">
+            {msg.timestamp}
+            {!isUser && providerTagLabel(msg.provider) && (
+              <span className="opacity-70"> · {providerTagLabel(msg.provider)}</span>
+            )}
+          </span>
           <button
             onClick={() => onCopy(msg.text)}
             className="p-1 rounded-md hover:text-foreground hover:bg-muted/60 transition-colors"
@@ -957,6 +973,16 @@ function IntelligenceCenterWorkspace() {
 
   const [tab, setTab] = useState<Tab>("chat");
   const [wsTab, setWsTab] = useState<WorkspaceTab>("chat");
+  const [selectedProvider, setSelectedProvider] = useState<string>(() => {
+    if (typeof window === "undefined") return AUTO_OPTION;
+    return window.localStorage.getItem("greenguard.copilot.provider") || AUTO_OPTION;
+  });
+  const handleProviderChange = (value: string) => {
+    setSelectedProvider(value);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("greenguard.copilot.provider", value);
+    }
+  };
   const [question, setQuestion] = useState("");
   const [inputFocused, setFocused] = useState(false);
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
@@ -999,8 +1025,28 @@ function IntelligenceCenterWorkspace() {
     e.target.style.height = `${Math.min(e.target.scrollHeight, 180)}px`;
   }, []);
 
+  // Phase 2 — Intelligence Center Assistant model selector. Fetched once
+  // (long staleTime — provider config rarely changes) and reused by the
+  // composer's ModelSelector, the header status pill, and the `+`
+  // Document/Image/Data capabilities below.
+  const providersQuery = useQuery({
+    queryKey: ["copilot-providers"],
+    queryFn: () => copilotApi.getProviders().then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+  const providers: ProviderOption[] = providersQuery.data?.providers ?? [
+    { name: "gemini", displayName: "Gemini", model: "Gemini 2.5 Flash", capabilities: { text: true, image: true, document: true }, available: true },
+  ];
+  const effectiveProvider =
+    selectedProvider === AUTO_OPTION
+      ? providersQuery.data?.default || "gemini"
+      : selectedProvider;
+  const effectiveProviderMeta = providers.find((p) => p.name === effectiveProvider);
+  const effectiveCapabilities = effectiveProviderMeta?.capabilities ?? { text: true, image: true, document: true };
+
   const chatMutation = useMutation({
-    mutationFn: (q: string) => copilotApi.chat(q, city.id, sessionId).then((r) => r.data),
+    mutationFn: (q: string) =>
+      copilotApi.chat(q, city.id, sessionId, effectiveProvider).then((r) => r.data),
     onSuccess: (data) => {
       if (data.sessionId) setSessionId(data.sessionId);
       setMessages((h) => [
@@ -1011,20 +1057,26 @@ function IntelligenceCenterWorkspace() {
           text: data.answer || "No response received from environmental intelligence engine.",
           timestamp: now(),
           metrics: data.metrics,
+          provider: data.provider,
         },
       ]);
       setQuestion("");
       if (inputRef.current) inputRef.current.style.height = "auto";
     },
-    onError: () => {
+    onError: (err: any) => {
+      // Prefer the backend's clean, safe error message (e.g. a specific
+      // provider being unavailable or timing out) when available.
+      const serverMessage: string | undefined = err?.response?.data?.message;
       setMessages((h) => [
         ...h,
         {
           id: nextId(),
           role: "ai",
-          text: isApiConnected
-            ? "AI service temporarily unavailable. Environmental telemetry and intelligence remain active."
-            : "Backend API required. Please verify server connection and GEMINI_API_KEY.",
+          text:
+            serverMessage ||
+            (isApiConnected
+              ? "AI service temporarily unavailable. Environmental telemetry and intelligence remain active."
+              : "Backend API required. Please verify server connection and GEMINI_API_KEY."),
           timestamp: now(),
           error: true,
         },
@@ -1098,7 +1150,7 @@ function IntelligenceCenterWorkspace() {
               </h1>
               <Pill tone={isApiConnected ? "success" : "warning"}>
                 <span className="size-1.5 rounded-full bg-current animate-pulse mr-1" />
-                {isApiConnected ? "Gemini 2.5 Flash" : "Offline"}
+                {isApiConnected ? (effectiveProviderMeta?.model ?? "Gemini 2.5 Flash") : "Offline"}
               </Pill>
             </div>
             <p className="text-[11px] text-muted-foreground hidden sm:block">
@@ -1297,9 +1349,12 @@ function IntelligenceCenterWorkspace() {
                             onSelect={(capability: Capability) => setWsTab(capability)}
                             disabled={chatMutation.isPending}
                           />
-                          <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground px-2 py-1.5 rounded-lg border border-border/50">
-                            Gemini 2.5 Flash
-                          </span>
+                          <ModelSelector
+                            providers={providers}
+                            value={selectedProvider}
+                            onChange={handleProviderChange}
+                            disabled={chatMutation.isPending}
+                          />
                         </div>
                         <textarea
                           ref={inputRef}
@@ -1347,6 +1402,7 @@ function IntelligenceCenterWorkspace() {
                   <CapabilityPanelHeader label="Document" onBack={() => setWsTab("chat")} />
                   <DocumentWorkspace
                     cityId={city.id}
+                    provider={effectiveProvider}
                     onAskAI={(p) => {
                       setWsTab("chat");
                       handlePrompt(p);
@@ -1359,6 +1415,9 @@ function IntelligenceCenterWorkspace() {
                   <CapabilityPanelHeader label="Image" onBack={() => setWsTab("chat")} />
                   <ImageWorkspace
                     cityId={city.id}
+                    provider={effectiveProvider}
+                    imageCapable={effectiveCapabilities.image}
+                    providerDisplayName={effectiveProviderMeta?.displayName ?? "the selected provider"}
                     onAskAI={(p) => {
                       setWsTab("chat");
                       handlePrompt(p);
@@ -1371,6 +1430,7 @@ function IntelligenceCenterWorkspace() {
                   <CapabilityPanelHeader label="Data" onBack={() => setWsTab("chat")} />
                   <DataWorkspace
                     cityId={city.id}
+                    provider={effectiveProvider}
                     onAskAI={(p) => {
                       setWsTab("chat");
                       handlePrompt(p);

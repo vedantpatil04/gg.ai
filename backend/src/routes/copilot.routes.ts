@@ -8,6 +8,7 @@ import {
   getCityAIInsights,
   getConversation,
   sustainabilityChat,
+  getAIProviders,
 } from "../controllers/copilot.controller";
 import { authenticate, authorize, AUTHORITY_ROLES } from "../middleware/auth";
 
@@ -20,6 +21,17 @@ router.post(
   authenticate,
   authorize("citizen", ...AUTHORITY_ROLES),
   chat,
+);
+
+// PHASE 2 — Intelligence Center Assistant model selector: metadata for
+// whichever providers are actually configured (have an API key set). Only
+// used by the /copilot Assistant's "+"-adjacent model dropdown; /chat above
+// is unaffected unless a caller explicitly sends a `provider` field.
+router.get(
+  "/providers",
+  authenticate,
+  authorize("citizen", ...AUTHORITY_ROLES),
+  getAIProviders,
 );
 router.post(
   "/health-advice",

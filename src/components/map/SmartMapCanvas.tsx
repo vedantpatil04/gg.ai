@@ -254,6 +254,8 @@ interface Props {
   onTimeRangeChange?: (v: TimeRange) => void;
   hasHistory?: boolean;
   historyData?: CityHistoryDay[];
+  layerPanelOpen?: boolean;
+  onToggleLayerPanel?: () => void;
   // ── Phase 10: geolocation ────────────────────────────────────────────────
   /** Current GPS position — null until granted */
   userPosition?: GeoPosition | null;
@@ -296,6 +298,8 @@ export function SmartMapCanvas({
   selectedId,
   onSelectLocation,
   onToggleLayer,
+  layerPanelOpen: controlledLayerPanelOpen,
+  onToggleLayerPanel,
   sensorsOnline,
   highRisk,
   band,
@@ -374,7 +378,11 @@ export function SmartMapCanvas({
     network: true,
     overlay: false,
   });
-  const [layerPanelOpen, setLayerPanelOpen] = useState(true);
+  const [internalLayerPanelOpen, setInternalLayerPanelOpen] = useState(false);
+  const layerPanelOpen =
+    controlledLayerPanelOpen !== undefined ? controlledLayerPanelOpen : internalLayerPanelOpen;
+  const toggleLayerPanel =
+    onToggleLayerPanel ?? (() => setInternalLayerPanelOpen((o) => !o));
   // Phase 4: layer search — filters the Layer Manager list in real time
   const [layerSearch, setLayerSearch] = useState("");
 
@@ -681,7 +689,7 @@ export function SmartMapCanvas({
     return () => {
       clearTimeout(loadTimeoutId);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attachStyleOwnedLayers]);
 
   useEffect(() => {
@@ -1020,8 +1028,7 @@ export function SmartMapCanvas({
     markerElsRef.current.clear();
 
     const showAqi = activeLayers.includes("aqi");
-    const showSensors = activeLayers.includes("sensors");
-    if (!showAqi && !showSensors) return;
+    if (!showAqi) return;
 
     // Phase 1: gate park/traffic/water-category points behind their own layer
     // toggle *before* clustering (not after) so cluster count badges stay
@@ -1076,8 +1083,7 @@ export function SmartMapCanvas({
         });
       } else {
         const p = cl.properties as MapLocation;
-        if (!showAqi && !p.sensor) return;
-        if (!showSensors && !showAqi) return;
+        if (!showAqi) return;
 
         const markerOpts: MarkerHtmlOpts = {
           level: p.level,
@@ -1257,18 +1263,18 @@ export function SmartMapCanvas({
     src?.setData(
       measurePoints.length === 2
         ? {
-            type: "FeatureCollection",
-            features: [
-              {
-                type: "Feature",
-                geometry: {
-                  type: "LineString",
-                  coordinates: measurePoints.map((p) => [p.lng, p.lat]),
-                },
-                properties: {},
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              geometry: {
+                type: "LineString",
+                coordinates: measurePoints.map((p) => [p.lng, p.lat]),
               },
-            ],
-          }
+              properties: {},
+            },
+          ],
+        }
         : { type: "FeatureCollection", features: [] },
     );
   }, [measurePoints, mapReady, styleVersion]);
@@ -1352,7 +1358,7 @@ export function SmartMapCanvas({
   const resetNorth = () => mapRef.current?.rotateTo(0, { duration: 480 });
   // Phase 10: locateMe now delegates to the parent-provided callback (which
   // drives useGeolocation); long-press → track toggle handled in the JSX.
-  const locateMe = onLocate ?? (() => {});
+  const locateMe = onLocate ?? (() => { });
   const resetCamera = () => {
     const c = mapData?.center ?? { lat: city.lat, lng: city.lng };
     mapRef.current?.flyTo({
@@ -1369,12 +1375,12 @@ export function SmartMapCanvas({
     if (!document.fullscreenElement) {
       el.requestFullscreen()
         .then(() => setFullscreen(true))
-        .catch(() => {});
+        .catch(() => { });
     } else {
       document
         .exitFullscreen()
         .then(() => setFullscreen(false))
-        .catch(() => {});
+        .catch(() => { });
     }
   };
   const exportImage = () => {
@@ -1478,261 +1484,261 @@ export function SmartMapCanvas({
           a full row of vertical space back to the map.
       ═════════════════════════════════════════════════════════════════════ */}
       {!embedded && (
-      <div className="absolute top-0 inset-x-0 z-30 h-14 glass-panel border-b border-border/40 px-3 flex items-center gap-2">
-        {/* Search */}
-        <div className="relative flex-1 min-w-0 max-w-md">
-          <div
-            className={cn(
-              "flex items-center gap-2 px-3 h-9 rounded-lg bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] border border-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)] transition-colors focus-within:ring-2 focus-within:ring-primary/40",
-              searchOpen && "border-primary/40 bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)]",
-            )}
-          >
-            <Search className="size-3.5 text-muted-foreground shrink-0" />
-            <input
-              value={search}
-              onChange={(e) => {
-                handleGeoSearch(e.target.value);
-                setSearchOpen(true);
-              }}
-              onFocus={() => setSearchOpen(true)}
-              placeholder={`Search ${city.name}…`}
-              aria-label={`Search ${city.name}`}
-              className="bg-transparent outline-none text-[12px] flex-1 min-w-0 placeholder:text-muted-foreground/60"
-            />
-            {geoLoading && (
-              <Loader2 className="size-3.5 text-muted-foreground animate-spin shrink-0" />
-            )}
-            {search && !geoLoading && (
-              <button
-                onClick={() => {
-                  onSearchChange("");
-                  setGeoResults([]);
-                  setSearchOpen(false);
+        <div className="absolute top-0 inset-x-0 z-30 h-14 glass-panel border-b border-border/40 px-3 flex items-center gap-2">
+          {/* Search */}
+          <div className="relative flex-1 min-w-0 max-w-md">
+            <div
+              className={cn(
+                "flex items-center gap-2 px-3 h-9 rounded-lg bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] border border-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)] transition-colors focus-within:ring-2 focus-within:ring-primary/40",
+                searchOpen && "border-primary/40 bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)]",
+              )}
+            >
+              <Search className="size-3.5 text-muted-foreground shrink-0" />
+              <input
+                value={search}
+                onChange={(e) => {
+                  handleGeoSearch(e.target.value);
+                  setSearchOpen(true);
                 }}
-                aria-label="Clear search"
-                className="text-muted-foreground hover:text-foreground shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded"
-              >
-                <X className="size-3.5" />
-              </button>
-            )}
-          </div>
-
-          <AnimatePresence>
-            {searchOpen && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setSearchOpen(false)} />
-                <motion.div
-                  initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                  transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-                  className="absolute top-[calc(100%+8px)] left-0 w-[380px] max-w-[85vw] glass-overlay rounded-xl shadow-2xl overflow-hidden z-30 origin-top"
+                onFocus={() => setSearchOpen(true)}
+                placeholder={`Search ${city.name}…`}
+                aria-label={`Search ${city.name}`}
+                className="bg-transparent outline-none text-[12px] flex-1 min-w-0 placeholder:text-muted-foreground/60"
+              />
+              {geoLoading && (
+                <Loader2 className="size-3.5 text-muted-foreground animate-spin shrink-0" />
+              )}
+              {search && !geoLoading && (
+                <button
+                  onClick={() => {
+                    onSearchChange("");
+                    setGeoResults([]);
+                    setSearchOpen(false);
+                  }}
+                  aria-label="Clear search"
+                  className="text-muted-foreground hover:text-foreground shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded"
                 >
-                  <div className="max-h-80 overflow-y-auto">
-                    {/* Recent searches — only while the box is empty, Google-Maps style */}
-                    {!search && recentSearches.length > 0 && (
-                      <>
-                        <div className="px-3 py-1.5 text-[8px] uppercase tracking-[0.16em] text-muted-foreground bg-[color-mix(in_oklab,var(--color-foreground)_2%,transparent)] flex items-center gap-1.5">
-                          <History className="size-2.5" /> Recent
-                        </div>
-                        {recentSearches.map((r) => (
-                          <button
-                            key={r.label}
-                            onClick={() => flyToRecent(r)}
-                            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] text-left"
-                          >
-                            <Clock className="size-3 text-muted-foreground shrink-0" />
-                            <span className="text-[11px] truncate">{r.label}</span>
-                          </button>
-                        ))}
-                      </>
-                    )}
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
 
-                    {search && localResults.length > 0 && (
-                      <>
-                        <div className="px-3 py-1.5 text-[8px] uppercase tracking-[0.16em] text-muted-foreground bg-[color-mix(in_oklab,var(--color-foreground)_2%,transparent)]">
-                          Sensors & Locations
-                        </div>
-                        {localResults.map((h) => (
-                          <button
-                            key={h.id}
-                            onClick={() => {
-                              onSelectLocation(h.id);
-                              setPopupLoc(h);
-                              setPopupComp(null);
-                              pushRecentSearch({
-                                label: h.name,
-                                sublabel: h.category,
-                                lat: h.latitude,
-                                lng: h.longitude,
-                              });
-                              mapRef.current?.flyTo({
-                                center: [h.longitude, h.latitude],
-                                zoom: 15,
-                                duration: 700,
-                              });
-                              setSearchOpen(false);
-                            }}
-                            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] text-left"
-                          >
-                            <span className="text-base">
-                              {sensorTypeIcon(h.sensorType ?? "environmental")}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <div className="text-[11px] font-medium truncate">{h.name}</div>
-                              <div className="text-[9px] text-muted-foreground">
-                                AQI {h.level} · {h.category}
-                              </div>
-                            </div>
-                            <span
-                              className="text-[10px] font-bold tabular-nums shrink-0"
-                              style={{ color: aqiColor(h.level) }}
-                            >
-                              {h.level}
-                            </span>
-                          </button>
-                        ))}
-                      </>
-                    )}
-
-                    {search && geoResults.length > 0 && (
-                      <>
-                        <div className="px-3 py-1.5 text-[8px] uppercase tracking-[0.16em] text-muted-foreground bg-[color-mix(in_oklab,var(--color-foreground)_2%,transparent)]">
-                          Places & Roads
-                        </div>
-                        {geoResults.map((r) => (
-                          <button
-                            key={r.place_id}
-                            onClick={() => flyToGeo(r)}
-                            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] text-left"
-                          >
-                            <MapPin className="size-3 text-muted-foreground shrink-0" />
-                            <span className="text-[11px] truncate">{r.display_name}</span>
-                          </button>
-                        ))}
-                      </>
-                    )}
-
-                    {/* Empty state — searched, nothing found */}
-                    {search.trim().length >= 2 &&
-                      !geoLoading &&
-                      localResults.length === 0 &&
-                      geoResults.length === 0 && (
-                        <div className="px-3 py-6 text-center">
-                          <Search className="size-4 text-muted-foreground/40 mx-auto mb-1.5" />
-                          <div className="text-[11px] text-muted-foreground">
-                            No matches for “{search}”
+            <AnimatePresence>
+              {searchOpen && (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => setSearchOpen(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                    transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                    className="absolute top-[calc(100%+8px)] left-0 w-[380px] max-w-[85vw] glass-overlay rounded-xl shadow-2xl overflow-hidden z-30 origin-top"
+                  >
+                    <div className="max-h-80 overflow-y-auto">
+                      {/* Recent searches — only while the box is empty, Google-Maps style */}
+                      {!search && recentSearches.length > 0 && (
+                        <>
+                          <div className="px-3 py-1.5 text-[8px] uppercase tracking-[0.16em] text-muted-foreground bg-[color-mix(in_oklab,var(--color-foreground)_2%,transparent)] flex items-center gap-1.5">
+                            <History className="size-2.5" /> Recent
                           </div>
-                          <div className="text-[9px] text-muted-foreground/60 mt-0.5">
-                            Try a sensor name, road, or landmark
+                          {recentSearches.map((r) => (
+                            <button
+                              key={r.label}
+                              onClick={() => flyToRecent(r)}
+                              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] text-left"
+                            >
+                              <Clock className="size-3 text-muted-foreground shrink-0" />
+                              <span className="text-[11px] truncate">{r.label}</span>
+                            </button>
+                          ))}
+                        </>
+                      )}
+
+                      {search && localResults.length > 0 && (
+                        <>
+                          <div className="px-3 py-1.5 text-[8px] uppercase tracking-[0.16em] text-muted-foreground bg-[color-mix(in_oklab,var(--color-foreground)_2%,transparent)]">
+                            Environmental Locations
+                          </div>
+                          {localResults.map((h) => (
+                            <button
+                              key={h.id}
+                              onClick={() => {
+                                onSelectLocation(h.id);
+                                setPopupLoc(h);
+                                setPopupComp(null);
+                                pushRecentSearch({
+                                  label: h.name,
+                                  sublabel: h.category,
+                                  lat: h.latitude,
+                                  lng: h.longitude,
+                                });
+                                mapRef.current?.flyTo({
+                                  center: [h.longitude, h.latitude],
+                                  zoom: 15,
+                                  duration: 700,
+                                });
+                                setSearchOpen(false);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] text-left"
+                            >
+                              <span className="text-base">
+                                {sensorTypeIcon(h.sensorType ?? "environmental")}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[11px] font-medium truncate">{h.name}</div>
+                                <div className="text-[9px] text-muted-foreground">
+                                  AQI {h.level} · {h.category}
+                                </div>
+                              </div>
+                              <span
+                                className="text-[10px] font-bold tabular-nums shrink-0"
+                                style={{ color: aqiColor(h.level) }}
+                              >
+                                {h.level}
+                              </span>
+                            </button>
+                          ))}
+                        </>
+                      )}
+
+                      {search && geoResults.length > 0 && (
+                        <>
+                          <div className="px-3 py-1.5 text-[8px] uppercase tracking-[0.16em] text-muted-foreground bg-[color-mix(in_oklab,var(--color-foreground)_2%,transparent)]">
+                            Places & Roads
+                          </div>
+                          {geoResults.map((r) => (
+                            <button
+                              key={r.place_id}
+                              onClick={() => flyToGeo(r)}
+                              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] text-left"
+                            >
+                              <MapPin className="size-3 text-muted-foreground shrink-0" />
+                              <span className="text-[11px] truncate">{r.display_name}</span>
+                            </button>
+                          ))}
+                        </>
+                      )}
+
+                      {/* Empty state — searched, nothing found */}
+                      {search.trim().length >= 2 &&
+                        !geoLoading &&
+                        localResults.length === 0 &&
+                        geoResults.length === 0 && (
+                          <div className="px-3 py-6 text-center">
+                            <Search className="size-4 text-muted-foreground/40 mx-auto mb-1.5" />
+                            <div className="text-[11px] text-muted-foreground">
+                              No matches for “{search}”
+                            </div>
+                            <div className="text-[9px] text-muted-foreground/60 mt-0.5">
+                              Try a location name, road, or landmark
+                            </div>
+                          </div>
+                        )}
+                      {/* Empty state — nothing typed, no recent history yet */}
+                      {!search && recentSearches.length === 0 && (
+                        <div className="px-3 py-6 text-center">
+                          <div className="text-[10px] text-muted-foreground/60">
+                            Search locations, zones, roads & landmarks
                           </div>
                         </div>
                       )}
-                    {/* Empty state — nothing typed, no recent history yet */}
-                    {!search && recentSearches.length === 0 && (
-                      <div className="px-3 py-6 text-center">
-                        <div className="text-[10px] text-muted-foreground/60">
-                          Search sensors, zones, roads & landmarks
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
-        </div>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
 
-        <div className="h-6 w-px bg-border/40 shrink-0" />
+          <div className="h-6 w-px bg-border/40 shrink-0" />
 
-        {/* Layer manager toggle */}
-        <button
-          onClick={() => setLayerPanelOpen((o) => !o)}
-          title="Toggle layer manager"
-          aria-label="Toggle layer manager"
-          aria-expanded={layerPanelOpen}
-          className={cn(
-            "shrink-0 h-9 px-3 rounded-lg flex items-center gap-1.5 text-[11px] font-medium transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-            layerPanelOpen
-              ? "bg-primary/15 text-primary border border-primary/30"
-              : "bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] text-muted-foreground border border-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)] hover:bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)]",
-          )}
-        >
-          <Layers className="size-3.5" />
-          <span className="hidden sm:inline">Layers</span>
-          <span className="text-[9px] opacity-70 tabular-nums">{activeLayers.length}</span>
-          <ChevronDown
+          {/* Layer manager toggle */}
+          <button
+            onClick={toggleLayerPanel}
+            title="Toggle layer manager"
+            aria-label="Toggle layer manager"
+            aria-expanded={layerPanelOpen}
             className={cn(
-              "size-3 transition-transform duration-200",
-              layerPanelOpen ? "rotate-180" : "",
+              "shrink-0 h-9 px-3 rounded-lg flex items-center gap-1.5 text-[11px] font-medium transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+              layerPanelOpen
+                ? "bg-primary/15 text-primary border border-primary/30"
+                : "bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] text-muted-foreground border border-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)] hover:bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)]",
             )}
-          />
-        </button>
+          >
+            <Layers className="size-3.5" />
+            <span className="hidden sm:inline">Layers</span>
+            <span className="text-[9px] opacity-70 tabular-nums">{activeLayers.length}</span>
+            <ChevronDown
+              className={cn(
+                "size-3 transition-transform duration-200",
+                layerPanelOpen ? "rotate-180" : "",
+              )}
+            />
+          </button>
 
-        <div className="h-6 w-px bg-border/40 shrink-0 hidden md:block" />
+          <div className="h-6 w-px bg-border/40 shrink-0 hidden md:block" />
 
-        {/* Timeline — embedded, compact segmented control */}
-        <div
-          className="hidden md:flex items-center gap-1 shrink-0 h-9 pl-2 pr-1 rounded-lg bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] border border-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)]"
-          role="group"
-          aria-label="Time range"
-        >
-          <Clock className="size-3 text-muted-foreground shrink-0" />
-          {TIME_RANGE_OPTS.map((o) => {
-            const disabled = o.id !== "live" && !hasHistory;
-            return (
-              <button
-                key={o.id}
-                disabled={disabled}
-                aria-pressed={timeRange === o.id}
-                onClick={() => onTimeRangeChange?.(o.id)}
-                title={disabled ? "No historical data available" : undefined}
-                className={cn(
-                  "px-2 py-1 rounded-md text-[10px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-                  timeRange === o.id
-                    ? "bg-primary text-primary-foreground"
-                    : disabled
-                      ? "text-muted-foreground/30 cursor-not-allowed"
-                      : "text-muted-foreground hover:bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)] hover:text-foreground active:scale-95",
-                )}
-              >
-                {o.label}
-              </button>
-            );
-          })}
+          {/* Timeline — embedded, compact segmented control */}
+          <div
+            className="hidden md:flex items-center gap-1 shrink-0 h-9 pl-2 pr-1 rounded-lg bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] border border-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)]"
+            role="group"
+            aria-label="Time range"
+          >
+            <Clock className="size-3 text-muted-foreground shrink-0" />
+            {TIME_RANGE_OPTS.map((o) => {
+              const disabled = o.id !== "live" && !hasHistory;
+              return (
+                <button
+                  key={o.id}
+                  disabled={disabled}
+                  aria-pressed={timeRange === o.id}
+                  onClick={() => onTimeRangeChange?.(o.id)}
+                  title={disabled ? "No historical data available" : undefined}
+                  className={cn(
+                    "px-2 py-1 rounded-md text-[10px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+                    timeRange === o.id
+                      ? "bg-primary text-primary-foreground"
+                      : disabled
+                        ? "text-muted-foreground/30 cursor-not-allowed"
+                        : "text-muted-foreground hover:bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)] hover:text-foreground active:scale-95",
+                  )}
+                >
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex-1" />
+          <div className="h-6 w-px bg-border/40 shrink-0" />
+
+          {/* Map tools: fullscreen, reset view, export */}
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button
+              onClick={toggleFullscreen}
+              title="Fullscreen"
+              aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              className="size-9 grid place-items-center hover:bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)] rounded-lg transition-colors text-muted-foreground active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            >
+              {isFullscreen ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
+            </button>
+            <button
+              onClick={resetCamera}
+              title="Reset view"
+              aria-label="Reset map view"
+              className="size-9 grid place-items-center hover:bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)] rounded-lg transition-colors text-muted-foreground active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            >
+              <RotateCcw className="size-3.5" />
+            </button>
+            <button
+              onClick={exportImage}
+              title="Export map image"
+              aria-label="Export map image"
+              className="size-9 grid place-items-center hover:bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)] rounded-lg transition-colors text-muted-foreground active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            >
+              <Camera className="size-3.5" />
+            </button>
+          </div>
         </div>
-
-        <div className="flex-1" />
-        <div className="h-6 w-px bg-border/40 shrink-0" />
-
-        {/* Map tools: fullscreen, reset view, export */}
-        <div className="flex items-center gap-0.5 shrink-0">
-          <button
-            onClick={toggleFullscreen}
-            title="Fullscreen"
-            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-            className="size-9 grid place-items-center hover:bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)] rounded-lg transition-colors text-muted-foreground active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-          >
-            {isFullscreen ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
-          </button>
-          <button
-            onClick={resetCamera}
-            title="Reset view"
-            aria-label="Reset map view"
-            className="size-9 grid place-items-center hover:bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)] rounded-lg transition-colors text-muted-foreground active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-          >
-            <RotateCcw className="size-3.5" />
-          </button>
-          <button
-            onClick={exportImage}
-            title="Export map image"
-            aria-label="Export map image"
-            className="size-9 grid place-items-center hover:bg-[color-mix(in_oklab,var(--color-foreground)_8%,transparent)] rounded-lg transition-colors text-muted-foreground active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-          >
-            <Camera className="size-3.5" />
-          </button>
-        </div>
-      </div>
       )}
 
       {/* ══════════════════════════════════════════════════════════════════
@@ -1740,292 +1746,267 @@ export function SmartMapCanvas({
           toolbar-toggleable, now with per-layer descriptions)
       ═════════════════════════════════════════════════════════════════════ */}
       {!embedded && (
-      <AnimatePresence>
-        {layerPanelOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.98 }}
-            transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute top-[4.5rem] left-3 z-20 w-[280px] max-w-[calc(100vw-1.5rem)] origin-top-left"
-          >
-            {/* ── Professional GIS Layer Manager (Phase 4, Section 3) ─── */}
-            <div
-              className="rounded-xl overflow-hidden flex flex-col"
-              style={{
-                background: "oklch(0.12 0.015 240 / 0.92)",
-                backdropFilter: "blur(16px) saturate(1.4)",
-                border: "1px solid color-mix(in oklab, var(--color-foreground) 12%, transparent)",
-                boxShadow: "0 8px 32px -4px oklch(0 0 0 / 0.5), 0 2px 8px -2px oklch(0 0 0 / 0.3)",
-              }}
+        <AnimatePresence>
+          {layerPanelOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.98 }}
+              transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute top-[4.25rem] left-3 sm:left-4 z-30 w-[300px] max-w-[calc(100vw-1.5rem)] origin-top-left"
             >
-              {/* Header */}
+              {/* ── Professional GIS Layer Manager ─── */}
               <div
-                className="flex items-center gap-2 px-3 py-2.5"
-                style={{ borderBottom: "1px solid color-mix(in oklab, var(--color-foreground) 8%, transparent)" }}
+                className="rounded-2xl overflow-hidden flex flex-col transition-shadow duration-200"
+                style={{
+                  background: "color-mix(in oklab, var(--color-card, var(--color-background)) 94%, transparent)",
+                  backdropFilter: "blur(20px) saturate(1.6)",
+                  WebkitBackdropFilter: "blur(20px) saturate(1.6)",
+                  border: "1px solid color-mix(in oklab, var(--color-border) 80%, var(--color-foreground) 15%)",
+                  boxShadow: "0 20px 40px -12px rgba(0,0,0,0.35), 0 4px 16px -2px rgba(0,0,0,0.15), 0 0 0 1px color-mix(in oklab, var(--color-foreground) 6%, transparent)",
+                }}
               >
-                <Layers className="size-3.5 text-primary shrink-0" />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground flex-1">
-                  Layer Manager
-                </span>
-                <span
-                  className="text-[9px] font-medium tabular-nums px-1.5 py-0.5 rounded-full"
+                {/* Header */}
+                <div
+                  className="flex items-center gap-2 px-3.5 py-3"
                   style={{
-                    background: "color-mix(in oklab, var(--color-primary) 18%, transparent)",
-                    color: "var(--color-primary)",
+                    borderBottom: "1px solid color-mix(in oklab, var(--color-border) 80%, transparent)",
+                    background: "color-mix(in oklab, var(--color-foreground) 3%, transparent)",
                   }}
                 >
-                  {activeLayers.length} active
-                </span>
-              </div>
-
-              {/* Search */}
-              <div
-                className="flex items-center gap-2 px-3 py-2"
-                style={{ borderBottom: "1px solid color-mix(in oklab, var(--color-foreground) 6%, transparent)" }}
-              >
-                <Search className="size-3 text-muted-foreground shrink-0" />
-                <input
-                  value={layerSearch}
-                  onChange={(e) => setLayerSearch(e.target.value)}
-                  placeholder="Filter layers…"
-                  aria-label="Filter layers"
-                  className="bg-transparent outline-none text-[11px] flex-1 min-w-0 placeholder:text-muted-foreground/50"
-                />
-                {layerSearch && (
-                  <button
-                    onClick={() => setLayerSearch("")}
-                    aria-label="Clear filter"
-                    className="text-muted-foreground/60 hover:text-muted-foreground focus-visible:outline-none"
+                  <div
+                    className="size-6 rounded-lg grid place-items-center shrink-0"
+                    style={{
+                      background: "color-mix(in oklab, var(--color-primary) 16%, transparent)",
+                      border: "1px solid color-mix(in oklab, var(--color-primary) 30%, transparent)",
+                    }}
                   >
-                    <X className="size-3" />
-                  </button>
-                )}
-              </div>
+                    <Layers className="size-3.5 text-primary" />
+                  </div>
+                  <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-foreground flex-1">
+                    Map Layers
+                  </span>
+                  <span
+                    className="text-[9.5px] font-semibold tabular-nums px-2 py-0.5 rounded-full"
+                    style={{
+                      background: "color-mix(in oklab, var(--color-primary) 18%, transparent)",
+                      color: "var(--color-primary)",
+                      border: "1px solid color-mix(in oklab, var(--color-primary) 30%, transparent)",
+                    }}
+                  >
+                    {activeLayers.length} active
+                  </span>
+                </div>
 
-              {/* Layer groups — driven by registry */}
-              <div className="gis-scrollbar overflow-y-auto max-h-[calc(100dvh-22rem)]">
-                {layerRegistry.getGroups().map((group) => {
-                  const allGroupLayers = layerRegistry.getByGroup(group);
-                  const groupLayers = layerSearch
-                    ? allGroupLayers.filter((l) =>
+                {/* Search */}
+                <div
+                  className="flex items-center gap-2 px-3 py-2"
+                  style={{
+                    borderBottom: "1px solid color-mix(in oklab, var(--color-border) 60%, transparent)",
+                    background: "color-mix(in oklab, var(--color-foreground) 1.5%, transparent)",
+                  }}
+                >
+                  <Search className="size-3 text-muted-foreground/80 shrink-0" />
+                  <input
+                    value={layerSearch}
+                    onChange={(e) => setLayerSearch(e.target.value)}
+                    placeholder="Filter layers…"
+                    aria-label="Filter layers"
+                    className="bg-transparent outline-none text-[11px] flex-1 min-w-0 text-foreground placeholder:text-muted-foreground/60"
+                  />
+                  {layerSearch && (
+                    <button
+                      onClick={() => setLayerSearch("")}
+                      aria-label="Clear filter"
+                      className="text-muted-foreground/60 hover:text-foreground focus-visible:outline-none p-0.5 rounded"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Layer groups — driven by registry */}
+                <div className="gis-scrollbar overflow-y-auto max-h-[min(380px,calc(100dvh-14rem))] divide-y divide-border/30">
+                  {layerRegistry.getGroups().map((group) => {
+                    const allGroupLayers = layerRegistry.getByGroup(group);
+                    const groupLayers = layerSearch
+                      ? allGroupLayers.filter((l) =>
                         l.label.toLowerCase().includes(layerSearch.toLowerCase()),
                       )
-                    : allGroupLayers;
-                  if (groupLayers.length === 0) return null;
-                  const isOpen = (layerGroupOpen[group] ?? true) || !!layerSearch;
-                  const activeInGroup = groupLayers.filter((l) =>
-                    activeLayers.includes(l.id),
-                  ).length;
+                      : allGroupLayers;
+                    if (groupLayers.length === 0) return null;
+                    const isOpen = (layerGroupOpen[group] ?? true) || !!layerSearch;
+                    const activeInGroup = groupLayers.filter((l) =>
+                      activeLayers.includes(l.id),
+                    ).length;
 
-                  // Map from LayerId to LAYERS entry for its icon (registry
-                  // stores GisLayerDescriptor; icon lives in LAYERS const)
-                  const iconFor = (id: LayerId) => LAYERS.find((l) => l.id === id)?.icon;
+                    const iconFor = (id: LayerId) => LAYERS.find((l) => l.id === id)?.icon;
 
-                  return (
-                    <div
-                      key={group}
-                      style={{ borderBottom: "1px solid color-mix(in oklab, var(--color-foreground) 6%, transparent)" }}
-                      className="last:border-0"
-                    >
-                      <button
-                        onClick={() => setLayerGroupOpen((o) => ({ ...o, [group]: !o[group] }))}
-                        aria-expanded={isOpen}
-                        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset"
-                      >
-                        <span className="text-[8.5px] uppercase tracking-[0.2em] text-muted-foreground/70 flex-1 text-left font-medium">
-                          {group}
-                        </span>
-                        {activeInGroup > 0 && (
-                          <span className="text-[8px] text-primary tabular-nums font-medium">
-                            {activeInGroup}/{groupLayers.length}
+                    return (
+                      <div key={group} className="last:border-0">
+                        <button
+                          onClick={() => setLayerGroupOpen((o) => ({ ...o, [group]: !o[group] }))}
+                          aria-expanded={isOpen}
+                          className="w-full flex items-center gap-2 px-3.5 py-1.5 hover:bg-[color-mix(in_oklab,var(--color-foreground)_4%,transparent)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset"
+                          style={{ background: "color-mix(in oklab, var(--color-foreground) 2%, transparent)" }}
+                        >
+                          <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground font-bold flex-1 text-left">
+                            {group}
                           </span>
-                        )}
-                        <ChevronDown
-                          className={cn(
-                            "size-3 text-muted-foreground/50 transition-transform duration-200",
-                            !isOpen && "-rotate-90",
+                          {activeInGroup > 0 && (
+                            <span className="text-[8.5px] text-primary tabular-nums font-semibold">
+                              {activeInGroup}/{groupLayers.length}
+                            </span>
                           )}
-                        />
-                      </button>
+                          <ChevronDown
+                            className={cn(
+                              "size-3 text-muted-foreground/70 transition-transform duration-200",
+                              !isOpen && "-rotate-90",
+                            )}
+                          />
+                        </button>
 
-                      <AnimatePresence initial={false}>
-                        {isOpen && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                            className="overflow-hidden"
-                          >
-                            {groupLayers.map((l: GisLayerDescriptor) => {
-                              const isOn = activeLayers.includes(l.id);
-                              const isDisabled = !!l.comingSoon;
-                              const Icon = iconFor(l.id);
+                        <AnimatePresence initial={false}>
+                          {isOpen && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                              className="overflow-hidden divide-y divide-border/20"
+                            >
+                              {groupLayers.map((l: GisLayerDescriptor) => {
+                                const isOn = activeLayers.includes(l.id);
+                                const isDisabled = !!l.comingSoon;
+                                const Icon = iconFor(l.id);
 
-                              return (
-                                <button
-                                  key={l.id}
-                                  onClick={() => !isDisabled && onToggleLayer(l.id)}
-                                  disabled={isDisabled}
-                                  role="switch"
-                                  aria-checked={isOn}
-                                  aria-label={`${l.label} layer`}
-                                  className={cn(
-                                    "w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset",
-                                    isDisabled
-                                      ? "opacity-30 cursor-not-allowed"
-                                      : isOn
-                                        ? "bg-[color-mix(in_oklab,var(--color-foreground)_6%,transparent)]"
-                                        : "hover:bg-[color-mix(in_oklab,var(--color-foreground)_4%,transparent)]",
-                                  )}
-                                >
-                                  {/* Active indicator track */}
-                                  <span
-                                    className="shrink-0 w-[3px] h-6 rounded-full transition-all duration-200"
-                                    style={{
-                                      background: isOn ? l.color : "transparent",
-                                      boxShadow: isOn ? `0 0 6px ${l.color}` : "none",
-                                    }}
-                                  />
-
-                                  {/* Icon badge */}
-                                  <span
-                                    className="size-6 rounded-lg grid place-items-center shrink-0 transition-all duration-200"
-                                    style={{
-                                      background: isOn
-                                        ? `color-mix(in oklab, ${l.color} 20%, transparent)`
-                                        : "color-mix(in oklab, var(--color-foreground) 4%, transparent)",
-                                      border: `1px solid ${isOn ? `color-mix(in oklab, ${l.color} 35%, transparent)` : "color-mix(in oklab, var(--color-foreground) 8%, transparent)"}`,
-                                    }}
-                                  >
-                                    {Icon && (
-                                      <Icon
-                                        className="size-3"
-                                        style={{
-                                          color: isOn ? l.color : "var(--color-muted-foreground)",
-                                        }}
-                                      />
+                                return (
+                                  <button
+                                    key={l.id}
+                                    onClick={() => !isDisabled && onToggleLayer(l.id)}
+                                    disabled={isDisabled}
+                                    role="switch"
+                                    aria-checked={isOn}
+                                    aria-label={`${l.label} layer`}
+                                    className={cn(
+                                      "w-full flex items-center gap-2.5 px-3 py-2 text-left transition-all duration-150 relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset",
+                                      isDisabled
+                                        ? "opacity-40 cursor-not-allowed"
+                                        : isOn
+                                          ? "bg-[color-mix(in_oklab,var(--color-primary)_9%,transparent)] hover:bg-[color-mix(in_oklab,var(--color-primary)_14%,transparent)]"
+                                          : "hover:bg-[color-mix(in_oklab,var(--color-foreground)_4%,transparent)]",
                                     )}
-                                  </span>
-
-                                  {/* Label + description */}
-                                  <span className="flex-1 text-left min-w-0">
+                                  >
+                                    {/* Active indicator bar */}
                                     <span
-                                      className={cn(
-                                        "block text-[10.5px] leading-tight",
-                                        isOn
-                                          ? "text-foreground font-medium"
-                                          : "text-muted-foreground",
-                                      )}
-                                    >
-                                      {l.label}
-                                    </span>
-                                    <span className="block text-[8.5px] text-muted-foreground/55 truncate leading-tight mt-0.5">
-                                      {LAYERS.find((lay) => lay.id === l.id)?.description ?? ""}
-                                    </span>
-                                  </span>
-
-                                  {/* Status badge */}
-                                  {isDisabled ? (
-                                    <span
-                                      className="text-[7px] font-semibold px-1 py-0.5 rounded shrink-0"
+                                      className="shrink-0 w-[3px] h-7 rounded-full transition-all duration-200"
                                       style={{
-                                        background: "color-mix(in oklab, var(--color-foreground) 6%, transparent)",
-                                        color: "var(--color-muted-foreground)",
+                                        background: isOn ? l.color : "transparent",
+                                        boxShadow: isOn ? `0 0 8px ${l.color}` : "none",
+                                      }}
+                                    />
+
+                                    {/* Icon badge */}
+                                    <span
+                                      className="size-7 rounded-lg grid place-items-center shrink-0 transition-all duration-200"
+                                      style={{
+                                        background: isOn
+                                          ? `color-mix(in oklab, ${l.color} 22%, transparent)`
+                                          : "color-mix(in oklab, var(--color-foreground) 5%, transparent)",
+                                        border: `1px solid ${isOn ? `color-mix(in oklab, ${l.color} 40%, transparent)` : "color-mix(in oklab, var(--color-foreground) 10%, transparent)"}`,
                                       }}
                                     >
-                                      SOON
-                                    </span>
-                                  ) : (
-                                    <span
-                                      className={cn(
-                                        "size-4 grid place-items-center shrink-0 rounded-md transition-all duration-200",
-                                        isOn ? "text-primary" : "text-muted-foreground/30",
-                                      )}
-                                    >
-                                      {isOn ? (
-                                        <Eye className="size-3" />
-                                      ) : (
-                                        <EyeOff className="size-3" />
+                                      {Icon && (
+                                        <Icon
+                                          className="size-3.5"
+                                          style={{
+                                            color: isOn ? l.color : "var(--color-muted-foreground)",
+                                          }}
+                                        />
                                       )}
                                     </span>
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  );
-                })}
-              </div>
 
-              {/* Dynamic filter area (Section 8) — only shown for active layers
-                  that expose filter config in the registry. Currently: heatmap
-                  opacity. Future layers add their own filters by declaring them
-                  in the GisLayerDescriptor, nothing else to change here. */}
-              {layerRegistry.getActiveFilters(activeLayers).map((f) => {
-                if (f.type === "range" && f.key === "heatOpacity") {
-                  return (
-                    <div
-                      key={`${f.layerId}-${f.key}`}
-                      className="px-3 py-2.5"
-                      style={{ borderTop: "1px solid color-mix(in oklab, var(--color-foreground) 8%, transparent)" }}
-                    >
-                      <div className="flex justify-between text-[9px] mb-1.5">
-                        <span id="heat-opacity-label" className="text-muted-foreground font-medium">
-                          {f.label}
-                        </span>
-                        <span className="tabular-nums text-foreground/70">
-                          {Math.round(heatOpacity * 100)}%
-                        </span>
+                                    {/* Label + description */}
+                                    <div className="flex-1 min-w-0 pr-1">
+                                      <div
+                                        className={cn(
+                                          "text-[11px] leading-tight truncate",
+                                          isOn ? "text-foreground font-semibold" : "text-foreground/80 font-medium",
+                                        )}
+                                      >
+                                        {l.label}
+                                      </div>
+                                      <div className="text-[8.5px] text-muted-foreground leading-tight mt-0.5 line-clamp-2">
+                                        {LAYERS.find((lay) => lay.id === l.id)?.description ?? ""}
+                                      </div>
+                                    </div>
+
+                                    {/* Visibility toggle / Status badge */}
+                                    {isDisabled ? (
+                                      <span
+                                        className="text-[7.5px] font-bold px-1.5 py-0.5 rounded shrink-0 uppercase tracking-wider"
+                                        style={{
+                                          background: "color-mix(in oklab, var(--color-foreground) 8%, transparent)",
+                                          color: "var(--color-muted-foreground)",
+                                          border: "1px solid color-mix(in oklab, var(--color-foreground) 12%, transparent)",
+                                        }}
+                                      >
+                                        Soon
+                                      </span>
+                                    ) : (
+                                      <span
+                                        className={cn(
+                                          "size-6 grid place-items-center shrink-0 rounded-lg transition-all duration-200",
+                                          isOn
+                                            ? "text-primary bg-primary/10 border border-primary/25"
+                                            : "text-muted-foreground/40 hover:text-muted-foreground/70",
+                                        )}
+                                      >
+                                        {isOn ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                      <input
-                        type="range"
-                        min={f.min ?? 0.1}
-                        max={f.max ?? 1}
-                        step={f.step ?? 0.05}
-                        value={heatOpacity}
-                        onChange={(e) => setHeatOpacity(+e.target.value)}
-                        aria-labelledby="heat-opacity-label"
-                        className="w-full accent-primary h-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded"
-                      />
-                    </div>
-                  );
-                }
-                return null;
-              })}
+                    );
+                  })}
+                </div>
 
-              {/* Quick-toggle footer: all on / all off */}
-              <div
-                className="flex items-center gap-1.5 px-3 py-2"
-                style={{ borderTop: "1px solid color-mix(in oklab, var(--color-foreground) 8%, transparent)" }}
-              >
-                <button
-                  onClick={() =>
-                    layerRegistry
-                      .getAll()
-                      .filter((l) => !l.comingSoon && !activeLayers.includes(l.id))
-                      .forEach((l) => onToggleLayer(l.id))
-                  }
-                  className="flex-1 text-[9px] font-medium text-muted-foreground hover:text-foreground py-1 hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
+                {/* Quick-toggle footer: all on / all off */}
+                <div
+                  className="flex items-center gap-1.5 px-3 py-2"
+                  style={{
+                    borderTop: "1px solid color-mix(in oklab, var(--color-border) 70%, transparent)",
+                    background: "color-mix(in oklab, var(--color-foreground) 2%, transparent)",
+                  }}
                 >
-                  All on
-                </button>
-                <div className="w-px h-3" style={{ background: "color-mix(in oklab, var(--color-foreground) 10%, transparent)" }} />
-                <button
-                  onClick={() => activeLayers.forEach((id) => onToggleLayer(id))}
-                  className="flex-1 text-[9px] font-medium text-muted-foreground hover:text-foreground py-1 hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
-                >
-                  All off
-                </button>
+                  <button
+                    onClick={() =>
+                      layerRegistry
+                        .getAll()
+                        .filter((l) => !l.comingSoon && !activeLayers.includes(l.id))
+                        .forEach((l) => onToggleLayer(l.id))
+                    }
+                    className="flex-1 text-[9.5px] font-semibold text-muted-foreground hover:text-foreground py-1.5 hover:bg-[color-mix(in_oklab,var(--color-foreground)_6%,transparent)] rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 text-center"
+                  >
+                    All on
+                  </button>
+                  <div className="w-px h-3.5 bg-border/60" />
+                  <button
+                    onClick={() => activeLayers.forEach((id) => onToggleLayer(id))}
+                    className="flex-1 text-[9.5px] font-semibold text-muted-foreground hover:text-foreground py-1.5 hover:bg-[color-mix(in_oklab,var(--color-foreground)_6%,transparent)] rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 text-center"
+                  >
+                    All off
+                  </button>
+                </div>
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
       )}
 
       {/* ══════════════════════════════════════════════════════════════════
@@ -2119,131 +2100,106 @@ export function SmartMapCanvas({
           SYSTEM STATUS — Top Right, below toolbar
       ═════════════════════════════════════════════════════════════════════ */}
       {!embedded && (
-      <div className="hidden md:block absolute top-[4.5rem] right-3 z-20">
-        <div className="glass-panel rounded-xl px-3 py-4 flex flex-col gap-1.5 min-w-[140px]">
-          <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
-            <Activity className="size-3" /> System Status
-          </div>
-          <div className="flex items-center justify-between text-[10px]">
-            <span className="text-muted-foreground">Sensors online</span>
-            <span className="font-semibold text-[var(--color-success)]">{sensorsOnline}</span>
-          </div>
-          <div className="flex items-center justify-between text-[10px]">
-            <span className="text-muted-foreground">Critical zones</span>
-            <span
-              className="font-semibold"
-              style={{ color: highRisk > 0 ? "var(--color-destructive)" : "var(--color-success)" }}
-            >
-              {highRisk}
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-[10px]">
-            <span className="text-muted-foreground">Map zoom</span>
-            <span className="font-semibold text-[var(--color-primary)] tabular-nums">{zoom}</span>
-          </div>
-          <div className="h-px bg-border/40 my-0.5" />
-          <div className="flex items-center gap-1.5 text-[10px]">
-            <span className="size-1.5 rounded-full shrink-0" style={{ background: band.color }} />
-            <span className="text-muted-foreground">City AQI</span>
-            <span className="font-bold ml-auto tabular-nums" style={{ color: band.color }}>
-              {city.aqi} <span className="font-normal text-[9px]">{band.label}</span>
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-[10px]">
-            <span className="text-muted-foreground">Bearing</span>
-            <span className="font-mono text-[9px] text-muted-foreground">{bearing}°</span>
+        <div className="hidden md:block absolute top-[4.5rem] right-3 z-20">
+          <div className="glass-panel rounded-xl px-3 py-4 flex flex-col gap-1.5 min-w-[140px]">
+            <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+              <Activity className="size-3" /> System Status
+            </div>
+            <div className="flex items-center justify-between text-[10px]">
+              <span className="text-muted-foreground">Active data feeds</span>
+              <span className="font-semibold text-[var(--color-success)]">{sensorsOnline}</span>
+            </div>
+            <div className="flex items-center justify-between text-[10px]">
+              <span className="text-muted-foreground">Critical zones</span>
+              <span
+                className="font-semibold"
+                style={{ color: highRisk > 0 ? "var(--color-destructive)" : "var(--color-success)" }}
+              >
+                {highRisk}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-[10px]">
+              <span className="text-muted-foreground">Map zoom</span>
+              <span className="font-semibold text-[var(--color-primary)] tabular-nums">{zoom}</span>
+            </div>
+            <div className="h-px bg-border/40 my-0.5" />
+            <div className="flex items-center gap-1.5 text-[10px]">
+              <span className="size-1.5 rounded-full shrink-0" style={{ background: band.color }} />
+              <span className="text-muted-foreground">City AQI</span>
+              <span className="font-bold ml-auto tabular-nums" style={{ color: band.color }}>
+                {city.aqi} <span className="font-normal text-[9px]">{band.label}</span>
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-[10px]">
+              <span className="text-muted-foreground">Bearing</span>
+              <span className="font-mono text-[9px] text-muted-foreground">{bearing}°</span>
+            </div>
           </div>
         </div>
-      </div>
       )}
 
       {/* ══════════════════════════════════════════════════════════════════
           LEGEND — Bottom Left (collapsible, dynamic — only active layers)
       ═════════════════════════════════════════════════════════════════════ */}
       {!embedded && (
-      <div className="absolute bottom-[124px] left-3 sm:left-4 md:bottom-16 lg:bottom-10 z-20">
-        <details className="group">
-          <summary className="glass-panel rounded-xl px-3 py-2 cursor-pointer list-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
-            <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
-              <span className="size-2 rounded-sm" style={{ background: band.color }} />
-              Legend
-              <span className="text-muted-foreground/50 normal-case tracking-normal">
-                {activeLayers.length > 0 ? `· ${activeLayers.length} active` : "· none active"}
-              </span>
-              <span className="ml-auto group-open:rotate-180 transition-transform duration-200 text-[10px]">
-                ▾
-              </span>
+        <div className="absolute bottom-[124px] left-3 sm:left-4 md:bottom-16 lg:bottom-10 z-20">
+          <details className="group">
+            <summary className="glass-panel rounded-xl px-3 py-2 cursor-pointer list-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
+              <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+                <span className="size-2 rounded-sm" style={{ background: band.color }} />
+                Legend
+                <span className="text-muted-foreground/50 normal-case tracking-normal">
+                  {activeLayers.length > 0 ? `· ${activeLayers.length} active` : "· none active"}
+                </span>
+                <span className="ml-auto group-open:rotate-180 transition-transform duration-200 text-[10px]">
+                  ▾
+                </span>
+              </div>
+            </summary>
+            <div className="glass-panel rounded-xl mt-1 px-3 py-2.5 animate-in fade-in duration-150 min-w-[190px]">
+              {activeLayers.length === 0 && (
+                <div className="text-[10px] text-muted-foreground text-center py-2">
+                  No active layers — enable one from Layers to see its legend
+                </div>
+              )}
+
+              {(activeLayers.includes("aqi") || activeLayers.includes("heat")) && (
+                <div className="mb-3">
+                  <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground mb-2">
+                    Air Quality Index
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {[
+                      { label: "Good", range: "0–50", color: "#16a34a" },
+                      { label: "Moderate", range: "51–100", color: "#ca8a04" },
+                      { label: "Unhealthy", range: "101–150", color: "#d97706" },
+                      { label: "Unhealthy+", range: "151–200", color: "#dc2626" },
+                      { label: "Hazardous", range: "200+", color: "#7f1d1d" },
+                    ].map((e) => (
+                      <div key={e.label} className="flex items-center gap-2 text-[10px]">
+                        <span
+                          className="size-2 rounded-sm shrink-0"
+                          style={{ background: e.color }}
+                        />
+                        <span className="text-foreground w-20">{e.label}</span>
+                        <span className="text-muted-foreground tabular-nums">{e.range}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {LAYERS.filter(
+                (l) => activeLayers.includes(l.id) && !["aqi", "heat"].includes(l.id),
+              ).map((l) => (
+                <div key={l.id} className="flex items-center gap-1.5 text-[9px] mb-1">
+                  <span className="size-1.5 rounded-full" style={{ background: l.color }} />
+                  <span className="text-muted-foreground">{l.label}</span>
+                </div>
+              ))}
             </div>
-          </summary>
-          <div className="glass-panel rounded-xl mt-1 px-3 py-2.5 animate-in fade-in duration-150 min-w-[190px]">
-            {activeLayers.length === 0 && (
-              <div className="text-[10px] text-muted-foreground text-center py-2">
-                No active layers — enable one from Layers to see its legend
-              </div>
-            )}
-
-            {(activeLayers.includes("aqi") || activeLayers.includes("heat")) && (
-              <div className="mb-3">
-                <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground mb-2">
-                  Air Quality Index
-                </div>
-                <div className="flex flex-col gap-1">
-                  {[
-                    { label: "Good", range: "0–50", color: "#16a34a" },
-                    { label: "Moderate", range: "51–100", color: "#ca8a04" },
-                    { label: "Unhealthy", range: "101–150", color: "#d97706" },
-                    { label: "Unhealthy+", range: "151–200", color: "#dc2626" },
-                    { label: "Hazardous", range: "200+", color: "#7f1d1d" },
-                  ].map((e) => (
-                    <div key={e.label} className="flex items-center gap-2 text-[10px]">
-                      <span
-                        className="size-2 rounded-sm shrink-0"
-                        style={{ background: e.color }}
-                      />
-                      <span className="text-foreground w-20">{e.label}</span>
-                      <span className="text-muted-foreground tabular-nums">{e.range}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeLayers.includes("sensors") && (
-              <div
-                className={cn(
-                  activeLayers.includes("aqi") || activeLayers.includes("heat")
-                    ? "border-t border-border/40 pt-2 mb-1"
-                    : "mb-1",
-                )}
-              >
-                <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground mb-1.5">
-                  Sensor Types
-                </div>
-                {(["environmental", "weather", "water", "industrial", "traffic"] as const).map(
-                  (type) => (
-                    <div key={type} className="flex items-center gap-1.5 text-[9px] mb-1">
-                      <span
-                        className="size-1.5 rounded-full"
-                        style={{ background: sensorTypeColor(type) }}
-                      />
-                      <span className="text-muted-foreground">{SENSOR_TYPE_LABEL[type]}</span>
-                    </div>
-                  ),
-                )}
-              </div>
-            )}
-
-            {LAYERS.filter(
-              (l) => activeLayers.includes(l.id) && !["aqi", "heat", "sensors"].includes(l.id),
-            ).map((l) => (
-              <div key={l.id} className="flex items-center gap-1.5 text-[9px] mb-1">
-                <span className="size-1.5 rounded-full" style={{ background: l.color }} />
-                <span className="text-muted-foreground">{l.label}</span>
-              </div>
-            ))}
-          </div>
-        </details>
-      </div>
+          </details>
+        </div>
       )}
 
       {/* ══════════════════════════════════════════════════════════════════
@@ -2251,26 +2207,26 @@ export function SmartMapCanvas({
           reset view & export now live in the top toolbar so they aren't
           duplicated here)
       ═════════════════════════════════════════════════════════════════════ */}
-      <div className="absolute bottom-[124px] right-3 sm:right-4 md:bottom-16 lg:bottom-4 z-20 flex flex-col gap-1.5">
+      <div className="absolute bottom-[118px] md:bottom-16 lg:bottom-4 right-3 sm:right-4 z-20 flex flex-col items-end gap-1 pointer-events-auto">
         {/* Coordinates readout */}
         {coords && (
-          <div className="glass rounded-lg px-2.5 py-1.5 text-right">
-            <div className="text-[9px] font-mono text-muted-foreground tabular-nums">
+          <div className="glass rounded-md px-1.5 py-0.5 text-right shadow-sm pointer-events-none">
+            <div className="text-[8px] font-mono text-muted-foreground/80 tabular-nums leading-none">
               {coords.lat.toFixed(4)}°N {coords.lng.toFixed(4)}°E
             </div>
           </div>
         )}
 
-        <div className="glass-control rounded-xl p-1 flex flex-col gap-0.5">
+        <div className="glass-control rounded-xl p-0.5 flex flex-col items-center shadow-xl divide-y divide-border/40 border border-border/40">
           {/* Compass */}
           <button
             onClick={resetNorth}
             title="Reset North"
             aria-label="Reset map bearing to north"
-            className="size-8 grid place-items-center hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] rounded-lg transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            className="size-8 flex items-center justify-center hover:bg-white/10 text-primary transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-t-[10px]"
           >
             <span
-              className="text-[11px] font-bold font-mono text-primary"
+              className="text-[11px] font-bold font-mono"
               style={{
                 display: "inline-block",
                 transform: `rotate(${-bearing}deg)`,
@@ -2280,14 +2236,13 @@ export function SmartMapCanvas({
               N
             </span>
           </button>
-          <div className="h-px bg-border/40 mx-1" />
 
           {/* Zoom */}
           <button
             onClick={zoomIn}
             title="Zoom in"
             aria-label="Zoom in"
-            className="size-10 grid place-items-center hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] rounded-lg transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            className="size-8 flex items-center justify-center hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
             <Plus className="size-3.5" />
           </button>
@@ -2295,11 +2250,10 @@ export function SmartMapCanvas({
             onClick={zoomOut}
             title="Zoom out"
             aria-label="Zoom out"
-            className="size-10 grid place-items-center hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] rounded-lg transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            className="size-8 flex items-center justify-center hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
             <Minus className="size-3.5" />
           </button>
-          <div className="h-px bg-border/40 mx-1" />
 
           {/* Locate / Track — Phase 10 ───────────────────────────────────
               Click: one-shot locate. Long press (≥500 ms): toggle continuous
@@ -2328,12 +2282,12 @@ export function SmartMapCanvas({
             aria-label={isTracking ? "Stop location tracking" : "Locate me"}
             aria-pressed={isTracking}
             className={cn(
-              "size-10 grid place-items-center rounded-lg transition-all active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+              "size-8 flex items-center justify-center transition-all active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
               geoStatus === "denied" || geoStatus === "unavailable" || geoStatus === "timeout"
                 ? "text-destructive hover:bg-destructive/10"
                 : geoStatus === "granted" || isTracking
                   ? "bg-blue-500/15 text-blue-400 hover:bg-blue-500/25"
-                  : "hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] text-muted-foreground",
+                  : "hover:bg-white/10 text-muted-foreground hover:text-foreground",
             )}
           >
             {geoStatus === "requesting" ? (
@@ -2349,8 +2303,6 @@ export function SmartMapCanvas({
             )}
           </button>
 
-          <div className="h-px bg-border/40 mx-1" />
-
           {/* Measure */}
           <button
             onClick={() => setMeasuring((m) => !m)}
@@ -2358,21 +2310,11 @@ export function SmartMapCanvas({
             aria-label="Measure distance"
             aria-pressed={measuring}
             className={cn(
-              "size-9 grid place-items-center rounded-lg transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-              measuring ? "bg-primary/20 text-primary" : "hover:bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] text-muted-foreground",
+              "size-8 flex items-center justify-center transition-colors active:scale-95 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-b-[10px]",
+              measuring ? "bg-primary/20 text-primary" : "hover:bg-white/10 text-muted-foreground hover:text-foreground",
             )}
           >
             <Ruler className="size-3.5" />
-          </button>
-
-          {/* Draw radius (UI placeholder) */}
-          <button
-            title="Draw radius (coming soon)"
-            aria-label="Draw radius (coming soon)"
-            disabled
-            className="size-9 grid place-items-center rounded-lg opacity-30 cursor-not-allowed text-muted-foreground"
-          >
-            <Circle className="size-3.5" />
           </button>
         </div>
       </div>
@@ -2437,10 +2379,11 @@ export function SmartMapCanvas({
             className="absolute top-[4.5rem] left-1/2 -translate-x-1/2 z-40 pointer-events-none max-w-xs w-[360px]"
           >
             <div
-              className="glass rounded-2xl p-3.5 shadow-2xl pointer-events-auto"
+              className="rounded-2xl p-3.5 shadow-2xl pointer-events-auto backdrop-blur-xl border"
               style={{
-                borderColor: `color-mix(in oklab, ${aqiColor(popupLoc.level)} 35%, transparent)`,
-                boxShadow: `0 0 40px ${aqiColor(popupLoc.level)}22, 0 24px 60px -16px rgba(0,0,0,0.6)`,
+                background: "color-mix(in oklab, var(--color-background, #0c1118) 92%, transparent)",
+                borderColor: `color-mix(in oklab, ${aqiColor(popupLoc.level)} 40%, var(--color-border))`,
+                boxShadow: `0 0 40px ${aqiColor(popupLoc.level)}24, 0 20px 50px -10px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.06)`,
               }}
             >
               {/* Header — identity + close */}
@@ -2458,20 +2401,20 @@ export function SmartMapCanvas({
                     }}
                   />
                   <div className="min-w-0">
-                    <div className="font-semibold text-[13px] leading-snug truncate">
+                    <div className="font-bold text-sm leading-snug truncate text-foreground">
                       {popupLoc.name}
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                      <span className="text-[9px] text-muted-foreground">
+                      <span className="text-[9px] text-muted-foreground font-medium">
                         {SENSOR_TYPE_LABEL[popupLoc.sensorType ?? "environmental"]}
                       </span>
                       {popupLoc.sensor ? (
                         <StatusChip tone="good" pulse size="xs">
-                          Online
+                          Active Data
                         </StatusChip>
                       ) : (
                         <StatusChip tone="neutral" size="xs">
-                          No sensor
+                          Stationary
                         </StatusChip>
                       )}
                     </div>
@@ -2479,33 +2422,34 @@ export function SmartMapCanvas({
                 </div>
                 <button
                   onClick={() => setPopupLoc(null)}
-                  className="text-muted-foreground hover:text-foreground hover:bg-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)] size-6 grid place-items-center rounded-lg transition-colors text-xs shrink-0"
+                  aria-label="Close location detail"
+                  className="text-muted-foreground hover:text-foreground hover:bg-white/10 size-6 grid place-items-center rounded-lg transition-colors text-xs shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
                 >
                   ✕
                 </button>
               </div>
 
-              {/* AQI + 24h trend — one compact row instead of two stacked blocks */}
+              {/* AQI + 24h trend — high-contrast hero row */}
               <div
-                className="rounded-xl px-3 py-2 mb-2.5 flex items-center gap-3"
+                className="rounded-xl px-3 py-2.5 mb-2.5 flex items-center gap-3"
                 style={{
-                  background: `color-mix(in oklab, ${aqiColor(popupLoc.level)} 9%, transparent)`,
-                  border: `1px solid color-mix(in oklab, ${aqiColor(popupLoc.level)} 22%, transparent)`,
+                  background: `color-mix(in oklab, ${aqiColor(popupLoc.level)} 14%, rgba(0,0,0,0.45))`,
+                  border: `1px solid color-mix(in oklab, ${aqiColor(popupLoc.level)} 35%, transparent)`,
                 }}
               >
                 <div className="shrink-0">
-                  <div className="text-[8px] uppercase tracking-[0.14em] text-muted-foreground mb-0.5">
+                  <div className="text-[8px] uppercase tracking-[0.14em] text-muted-foreground font-semibold mb-0.5">
                     AQI
                   </div>
-                  <div className="flex items-baseline gap-1">
+                  <div className="flex items-baseline gap-1.5">
                     <span
-                      className="text-xl font-bold tabular-nums"
+                      className="text-2xl font-black tabular-nums tracking-tight"
                       style={{ color: aqiColor(popupLoc.level) }}
                     >
                       {popupLoc.level}
                     </span>
                     <span
-                      className="text-[9px] font-medium"
+                      className="text-[10px] font-bold"
                       style={{ color: aqiColor(popupLoc.level) }}
                     >
                       {aqiLabel(popupLoc.level)}
@@ -2514,17 +2458,15 @@ export function SmartMapCanvas({
                 </div>
                 {sparkData.length > 1 && (
                   <div className="flex-1 min-w-0">
-                    <div className="text-[7px] uppercase tracking-wide text-muted-foreground/70 mb-0.5">
-                      24h trend
+                    <div className="text-[7.5px] uppercase tracking-wide text-muted-foreground/80 font-medium mb-0.5">
+                      24h Trend
                     </div>
                     <Sparkline data={sparkData} color={aqiColor(popupLoc.level)} />
                   </div>
                 )}
               </div>
 
-              {/* Unified metrics grid — was two separate grids (pollutants +
-                wind/battery/health/alert); merged into one so the same data
-                takes one card's worth of chrome instead of two. */}
+              {/* Unified metrics grid */}
               <div className="grid grid-cols-4 gap-1.5 mb-2.5">
                 <MetricTile
                   label="PM2.5"
@@ -2566,7 +2508,7 @@ export function SmartMapCanvas({
                 />
               </div>
 
-              {/* Top AI insight — always visible; rest collapses below */}
+              {/* Top AI insight */}
               {popupInsights.length > 0 && (
                 <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground leading-relaxed mb-2.5 px-0.5">
                   <span className="shrink-0">{popupInsights[0].icon}</span>
@@ -2574,9 +2516,7 @@ export function SmartMapCanvas({
                 </div>
               )}
 
-              {/* Collapsed secondary detail — coordinates, remaining insights,
-                6h forecast. Same <details> idiom already used by the map's
-                Legend, so this isn't a new interaction pattern. */}
+              {/* Collapsed secondary detail */}
               <details className="mb-2.5 group">
                 <summary className="text-[9px] text-muted-foreground hover:text-foreground cursor-pointer list-none flex items-center gap-1 select-none">
                   <span className="group-open:rotate-90 transition-transform duration-150 inline-block">
@@ -2591,7 +2531,7 @@ export function SmartMapCanvas({
                 </summary>
                 <div className="mt-2 space-y-2.5 animate-in fade-in duration-150">
                   {/* ID + coordinates */}
-                  <div className="glass rounded-lg px-2.5 py-2 font-mono text-[9px] text-muted-foreground grid grid-cols-2 gap-x-3 gap-y-0.5">
+                  <div className="glass rounded-lg px-2.5 py-2 font-mono text-[9px] text-muted-foreground grid grid-cols-2 gap-x-3 gap-y-0.5 bg-black/40 border border-white/10">
                     <span>ID</span>{" "}
                     <span className="text-foreground text-right">{popupLoc.id.toUpperCase()}</span>
                     <span>LAT</span>{" "}
@@ -2643,8 +2583,8 @@ export function SmartMapCanvas({
                 </div>
               </details>
 
-              {/* Footer — status + actions */}
-              <div className="flex items-center justify-between text-[9px] mb-2">
+              {/* Footer — status */}
+              <div className="flex items-center justify-between text-[9px] pt-2 mt-1 border-t border-white/10 px-0.5">
                 <span className="text-muted-foreground">Updated {lastUpdated}</span>
                 <StatusChip
                   tone={
@@ -2654,23 +2594,6 @@ export function SmartMapCanvas({
                 >
                   {popupLoc.level > 200 ? "Critical" : popupLoc.level > 100 ? "Elevated" : "Normal"}
                 </StatusChip>
-              </div>
-              <div className="flex gap-1.5">
-                <button
-                  onClick={() =>
-                    mapRef.current?.flyTo({
-                      center: [popupLoc.longitude, popupLoc.latitude],
-                      zoom: 16,
-                      duration: 700,
-                    })
-                  }
-                  className="flex-1 text-[10px] py-1.5 rounded-lg font-medium bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-colors"
-                >
-                  Zoom Here
-                </button>
-                <button className="flex-1 text-[10px] py-1.5 rounded-lg font-medium bg-[color-mix(in_oklab,var(--color-foreground)_5%,transparent)] text-muted-foreground hover:bg-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)] border border-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)] transition-colors">
-                  Open Details
-                </button>
               </div>
             </div>
           </motion.div>
@@ -2691,9 +2614,11 @@ export function SmartMapCanvas({
             className="absolute top-[4.5rem] left-1/2 -translate-x-1/2 z-40 pointer-events-none max-w-[90vw]"
           >
             <div
-              className="glass rounded-2xl p-4 shadow-2xl pointer-events-auto w-64 max-w-full"
+              className="rounded-2xl p-4 shadow-2xl pointer-events-auto w-64 max-w-full backdrop-blur-xl border"
               style={{
-                borderColor: `color-mix(in oklab, ${SEV_COLOR[popupComp.severity] ?? "#ca8a04"} 30%, transparent)`,
+                background: "color-mix(in oklab, var(--color-background, #0c1118) 92%, transparent)",
+                borderColor: `color-mix(in oklab, ${SEV_COLOR[popupComp.severity] ?? "#ca8a04"} 40%, var(--color-border))`,
+                boxShadow: `0 0 30px ${SEV_COLOR[popupComp.severity] ?? "#ca8a04"}20, 0 20px 50px -10px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.06)`,
               }}
             >
               <div className="flex items-start justify-between gap-2 mb-2">
@@ -2713,7 +2638,7 @@ export function SmartMapCanvas({
                 </div>
                 <button
                   onClick={() => setPopupComp(null)}
-                  className="text-muted-foreground hover:text-foreground hover:bg-[color-mix(in_oklab,var(--color-foreground)_10%,transparent)] size-6 flex items-center justify-center rounded-lg transition-colors shrink-0 text-xs"
+                  className="text-muted-foreground hover:text-foreground hover:bg-white/10 size-6 flex items-center justify-center rounded-lg transition-colors shrink-0 text-xs focus-visible:outline-none"
                 >
                   ✕
                 </button>

@@ -68,9 +68,12 @@ function parseCsv(text: string): ParsedCsv {
 interface DataWorkspaceProps {
   cityId: string;
   onAskAI: (prompt: string) => void;
+  /** Phase 2 — Intelligence Center selected AI provider ("gemini" | "groq" |
+   *  "openrouter"). Optional/omitted falls back to the server default. */
+  provider?: string;
 }
 
-export function DataWorkspace({ cityId, onAskAI }: DataWorkspaceProps) {
+export function DataWorkspace({ cityId, onAskAI, provider }: DataWorkspaceProps) {
   const [file, setFile]       = useState<File | null>(null);
   const [fileError, setErr]   = useState<string | null>(null);
   const [parsed, setParsed]   = useState<ParsedCsv | null>(null);
@@ -116,14 +119,14 @@ export function DataWorkspace({ cityId, onAskAI }: DataWorkspaceProps) {
       const colStr    = parsed.columns.join(", ");
       const sampleStr = parsed.raw.slice(0, 6_000); // safe token budget
       const prompt    = selectedMode.prompt(colStr, sampleStr);
-      const data = await copilotApi.chat(prompt, cityId, undefined).then(r => r.data);
+      const data = await copilotApi.chat(prompt, cityId, undefined, provider).then(r => r.data);
       setResult(data.answer || "No response received.");
       setStage("done");
     } catch {
       setResult("");
       setStage("error");
     }
-  }, [parsed, mode, cityId, stage]);
+  }, [parsed, mode, cityId, stage, provider]);
 
   return (
     <div className="space-y-4 p-4">
