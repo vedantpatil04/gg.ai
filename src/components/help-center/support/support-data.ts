@@ -9,10 +9,12 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type TicketStatus   = "open" | "in_progress" | "waiting" | "resolved" | "closed";
+// "reopened" mirrors the Communication Hub's status model — a resolved/closed
+// item the citizen or an administrator reopened for further discussion.
+export type TicketStatus   = "open" | "in_progress" | "waiting" | "resolved" | "closed" | "reopened";
 export type TicketPriority = "low" | "medium" | "high" | "critical";
 export type BugSeverity    = "minor" | "major" | "critical" | "blocker";
-export type FeatureStatus  = "submitted" | "planned" | "in_progress" | "shipped" | "declined";
+export type FeatureStatus  = "submitted" | "planned" | "in_progress" | "shipped" | "declined" | "resolved" | "reopened";
 
 export interface SupportTicket {
   id: string;
@@ -98,6 +100,7 @@ export const TICKET_STATUS_STYLE: Record<TicketStatus, { label: string; color: s
   waiting:     { label: "Waiting",     color: "var(--color-muted-foreground)", bg: "var(--color-muted)"                                            },
   resolved:    { label: "Resolved",    color: "var(--color-success)",         bg: "color-mix(in oklab, var(--color-success) 12%, transparent)"     },
   closed:      { label: "Closed",      color: "var(--color-muted-foreground)", bg: "var(--color-muted)"                                            },
+  reopened:    { label: "Reopened",    color: "var(--color-destructive)",     bg: "color-mix(in oklab, var(--color-destructive) 12%, transparent)" },
 };
 
 export const TICKET_PRIORITY_STYLE: Record<TicketPriority, { label: string; color: string }> = {
@@ -120,6 +123,8 @@ export const FEATURE_STATUS_STYLE: Record<FeatureStatus, { label: string; color:
   in_progress: { label: "In Progress", color: "var(--color-warning)"          },
   shipped:     { label: "Shipped",     color: "var(--color-success)"          },
   declined:    { label: "Declined",    color: "var(--color-destructive)"      },
+  resolved:    { label: "Resolved",    color: "var(--color-success)"          },
+  reopened:    { label: "Reopened",    color: "var(--color-destructive)"      },
 };
 
 // ─── Contact methods ──────────────────────────────────────────────────────────

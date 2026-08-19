@@ -98,6 +98,7 @@ const CATEGORY_META: Record<
   admin:        { label: "Admin",        icon: Cpu,           color: "text-slate-500"  },
   security:     { label: "Security",     icon: ShieldAlert,   color: "text-red-500"    },
   system:       { label: "System",       icon: Globe,         color: "text-gray-500"   },
+  support:      { label: "Support",      icon: Inbox,         color: "text-indigo-500" },
 };
 
 // Priority left-stripe: colour + glow intensity

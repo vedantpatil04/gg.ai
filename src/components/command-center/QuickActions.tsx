@@ -24,11 +24,11 @@ export function QuickActions({ actions }: QuickActionsProps) {
         <button
           key={action.label}
           onClick={action.onClick}
-          className="group flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5 text-sm hover:bg-muted/60 hover:border-border transition-all text-left"
+          className="group flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs hover:bg-muted/60 hover:border-border transition-all text-left"
         >
           <span className="flex items-center gap-2 min-w-0">
-            <action.icon className="size-3.5 text-primary/70 shrink-0" />
-            <span className="text-sm font-medium truncate">{action.label}</span>
+            <action.icon className="size-3.5 text-emerald-500/80 shrink-0" />
+            <span className="text-xs font-medium truncate">{action.label}</span>
           </span>
           <ChevronRight className="size-3.5 text-muted-foreground/40 shrink-0 group-hover:text-muted-foreground transition-colors" />
         </button>

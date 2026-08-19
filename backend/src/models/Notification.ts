@@ -8,7 +8,9 @@ export type NotificationCategory =
   | "environmental"
   | "security"
   | "ai"
-  | "system";
+  | "system"
+  // Communication Hub — tickets, bug reports, feature requests, feedback
+  | "support";
 
 export type NotificationPriority = "low" | "medium" | "high" | "critical";
 
@@ -33,7 +35,7 @@ export interface INotification extends Document {
   link?: string;
   /** Optional entity id for quick access on the frontend */
   entityId?: string;
-  entityType?: "complaint" | "authority" | "platform" | "user";
+  entityType?: "complaint" | "authority" | "platform" | "user" | "ticket" | "bug" | "feature" | "feedback";
 
   readAt?: Date;
   archivedAt?: Date;
@@ -53,7 +55,7 @@ const NotificationSchema = new Schema<INotification>(
     summary: { type: String, required: true, maxlength: 500, trim: true },
     category: {
       type: String,
-      enum: ["complaints", "assignments", "authorities", "platform", "environmental", "security", "ai", "system"],
+      enum: ["complaints", "assignments", "authorities", "platform", "environmental", "security", "ai", "system", "support"],
       required: true,
     },
     priority: {
@@ -70,7 +72,7 @@ const NotificationSchema = new Schema<INotification>(
     entityId: { type: String, trim: true },
     entityType: {
       type: String,
-      enum: ["complaint", "authority", "platform", "user"],
+      enum: ["complaint", "authority", "platform", "user", "ticket", "bug", "feature", "feedback"],
     },
     readAt: { type: Date },
     archivedAt: { type: Date },

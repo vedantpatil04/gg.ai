@@ -36,6 +36,7 @@ import type { SupportTicketDTO } from "@/lib/api/support.api";
 import { KB_ARTICLES } from "../kb/kb-data";
 import { HelpAIPanel, AITicketDrafter, DuplicateTicketWarning } from "../ai/help-ai-panel";
 import { TUTORIALS } from "../tutorials/tut-data";
+import { TicketDetailSheet } from "./ticket-detail-sheet";
 
 // ─── 1. Hero ───────────────────────────────────────────────────────────────────
 
@@ -462,8 +463,9 @@ function CreateTicketForm({
 
 // ─── 4. Ticket Dashboard ───────────────────────────────────────────────────────
 
-function TicketDashboard({ onCreateTicket }: { onCreateTicket: () => void }) {
+function TicketDashboard({ onCreateTicket, initialSelectedId }: { onCreateTicket: () => void; initialSelectedId?: string | null }) {
   const [filter, setFilter] = useState<TicketStatus | "all">("all");
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(initialSelectedId ?? null);
   const { data: stats, isLoading: statsLoading } = useTicketStats();
   const { tickets, isLoading, isError, refetch } = useTickets(
     filter !== "all" ? { status: filter } : undefined,
@@ -574,7 +576,14 @@ function TicketDashboard({ onCreateTicket }: { onCreateTicket: () => void }) {
               className="space-y-3"
             >
               {tickets.map((ticket: SupportTicketDTO) => (
-                <div key={ticket._id} className="rounded-xl border border-border bg-background p-4">
+                <div
+                  key={ticket._id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedTicketId(ticket._id)}
+                  onKeyDown={e => { if (e.key === "Enter") setSelectedTicketId(ticket._id); }}
+                  className="rounded-xl border border-border bg-background p-4 cursor-pointer hover:border-primary/25 transition-colors duration-200"
+                >
                   <div className="flex items-start gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-1.5">
@@ -583,6 +592,11 @@ function TicketDashboard({ onCreateTicket }: { onCreateTicket: () => void }) {
                         </span>
                         <StatusBadge status={ticket.status} />
                         <PriorityBadge priority={ticket.priority} />
+                        {!ticket.adminRead && (
+                          <span className="inline-flex items-center text-[9px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                            Awaiting review
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm font-semibold leading-snug mb-1.5 line-clamp-2">{ticket.subject}</p>
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
@@ -592,6 +606,7 @@ function TicketDashboard({ onCreateTicket }: { onCreateTicket: () => void }) {
                         {ticket.assignedTeam && <><span>·</span><span>Team: {ticket.assignedTeam}</span></>}
                         <span>·</span>
                         <span>Updated {new Date(ticket.updatedAt).toLocaleDateString()}</span>
+                        {ticket.comments.length > 0 && <><span>·</span><span>{ticket.comments.length} {ticket.comments.length === 1 ? "reply" : "replies"}</span></>}
                       </div>
                       {(ticket.status === "open" || ticket.status === "in_progress") && ticket.estimatedResponse && (
                         <div className="mt-2 text-[10px] text-muted-foreground">
@@ -606,6 +621,11 @@ function TicketDashboard({ onCreateTicket }: { onCreateTicket: () => void }) {
           )}
         </AnimatePresence>
       )}
+
+      <TicketDetailSheet
+        ticketId={selectedTicketId}
+        onOpenChange={open => { if (!open) setSelectedTicketId(null); }}
+      />
     </div>
   );
 }
@@ -1232,7 +1252,16 @@ const TABS: Tab[] = [
 // ─── Root page ────────────────────────────────────────────────────────────────
 
 export function SupportCenterPage() {
-  const [activeTab, setActiveTab]       = useState("tickets");
+  // Deep-link support for notification links like
+  // /help/support?tab=tickets&id=<ticketId> (see notification.service.ts).
+  // Parsed once on mount — the Help Center doesn't otherwise use URL state.
+  const initialParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const initialTab = initialParams.get("tab");
+  const deepLinkId = initialParams.get("id");
+
+  const [activeTab, setActiveTab]       = useState(
+    initialTab && TABS.some(t => t.id === initialTab) ? initialTab : "tickets",
+  );
   const [creatingTicket, setCreatingTicket] = useState(false);
   const [createdId, setCreatedId]       = useState<string | null>(null);
 
@@ -1331,7 +1360,7 @@ export function SupportCenterPage() {
                   exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: DUR_SM, ease: EASE_OUT }}
                 >
-                  {activeTab === "tickets"   && <TicketDashboard onCreateTicket={() => setCreatingTicket(true)} />}
+                  {activeTab === "tickets"   && <TicketDashboard onCreateTicket={() => setCreatingTicket(true)} initialSelectedId={activeTab === "tickets" ? deepLinkId : null} />}
                   {activeTab === "ai"        && (
                     <div className="p-5">
                       <HelpAIPanel onCreateTicket={() => { setCreatingTicket(true); setActiveTab("tickets"); }} />

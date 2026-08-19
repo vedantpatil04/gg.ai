@@ -28,10 +28,10 @@ export function CommandCenterNavigation({
   const hasSubNav = subTabs.length > 1;
 
   return (
-    <div className="w-full space-y-2">
+    <div className="w-full min-w-0 space-y-2">
       {/* Top tabs row (visible on medium & small screens, or as backup overflow bar) */}
       <nav
-        className="flex lg:hidden items-center gap-1 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1 mt-1"
+        className="flex lg:hidden items-center gap-1 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1 mt-1 touch-pan-x"
         aria-label="Mission Control sections"
       >
         {topTabs.map((tab) => {
@@ -64,7 +64,7 @@ export function CommandCenterNavigation({
       {/* Sub-tabs bar (when top tab has multiple sub-views, e.g. Environmental Monitoring) */}
       {hasSubNav && (
         <nav
-          className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide pt-1 border-t border-border/50"
+          className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide pt-1 border-t border-border/50 touch-pan-x -mx-0.5 px-0.5"
           aria-label="Module views"
         >
           <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mr-1 shrink-0">
@@ -79,13 +79,13 @@ export function CommandCenterNavigation({
                 onClick={() => onSubChange(sub.id)}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-all shrink-0 border",
+                  "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-all shrink-0 border",
                   isActive
                     ? "bg-muted text-foreground border-border shadow-2xs font-semibold"
                     : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40",
                 )}
               >
-                <Icon className={cn("size-3", isActive && "text-emerald-500")} />
+                <Icon className={cn("size-3.5 shrink-0", isActive && "text-emerald-500")} />
                 <span>{sub.label}</span>
               </button>
             );

@@ -44,6 +44,7 @@ import { Route as AdminAuthorityManagementRouteImport } from './routes/admin.aut
 import { Route as AdminAuthorityRequestsRouteImport } from './routes/admin.authority-requests'
 import { Route as AdminCitiesRouteImport } from './routes/admin.cities'
 import { Route as AdminCityManagementRouteImport } from './routes/admin.city-management'
+import { Route as AdminCommunicationRouteImport } from './routes/admin.communication'
 import { Route as AdminComplaintManagementRouteImport } from './routes/admin.complaint-management'
 import { Route as AdminComplaintsRouteImport } from './routes/admin.complaints'
 import { Route as AdminEnvironmentalMonitoringRouteImport } from './routes/admin.environmental-monitoring'
@@ -242,6 +243,11 @@ const AdminCityManagementRoute = AdminCityManagementRouteImport.update({
   path: '/city-management',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCommunicationRoute = AdminCommunicationRouteImport.update({
+  id: '/communication',
+  path: '/communication',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminComplaintManagementRoute =
   AdminComplaintManagementRouteImport.update({
     id: '/complaint-management',
@@ -386,6 +392,7 @@ export interface FileRoutesByFullPath {
   '/admin/authority-requests': typeof AdminAuthorityRequestsRoute
   '/admin/cities': typeof AdminCitiesRoute
   '/admin/city-management': typeof AdminCityManagementRoute
+  '/admin/communication': typeof AdminCommunicationRoute
   '/admin/complaint-management': typeof AdminComplaintManagementRoute
   '/admin/complaints': typeof AdminComplaintsRoute
   '/admin/environmental-monitoring': typeof AdminEnvironmentalMonitoringRoute
@@ -442,6 +449,7 @@ export interface FileRoutesByTo {
   '/admin/authority-requests': typeof AdminAuthorityRequestsRoute
   '/admin/cities': typeof AdminCitiesRoute
   '/admin/city-management': typeof AdminCityManagementRoute
+  '/admin/communication': typeof AdminCommunicationRoute
   '/admin/complaint-management': typeof AdminComplaintManagementRoute
   '/admin/complaints': typeof AdminComplaintsRoute
   '/admin/environmental-monitoring': typeof AdminEnvironmentalMonitoringRoute
@@ -501,6 +509,7 @@ export interface FileRoutesById {
   '/admin/authority-requests': typeof AdminAuthorityRequestsRoute
   '/admin/cities': typeof AdminCitiesRoute
   '/admin/city-management': typeof AdminCityManagementRoute
+  '/admin/communication': typeof AdminCommunicationRoute
   '/admin/complaint-management': typeof AdminComplaintManagementRoute
   '/admin/complaints': typeof AdminComplaintsRoute
   '/admin/environmental-monitoring': typeof AdminEnvironmentalMonitoringRoute
@@ -561,6 +570,7 @@ export interface FileRouteTypes {
     | '/admin/authority-requests'
     | '/admin/cities'
     | '/admin/city-management'
+    | '/admin/communication'
     | '/admin/complaint-management'
     | '/admin/complaints'
     | '/admin/environmental-monitoring'
@@ -617,6 +627,7 @@ export interface FileRouteTypes {
     | '/admin/authority-requests'
     | '/admin/cities'
     | '/admin/city-management'
+    | '/admin/communication'
     | '/admin/complaint-management'
     | '/admin/complaints'
     | '/admin/environmental-monitoring'
@@ -675,6 +686,7 @@ export interface FileRouteTypes {
     | '/admin/authority-requests'
     | '/admin/cities'
     | '/admin/city-management'
+    | '/admin/communication'
     | '/admin/complaint-management'
     | '/admin/complaints'
     | '/admin/environmental-monitoring'
@@ -977,6 +989,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCityManagementRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/communication': {
+      id: '/admin/communication'
+      path: '/communication'
+      fullPath: '/admin/communication'
+      preLoaderRoute: typeof AdminCommunicationRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/complaint-management': {
       id: '/admin/complaint-management'
       path: '/complaint-management'
@@ -1134,6 +1153,7 @@ interface AdminRouteChildren {
   AdminAuthorityRequestsRoute: typeof AdminAuthorityRequestsRoute
   AdminCitiesRoute: typeof AdminCitiesRoute
   AdminCityManagementRoute: typeof AdminCityManagementRoute
+  AdminCommunicationRoute: typeof AdminCommunicationRoute
   AdminComplaintManagementRoute: typeof AdminComplaintManagementRoute
   AdminComplaintsRoute: typeof AdminComplaintsRoute
   AdminEnvironmentalMonitoringRoute: typeof AdminEnvironmentalMonitoringRoute
@@ -1156,6 +1176,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAuthorityRequestsRoute: AdminAuthorityRequestsRoute,
   AdminCitiesRoute: AdminCitiesRoute,
   AdminCityManagementRoute: AdminCityManagementRoute,
+  AdminCommunicationRoute: AdminCommunicationRoute,
   AdminComplaintManagementRoute: AdminComplaintManagementRoute,
   AdminComplaintsRoute: AdminComplaintsRoute,
   AdminEnvironmentalMonitoringRoute: AdminEnvironmentalMonitoringRoute,

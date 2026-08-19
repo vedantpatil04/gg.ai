@@ -60,12 +60,13 @@ const FEATURE_CATEGORIES = [
 type FeedbackTab = "overview" | "submit-feedback" | "feature-requests" | "submit-feature";
 type FeatureFilter = "all" | "planned" | "in_progress" | "shipped";
 
-const STATUS_ICON = {
+const STATUS_ICON: Record<string, React.ElementType> = {
   submitted:   Clock,
   planned:     Calendar,
   in_progress: TrendingUp,
   shipped:     Package,
   declined:    X,
+  resolved:    Check,
 };
 
 // ─── 1. Feedback Hub Hero ─────────────────────────────────────────────────────

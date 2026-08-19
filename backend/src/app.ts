@@ -32,6 +32,7 @@ import platformAdminRoutes from "./routes/platform-admin.routes";
 import notificationRoutes  from "./routes/notification.routes";
 import settingsRoutes      from "./routes/settings.routes";
 import supportRoutes       from "./routes/support.routes";
+import communicationHubRoutes from "./routes/communication-hub.routes";
 import helpAiRoutes        from "./routes/help-ai.routes";
 import communityRoutes     from "./routes/community.routes";
 
@@ -133,6 +134,7 @@ app.use("/api/platform-admin",   platformAdminRoutes);
 app.use("/api/notifications",    notificationRoutes);
 app.use("/api/settings",         settingsRoutes);
 app.use("/api/support",          supportRoutes);
+app.use("/api/admin/communication", communicationHubRoutes);
 app.use("/api/help-ai",          helpAiRoutes);
 app.use("/api/community",        communityRoutes);
 

@@ -12,16 +12,20 @@ import {
   type BugSeverity,
   type SupportTicketDTO,
   type FeatureRequestDTO,
+  type FeedbackStatus,
   type TicketStats,
 } from "@/lib/api/support.api";
 
 // ─── Query keys ───────────────────────────────────────────────────────────────
 
 export const supportKeys = {
-  stats:    ["support", "stats"]    as const,
-  tickets:  (filters?: object) => ["support", "tickets", filters] as const,
-  ticket:   (id: string)       => ["support", "ticket", id]       as const,
-  features: (filters?: object) => ["support", "features", filters] as const,
+  stats:        ["support", "stats"]    as const,
+  tickets:      (filters?: object) => ["support", "tickets", filters] as const,
+  ticket:       (id: string)       => ["support", "ticket", id]       as const,
+  features:     (filters?: object) => ["support", "features", filters] as const,
+  feature:      (id: string)       => ["support", "feature", id]       as const,
+  feedbackList: (filters?: object) => ["support", "feedback", filters] as const,
+  feedbackOne:  (id: string)       => ["support", "feedback-item", id] as const,
 };
 
 // ─── Ticket Stats ─────────────────────────────────────────────────────────────
@@ -264,5 +268,57 @@ export function useBugDetail(id: string | null) {
     queryFn:  () => bugListApi.getOne(id!),
     enabled:  !!id,
     staleTime: 30_000,
+  });
+}
+
+// ─── Ticket Detail + Reply (Communication Hub integration) ───────────────────
+
+export function useTicketDetail(id: string | null) {
+  return useQuery({
+    queryKey: supportKeys.ticket(id ?? ""),
+    queryFn:  () => supportTicketApi.getOne(id!),
+    enabled:  !!id,
+    staleTime: 10_000,
+  });
+}
+
+export function useAddTicketComment(ticketId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: string) => supportTicketApi.addComment(ticketId, body),
+    onSuccess: (ticket) => {
+      qc.setQueryData(supportKeys.ticket(ticketId), ticket);
+      qc.invalidateQueries({ queryKey: ["support", "tickets"] });
+    },
+  });
+}
+
+// ─── Feature Request Detail ───────────────────────────────────────────────────
+
+export function useFeatureDetail(id: string | null) {
+  return useQuery({
+    queryKey: supportKeys.feature(id ?? ""),
+    queryFn:  () => featureRequestApi.getOne(id!),
+    enabled:  !!id,
+    staleTime: 20_000,
+  });
+}
+
+// ─── Feedback list + detail (citizen's own submissions) ───────────────────────
+
+export function useMyFeedback(filters?: { status?: FeedbackStatus; page?: number }) {
+  return useQuery({
+    queryKey: supportKeys.feedbackList(filters),
+    queryFn:  () => feedbackApi.getAll(filters),
+    staleTime: 20_000,
+  });
+}
+
+export function useFeedbackDetail(id: string | null) {
+  return useQuery({
+    queryKey: supportKeys.feedbackOne(id ?? ""),
+    queryFn:  () => feedbackApi.getOne(id!),
+    enabled:  !!id,
+    staleTime: 20_000,
   });
 }

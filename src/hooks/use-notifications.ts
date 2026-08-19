@@ -82,7 +82,7 @@ export function useMarkAllRead() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: (category?: NotificationCategory) => notificationApi.markAllRead(category),
+    mutationFn: (category?: NotificationCategory | "support") => notificationApi.markAllRead(category),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: notificationKeys.lists() });
       qc.invalidateQueries({ queryKey: notificationKeys.unreadCount() });

@@ -2,15 +2,20 @@ import client from "./client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type TicketStatus   = "open" | "in_progress" | "waiting" | "resolved" | "closed";
+// "reopened" added for the Administrator Communication Hub.
+export type TicketStatus   = "open" | "in_progress" | "waiting" | "resolved" | "closed" | "reopened";
 export type TicketPriority = "low" | "medium" | "high" | "critical";
-export type FeatureStatus  = "submitted" | "planned" | "in_progress" | "shipped" | "declined";
+export type FeatureStatus  = "submitted" | "planned" | "in_progress" | "shipped" | "declined" | "resolved" | "reopened";
+
+export type CommentAuthorRole = "citizen" | "authority" | "administrator";
 
 export interface TicketComment {
   _id:        string;
   body:       string;
   authorId:   string;
   authorName: string;
+  authorRole?: CommentAuthorRole;
+  isSystem?:  boolean;
   createdAt:  string;
 }
 
@@ -28,6 +33,7 @@ export interface SupportTicketDTO {
   submittedBy:      string;
   assignedTeam?:    string;
   comments:         TicketComment[];
+  adminRead?:       boolean;
   estimatedResponse?: string;
   createdAt:        string;
   updatedAt:        string;
@@ -57,6 +63,8 @@ export interface FeatureRequestDTO {
   submittedBy:      string;
   estimatedRelease?: string;
   tags:             string[];
+  comments:         TicketComment[];
+  adminRead?:       boolean;
   createdAt:        string;
   updatedAt:        string;
 }
@@ -101,53 +109,7 @@ export const supportTicketApi = {
 
 // ─── Bug Reports ──────────────────────────────────────────────────────────────
 
-export const bugReportApi = {
-  create: (input: {
-    title:    string;
-    category: string;
-    severity: string;
-    steps:    string;
-    expected: string;
-    actual:   string;
-    platform?: string;
-    browser?:  string;
-    device?:   string;
-  }) =>
-    client.post<{ success: true; data: { report: unknown } }>("/support/bugs", input).then(r => r.data),
-};
-
-// ─── Feature Requests ─────────────────────────────────────────────────────────
-
-export const featureRequestApi = {
-  getAll: (params?: { status?: FeatureStatus; page?: number; limit?: number }) =>
-    client.get<{ success: true; data: { features: FeatureRequestDTO[]; total: number } }>(
-      "/support/features", { params },
-    ).then(r => r.data.data),
-
-  create: (input: { title: string; description: string; category: string; tags?: string[] }) =>
-    client.post<{ success: true; data: { feature: FeatureRequestDTO } }>("/support/features", input).then(r => r.data.data.feature),
-
-  toggleVote: (id: string) =>
-    client.post<{ success: true; data: { voted: boolean; voteCount: number } }>(`/support/features/${id}/vote`).then(r => r.data.data),
-};
-
-// ─── Feedback ─────────────────────────────────────────────────────────────────
-
-export const feedbackApi = {
-  create: (input: {
-    rating:          number;
-    category:        string;
-    comment?:        string;
-    nps?:            number;
-    uiSatisfaction?: number;
-    aiSatisfaction?: number;
-  }) =>
-    client.post<{ success: true; data: { feedback: unknown } }>("/support/feedback", input).then(r => r.data),
-};
-
-// ─── Bug Report (Phase 7 additions) ───────────────────────────────────────────
-
-export type BugStatus   = "open" | "acknowledged" | "fixed" | "wontfix";
+export type BugStatus   = "open" | "acknowledged" | "fixed" | "wontfix" | "resolved" | "reopened";
 export type BugSeverity = "minor" | "major" | "critical" | "blocker";
 
 export interface BugReportDTO {
@@ -163,11 +125,26 @@ export interface BugReportDTO {
   actual:      string;
   submittedBy: string;
   status:      BugStatus;
+  comments:    TicketComment[];
+  adminRead?:  boolean;
   createdAt:   string;
   updatedAt:   string;
 }
 
-export const bugListApi = {
+export const bugReportApi = {
+  create: (input: {
+    title:    string;
+    category: string;
+    severity: string;
+    steps:    string;
+    expected: string;
+    actual:   string;
+    platform?: string;
+    browser?:  string;
+    device?:   string;
+  }) =>
+    client.post<{ success: true; data: { report: BugReportDTO } }>("/support/bugs", input).then(r => r.data.data.report),
+
   getAll: (params?: { status?: BugStatus; severity?: BugSeverity; page?: number; limit?: number }) =>
     client.get<{ success: true; data: { reports: BugReportDTO[]; total: number; page: number; pages: number } }>(
       "/support/bugs", { params },
@@ -175,4 +152,65 @@ export const bugListApi = {
 
   getOne: (id: string) =>
     client.get<{ success: true; data: { report: BugReportDTO } }>(`/support/bugs/${id}`).then(r => r.data.data.report),
+};
+
+// Kept for backward-compat with any existing imports of the old name.
+export const bugListApi = bugReportApi;
+
+// ─── Feature Requests ─────────────────────────────────────────────────────────
+
+export const featureRequestApi = {
+  getAll: (params?: { status?: FeatureStatus; page?: number; limit?: number }) =>
+    client.get<{ success: true; data: { features: FeatureRequestDTO[]; total: number } }>(
+      "/support/features", { params },
+    ).then(r => r.data.data),
+
+  getOne: (id: string) =>
+    client.get<{ success: true; data: { feature: FeatureRequestDTO } }>(`/support/features/${id}`).then(r => r.data.data.feature),
+
+  create: (input: { title: string; description: string; category: string; tags?: string[] }) =>
+    client.post<{ success: true; data: { feature: FeatureRequestDTO } }>("/support/features", input).then(r => r.data.data.feature),
+
+  toggleVote: (id: string) =>
+    client.post<{ success: true; data: { voted: boolean; voteCount: number } }>(`/support/features/${id}/vote`).then(r => r.data.data),
+};
+
+// ─── Feedback ─────────────────────────────────────────────────────────────────
+
+export type FeedbackStatus = "open" | "resolved" | "reopened";
+
+export interface FeedbackDTO {
+  _id:            string;
+  rating:         number;
+  category:       string;
+  comment:        string;
+  nps:            number;
+  uiSatisfaction: number;
+  aiSatisfaction: number;
+  submittedBy:    string;
+  status:         FeedbackStatus;
+  comments:       TicketComment[];
+  adminRead?:     boolean;
+  createdAt:      string;
+  updatedAt:      string;
+}
+
+export const feedbackApi = {
+  create: (input: {
+    rating:          number;
+    category:        string;
+    comment?:        string;
+    nps?:            number;
+    uiSatisfaction?: number;
+    aiSatisfaction?: number;
+  }) =>
+    client.post<{ success: true; data: { feedback: FeedbackDTO } }>("/support/feedback", input).then(r => r.data.data.feedback),
+
+  getAll: (params?: { status?: FeedbackStatus; page?: number; limit?: number }) =>
+    client.get<{ success: true; data: { feedback: FeedbackDTO[]; total: number; page: number; pages: number } }>(
+      "/support/feedback", { params },
+    ).then(r => r.data.data),
+
+  getOne: (id: string) =>
+    client.get<{ success: true; data: { feedback: FeedbackDTO } }>(`/support/feedback/${id}`).then(r => r.data.data.feedback),
 };

@@ -38,12 +38,15 @@ export interface Notification {
   recipientRole: "citizen" | "authority" | "administrator";
   title: string;
   summary: string;
-  category: NotificationCategory;
+  // "support" covers the Communication Hub (tickets/bugs/features/feedback).
+  // Kept as a union extension rather than folding into NotificationCategory
+  // since that type also drives the (separate) settings preferences record.
+  category: NotificationCategory | "support";
   priority: NotificationPriority;
   status: NotificationStatus;
   link?: string;
   entityId?: string;
-  entityType?: "complaint" | "authority" | "platform" | "user";
+  entityType?: "complaint" | "authority" | "platform" | "user" | "ticket" | "bug" | "feature" | "feedback";
   readAt?: string;
   archivedAt?: string;
   createdAt: string;
@@ -65,7 +68,7 @@ export interface NotificationFilters {
   page?: number;
   limit?: number;
   status?: "unread" | "read" | "archived" | "all";
-  category?: NotificationCategory;
+  category?: NotificationCategory | "support";
   search?: string;
   from?: string;
   to?: string;
@@ -97,7 +100,7 @@ export const notificationApi = {
     return res.data.data.notification as Notification;
   },
 
-  markAllRead: async (category?: NotificationCategory): Promise<{ modifiedCount: number }> => {
+  markAllRead: async (category?: NotificationCategory | "support"): Promise<{ modifiedCount: number }> => {
     const res = await client.patch("/notifications/mark-all-read", { category });
     return res.data.data as { modifiedCount: number };
   },

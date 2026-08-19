@@ -27,7 +27,7 @@ interface CreateNotificationInput {
   priority?: NotificationPriority;
   link?: string;
   entityId?: string;
-  entityType?: "complaint" | "authority" | "platform" | "user";
+  entityType?: "complaint" | "authority" | "platform" | "user" | "ticket" | "bug" | "feature" | "feedback";
 }
 
 /**
@@ -534,6 +534,192 @@ export async function notifyPlatformAlert(
     category: "platform",
     priority,
     link: "/admin/platform-health",
+    entityType: "platform",
+  });
+}
+
+// ─── Communication Hub — tickets / bug reports / feature requests / feedback ──
+//
+// One set of helpers shared by all four communication types instead of four
+// near-identical copies. Reuses createNotification/fanOutNotification above —
+// no second notification model, service, or store.
+
+export type SupportItemType = "ticket" | "bug" | "feature" | "feedback";
+
+const SUPPORT_TYPE_LABEL: Record<SupportItemType, string> = {
+  ticket:  "support ticket",
+  bug:     "bug report",
+  feature: "feature request",
+  feedback: "feedback",
+};
+
+// Help Center tab id each type lives under, and the Communication Hub tab id
+// an admin should land on — kept in one place so both stay in sync.
+const SUPPORT_HELP_TAB: Record<SupportItemType, string> = {
+  ticket: "tickets", bug: "bug", feature: "feature", feedback: "feedback",
+};
+const SUPPORT_HUB_TAB: Record<SupportItemType, string> = {
+  ticket: "tickets", bug: "bugs", feature: "features", feedback: "feedback",
+};
+
+function citizenSupportLink(type: SupportItemType, id: string): string {
+  return `/help/support?tab=${SUPPORT_HELP_TAB[type]}&id=${id}`;
+}
+
+function adminSupportLink(type: SupportItemType, id: string): string {
+  return `/admin/communication?tab=${SUPPORT_HUB_TAB[type]}&id=${id}`;
+}
+
+/**
+ * Called when a citizen submits a ticket, bug report, feature request, or
+ * feedback item.
+ *  → Citizen: confirmation
+ *  → All Administrators: new item alert (Communication Hub)
+ */
+export async function notifySupportItemSubmitted(
+  citizenId: mongoose.Types.ObjectId,
+  type: SupportItemType,
+  itemId: string,
+  itemTitle: string,
+  adminIds: mongoose.Types.ObjectId[],
+): Promise<void> {
+  const label = SUPPORT_TYPE_LABEL[type];
+
+  await createNotification({
+    userId: citizenId,
+    recipientRole: "citizen",
+    title: `${label.charAt(0).toUpperCase()}${label.slice(1)} received`,
+    summary: `Your ${label} "${itemTitle}" has been received and is under review.`,
+    category: "support",
+    priority: "low",
+    link: citizenSupportLink(type, itemId),
+    entityId: itemId,
+    entityType: type,
+  });
+
+  await fanOutNotification({
+    recipients: adminIds.map((id) => ({ userId: id, role: "administrator" as const })),
+    title: `New ${label} submitted`,
+    summary: `"${itemTitle}" was just submitted and needs review.`,
+    category: "support",
+    priority: type === "ticket" ? "medium" : "low",
+    link: adminSupportLink(type, itemId),
+    entityId: itemId,
+    entityType: type,
+  });
+}
+
+/**
+ * Called when an administrator replies to a communication.
+ *  → Citizen: new reply
+ */
+export async function notifySupportReply(
+  citizenId: mongoose.Types.ObjectId,
+  type: SupportItemType,
+  itemId: string,
+  itemTitle: string,
+): Promise<void> {
+  const label = SUPPORT_TYPE_LABEL[type];
+  await createNotification({
+    userId: citizenId,
+    recipientRole: "citizen",
+    title: "Administrator replied",
+    summary: `An administrator replied to your ${label} "${itemTitle}".`,
+    category: "support",
+    priority: "medium",
+    link: citizenSupportLink(type, itemId),
+    entityId: itemId,
+    entityType: type,
+  });
+}
+
+/**
+ * Called when an administrator resolves a communication.
+ *  → Citizen: resolved
+ */
+export async function notifySupportResolved(
+  citizenId: mongoose.Types.ObjectId,
+  type: SupportItemType,
+  itemId: string,
+  itemTitle: string,
+): Promise<void> {
+  const label = SUPPORT_TYPE_LABEL[type];
+  await createNotification({
+    userId: citizenId,
+    recipientRole: "citizen",
+    title: `${label.charAt(0).toUpperCase()}${label.slice(1)} resolved`,
+    summary: `Your ${label} "${itemTitle}" has been marked resolved. Reopen it if you need further help.`,
+    category: "support",
+    priority: "medium",
+    link: citizenSupportLink(type, itemId),
+    entityId: itemId,
+    entityType: type,
+  });
+}
+
+/**
+ * Called when a communication is reopened.
+ *  → If the citizen reopened it: notify all administrators.
+ *  → If an administrator reopened it: notify the citizen.
+ */
+export async function notifySupportReopened(
+  type: SupportItemType,
+  itemId: string,
+  itemTitle: string,
+  reopenedByAdmin: boolean,
+  citizenId: mongoose.Types.ObjectId,
+  adminIds: mongoose.Types.ObjectId[],
+): Promise<void> {
+  const label = SUPPORT_TYPE_LABEL[type];
+
+  if (reopenedByAdmin) {
+    await createNotification({
+      userId: citizenId,
+      recipientRole: "citizen",
+      title: `${label.charAt(0).toUpperCase()}${label.slice(1)} reopened`,
+      summary: `Your ${label} "${itemTitle}" has been reopened by an administrator.`,
+      category: "support",
+      priority: "medium",
+      link: citizenSupportLink(type, itemId),
+      entityId: itemId,
+      entityType: type,
+    });
+  } else {
+    await fanOutNotification({
+      recipients: adminIds.map((id) => ({ userId: id, role: "administrator" as const })),
+      title: `${label.charAt(0).toUpperCase()}${label.slice(1)} reopened`,
+      summary: `"${itemTitle}" was reopened and needs another look.`,
+      category: "support",
+      priority: "medium",
+      link: adminSupportLink(type, itemId),
+      entityId: itemId,
+      entityType: type,
+    });
+  }
+}
+
+// ─── Emergency broadcast ──────────────────────────────────────────────────────
+//
+// Administrator-initiated broadcast to a role-based audience. Reuses
+// fanOutNotification exactly like every other notification path above — no
+// separate emergency notification engine. entityType "platform" + a shared
+// entityId (generated by the caller) lets the Communication Hub reconstruct
+// "Emergency History" later by grouping existing Notification documents,
+// without a new model.
+export async function notifyEmergencyBroadcast(
+  recipients: Array<{ userId: mongoose.Types.ObjectId; role: NotificationRecipientRole }>,
+  broadcastId: string,
+  title: string,
+  message: string,
+  priority: NotificationPriority,
+): Promise<void> {
+  await fanOutNotification({
+    recipients,
+    title: `Emergency Alert: ${title}`,
+    summary: message,
+    category: "platform",
+    priority,
+    entityId: broadcastId,
     entityType: "platform",
   });
 }

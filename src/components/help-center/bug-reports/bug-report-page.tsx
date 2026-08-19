@@ -27,6 +27,8 @@ const BUG_STATUS_STYLE: Record<BugStatus, { label: string; color: string }> = {
   acknowledged: { label: "Acknowledged", color: "var(--color-warning)"           },
   fixed:        { label: "Fixed",        color: "var(--color-success)"           },
   wontfix:      { label: "Won't Fix",    color: "var(--color-muted-foreground)"  },
+  resolved:     { label: "Resolved",     color: "var(--color-success)"           },
+  reopened:     { label: "Reopened",     color: "var(--color-destructive)"       },
 };
 
 function timeAgo(iso: string): string {
@@ -246,6 +248,32 @@ function BugDetail({
                   </div>
                 </div>
               )}
+
+              {/* Administrator responses */}
+              {report.comments && report.comments.length > 0 && (
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium mb-2">Conversation</div>
+                  <div className="space-y-2.5">
+                    {report.comments.map(c => (
+                      <div
+                        key={c._id}
+                        className={cn(
+                          "rounded-xl p-3 text-xs leading-relaxed",
+                          c.authorRole === "administrator" ? "bg-primary/5 border border-primary/15" : "bg-muted/40",
+                        )}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold">
+                            {c.isSystem ? "GreenGuard" : c.authorRole === "administrator" ? `${c.authorName} · Administrator` : c.authorName}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">{timeAgo(c.createdAt)}</span>
+                        </div>
+                        <p className="text-foreground/90">{c.body}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -286,6 +314,14 @@ function BugDetail({
                     <X className="size-3 text-muted-foreground" />
                   </div>
                   <span className="font-semibold text-muted-foreground">Won't Fix</span>
+                </div>
+              )}
+              {(report.status === "resolved" || report.status === "reopened") && (
+                <div className="flex items-center gap-2.5 text-xs mt-1">
+                  <div className="size-6 rounded-full flex items-center justify-center shrink-0" style={{ background: `color-mix(in oklab, ${statusStyle.color} 15%, transparent)` }}>
+                    <div className="size-2 rounded-full" style={{ background: statusStyle.color }} />
+                  </div>
+                  <span className="font-semibold" style={{ color: statusStyle.color }}>{statusStyle.label} by administrator</span>
                 </div>
               )}
             </div>

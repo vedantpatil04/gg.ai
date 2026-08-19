@@ -4,8 +4,10 @@ import { SupportTicket }          from "../models/SupportTicket";
 import { BugReport }              from "../models/BugReport";
 import { FeatureRequest }         from "../models/FeatureRequest";
 import { Feedback }               from "../models/Feedback";
+import { User }                   from "../models/User";
 import { AppError }               from "../middleware/errorHandler";
 import { AuthRequest }            from "../middleware/auth";
+import { notifySupportItemSubmitted } from "../services/notification.service";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -18,6 +20,14 @@ function slaEstimate(priority: string): string {
   }
 }
 
+/** All active administrator IDs — used to fan out "new submission" alerts to
+ *  the Communication Hub. Failures never block the citizen's own request
+ *  (createNotification/fanOutNotification already swallow their own errors). */
+async function getAdminIds(): Promise<mongoose.Types.ObjectId[]> {
+  const admins = await User.find({ role: "administrator", isActive: true }).select("_id").lean();
+  return admins.map(a => a._id as mongoose.Types.ObjectId);
+}
+
 // ─── Tickets ──────────────────────────────────────────────────────────────────
 
 export async function createTicket(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
@@ -28,6 +38,12 @@ export async function createTicket(req: AuthRequest, res: Response, next: NextFu
       submittedBy:  req.user._id,
       assignedTeam: "Support Team",
     });
+
+    const adminIds = await getAdminIds();
+    await notifySupportItemSubmitted(
+      req.user._id as mongoose.Types.ObjectId, "ticket", (ticket._id as mongoose.Types.ObjectId).toString(), ticket.subject, adminIds,
+    );
+
     res.status(201).json({
       success: true,
       data: { ticket, estimatedResponse: slaEstimate(ticket.priority) },
@@ -148,8 +164,12 @@ export async function addComment(req: AuthRequest, res: Response, next: NextFunc
       body:       req.body.body,
       authorId:   req.user._id as mongoose.Types.ObjectId,
       authorName: req.user.name ?? "User",
+      authorRole: req.user.role as "citizen" | "authority" | "administrator",
       createdAt:  new Date(),
     });
+
+    // A citizen commenting again means the thread needs another admin look.
+    if (req.user.role !== "administrator") ticket.adminRead = false;
 
     await ticket.save();
     res.json({ success: true, data: { ticket } });
@@ -195,6 +215,12 @@ export async function createBugReport(req: AuthRequest, res: Response, next: Nex
   try {
     if (!req.user) return next(new AppError("Not authenticated", 401));
     const report = await BugReport.create({ ...req.body, submittedBy: req.user._id });
+
+    const adminIds = await getAdminIds();
+    await notifySupportItemSubmitted(
+      req.user._id as mongoose.Types.ObjectId, "bug", (report._id as mongoose.Types.ObjectId).toString(), report.title, adminIds,
+    );
+
     res.status(201).json({ success: true, data: { report } });
   } catch (err) { next(err); }
 }
@@ -230,10 +256,42 @@ export async function getFeatureRequests(req: AuthRequest, res: Response, next: 
   } catch (err) { next(err); }
 }
 
+export async function getFeatureRequest(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) return next(new AppError("Not authenticated", 401));
+    const feature = await FeatureRequest.findById(req.params.id).lean();
+    if (!feature) return next(new AppError("Feature request not found", 404));
+
+    // Feature requests are visible to any authenticated user (public voting
+    // content) — but the reply thread should only be readable by the
+    // submitter or an administrator, mirroring tickets/bugs.
+    const isOwner = feature.submittedBy.toString() === (req.user._id as mongoose.Types.ObjectId).toString();
+    const canSeeThread = isOwner || req.user.role === "administrator";
+
+    const userId = req.user._id.toString();
+    res.json({
+      success: true,
+      data: {
+        feature: {
+          ...feature,
+          voted: feature.votes.some((v: mongoose.Types.ObjectId) => v.toString() === userId),
+          comments: canSeeThread ? feature.comments : [],
+        },
+      },
+    });
+  } catch (err) { next(err); }
+}
+
 export async function createFeatureRequest(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user) return next(new AppError("Not authenticated", 401));
     const feature = await FeatureRequest.create({ ...req.body, submittedBy: req.user._id });
+
+    const adminIds = await getAdminIds();
+    await notifySupportItemSubmitted(
+      req.user._id as mongoose.Types.ObjectId, "feature", (feature._id as mongoose.Types.ObjectId).toString(), feature.title, adminIds,
+    );
+
     res.status(201).json({ success: true, data: { feature } });
   } catch (err) { next(err); }
 }
@@ -271,7 +329,48 @@ export async function createFeedback(req: AuthRequest, res: Response, next: Next
   try {
     if (!req.user) return next(new AppError("Not authenticated", 401));
     const feedback = await Feedback.create({ ...req.body, submittedBy: req.user._id });
+
+    const adminIds = await getAdminIds();
+    await notifySupportItemSubmitted(
+      req.user._id as mongoose.Types.ObjectId, "feedback", (feedback._id as mongoose.Types.ObjectId).toString(),
+      feedback.category, adminIds,
+    );
+
     res.status(201).json({ success: true, data: { feedback } });
+  } catch (err) { next(err); }
+}
+
+export async function getMyFeedback(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) return next(new AppError("Not authenticated", 401));
+
+    const page  = Math.max(1, Number(req.query.page)  || 1);
+    const limit = Math.min(100, Number(req.query.limit) || 20);
+    const skip  = (page - 1) * limit;
+
+    const filter: Record<string, unknown> = { submittedBy: req.user._id };
+    if (req.user.role === "administrator") delete filter.submittedBy;
+    if (req.query.status) filter.status = req.query.status;
+
+    const [items, total] = await Promise.all([
+      Feedback.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Feedback.countDocuments(filter),
+    ]);
+
+    res.json({ success: true, data: { feedback: items, total, page, pages: Math.ceil(total / limit) } });
+  } catch (err) { next(err); }
+}
+
+export async function getFeedbackItem(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) return next(new AppError("Not authenticated", 401));
+    const feedback = await Feedback.findById(req.params.id).lean();
+    if (!feedback) return next(new AppError("Feedback not found", 404));
+
+    const isOwner = feedback.submittedBy.toString() === (req.user._id as mongoose.Types.ObjectId).toString();
+    if (!isOwner && req.user.role !== "administrator") return next(new AppError("Not authorised", 403));
+
+    res.json({ success: true, data: { feedback } });
   } catch (err) { next(err); }
 }
 

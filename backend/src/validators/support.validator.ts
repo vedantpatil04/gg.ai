@@ -20,7 +20,7 @@ export const updateTicketValidator = [
   param("id").isMongoId().withMessage("Invalid ticket ID"),
   body("status")
     .optional()
-    .isIn(["open", "in_progress", "waiting", "resolved", "closed"])
+    .isIn(["open", "in_progress", "waiting", "resolved", "closed", "reopened"])
     .withMessage("Invalid status"),
   body("priority")
     .optional()
@@ -38,7 +38,7 @@ export const addCommentValidator = [
 export const ticketQueryValidator = [
   query("page").optional().isInt({ min: 1 }),
   query("limit").optional().isInt({ min: 1, max: 100 }),
-  query("status").optional().isIn(["open", "in_progress", "waiting", "resolved", "closed"]),
+  query("status").optional().isIn(["open", "in_progress", "waiting", "resolved", "closed", "reopened"]),
   query("priority").optional().isIn(["low", "medium", "high", "critical"]),
 ];
 
@@ -71,7 +71,7 @@ export const createFeatureValidator = [
 export const featureQueryValidator = [
   query("page").optional().isInt({ min: 1 }),
   query("limit").optional().isInt({ min: 1, max: 100 }),
-  query("status").optional().isIn(["submitted", "planned", "in_progress", "shipped", "declined"]),
+  query("status").optional().isIn(["submitted", "planned", "in_progress", "shipped", "declined", "resolved", "reopened"]),
 ];
 
 // ─── Feedback ─────────────────────────────────────────────────────────────────

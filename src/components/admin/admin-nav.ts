@@ -16,7 +16,6 @@ import {
   Cog,
   Lock,
   Settings,
-  Bell,
   MessageSquare,
   HeartPulse,
 } from "lucide-react";
@@ -75,8 +74,11 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     id: "engagement",
     label: "Engagement",
     items: [
-      { label: "Notification Center", icon: Bell, comingSoon: true },
-      { label: "Communication Hub", icon: MessageSquare, comingSoon: true },
+      // Notification Center was previously a separate coming-soon entry.
+      // Per the Communication Hub design, notifications live as a tab
+      // inside the Hub rather than as their own top-level nav item — the
+      // existing header bell already covers global notifications.
+      { label: "Communication Hub", icon: MessageSquare, to: "/admin/communication" },
     ],
   },
 ];
@@ -99,5 +101,6 @@ export const ADMIN_LABEL_MAP: Record<string, string> = {
   "platform-administration": "Platform Administration",
   "security-center": "Security",
   "platform-settings": "Platform Settings",
+  communication: "Communication Hub",
   profile: "Profile & Settings",
 };

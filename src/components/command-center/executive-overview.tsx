@@ -4,7 +4,6 @@ import { Link } from "@tanstack/react-router";
 import {
   Shield,
   AlertTriangle,
-  MessageSquare,
   Activity,
   Sparkles,
   Loader2,
@@ -28,7 +27,7 @@ import {
   type ExecutiveDashboardData,
 } from "@/lib/api/command.api";
 import { complaintApi, alertApi } from "@/lib/api/services.api";
-import { EmptyState, Pill, WorkspaceHeader } from "@/components/ui-bits";
+import { Pill } from "@/components/ui-bits";
 import {
   ISSUE_LABELS,
   SEVERITY_TONE,
@@ -36,13 +35,10 @@ import {
   STATUS_LABEL,
 } from "@/components/command-center/investigation-workspace";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
 // ─── Cross-tab navigation ─────────────────────────────────────────────────────
-// Mission Control never implements the Work Queue / Monitoring modules itself —
-// it only hands off to the existing tab-switching mechanism the Phase 1 shell
-// already exposes (see command-center.tsx). Typed loosely here so this file
-// has no dependency on that route's internal tab-id union.
 type NavigateFn = (topTabId: string, subTabId?: string) => void;
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
@@ -69,7 +65,7 @@ function nextActionLabel(status: string): string {
     case "pending":
       return "Start Investigation";
     case "in-progress":
-      return "Continue Investigation";
+      return "Continue";
     case "rework":
       return "Address Rework";
     case "awaiting_citizen_review":
@@ -81,8 +77,7 @@ function nextActionLabel(status: string): string {
   }
 }
 
-// ─── Real data shapes (from GET /complaints, already scoped server-side to
-// the authenticated authority's own assignedTo — see complaint.controller.ts) ─
+// ─── Real data shapes ─────────────────────────────────────────────────────────
 interface ComplaintEvent {
   type: string;
   message: string;
@@ -114,7 +109,34 @@ interface AlertRow {
   status?: string;
 }
 
-// ─── Priority stat tile — compact, no glow/gradient ───────────────────────────
+// ─── Section Heading Component ───────────────────────────────────────────────
+function SectionHeading({
+  title,
+  count,
+  action,
+}: {
+  title: string;
+  count?: number;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 pb-2 border-b border-border/60">
+      <div className="flex items-center gap-2 min-w-0">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
+          {title}
+        </h2>
+        {count !== undefined && (
+          <span className="px-1.5 py-0.2 text-[10px] font-mono font-semibold rounded bg-muted text-muted-foreground border border-border/50">
+            {count}
+          </span>
+        )}
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
+    </div>
+  );
+}
+
+// ─── Priority Stat Tile — Dense, High-Signal ──────────────────────────────────
 function PriorityTile({
   label,
   value,
@@ -130,207 +152,203 @@ function PriorityTile({
   tone?: "warning" | "info" | "destructive" | "success";
   onClick?: () => void;
 }) {
-  const toneVar: Record<string, string> = {
-    warning: "var(--color-warning)",
-    info: "var(--color-info)",
-    destructive: "var(--color-destructive)",
-    success: "var(--color-success)",
+  const toneStyle: Record<string, { bg: string; text: string }> = {
+    warning: {
+      bg: "bg-amber-500/10 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400",
+      text: "text-amber-600 dark:text-amber-400",
+    },
+    info: {
+      bg: "bg-sky-500/10 dark:bg-sky-500/15 text-sky-600 dark:text-sky-400",
+      text: "text-sky-600 dark:text-sky-400",
+    },
+    destructive: {
+      bg: "bg-red-500/10 dark:bg-red-500/15 text-red-600 dark:text-red-400",
+      text: "text-red-600 dark:text-red-400",
+    },
+    success: {
+      bg: "bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+      text: "text-emerald-600 dark:text-emerald-400",
+    },
   };
-  const accent = tone ? toneVar[tone] : undefined;
 
-  const content = (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-3 text-left w-full h-full">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">{label}</span>
-        <div
-          className="size-7 rounded-lg grid place-items-center"
-          style={{ background: accent ? `color-mix(in oklab, ${accent} 12%, transparent)` : "var(--color-muted)" }}
-        >
-          <Icon className="size-3.5" style={{ color: accent ?? "var(--color-muted-foreground)" }} />
-        </div>
-      </div>
-      <div className="text-2xl font-semibold tabular-nums tracking-tight">{value}</div>
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-    </div>
-  );
-
-  if (!onClick) return content;
+  const style = tone ? toneStyle[tone] : null;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-transform hover:-translate-y-0.5"
+      disabled={!onClick}
+      className={cn(
+        "rounded-lg border border-border/70 bg-card/60 p-3 text-left w-full transition-all flex flex-col justify-between group",
+        onClick &&
+          "hover:border-border hover:bg-card/90 cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500/40",
+      )}
     >
-      {content}
+      <div className="flex items-center justify-between w-full gap-2">
+        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider truncate">
+          {label}
+        </span>
+        <div
+          className={cn(
+            "size-6 rounded-md grid place-items-center shrink-0 transition-colors",
+            style ? style.bg : "bg-muted text-muted-foreground",
+          )}
+        >
+          <Icon className="size-3" />
+        </div>
+      </div>
+      <div className="mt-2 flex items-baseline justify-between gap-2 w-full">
+        <span
+          className={cn(
+            "text-xl sm:text-2xl font-bold font-mono tracking-tight tabular-nums",
+            style ? style.text : "text-foreground",
+          )}
+        >
+          {value}
+        </span>
+        {hint && (
+          <span className="text-[10px] text-muted-foreground truncate text-right">
+            {hint}
+          </span>
+        )}
+      </div>
     </button>
   );
 }
 
-// ─── Needs Attention row ──────────────────────────────────────────────────────
-function NeedsAttentionRow({ complaint, onNavigate }: { complaint: ComplaintRow; onNavigate?: NavigateFn }) {
+// ─── Needs Attention Row ──────────────────────────────────────────────────────
+function NeedsAttentionRow({
+  complaint,
+  onNavigate,
+}: {
+  complaint: ComplaintRow;
+  onNavigate?: NavigateFn;
+}) {
+  const isCritical = complaint.severity === "critical" || complaint.severity === "high";
+  const caseId = complaint._id ? `#${complaint._id.slice(-6).toUpperCase()}` : "";
+
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card">
-      <div
-        className="size-2 rounded-full shrink-0"
-        style={{
-          background:
-            complaint.severity === "critical" || complaint.severity === "high"
-              ? "var(--color-destructive)"
-              : "var(--color-warning)",
-        }}
-      />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">{complaint.title}</p>
-        <div className="flex items-center gap-2 flex-wrap mt-0.5">
-          <span className="text-xs text-muted-foreground">
-            {ISSUE_LABELS[complaint.issueType] ?? complaint.issueType}
-          </span>
-          {complaint.location?.address && (
-            <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-              <MapPin className="size-2.5" />
-              {complaint.location.address}
-            </span>
+    <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 hover:bg-muted/30 transition-colors group">
+      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        <span
+          className={cn(
+            "size-2 rounded-full shrink-0",
+            isCritical ? "bg-red-500 animate-pulse" : "bg-amber-500",
           )}
-          <Pill tone={STATUS_TONE[complaint.status] ?? "muted"}>
-            {STATUS_LABEL[complaint.status] ?? complaint.status}
-          </Pill>
+          title={`Severity: ${complaint.severity}`}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            {caseId && (
+              <span className="font-mono text-[11px] font-semibold text-muted-foreground">
+                {caseId}
+              </span>
+            )}
+            <span className="text-xs font-semibold text-foreground truncate max-w-xs sm:max-w-md md:max-w-lg">
+              {complaint.title}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5 flex-wrap">
+            <span className="px-1.5 py-0.2 text-[10px] rounded bg-muted/60 text-muted-foreground border border-border/40">
+              {ISSUE_LABELS[complaint.issueType] ?? complaint.issueType}
+            </span>
+            {complaint.location?.address && (
+              <span className="flex items-center gap-1 truncate max-w-[200px] text-[10px]">
+                <MapPin className="size-2.5 shrink-0 text-muted-foreground/70" />
+                <span className="truncate">{complaint.location.address}</span>
+              </span>
+            )}
+            <Pill tone={STATUS_TONE[complaint.status] ?? "muted"} className="text-[10px] py-0 px-1.5 h-4">
+              {STATUS_LABEL[complaint.status] ?? complaint.status}
+            </Pill>
+          </div>
         </div>
       </div>
-      <div className="shrink-0 flex flex-col items-end gap-1.5">
-        <span className="text-[10px] text-muted-foreground">{ageLabel(complaint.updatedAt)}</span>
+      <div className="shrink-0 flex items-center gap-2">
+        <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap hidden sm:inline">
+          {ageLabel(complaint.updatedAt)}
+        </span>
         <Button
           size="sm"
           variant="outline"
-          className="h-7 text-xs"
+          className="h-6 px-2 text-[11px] font-medium bg-muted/30 hover:bg-muted/80 border-border/70"
           onClick={() => onNavigate?.("work-queue", "complaints")}
         >
           {nextActionLabel(complaint.status)}
+          <ArrowUpRight className="size-2.5 ml-1 opacity-70" />
         </Button>
       </div>
     </div>
   );
 }
 
-// ─── My Work row ───────────────────────────────────────────────────────────────
-function MyWorkRow({ complaint, onNavigate }: { complaint: ComplaintRow; onNavigate?: NavigateFn }) {
+// ─── My Work Row ──────────────────────────────────────────────────────────────
+function MyWorkRow({
+  complaint,
+  onNavigate,
+}: {
+  complaint: ComplaintRow;
+  onNavigate?: NavigateFn;
+}) {
+  const caseId = complaint._id ? `#${complaint._id.slice(-6).toUpperCase()}` : "";
+  const sevTone = SEVERITY_TONE[complaint.severity] ?? "muted";
+
   return (
-    <div className="flex items-start gap-3 py-3 first:pt-0">
-      <div
-        className="size-2 rounded-full mt-1.5 shrink-0"
-        style={{
-          background:
-            SEVERITY_TONE[complaint.severity] === "destructive"
-              ? "var(--color-destructive)"
-              : SEVERITY_TONE[complaint.severity] === "warning"
-                ? "var(--color-warning)"
-                : "var(--color-success)",
-        }}
-      />
-      <div className="flex-1 min-w-0 space-y-0.5">
-        <p className="text-sm font-medium text-foreground truncate">{complaint.title}</p>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-muted-foreground">
-            {ISSUE_LABELS[complaint.issueType] ?? complaint.issueType}
-          </span>
-          {complaint.location?.address && (
-            <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-              <MapPin className="size-2.5" />
-              {complaint.location.address}
-            </span>
+    <div className="flex items-center justify-between gap-3 px-3 py-2 hover:bg-muted/30 transition-colors group">
+      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        <div
+          className={cn(
+            "size-1.5 rounded-full shrink-0",
+            sevTone === "destructive"
+              ? "bg-red-500"
+              : sevTone === "warning"
+                ? "bg-amber-500"
+                : "bg-emerald-500",
           )}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            {caseId && (
+              <span className="font-mono text-[10px] font-medium text-muted-foreground shrink-0">
+                {caseId}
+              </span>
+            )}
+            <p className="text-xs font-medium text-foreground truncate max-w-[180px] sm:max-w-xs">
+              {complaint.title}
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
+            <span>{ISSUE_LABELS[complaint.issueType] ?? complaint.issueType}</span>
+            {complaint.location?.address && (
+              <>
+                <span>·</span>
+                <span className="truncate max-w-[140px]">{complaint.location.address}</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
-      <div className="shrink-0 flex flex-col items-end gap-1">
-        <Pill tone={STATUS_TONE[complaint.status] ?? "muted"}>
+      <div className="shrink-0 flex items-center gap-2">
+        <Pill tone={STATUS_TONE[complaint.status] ?? "muted"} className="text-[10px] py-0 px-1.5 h-4">
           {STATUS_LABEL[complaint.status] ?? complaint.status}
         </Pill>
-        <span className="text-[10px] text-muted-foreground">{ageLabel(complaint.updatedAt)}</span>
+        <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap hidden sm:inline">
+          {ageLabel(complaint.updatedAt)}
+        </span>
         <button
           type="button"
           onClick={() => onNavigate?.("work-queue", "complaints")}
-          className="text-[10px] font-medium text-foreground/70 hover:text-foreground flex items-center gap-0.5"
+          className="size-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+          title="Open in Work Queue"
         >
-          {nextActionLabel(complaint.status)}
-          <ArrowUpRight className="size-2.5" />
+          <ArrowUpRight className="size-3" />
         </button>
       </div>
     </div>
   );
 }
 
-// ─── Active Alerts Feed (real data) ──────────────────────────────────────────
-function ActiveAlertsFeed() {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["executive-active-alerts"],
-    queryFn: () => alertApi.getActive().then((r) => r.data.alerts as AlertRow[]),
-    staleTime: 30_000,
-    throwOnError: false,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="space-y-2">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-12 rounded-lg bg-muted/50 animate-pulse" />
-        ))}
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <EmptyState
-        icon={<AlertTriangle className="size-4" />}
-        title="Could not load alerts"
-        description="Check your connection or try refreshing."
-      />
-    );
-  }
-
-  const alerts = (data ?? []).slice(0, 5);
-
-  if (alerts.length === 0) {
-    return (
-      <EmptyState
-        icon={<CheckCircle2 className="size-4" />}
-        title="No active alerts"
-        description="Active environmental alerts will appear here when the sensor network detects anomalies."
-      />
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      {alerts.map((a) => {
-        const tone = SEVERITY_TONE[a.severity] ?? "muted";
-        return (
-          <div
-            key={a._id}
-            className="flex items-start gap-3 p-3 rounded-lg border border-border/60 bg-card"
-          >
-            <div className="size-7 rounded-lg grid place-items-center shrink-0 mt-0.5 bg-muted">
-              <TriangleAlert className="size-3.5 text-muted-foreground" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-foreground truncate">{a.title}</p>
-              <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
-                {a.area && <span>{a.area}</span>}
-                {a.category && <span>· {a.category}</span>}
-              </div>
-            </div>
-            <div className="shrink-0 flex flex-col items-end gap-1">
-              <Pill tone={tone}>{a.severity}</Pill>
-              <span className="text-[10px] text-muted-foreground">{ageLabel(a.createdAt)}</span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── Recent Activity — real complaint event log, not fabricated ──────────────
+// ─── Recent Activity Log ──────────────────────────────────────────────────────
 interface FlatEvent {
   key: string;
   type: string;
@@ -356,18 +374,18 @@ const EVENT_ICON: Record<string, React.ElementType> = {
   citizen_accepted: CheckCircle2,
 };
 
-function RecentActivity({ complaints, isLoading }: { complaints: ComplaintRow[]; isLoading: boolean }) {
+function RecentActivity({
+  complaints,
+  isLoading,
+}: {
+  complaints: ComplaintRow[];
+  isLoading: boolean;
+}) {
   if (isLoading) {
     return (
-      <div className="space-y-3">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="flex items-start gap-3">
-            <div className="size-7 rounded-lg bg-muted/50 animate-pulse shrink-0" />
-            <div className="flex-1 space-y-1">
-              <div className="h-3 bg-muted/50 rounded animate-pulse w-1/2" />
-              <div className="h-2.5 bg-muted/40 rounded animate-pulse w-3/4" />
-            </div>
-          </div>
+      <div className="space-y-2 p-3">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="h-8 rounded bg-muted/40 animate-pulse" />
         ))}
       </div>
     );
@@ -384,34 +402,35 @@ function RecentActivity({ complaints, isLoading }: { complaints: ComplaintRow[];
       })),
     )
     .sort((a, b) => b.timestamp - a.timestamp)
-    .slice(0, 8);
+    .slice(0, 7);
 
   if (items.length === 0) {
     return (
-      <EmptyState
-        icon={<Activity className="size-4" />}
-        title="No recent activity"
-        description="Assignment, investigation, and resolution events on your cases will appear here."
-      />
+      <div className="px-3.5 py-3 text-xs text-muted-foreground flex items-center gap-2">
+        <Activity className="size-3.5 text-muted-foreground/60 shrink-0" />
+        <span>No recent activity recorded on assigned cases.</span>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="divide-y divide-border/40">
       {items.map((item) => {
         const Icon = EVENT_ICON[item.type] ?? Activity;
         return (
-          <div key={item.key} className="flex items-start gap-3">
-            <div className="size-7 rounded-lg grid place-items-center shrink-0 mt-0.5 bg-muted">
-              <Icon className="size-3.5 text-muted-foreground" />
+          <div key={item.key} className="flex items-center gap-2.5 px-3 py-2 hover:bg-muted/20 transition-colors">
+            <div className="size-5 rounded grid place-items-center shrink-0 bg-muted/60 text-muted-foreground">
+              <Icon className="size-2.5" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-foreground">{item.message}</p>
+              <p className="text-xs text-foreground truncate">
+                <span className="font-medium">{item.message}</span>
+              </p>
               <p className="text-[10px] text-muted-foreground truncate">{item.complaintTitle}</p>
             </div>
-            <div className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
+            <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap shrink-0">
               {formatDistanceToNow(item.timestamp, { addSuffix: true })}
-            </div>
+            </span>
           </div>
         );
       })}
@@ -419,7 +438,7 @@ function RecentActivity({ complaints, isLoading }: { complaints: ComplaintRow[];
   );
 }
 
-// ─── Environmental Attention — compact, network-wide real context ────────────
+// ─── Environmental Attention & Telemetry Context ──────────────────────────────
 function EnvironmentalAttention({
   data,
   onNavigate,
@@ -429,111 +448,175 @@ function EnvironmentalAttention({
 }) {
   if (!data) {
     return (
-      <div className="rounded-xl border border-border bg-card p-5">
-        <EmptyState
-          icon={<Leaf className="size-4" />}
-          title="Environmental data unavailable"
-          description="Could not reach the backend. Try refreshing."
-        />
+      <div className="p-3.5 text-xs text-muted-foreground flex items-center gap-2">
+        <Leaf className="size-3.5 text-muted-foreground/70 shrink-0" />
+        <span>Environmental sensor telemetry currently synchronizing…</span>
       </div>
     );
   }
 
-  const topRisk = data.highRiskCities[0];
+  const cities = data.highRiskCities.slice(0, 4);
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">Environmental Attention</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Network-wide conditions across {data.network.cityCount} monitored{" "}
-            {data.network.cityCount === 1 ? "city" : "cities"}
-          </p>
+    <div className="p-3.5 space-y-3">
+      {/* 3 Telemetry Stats */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="p-2 rounded bg-muted/30 border border-border/50 text-center">
+          <div className="text-base font-bold font-mono text-foreground tabular-nums">
+            {data.network.avgAqi}
+          </div>
+          <div className="text-[10px] uppercase font-medium text-muted-foreground mt-0.5">
+            Avg AQI
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => onNavigate?.("environmental", "environmental")}
-          className="text-xs font-medium text-foreground/70 hover:text-foreground flex items-center gap-1 shrink-0"
-        >
-          Open Monitoring <ArrowUpRight className="size-3" />
-        </button>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        <div className="text-center p-3 rounded-lg bg-muted/40 border border-border/60">
-          <div className="text-lg font-semibold tabular-nums text-foreground">{data.network.avgAqi}</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">Avg AQI</div>
+        <div className="p-2 rounded bg-muted/30 border border-border/50 text-center">
+          <div className="text-base font-bold font-mono text-foreground tabular-nums">
+            {data.network.avgWater}
+          </div>
+          <div className="text-[10px] uppercase font-medium text-muted-foreground mt-0.5">
+            Avg WQI
+          </div>
         </div>
-        <div className="text-center p-3 rounded-lg bg-muted/40 border border-border/60">
-          <div className="text-lg font-semibold tabular-nums text-foreground">{data.network.avgWater}</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">Avg WQI</div>
-        </div>
-        <div className="text-center p-3 rounded-lg bg-muted/40 border border-border/60">
+        <div className="p-2 rounded bg-muted/30 border border-border/50 text-center">
           <div
-            className="text-lg font-semibold tabular-nums"
-            style={{ color: data.alerts.active > 0 ? "var(--color-destructive)" : "var(--color-foreground)" }}
+            className={cn(
+              "text-base font-bold font-mono tabular-nums",
+              data.alerts.active > 0 ? "text-red-500" : "text-emerald-500",
+            )}
           >
             {data.alerts.active}
           </div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">Active alerts</div>
+          <div className="text-[10px] uppercase font-medium text-muted-foreground mt-0.5">
+            Alerts Active
+          </div>
         </div>
       </div>
 
-      {topRisk ? (
-        <div className="flex items-center gap-2 pt-1 text-xs">
-          <MapPin className="size-3 text-muted-foreground shrink-0" />
-          <span className="text-muted-foreground">Highest risk right now:</span>
-          <span className="font-medium text-foreground">{topRisk.cityName}</span>
-          <span className="text-muted-foreground">AQI {topRisk.aqi}</span>
+      {/* High-risk Hotspots List */}
+      <div>
+        <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5 flex items-center justify-between">
+          <span>Priority Risk Hotspots ({data.network.cityCount} Cities)</span>
+          <button
+            type="button"
+            onClick={() => onNavigate?.("environmental", "environmental")}
+            className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5 text-[10px]"
+          >
+            Telemetry <ArrowUpRight className="size-2.5" />
+          </button>
         </div>
-      ) : (
-        <p className="text-xs text-muted-foreground">No cities currently flagged as high-risk.</p>
-      )}
+        {cities.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {cities.map((c) => (
+              <div
+                key={c.cityId}
+                className="flex items-center gap-1.5 px-2 py-1 rounded bg-muted/40 border border-border/60 text-xs"
+              >
+                <MapPin className="size-2.5 text-muted-foreground shrink-0" />
+                <span className="font-medium text-foreground text-xs">{c.cityName}</span>
+                <span
+                  className={cn(
+                    "font-mono text-[10px] px-1 py-0.2 rounded font-semibold",
+                    c.aqi > 150
+                      ? "bg-red-500/15 text-red-600 dark:text-red-400"
+                      : "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+                  )}
+                >
+                  AQI {c.aqi}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-[11px] text-muted-foreground">All monitored cities are within baseline tolerances.</p>
+        )}
+      </div>
     </div>
   );
 }
 
-// ─── Smart Map Preview ─────────────────────────────────────────────────────────
-function SmartMapPreview({ data }: { data: ExecutiveDashboardData | undefined }) {
-  const cities = data?.highRiskCities.slice(0, 5) ?? [];
+// ─── Active Environmental Alerts Feed ─────────────────────────────────────────
+function ActiveAlertsFeed() {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["executive-active-alerts"],
+    queryFn: () => alertApi.getActive().then((r) => r.data.alerts as AlertRow[]),
+    staleTime: 30_000,
+    throwOnError: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2 p-3">
+        {[...Array(2)].map((_, i) => (
+          <div key={i} className="h-9 rounded bg-muted/40 animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="px-3.5 py-2.5 text-xs text-muted-foreground flex items-center gap-2">
+        <AlertTriangle className="size-3.5 text-amber-500 shrink-0" />
+        <span>Could not synchronize sensor alerts.</span>
+      </div>
+    );
+  }
+
+  const alerts = (data ?? []).slice(0, 5);
+
+  if (alerts.length === 0) {
+    return (
+      <div className="px-3.5 py-2.5 text-xs text-muted-foreground flex items-center gap-2">
+        <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
+        <span>No active environmental threshold breaches detected across the sensor network.</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">Smart Map</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Where is the current risk?</p>
-        </div>
-        <Button asChild size="sm" className="shrink-0">
-          <Link to="/map">
-            Open Smart Map
-            <ArrowUpRight className="size-3.5 ml-1.5" />
-          </Link>
-        </Button>
-      </div>
-
-      {cities.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          {cities.map((c) => (
-            <div
-              key={c.cityId}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border/60 bg-muted/30 text-xs"
-            >
-              <MapPin className="size-2.5 text-muted-foreground" />
-              <span className="font-medium text-foreground">{c.cityName}</span>
-              <span className="text-muted-foreground">AQI {c.aqi}</span>
+    <div className="divide-y divide-border/40">
+      {alerts.map((a) => {
+        const tone = SEVERITY_TONE[a.severity] ?? "muted";
+        return (
+          <div
+            key={a._id}
+            className="flex items-center justify-between gap-3 px-3 py-2 hover:bg-muted/20 transition-colors"
+          >
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div
+                className={cn(
+                  "size-5 rounded grid place-items-center shrink-0",
+                  tone === "destructive"
+                    ? "bg-red-500/15 text-red-600 dark:text-red-400"
+                    : "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+                )}
+              >
+                <TriangleAlert className="size-2.5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-foreground truncate">{a.title}</p>
+                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                  {a.area && <span>{a.area}</span>}
+                  {a.category && <span>· {a.category}</span>}
+                </div>
+              </div>
             </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-xs text-muted-foreground">No complaint hotspots or risk locations flagged right now.</p>
-      )}
+            <div className="shrink-0 flex items-center gap-2">
+              <Pill tone={tone} className="text-[10px] py-0 px-1.5 h-4">
+                {a.severity}
+              </Pill>
+              <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap">
+                {ageLabel(a.createdAt)}
+              </span>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-// ─── Gemini AI Brief (on-demand only, real backend call) ─────────────────────
+// ─── Gemini AI Operational Brief ──────────────────────────────────────────────
 function GeminiBriefPanel() {
   const [result, setResult] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<string | null>(null);
@@ -553,60 +636,80 @@ function GeminiBriefPanel() {
 
   const types = [
     { key: "executive-summary" as const, label: "Executive Summary" },
-    { key: "environmental-assessment" as const, label: "Environmental" },
+    { key: "environmental-assessment" as const, label: "Environmental Assessment" },
     { key: "risk-analysis" as const, label: "Risk Analysis" },
   ];
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="size-8 rounded-lg bg-emerald-500/10 grid place-items-center border border-emerald-500/20">
-            <Sparkles className="size-4 text-emerald-600 dark:text-emerald-400" />
+    <div className="rounded-lg border border-border/70 bg-card/60 overflow-hidden">
+      <div className="px-3.5 py-2.5 bg-muted/20 border-b border-border/60 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2">
+          <div className="size-5 rounded grid place-items-center bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <Sparkles className="size-3" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-foreground">AI Operational Brief</h3>
-            <p className="text-xs text-muted-foreground">Generate an on-demand analysis</p>
+            <h3 className="text-xs font-semibold text-foreground">AI Operational Intelligence</h3>
+            <p className="text-[10px] text-muted-foreground">On-demand multi-source environmental synthesis</p>
           </div>
         </div>
+
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {types.map((t) => (
+            <Button
+              key={t.key}
+              size="sm"
+              variant={activeType === t.key ? "default" : "outline"}
+              className={cn(
+                "h-6 px-2 text-[11px] font-medium border-border/70",
+                activeType === t.key && "bg-emerald-600 hover:bg-emerald-700 text-white",
+              )}
+              onClick={() => mutation.mutate(t.key)}
+              disabled={mutation.isPending}
+            >
+              {mutation.isPending && activeType === t.key && (
+                <Loader2 className="size-2.5 mr-1 animate-spin" />
+              )}
+              {t.label}
+            </Button>
+          ))}
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {types.map((t) => (
-          <Button
-            key={t.key}
-            size="sm"
-            variant={activeType === t.key ? "default" : "outline"}
-            className="h-7 text-xs"
-            onClick={() => mutation.mutate(t.key)}
-            disabled={mutation.isPending}
-          >
-            {mutation.isPending && activeType === t.key && (
-              <Loader2 className="size-3 mr-1.5 animate-spin" />
-            )}
-            {t.label}
-          </Button>
-        ))}
+      <div className="p-3.5">
+        {mutation.isPending && (
+          <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
+            <Loader2 className="size-3.5 animate-spin text-emerald-500" />
+            <span>Analyzing caseload telemetry and sensor readings with Gemini…</span>
+          </div>
+        )}
+
+        {result && !mutation.isPending && (
+          <div className="space-y-2">
+            <div className="rounded-md bg-muted/40 p-3 text-xs leading-relaxed border border-border/60 text-foreground font-mono max-h-56 overflow-y-auto whitespace-pre-wrap">
+              {result}
+            </div>
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+              <span>Synthesized with live database telemetry</span>
+              <button
+                type="button"
+                onClick={() => setResult(null)}
+                className="text-muted-foreground hover:text-foreground underline"
+              >
+                Clear output
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!result && !mutation.isPending && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="size-1.5 rounded-full bg-emerald-500/70" />
+            <span>
+              Select an analysis type above to synthesize authority caseload, citizen complaints, and real-time environmental metrics.
+            </span>
+          </div>
+        )}
       </div>
-
-      {mutation.isPending && (
-        <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">
-          <Loader2 className="size-3.5 animate-spin text-emerald-500" />
-          Generating AI analysis…
-        </div>
-      )}
-
-      {result && !mutation.isPending && (
-        <div className="rounded-lg bg-muted/40 p-4 text-xs leading-relaxed whitespace-pre-wrap border border-border/60 text-foreground font-mono max-h-64 overflow-y-auto">
-          {result}
-        </div>
-      )}
-
-      {!result && !mutation.isPending && (
-        <p className="text-xs text-muted-foreground">
-          Select an analysis type above to generate a real-time Gemini AI report.
-        </p>
-      )}
     </div>
   );
 }
@@ -629,10 +732,7 @@ export function ExecutiveOverview({ onNavigate }: { onNavigate?: NavigateFn }) {
     return () => clearInterval(id);
   }, []);
 
-  // Real, authority-scoped complaint data. The backend hard-scopes this to
-  // the authenticated authority's own assignedTo complaints (see
-  // complaint.controller.ts getComplaints) — this is genuinely "my" caseload,
-  // not a network-wide aggregate.
+  // Real, authority-scoped complaint data
   const {
     data: myComplaints,
     isLoading: complaintsLoading,
@@ -641,15 +741,13 @@ export function ExecutiveOverview({ onNavigate }: { onNavigate?: NavigateFn }) {
     dataUpdatedAt: complaintsUpdatedAt,
   } = useQuery({
     queryKey: ["mission-control-my-complaints"],
-    queryFn: () => complaintApi.getAll({ limit: 200 }).then((r) => r.data.complaints as ComplaintRow[]),
+    queryFn: () =>
+      complaintApi.getAll({ limit: 200 }).then((r) => r.data.complaints as ComplaintRow[]),
     staleTime: 60_000,
     throwOnError: false,
   });
 
-  // Real, network-wide environmental context (cities, AQI, active alerts,
-  // high-risk locations) — appropriate for the environmental section, since
-  // an authority's environmental responsibility spans the monitored network,
-  // not just their assigned complaints.
+  // Real, network-wide environmental context
   const {
     data: execRes,
     isLoading: execLoading,
@@ -671,7 +769,7 @@ export function ExecutiveOverview({ onNavigate }: { onNavigate?: NavigateFn }) {
     refetchExec();
   };
 
-  // ── Derived, real metrics — no invented counts ──────────────────────────
+  // ── Derived, real metrics ──────────────────────────────────────────────
   const activeComplaints = complaints.filter((c) => ACTIVE_STATUSES.has(c.status));
   const countByStatus = (status: string) => complaints.filter((c) => c.status === status).length;
 
@@ -699,7 +797,7 @@ export function ExecutiveOverview({ onNavigate }: { onNavigate?: NavigateFn }) {
 
   const myWorkList = [...activeComplaints]
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 8);
+    .slice(0, 7);
 
   const lastUpdatedTimestamp = Math.max(complaintsUpdatedAt || 0, execUpdatedAt || 0);
   const lastRefreshed = lastUpdatedTimestamp
@@ -708,202 +806,233 @@ export function ExecutiveOverview({ onNavigate }: { onNavigate?: NavigateFn }) {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-72 gap-3">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Loading dashboard…</p>
+      <div className="flex flex-col items-center justify-center h-64 gap-2.5">
+        <Loader2 className="size-5 animate-spin text-emerald-500" />
+        <p className="text-xs text-muted-foreground">Loading Mission Control dashboard…</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 pb-10 w-full">
-      {/* ── 1. PAGE HEADER ───────────────────────────────────────────────── */}
-      <WorkspaceHeader
-        eyebrow={currentTimeStr}
-        title="Mission Control"
-        description="Your active caseload, what needs action next, and current environmental context."
-        action={
-          <>
-            {lastRefreshed && (
-              <span className="text-xs text-muted-foreground hidden sm:inline mr-1">
-                Refreshed {lastRefreshed}
-              </span>
-            )}
-            <Button variant="outline" size="sm" onClick={refetchAll} className="h-8 text-xs">
-              <RefreshCw className="size-3.5 mr-1.5" />
-              Refresh
-            </Button>
-            <Button asChild variant="outline" size="sm" className="h-8 text-xs">
-              <Link to="/map">
-                <Globe className="size-3.5 mr-1.5" />
-                Open Smart Map
-                <ExternalLink className="size-3 ml-1.5" />
-              </Link>
-            </Button>
-          </>
-        }
-      />
+    <div className="space-y-4 pb-8 w-full">
+      {/* ── 1. MISSION CONTROL PAGE HEADER ─────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-border/70">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
+              Mission Control
+            </h1>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live Operations
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+            Real-time authority caseload, urgent actions, and environmental sensor intelligence.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {currentTimeStr && (
+            <span className="text-[11px] font-mono text-muted-foreground bg-muted/40 px-2 py-1 rounded border border-border/50 hidden md:inline-block">
+              {currentTimeStr}
+            </span>
+          )}
+          {lastRefreshed && (
+            <span className="text-[11px] text-muted-foreground hidden lg:inline mr-1">
+              Updated {lastRefreshed}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refetchAll}
+            className="h-7 px-2.5 text-xs bg-muted/20 hover:bg-muted/60 border-border/70"
+          >
+            <RefreshCw className="size-3 mr-1.5" />
+            Refresh
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-7 px-2.5 text-xs bg-muted/20 hover:bg-muted/60 border-border/70"
+          >
+            <Link to="/map">
+              <Globe className="size-3 mr-1.5 text-emerald-500" />
+              Smart Map
+              <ExternalLink className="size-2.5 ml-1 opacity-70" />
+            </Link>
+          </Button>
+        </div>
+      </div>
 
-      {/* ── 2. PRIORITY / NEEDS ATTENTION STATS ─────────────────────────── */}
-      {complaintsError ? (
-        <div className="rounded-xl border border-border bg-card p-6">
-          <EmptyState
-            icon={<Shield className="size-4" />}
-            title="Could not load your caseload"
-            description="Make sure the server is running and try refreshing."
-            action={
-              <Button size="sm" variant="outline" onClick={refetchAll} className="mt-1">
-                <RefreshCw className="size-3.5 mr-1.5" />
-                Try again
-              </Button>
-            }
+      {/* ── 2. PRIORITY STATS BAR ───────────────────────────────────────── */}
+      <section className="space-y-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+          <PriorityTile
+            label="Assigned to me"
+            value={assignedToMe}
+            hint={assignedToMe > 0 ? "Active caseload" : "Queue clear"}
+            icon={Inbox}
+            tone={assignedToMe > 0 ? "info" : undefined}
+            onClick={() => onNavigate?.("work-queue", "complaints")}
+          />
+          <PriorityTile
+            label="In progress"
+            value={inProgress}
+            hint="Active investigations"
+            icon={PlayCircle}
+            tone={inProgress > 0 ? "info" : undefined}
+            onClick={() => onNavigate?.("work-queue", "complaints")}
+          />
+          <PriorityTile
+            label="Rework"
+            value={rework}
+            hint={rework > 0 ? "Returned for action" : "None"}
+            icon={RefreshCw}
+            tone={rework > 0 ? "destructive" : undefined}
+            onClick={() => onNavigate?.("work-queue", "complaints")}
+          />
+          <PriorityTile
+            label="Awaiting review"
+            value={awaitingReview}
+            hint="Citizen review"
+            icon={ClipboardCheck}
+            tone={awaitingReview > 0 ? "warning" : undefined}
+            onClick={() => onNavigate?.("work-queue", "complaints")}
+          />
+          <PriorityTile
+            label="Critical"
+            value={critical}
+            hint={critical > 0 ? "Urgent response" : "None flagged"}
+            icon={AlertTriangle}
+            tone={critical > 0 ? "destructive" : undefined}
+            onClick={() => onNavigate?.("work-queue", "complaints")}
           />
         </div>
-      ) : (
-        <section className="space-y-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Priority
-          </h2>
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-            <PriorityTile
-              label="Assigned to me"
-              value={assignedToMe}
-              hint={assignedToMe > 0 ? "Active caseload" : "Queue is clear"}
-              icon={Inbox}
-              tone={assignedToMe > 0 ? "info" : undefined}
-              onClick={() => onNavigate?.("work-queue", "complaints")}
-            />
-            <PriorityTile
-              label="In progress"
-              value={inProgress}
-              hint="Active investigations"
-              icon={PlayCircle}
-              tone={inProgress > 0 ? "info" : undefined}
-              onClick={() => onNavigate?.("work-queue", "complaints")}
-            />
-            <PriorityTile
-              label="Rework"
-              value={rework}
-              hint="Returned for rework"
-              icon={RefreshCw}
-              tone={rework > 0 ? "destructive" : undefined}
-              onClick={() => onNavigate?.("work-queue", "complaints")}
-            />
-            <PriorityTile
-              label="Awaiting citizen review"
-              value={awaitingReview}
-              hint="Waiting on citizen"
-              icon={ClipboardCheck}
-              tone={awaitingReview > 0 ? "warning" : undefined}
-              onClick={() => onNavigate?.("work-queue", "complaints")}
-            />
-            <PriorityTile
-              label="Critical"
-              value={critical}
-              hint={critical > 0 ? "Requires immediate response" : "None flagged"}
-              icon={AlertTriangle}
-              tone={critical > 0 ? "destructive" : undefined}
-              onClick={() => onNavigate?.("work-queue", "complaints")}
-            />
-          </div>
-        </section>
-      )}
+      </section>
 
       {/* ── 3. NEEDS ATTENTION ──────────────────────────────────────────── */}
-      {!complaintsError && (
-        <section className="space-y-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Needs attention
-          </h2>
-          {needsAttention.length > 0 ? (
-            <div className="space-y-2">
-              {needsAttention.map((c) => (
-                <NeedsAttentionRow key={c._id} complaint={c} onNavigate={onNavigate} />
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-border bg-card p-6">
-              <EmptyState
-                icon={<CheckCircle2 className="size-4" />}
-                title="Nothing urgent right now"
-                description="New assignments, critical complaints, and rework requests will appear here."
-              />
-            </div>
-          )}
-        </section>
-      )}
+      <section className="space-y-2">
+        <SectionHeading
+          title="Needs Attention"
+          count={needsAttention.length}
+          action={
+            needsAttention.length > 0 ? (
+              <span className="text-[11px] text-muted-foreground">
+                {needsAttention.length} item{needsAttention.length === 1 ? "" : "s"} requiring immediate action
+              </span>
+            ) : null
+          }
+        />
 
-      {/* ── 4. MY WORK + 5. RECENT ACTIVITY ─────────────────────────────── */}
-      <section className="space-y-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          My work &amp; recent activity
-        </h2>
-        <div className="grid lg:grid-cols-2 gap-4">
-          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">My work</h3>
+        {complaintsError ? (
+          <div className="p-3.5 rounded-lg border border-border/60 bg-card/40 flex items-center justify-between text-xs text-muted-foreground">
+            <span>Could not load caseload from server.</span>
+            <Button size="sm" variant="outline" onClick={refetchAll} className="h-6 text-xs px-2">
+              Retry
+            </Button>
+          </div>
+        ) : needsAttention.length > 0 ? (
+          <div className="rounded-lg border border-border/70 bg-card/60 divide-y divide-border/50 overflow-hidden">
+            {needsAttention.map((c) => (
+              <NeedsAttentionRow key={c._id} complaint={c} onNavigate={onNavigate} />
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border border-border/60 bg-card/30 text-xs text-muted-foreground">
+            <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
+            <span className="font-medium text-foreground">All clear:</span>
+            <span>No active complaints currently require urgent escalation or rework. Caseload is normal.</span>
+          </div>
+        )}
+      </section>
+
+      {/* ── 4. MY WORK & RECENT ACTIVITY (Balanced Grid) ───────────────── */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        {/* Left: My Work Queue */}
+        <div className="space-y-2">
+          <SectionHeading
+            title="My Work"
+            count={activeComplaints.length}
+            action={
               <button
                 type="button"
                 onClick={() => onNavigate?.("work-queue", "complaints")}
-                className="text-xs font-medium text-foreground/70 hover:text-foreground flex items-center gap-1"
+                className="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
               >
-                Full work queue <ArrowUpRight className="size-3" />
+                Work Queue <ArrowUpRight className="size-3" />
               </button>
-            </div>
-            {complaintsError ? (
-              <EmptyState
-                icon={<MessageSquare className="size-4" />}
-                title="Could not load complaints"
-                description="Check your connection or try refreshing."
-              />
-            ) : myWorkList.length > 0 ? (
-              <div className="divide-y divide-border/60">
+            }
+          />
+          <div className="rounded-lg border border-border/70 bg-card/60 overflow-hidden">
+            {myWorkList.length > 0 ? (
+              <div className="divide-y divide-border/50">
                 {myWorkList.map((c) => (
                   <MyWorkRow key={c._id} complaint={c} onNavigate={onNavigate} />
                 ))}
               </div>
             ) : (
-              <EmptyState
-                icon={<MessageSquare className="size-4" />}
-                title="No active complaints assigned"
-                description="Complaints assigned to you will appear here."
-              />
+              <div className="px-3.5 py-3 text-xs text-muted-foreground flex items-center gap-2">
+                <Inbox className="size-3.5 text-muted-foreground/60 shrink-0" />
+                <span>No active complaints currently assigned to you.</span>
+              </div>
             )}
           </div>
+        </div>
 
-          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Recent activity</h3>
+        {/* Right: Recent Activity Audit */}
+        <div className="space-y-2">
+          <SectionHeading title="Recent Activity" />
+          <div className="rounded-lg border border-border/70 bg-card/60 overflow-hidden">
             <RecentActivity complaints={complaints} isLoading={complaintsLoading} />
           </div>
         </div>
       </section>
 
-      {/* ── 6. ENVIRONMENTAL ATTENTION + 7. SMART MAP PREVIEW ───────────── */}
-      <section className="space-y-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Environmental &amp; geographic context
-        </h2>
-        <div className="grid lg:grid-cols-2 gap-4">
-          <EnvironmentalAttention data={execData} onNavigate={onNavigate} />
-          <SmartMapPreview data={execData} />
+      {/* ── 5. SMART MAP & ACTIVE ENVIRONMENTAL ALERTS (Balanced Grid) ─── */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        {/* Left: Smart Map & Environmental Telemetry */}
+        <div className="space-y-2">
+          <SectionHeading
+            title="Smart Map & Network Status"
+            action={
+              <Button asChild size="sm" variant="ghost" className="h-6 px-2 text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-500">
+                <Link to="/map">
+                  Open Smart Map <ArrowUpRight className="size-3 ml-1" />
+                </Link>
+              </Button>
+            }
+          />
+          <div className="rounded-lg border border-border/70 bg-card/60 overflow-hidden">
+            <EnvironmentalAttention data={execData} onNavigate={onNavigate} />
+          </div>
+        </div>
+
+        {/* Right: Active Environmental Alerts */}
+        <div className="space-y-2">
+          <SectionHeading
+            title="Active Environmental Alerts"
+            count={execData?.alerts.active}
+            action={
+              <button
+                type="button"
+                onClick={() => onNavigate?.("environmental", "alerts")}
+                className="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+              >
+                All Alerts <ArrowUpRight className="size-3" />
+              </button>
+            }
+          />
+          <div className="rounded-lg border border-border/70 bg-card/60 overflow-hidden">
+            <ActiveAlertsFeed />
+          </div>
         </div>
       </section>
 
-      {/* ── Active alerts (supporting detail for Environmental Attention) ─ */}
-      <section className="space-y-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Active environmental alerts
-        </h2>
-        <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-          <ActiveAlertsFeed />
-        </div>
-      </section>
-
-      {/* ── AI OPERATIONAL BRIEF (existing real functionality, preserved) ─ */}
-      <section className="space-y-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          AI operational brief
-        </h2>
+      {/* ── 6. AI OPERATIONAL BRIEF ─────────────────────────────────────── */}
+      <section className="space-y-2">
+        <SectionHeading title="AI Operational Brief" />
         <GeminiBriefPanel />
       </section>
     </div>
