@@ -378,7 +378,8 @@ function ComplaintMessagesTab({
 // ─── Citizen Review Panel (Accept / Request Rework) ───────────────────────────
 
 function ReviewResolutionPanel({ complaintId }: { complaintId: string }) {
-  const [mode, setMode] = useState<"idle" | "rework">("idle");
+  const [mode, setMode] = useState<"idle" | "accept" | "rework">("idle");
+  const [feedback, setFeedback] = useState("");
   const [reason, setReason] = useState("");
   const accept = useAcceptResolution();
   const requestRework = useCitizenRequestRework();
@@ -388,7 +389,7 @@ function ReviewResolutionPanel({ complaintId }: { complaintId: string }) {
       <div>
         <h4 className="text-sm font-semibold text-foreground">Review Authority Resolution</h4>
         <p className="text-xs text-muted-foreground mt-0.5">
-          The assigned authority has marked this issue as resolved. Please review the outcome.
+          The assigned authority has marked this issue as resolved. Please review the outcome and confirm or request rework.
         </p>
       </div>
 
@@ -396,15 +397,11 @@ function ReviewResolutionPanel({ complaintId }: { complaintId: string }) {
         <div className="flex flex-wrap gap-2 pt-1">
           <Button
             size="sm"
-            onClick={() => accept.mutate(complaintId)}
+            onClick={() => setMode("accept")}
             disabled={accept.isPending || requestRework.isPending}
-            className="gap-1.5 text-xs"
+            className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
           >
-            {accept.isPending ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <CheckCircle2 className="size-3.5" />
-            )}
+            <CheckCircle2 className="size-3.5" />
             Accept Resolution & Close
           </Button>
           <Button
@@ -412,24 +409,66 @@ function ReviewResolutionPanel({ complaintId }: { complaintId: string }) {
             size="sm"
             onClick={() => setMode("rework")}
             disabled={accept.isPending || requestRework.isPending}
-            className="gap-1.5 text-xs"
+            className="gap-1.5 text-xs border-destructive/40 text-destructive hover:bg-destructive/10"
           >
             <RotateCcw className="size-3.5" />
             Request Rework
           </Button>
         </div>
+      ) : mode === "accept" ? (
+        <div className="space-y-2.5 pt-1">
+          <label className="text-xs font-medium text-foreground/90" htmlFor="accept-feedback">
+            Optional Feedback / Closing Remarks
+          </label>
+          <Textarea
+            id="accept-feedback"
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            placeholder="Share feedback on how the resolution was handled (optional)..."
+            rows={2}
+            className="text-xs rounded-xl bg-background"
+          />
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={() =>
+                accept.mutate(
+                  { id: complaintId, feedback: feedback.trim() || undefined },
+                  { onSuccess: () => setMode("idle") },
+                )
+              }
+              disabled={accept.isPending}
+              className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {accept.isPending && <Loader2 className="size-3.5 animate-spin" />}
+              Confirm Acceptance & Close
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setMode("idle");
+                setFeedback("");
+              }}
+              disabled={accept.isPending}
+              className="text-xs"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
       ) : (
         <div className="space-y-2.5 pt-1">
-          <label className="text-xs font-medium text-foreground/80" htmlFor="rework-reason">
+          <label className="text-xs font-medium text-foreground/90" htmlFor="rework-reason">
             What still needs attention? (minimum 10 characters)
           </label>
           <Textarea
             id="rework-reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Describe what still needs to be resolved..."
+            placeholder="Describe specifically what is still unresolved or requires reinvestigation..."
             rows={3}
-            className="text-xs rounded-xl"
+            className="text-xs rounded-xl bg-background"
           />
           <div className="flex gap-2">
             <Button
@@ -866,12 +905,30 @@ export function CitizenComplaintWorkspace({
                       <ReviewResolutionPanel complaintId={complaint._id} />
                     )}
 
+                    {complaint.citizenFeedback && (
+                      <div className="space-y-1.5 pt-2 border-t border-border/50">
+                        <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          Citizen Feedback
+                        </h4>
+                        <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs leading-relaxed text-foreground italic">
+                          "{complaint.citizenFeedback}"
+                        </div>
+                      </div>
+                    )}
+
                     <div className="space-y-3 pt-2 border-t border-border/50">
                       {complaint.resolvedAt && (
                         <InfoField
                           icon={CheckCircle2}
                           label="Resolved On"
                           value={format(new Date(complaint.resolvedAt), "MMMM d, yyyy 'at' h:mm a")}
+                        />
+                      )}
+                      {complaint.citizenAcceptedAt && (
+                        <InfoField
+                          icon={CheckCircle2}
+                          label="Accepted by Citizen"
+                          value={format(new Date(complaint.citizenAcceptedAt), "MMMM d, yyyy 'at' h:mm a")}
                         />
                       )}
                       {complaint.verifiedAt && (

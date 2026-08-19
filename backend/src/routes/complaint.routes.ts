@@ -15,6 +15,9 @@ import {
   requestRework,
   acceptResolution,
   citizenRequestRework,
+  getComplaintPriorityIntelligence,
+  acknowledgeComplaintEscalation,
+  resolveComplaintEscalation,
 } from "../controllers/complaint.controller";
 import {
   getComplaintMessages,
@@ -111,6 +114,23 @@ router.get(
   "/:id/routing",
   authorize(...AUTHORITY_ROLES),
   getComplaintRouting
+);
+
+// ─── Automation 7 — Priority Intelligence & Critical Escalation ───────────────
+router.get(
+  "/:id/priority",
+  authorize("citizen", ...AUTHORITY_ROLES),
+  getComplaintPriorityIntelligence
+);
+router.post(
+  "/:id/escalation/acknowledge",
+  authorize(...AUTHORITY_ROLES),
+  acknowledgeComplaintEscalation
+);
+router.post(
+  "/:id/escalation/resolve",
+  authorize(...AUTHORITY_ROLES),
+  resolveComplaintEscalation
 );
 
 // ─── Phase 6 — Citizen ↔ Authority messaging (complaint-scoped) ─────────────

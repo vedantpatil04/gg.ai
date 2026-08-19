@@ -586,3 +586,100 @@ export async function getAuthorityWorkload(
     next(err);
   }
 }
+
+// ─── Automation 6 — Admin Governance + ML Analytics Handlers ──────────────────
+
+import {
+  getGovernanceExceptions as fetchGovernanceExceptions,
+  getMLAnalytics as fetchMLAnalytics,
+  getRoutingAnalytics as fetchRoutingAnalytics,
+  getReworkAnalytics as fetchReworkAnalytics,
+  getGovernanceMasterOverview as fetchGovernanceMasterOverview,
+  type GovernanceFilterParams,
+} from "../services/adminGovernance.service";
+
+export async function getGovernanceExceptions(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const params: GovernanceFilterParams = {
+      timeRange: (req.query.timeRange as GovernanceFilterParams["timeRange"]) || "all",
+      cityId: req.query.cityId ? String(req.query.cityId) : undefined,
+    };
+    const data = await fetchGovernanceExceptions(params);
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getMLAnalytics(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const params: GovernanceFilterParams = {
+      timeRange: (req.query.timeRange as GovernanceFilterParams["timeRange"]) || "all",
+      cityId: req.query.cityId ? String(req.query.cityId) : undefined,
+    };
+    const data = await fetchMLAnalytics(params);
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getRoutingAnalytics(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const params: GovernanceFilterParams = {
+      timeRange: (req.query.timeRange as GovernanceFilterParams["timeRange"]) || "all",
+      cityId: req.query.cityId ? String(req.query.cityId) : undefined,
+    };
+    const data = await fetchRoutingAnalytics(params);
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getReworkAnalytics(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const params: GovernanceFilterParams = {
+      timeRange: (req.query.timeRange as GovernanceFilterParams["timeRange"]) || "all",
+      cityId: req.query.cityId ? String(req.query.cityId) : undefined,
+    };
+    const data = await fetchReworkAnalytics(params);
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getGovernanceOverview(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const params: GovernanceFilterParams = {
+      timeRange: (req.query.timeRange as GovernanceFilterParams["timeRange"]) || "all",
+      cityId: req.query.cityId ? String(req.query.cityId) : undefined,
+    };
+    const data = await fetchGovernanceMasterOverview(params);
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+

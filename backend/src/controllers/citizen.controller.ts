@@ -29,6 +29,7 @@ export async function getCitizenStats(
       total,
       pending,
       inProgress,
+      awaitingCitizenReview,
       resolved,
       closed,
       rework,
@@ -39,6 +40,7 @@ export async function getCitizenStats(
       Complaint.countDocuments({ submittedBy: uid }),
       Complaint.countDocuments({ submittedBy: uid, status: "pending" }),
       Complaint.countDocuments({ submittedBy: uid, status: "in-progress" }),
+      Complaint.countDocuments({ submittedBy: uid, status: "awaiting_citizen_review" }),
       Complaint.countDocuments({ submittedBy: uid, status: "resolved" }),
       Complaint.countDocuments({ submittedBy: uid, status: "closed" }),
       Complaint.countDocuments({ submittedBy: uid, status: "rework" }),
@@ -109,7 +111,7 @@ export async function getCitizenStats(
     ]);
 
     const active = inProgress + rework;
-    const totalResolved = resolved + closed;
+    const totalResolved = awaitingCitizenReview + resolved + closed;
     const avgResolutionDays =
       resolutionTimeAgg.length > 0
         ? Math.round((resolutionTimeAgg[0] as { avgDays: number }).avgDays)

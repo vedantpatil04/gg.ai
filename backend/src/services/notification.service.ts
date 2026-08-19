@@ -1,9 +1,13 @@
 /**
- * Phase 7 — Notification Service
+ * Automation 3 — Central Notification Service (In-App + Email + FCM)
  *
- * Single service used by every role. Role-aware delivery, not separate
- * implementations. Generates notifications from existing workflow events
- * without duplicating business logic.
+ * Single centralized service responsible for:
+ *  - Determining recipients
+ *  - Writing In-App Notification records (source of truth for Notification Center)
+ *  - Delivering Emails via existing Gmail SMTP (email.service.ts)
+ *  - Delivering Push notifications via existing Android FCM (push.service.ts)
+ *  - Non-blocking delivery (SMTP/FCM failure never breaks complaint transactions)
+ *  - Deduplication / Idempotency protection
  */
 
 import mongoose from "mongoose";
@@ -13,12 +17,95 @@ import {
   type NotificationPriority,
   type NotificationRecipientRole,
 } from "../models/Notification";
+import { User, type IUser } from "../models/User";
+import { NOTIFICATION_CATEGORIES } from "../constants/notifications";
 import { logger } from "../utils/logger";
 import { sendPushToUser, sendPushToUsers } from "./push.service";
+import {
+  sendEmail,
+  complaintSubmittedEmailHtml,
+  complaintAssignedEmailHtml,
+  investigationStartedEmailHtml,
+  resolutionSubmittedEmailHtml,
+  reworkRequestedEmailHtml,
+  complaintClosedEmailHtml,
+  routingFailedEmailHtml,
+  criticalEscalationEmailHtml,
+} from "./email.service";
+
+const FRONTEND_URL = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/+$/, "");
+
+// ─── Deduplication / Idempotency Cache ────────────────────────────────────────
+const recentEvents = new Map<string, number>();
+
+function isDuplicateEvent(key: string, windowMs = 5000): boolean {
+  const now = Date.now();
+  const lastTime = recentEvents.get(key);
+  if (lastTime && now - lastTime < windowMs) {
+    return true;
+  }
+  recentEvents.set(key, now);
+  if (recentEvents.size > 2000) {
+    for (const [k, v] of recentEvents.entries()) {
+      if (now - v > 60000) recentEvents.delete(k);
+    }
+  }
+  return false;
+}
+
+// ─── Preference Category Mapping ──────────────────────────────────────────────
+const PREFERENCE_CATEGORY_MAP: Record<NotificationCategory, (typeof NOTIFICATION_CATEGORIES)[number]> = {
+  complaints: "complaints",
+  assignments: "authority",
+  authorities: "authority",
+  platform: "admin",
+  environmental: "environment",
+  security: "security",
+  ai: "system",
+  system: "system",
+  support: "system",
+};
+
+async function isEmailEnabledForUser(
+  userId: mongoose.Types.ObjectId | string,
+  category: NotificationCategory,
+): Promise<{ enabled: boolean; email?: string; name?: string }> {
+  try {
+    const user = await User.findById(userId).select("email name preferences.notifications").lean();
+    if (!user || !user.email) return { enabled: false };
+
+    const prefCategory = PREFERENCE_CATEGORY_MAP[category] ?? "system";
+    const channels = user.preferences?.notifications?.[prefCategory];
+    if (channels && typeof channels.email === "boolean" && !channels.email) {
+      return { enabled: false, email: user.email, name: user.name };
+    }
+    return { enabled: true, email: user.email, name: user.name };
+  } catch (err) {
+    logger.error("[notification] Failed to evaluate email preference:", err);
+    return { enabled: false };
+  }
+}
+
+// ─── Admin ID Resolution Helper ───────────────────────────────────────────────
+export async function getAdminUserIds(): Promise<mongoose.Types.ObjectId[]> {
+  try {
+    const admins = await User.find({ role: "administrator", isActive: true }).select("_id").lean();
+    return admins.map((a) => a._id as mongoose.Types.ObjectId);
+  } catch (err) {
+    logger.error("[notification] Failed to query admin IDs:", err);
+    return [];
+  }
+}
 
 // ─── Core creation helper ─────────────────────────────────────────────────────
 
-interface CreateNotificationInput {
+export interface EmailPayloadInput {
+  subject: string;
+  html: string;
+  to?: string;
+}
+
+export interface CreateNotificationInput {
   userId: mongoose.Types.ObjectId | string;
   recipientRole: NotificationRecipientRole;
   title: string;
@@ -28,22 +115,22 @@ interface CreateNotificationInput {
   link?: string;
   entityId?: string;
   entityType?: "complaint" | "authority" | "platform" | "user" | "ticket" | "bug" | "feature" | "feedback";
+  emailPayload?: EmailPayloadInput;
+  idempotencyKey?: string;
 }
 
 /**
- * Creates the notification record (source of truth for the in-app
- * Notification Center) and, independently, attempts a push delivery via
- * the central push service (Phase 3). The two are intentionally
- * sequenced: the database write happens first and is what every existing
- * caller has always relied on, and a push failure — or FCM not being
- * configured at all — can never roll it back or throw back into the
- * caller. This is also the single choke point every current and future
- * notifyX() helper below funnels through, which is what lets Phase 3's
- * FCM delivery cover all of them without each one calling push.service.ts
- * itself.
+ * Creates an in-app notification and dispatches push (FCM) + email (Gmail SMTP).
+ * Delivery failures in push or email are non-blocking and never throw.
  */
 export async function createNotification(input: CreateNotificationInput): Promise<void> {
   try {
+    const dedupKey = input.idempotencyKey || `${String(input.userId)}:${input.entityType || ""}:${input.entityId || ""}:${input.title}`;
+    if (isDuplicateEvent(dedupKey)) {
+      logger.info(`[notification] Duplicate event suppressed for key: ${dedupKey}`);
+      return;
+    }
+
     const notification = await Notification.create({
       userId: input.userId,
       recipientRole: input.recipientRole,
@@ -57,8 +144,7 @@ export async function createNotification(input: CreateNotificationInput): Promis
       entityType: input.entityType,
     });
 
-    // sendPushToUser never throws (see push.service.ts) — a push failure,
-    // or FCM simply not being configured, can't undo the record write above.
+    // Push delivery (FCM) — safe, non-blocking
     await sendPushToUser(input.userId, {
       notificationId: notification._id.toString(),
       type: input.category,
@@ -68,21 +154,39 @@ export async function createNotification(input: CreateNotificationInput): Promis
       entityId: input.entityId,
       route: input.link,
       priority: input.priority ?? "medium",
+    }).catch((pushErr) => {
+      logger.error("[notification] Push delivery failed:", pushErr);
     });
+
+    // Email delivery (Gmail SMTP) — safe, non-blocking
+    if (input.emailPayload) {
+      const emailPref = await isEmailEnabledForUser(input.userId, input.category);
+      if (emailPref.enabled && (input.emailPayload.to || emailPref.email)) {
+        await sendEmail({
+          to: input.emailPayload.to || emailPref.email!,
+          subject: input.emailPayload.subject,
+          html: input.emailPayload.html,
+        }).catch((emailErr) => {
+          logger.error("[notification] Email delivery failed:", emailErr);
+        });
+      }
+    }
   } catch (err) {
-    // Notifications must never break the calling workflow
     logger.error("Failed to create notification:", err);
   }
 }
 
 // ─── Bulk creation (fan-out to multiple users) ────────────────────────────────
 
-interface BulkNotificationInput extends Omit<CreateNotificationInput, "userId" | "recipientRole"> {
+export interface BulkNotificationInput extends Omit<CreateNotificationInput, "userId" | "recipientRole"> {
   recipients: Array<{ userId: mongoose.Types.ObjectId | string; role: NotificationRecipientRole }>;
+  emailFactory?: (recipientId: string, recipientName: string) => EmailPayloadInput | null;
 }
 
 export async function fanOutNotification(input: BulkNotificationInput): Promise<void> {
   try {
+    if (input.recipients.length === 0) return;
+
     const docs = input.recipients.map((r) => ({
       userId: r.userId,
       recipientRole: r.role,
@@ -98,7 +202,7 @@ export async function fanOutNotification(input: BulkNotificationInput): Promise<
     const created = await Notification.insertMany(docs, { ordered: false });
     const notificationIdByUser = new Map(created.map((doc) => [String(doc.userId), doc._id.toString()]));
 
-    // sendPushToUsers never throws (see push.service.ts).
+    // Push fan-out (FCM) — safe, non-blocking
     await sendPushToUsers({
       recipients: input.recipients,
       payload: {
@@ -111,7 +215,35 @@ export async function fanOutNotification(input: BulkNotificationInput): Promise<
         priority: input.priority ?? "medium",
         notificationIdByUser,
       },
+    }).catch((pushErr) => {
+      logger.error("[notification] Bulk push delivery failed:", pushErr);
     });
+
+    // Email fan-out (Gmail SMTP) — safe, non-blocking
+    if (input.emailPayload || input.emailFactory) {
+      await Promise.all(
+        input.recipients.map(async (r) => {
+          try {
+            const emailPref = await isEmailEnabledForUser(r.userId, input.category);
+            if (!emailPref.enabled || !emailPref.email) return;
+
+            const payload = input.emailFactory
+              ? input.emailFactory(String(r.userId), emailPref.name || "Administrator")
+              : input.emailPayload;
+
+            if (payload) {
+              await sendEmail({
+                to: payload.to || emailPref.email,
+                subject: payload.subject,
+                html: payload.html,
+              });
+            }
+          } catch (err) {
+            logger.error(`[notification] Bulk email failed for user ${String(r.userId)}:`, err);
+          }
+        }),
+      );
+    }
   } catch (err) {
     logger.error("Failed to fan-out notifications:", err);
   }
@@ -121,18 +253,29 @@ export async function fanOutNotification(input: BulkNotificationInput): Promise<
 
 /**
  * Called when a citizen creates a complaint.
- *  → Citizen: confirmation
- *  → All Administrators: new complaint alert
+ * MUST always notify the citizen of submission (even if auto-assigned afterwards).
+ * If adminIds are provided (e.g. unassigned complaint), admins also receive an alert.
  */
 export async function notifyComplaintSubmitted(
   citizenId: mongoose.Types.ObjectId,
   complaintId: string,
   complaintTitle: string,
-  adminIds: mongoose.Types.ObjectId[],
+  complaintDetails: {
+    cityId: string;
+    issueType: string;
+    priority: string;
+    address?: string;
+  },
+  adminIds?: mongoose.Types.ObjectId[],
 ): Promise<void> {
   const shortId = complaintId.toString().slice(-6).toUpperCase();
+  const citizenLink = `/citizen?tab=complaints&id=${complaintId}`;
+  const citizenUrl = `${FRONTEND_URL}${citizenLink}`;
 
-  // Citizen confirmation
+  // 1. Citizen submission confirmation (In-App + Email + FCM)
+  const citizenUser = await User.findById(citizenId).select("name email").lean();
+  const citizenName = citizenUser?.name || "Citizen";
+
   await createNotification({
     userId: citizenId,
     recipientRole: "citizen",
@@ -140,28 +283,61 @@ export async function notifyComplaintSubmitted(
     summary: `Your complaint "${complaintTitle}" has been received (Ref #GG-${shortId}) and is under review.`,
     category: "complaints",
     priority: "medium",
-    link: `/citizen?tab=complaints&id=${complaintId}`,
+    link: citizenLink,
     entityId: complaintId,
     entityType: "complaint",
+    idempotencyKey: `complaint_submitted:${complaintId}:${String(citizenId)}`,
+    emailPayload: {
+      subject: `GreenGuard AI — Complaint Received: Ref #GG-${shortId}`,
+      html: complaintSubmittedEmailHtml({
+        name: citizenName,
+        complaintId,
+        title: complaintTitle,
+        issueType: complaintDetails.issueType,
+        cityId: complaintDetails.cityId,
+        locationAddress: complaintDetails.address,
+        priority: complaintDetails.priority,
+        viewUrl: citizenUrl,
+      }),
+    },
   });
 
-  // Admin alerts
-  await fanOutNotification({
-    recipients: adminIds.map((id) => ({ userId: id, role: "administrator" as const })),
-    title: "New Complaint Submitted",
-    summary: `Complaint "${complaintTitle}" (Ref #GG-${shortId}) requires assignment.`,
-    category: "complaints",
-    priority: "medium",
-    link: `/admin/complaints?id=${complaintId}`,
-    entityId: complaintId,
-    entityType: "complaint",
-  });
+  // 2. Admin alerts (when unassigned / requires assignment)
+  if (adminIds && adminIds.length > 0) {
+    const adminLink = `/admin/complaints?id=${complaintId}`;
+    const adminUrl = `${FRONTEND_URL}${adminLink}`;
+
+    await fanOutNotification({
+      recipients: adminIds.map((id) => ({ userId: id, role: "administrator" as const })),
+      title: "New Complaint Submitted",
+      summary: `Complaint "${complaintTitle}" (Ref #GG-${shortId}) requires assignment.`,
+      category: "complaints",
+      priority: "medium",
+      link: adminLink,
+      entityId: complaintId,
+      entityType: "complaint",
+      idempotencyKey: `complaint_submitted_admin:${complaintId}`,
+      emailFactory: (_adminId, adminName) => ({
+        subject: `[Admin Alert] New Complaint Submitted: Ref #GG-${shortId}`,
+        html: complaintSubmittedEmailHtml({
+          name: adminName,
+          complaintId,
+          title: complaintTitle,
+          issueType: complaintDetails.issueType,
+          cityId: complaintDetails.cityId,
+          locationAddress: complaintDetails.address,
+          priority: complaintDetails.priority,
+          viewUrl: adminUrl,
+        }),
+      }),
+    });
+  }
 }
 
 /**
- * Called when an admin assigns a complaint.
- *  → Citizen: complaint accepted / assigned
- *  → Authority: new assignment
+ * Called when a complaint is assigned (automatically by Smart Routing or manually by Admin).
+ *  → Citizen: complaint assigned for investigation
+ *  → Authority: new complaint assigned to work queue
  */
 export async function notifyComplaintAssigned(
   citizenId: mongoose.Types.ObjectId,
@@ -170,10 +346,29 @@ export async function notifyComplaintAssigned(
   complaintTitle: string,
   authorityName: string,
   isReassign: boolean,
+  assignmentSource: "automatic" | "manual",
+  complaintDetails: {
+    cityId: string;
+    issueType: string;
+    priority: string;
+    address?: string;
+  },
 ): Promise<void> {
   const shortId = complaintId.toString().slice(-6).toUpperCase();
+  const citizenLink = `/citizen?tab=complaints&id=${complaintId}`;
+  const authorityLink = `/command-center?tab=investigation&id=${complaintId}`;
+  const citizenUrl = `${FRONTEND_URL}${citizenLink}`;
+  const authorityUrl = `${FRONTEND_URL}${authorityLink}`;
 
-  // Citizen update
+  const [citizenUser, authorityUser] = await Promise.all([
+    User.findById(citizenId).select("name email").lean(),
+    User.findById(authorityId).select("name email").lean(),
+  ]);
+
+  const citizenName = citizenUser?.name || "Citizen";
+  const authorityRecipientName = authorityUser?.name || authorityName || "Authority Officer";
+
+  // Citizen update (In-App + Email + FCM)
   await createNotification({
     userId: citizenId,
     recipientRole: "citizen",
@@ -183,22 +378,56 @@ export async function notifyComplaintAssigned(
       : `Your complaint "${complaintTitle}" (Ref #GG-${shortId}) has been accepted and assigned for investigation.`,
     category: "complaints",
     priority: "medium",
-    link: `/citizen?tab=complaints&id=${complaintId}`,
+    link: citizenLink,
     entityId: complaintId,
     entityType: "complaint",
+    idempotencyKey: `complaint_assigned_citizen:${complaintId}:${String(citizenId)}:${isReassign ? "reassign" : "assign"}`,
+    emailPayload: {
+      subject: `GreenGuard AI — Complaint Assigned: Ref #GG-${shortId}`,
+      html: complaintAssignedEmailHtml({
+        name: citizenName,
+        role: "citizen",
+        complaintId,
+        title: complaintTitle,
+        issueType: complaintDetails.issueType,
+        cityId: complaintDetails.cityId,
+        locationAddress: complaintDetails.address,
+        priority: complaintDetails.priority,
+        assignmentSource,
+        authorityName,
+        viewUrl: citizenUrl,
+      }),
+    },
   });
 
-  // Authority notification
+  // Authority notification (In-App + Email + FCM)
   await createNotification({
     userId: authorityId,
     recipientRole: "authority",
     title: isReassign ? "Complaint Reassigned to You" : "Complaint Assigned to You",
-    summary: `Complaint "${complaintTitle}" (Ref #GG-${shortId}) has been ${isReassign ? "reassigned" : "assigned"} to you. Begin investigation.`,
+    summary: `Complaint "${complaintTitle}" (Ref #GG-${shortId}) in ${complaintDetails.cityId.toUpperCase()} has been ${isReassign ? "reassigned" : "assigned"} to you (${assignmentSource === "automatic" ? "Smart Routing" : "Manual"}).`,
     category: "assignments",
     priority: "high",
-    link: `/command-center?tab=investigation&id=${complaintId}`,
+    link: authorityLink,
     entityId: complaintId,
     entityType: "complaint",
+    idempotencyKey: `complaint_assigned_auth:${complaintId}:${String(authorityId)}:${isReassign ? "reassign" : "assign"}`,
+    emailPayload: {
+      subject: `New complaint assigned to you: Ref #GG-${shortId}`,
+      html: complaintAssignedEmailHtml({
+        name: authorityRecipientName,
+        role: "authority",
+        complaintId,
+        title: complaintTitle,
+        issueType: complaintDetails.issueType,
+        cityId: complaintDetails.cityId,
+        locationAddress: complaintDetails.address,
+        priority: complaintDetails.priority,
+        assignmentSource,
+        authorityName,
+        viewUrl: authorityUrl,
+      }),
+    },
   });
 }
 
@@ -210,8 +439,14 @@ export async function notifyInvestigationStarted(
   citizenId: mongoose.Types.ObjectId,
   complaintId: string,
   complaintTitle: string,
+  cityId = "belagavi",
 ): Promise<void> {
   const shortId = complaintId.toString().slice(-6).toUpperCase();
+  const citizenLink = `/citizen?tab=complaints&id=${complaintId}`;
+  const citizenUrl = `${FRONTEND_URL}${citizenLink}`;
+
+  const citizenUser = await User.findById(citizenId).select("name email").lean();
+  const citizenName = citizenUser?.name || "Citizen";
 
   await createNotification({
     userId: citizenId,
@@ -220,9 +455,20 @@ export async function notifyInvestigationStarted(
     summary: `Investigation into your complaint "${complaintTitle}" (Ref #GG-${shortId}) has begun.`,
     category: "complaints",
     priority: "medium",
-    link: `/citizen?tab=complaints&id=${complaintId}`,
+    link: citizenLink,
     entityId: complaintId,
     entityType: "complaint",
+    idempotencyKey: `investigation_started:${complaintId}:${String(citizenId)}`,
+    emailPayload: {
+      subject: `GreenGuard AI — Investigation Started: Ref #GG-${shortId}`,
+      html: investigationStartedEmailHtml({
+        name: citizenName,
+        complaintId,
+        title: complaintTitle,
+        cityId,
+        viewUrl: citizenUrl,
+      }),
+    },
   });
 }
 
@@ -247,62 +493,272 @@ export async function notifyEvidenceAdded(
     link: `/citizen?tab=complaints&id=${complaintId}`,
     entityId: complaintId,
     entityType: "complaint",
+    idempotencyKey: `evidence_added:${complaintId}:${Date.now().toString().slice(0, -4)}`,
   });
 }
 
 /**
- * Called when authority submits resolution (status → resolved).
- *  → Citizen: resolution submitted (no internal notes exposed)
- *  → Administrator: resolution awaiting verification
- *  → Authority: confirmation
+ * Called when authority submits resolution.
+ * Distinct paths:
+ *  - "citizen_review" (status: awaiting_citizen_review): First resolution -> Citizen review required. Authority receives confirmation. Admin is NOT notified as verifier.
+ *  - "admin_verify" (status: resolved): Post-rework revised resolution -> Admin verification required. Citizen & Authority receive updates.
  */
 export async function notifyResolutionSubmitted(
   citizenId: mongoose.Types.ObjectId,
-  authorityId: mongoose.Types.ObjectId,
+  authorityId: mongoose.Types.ObjectId | undefined,
   adminIds: mongoose.Types.ObjectId[],
   complaintId: string,
   complaintTitle: string,
+  path: "citizen_review" | "admin_verify",
+  resolutionText = "Resolution details submitted.",
 ): Promise<void> {
   const shortId = complaintId.toString().slice(-6).toUpperCase();
+  const citizenLink = `/citizen?tab=complaints&id=${complaintId}`;
+  const citizenUrl = `${FRONTEND_URL}${citizenLink}`;
 
+  const [citizenUser, authorityUser] = await Promise.all([
+    User.findById(citizenId).select("name email").lean(),
+    authorityId ? User.findById(authorityId).select("name email").lean() : null,
+  ]);
+
+  const citizenName = citizenUser?.name || "Citizen";
+  const authorityName = authorityUser?.name || "Environmental Authority";
+
+  if (path === "citizen_review") {
+    // 1. Citizen Review Required (In-App + Email + FCM)
+    await createNotification({
+      userId: citizenId,
+      recipientRole: "citizen",
+      title: "Resolution Submitted — Review Required",
+      summary: `A resolution has been submitted for your complaint "${complaintTitle}" (Ref #GG-${shortId}). Please review and accept or request rework.`,
+      category: "complaints",
+      priority: "high",
+      link: citizenLink,
+      entityId: complaintId,
+      entityType: "complaint",
+      idempotencyKey: `resolution_submitted_citizen:${complaintId}`,
+      emailPayload: {
+        subject: `Resolution submitted for your complaint: Ref #GG-${shortId}`,
+        html: resolutionSubmittedEmailHtml({
+          name: citizenName,
+          role: "citizen",
+          complaintId,
+          title: complaintTitle,
+          authorityName,
+          resolution: resolutionText,
+          viewUrl: citizenUrl,
+        }),
+      },
+    });
+
+    // 2. Authority confirmation (In-App)
+    if (authorityId) {
+      await createNotification({
+        userId: authorityId,
+        recipientRole: "authority",
+        title: "Resolution Submitted",
+        summary: `Your resolution for "${complaintTitle}" (Ref #GG-${shortId}) has been sent to the citizen for review.`,
+        category: "assignments",
+        priority: "medium",
+        link: `/command-center?tab=investigation&id=${complaintId}`,
+        entityId: complaintId,
+        entityType: "complaint",
+        idempotencyKey: `resolution_submitted_auth:${complaintId}`,
+      });
+    }
+
+    // Notice: Admin is NOT notified as a verifier on the standard citizen-review path.
+    return;
+  }
+
+  // Admin Verification Path (resubmitted resolution post-rework)
+  // 1. Citizen update
   await createNotification({
     userId: citizenId,
     recipientRole: "citizen",
-    title: "Resolution Submitted",
-    summary: `A resolution has been submitted for your complaint "${complaintTitle}" (Ref #GG-${shortId}). It is pending administrator verification.`,
+    title: "Resolution Resubmitted",
+    summary: `A revised resolution for "${complaintTitle}" (Ref #GG-${shortId}) has been submitted and is pending administrator verification.`,
     category: "complaints",
     priority: "medium",
-    link: `/citizen?tab=complaints&id=${complaintId}`,
+    link: citizenLink,
     entityId: complaintId,
     entityType: "complaint",
+    idempotencyKey: `resolution_resubmitted_citizen:${complaintId}`,
   });
 
-  await createNotification({
-    userId: authorityId,
-    recipientRole: "authority",
-    title: "Resolution Submitted",
-    summary: `Your resolution for "${complaintTitle}" (Ref #GG-${shortId}) has been submitted and is awaiting administrator approval.`,
-    category: "complaints",
-    priority: "medium",
-    link: `/command-center?tab=investigation&id=${complaintId}`,
-    entityId: complaintId,
-    entityType: "complaint",
-  });
+  // 2. Authority confirmation
+  if (authorityId) {
+    await createNotification({
+      userId: authorityId,
+      recipientRole: "authority",
+      title: "Resolution Submitted for Verification",
+      summary: `Your resolution for "${complaintTitle}" (Ref #GG-${shortId}) has been submitted and is awaiting administrator verification.`,
+      category: "assignments",
+      priority: "medium",
+      link: `/command-center?tab=investigation&id=${complaintId}`,
+      entityId: complaintId,
+      entityType: "complaint",
+      idempotencyKey: `resolution_resubmitted_auth:${complaintId}`,
+    });
+  }
+
+  // 3. Admin verification notification (In-App + Email + FCM)
+  const adminLink = `/admin/complaints?id=${complaintId}&action=verify`;
+  const adminUrl = `${FRONTEND_URL}${adminLink}`;
 
   await fanOutNotification({
     recipients: adminIds.map((id) => ({ userId: id, role: "administrator" as const })),
     title: "Resolution Awaiting Verification",
-    summary: `A resolution for "${complaintTitle}" (Ref #GG-${shortId}) requires your verification before closure.`,
+    summary: `A revised resolution for "${complaintTitle}" (Ref #GG-${shortId}) requires your verification before closure.`,
     category: "complaints",
     priority: "high",
-    link: `/admin/complaints?id=${complaintId}&action=verify`,
+    link: adminLink,
     entityId: complaintId,
     entityType: "complaint",
+    idempotencyKey: `resolution_verify_admin:${complaintId}`,
+    emailFactory: (_adminId, adminName) => ({
+      subject: `[Admin Action Required] Verify Resolution: Ref #GG-${shortId}`,
+      html: resolutionSubmittedEmailHtml({
+        name: adminName,
+        role: "administrator",
+        complaintId,
+        title: complaintTitle,
+        authorityName,
+        resolution: resolutionText,
+        viewUrl: adminUrl,
+      }),
+    }),
   });
 }
 
 /**
- * Called when admin verifies resolution (status → closed).
+ * Called when citizen requests rework during Citizen Review.
+ *  → Authority: rework requested (action required)
+ *  → Administrator: governance notification
+ */
+export async function notifyCitizenReworkRequested(
+  authorityId: mongoose.Types.ObjectId | undefined,
+  adminIds: mongoose.Types.ObjectId[],
+  complaintId: string,
+  complaintTitle: string,
+  reason: string,
+  comments?: string,
+): Promise<void> {
+  const shortId = complaintId.toString().slice(-6).toUpperCase();
+
+  // 1. Authority notification
+  if (authorityId) {
+    const authLink = `/command-center?tab=investigation&id=${complaintId}`;
+    const authUrl = `${FRONTEND_URL}${authLink}`;
+    const authUser = await User.findById(authorityId).select("name email").lean();
+    const authName = authUser?.name || "Authority Officer";
+
+    await createNotification({
+      userId: authorityId,
+      recipientRole: "authority",
+      title: "Rework Requested by Citizen",
+      summary: `Citizen requested revision for "${complaintTitle}" (Ref #GG-${shortId}): ${reason.slice(0, 120)}${reason.length > 120 ? "…" : ""}`,
+      category: "assignments",
+      priority: "high",
+      link: authLink,
+      entityId: complaintId,
+      entityType: "complaint",
+      idempotencyKey: `rework_req_auth:${complaintId}:${Date.now().toString().slice(0, -4)}`,
+      emailPayload: {
+        subject: `Rework requested for complaint #${shortId}`,
+        html: reworkRequestedEmailHtml({
+          name: authName,
+          role: "authority",
+          complaintId,
+          title: complaintTitle,
+          reason,
+          comments,
+          requestedByRole: "citizen",
+          viewUrl: authUrl,
+        }),
+      },
+    });
+  }
+
+  // 2. Administrator governance notification
+  if (adminIds && adminIds.length > 0) {
+    const adminLink = `/admin/complaints?id=${complaintId}`;
+    const adminUrl = `${FRONTEND_URL}${adminLink}`;
+
+    await fanOutNotification({
+      recipients: adminIds.map((id) => ({ userId: id, role: "administrator" as const })),
+      title: "Citizen Rework Request",
+      summary: `Citizen requested rework for "${complaintTitle}" (Ref #GG-${shortId}): ${reason.slice(0, 100)}`,
+      category: "complaints",
+      priority: "high",
+      link: adminLink,
+      entityId: complaintId,
+      entityType: "complaint",
+      idempotencyKey: `rework_req_admin:${complaintId}:${Date.now().toString().slice(0, -4)}`,
+      emailFactory: (_adminId, adminName) => ({
+        subject: `[Governance Alert] Citizen Rework Request: Ref #GG-${shortId}`,
+        html: reworkRequestedEmailHtml({
+          name: adminName,
+          role: "administrator",
+          complaintId,
+          title: complaintTitle,
+          reason,
+          comments,
+          requestedByRole: "citizen",
+          viewUrl: adminUrl,
+        }),
+      }),
+    });
+  }
+}
+
+/**
+ * Called when administrator requests rework from the verification queue.
+ *  → Authority: rework requested
+ */
+export async function notifyAdminReworkRequested(
+  authorityId: mongoose.Types.ObjectId,
+  complaintId: string,
+  complaintTitle: string,
+  reason: string,
+  comments?: string,
+): Promise<void> {
+  const shortId = complaintId.toString().slice(-6).toUpperCase();
+  const authLink = `/command-center?tab=investigation&id=${complaintId}`;
+  const authUrl = `${FRONTEND_URL}${authLink}`;
+  const authUser = await User.findById(authorityId).select("name email").lean();
+  const authName = authUser?.name || "Authority Officer";
+
+  await createNotification({
+    userId: authorityId,
+    recipientRole: "authority",
+    title: "Rework Requested by Administrator",
+    summary: `Administrator requested revision for "${complaintTitle}" (Ref #GG-${shortId}): ${reason.slice(0, 120)}${reason.length > 120 ? "…" : ""}`,
+    category: "assignments",
+    priority: "high",
+    link: authLink,
+    entityId: complaintId,
+    entityType: "complaint",
+    idempotencyKey: `admin_rework_req_auth:${complaintId}:${Date.now().toString().slice(0, -4)}`,
+    emailPayload: {
+      subject: `Rework requested for complaint #${shortId}`,
+      html: reworkRequestedEmailHtml({
+        name: authName,
+        role: "authority",
+        complaintId,
+        title: complaintTitle,
+        reason,
+        comments,
+        requestedByRole: "admin",
+        viewUrl: authUrl,
+      }),
+    },
+  });
+}
+
+/**
+ * Called when complaint is closed (by Citizen accepting resolution or Admin verifying).
+ * Deduplicated so that multiple closure paths cannot trigger duplicate closure notifications.
  *  → Citizen: complaint closed
  *  → Authority: resolution approved
  */
@@ -311,58 +767,120 @@ export async function notifyComplaintClosed(
   authorityId: mongoose.Types.ObjectId | undefined,
   complaintId: string,
   complaintTitle: string,
+  closedBy: "citizen_accepted" | "admin_verified",
 ): Promise<void> {
   const shortId = complaintId.toString().slice(-6).toUpperCase();
 
+  // Guard against duplicate closure notifications
+  const closureKey = `complaint_closed:${complaintId}`;
+  if (isDuplicateEvent(closureKey, 30000)) {
+    logger.info(`[notification] Complaint closure notification already sent for ${complaintId}`);
+    return;
+  }
+
+  const citizenLink = `/citizen?tab=complaints&id=${complaintId}`;
+  const citizenUrl = `${FRONTEND_URL}${citizenLink}`;
+
+  const [citizenUser, authorityUser] = await Promise.all([
+    User.findById(citizenId).select("name email").lean(),
+    authorityId ? User.findById(authorityId).select("name email").lean() : null,
+  ]);
+
+  const citizenName = citizenUser?.name || "Citizen";
+  const authorityName = authorityUser?.name || "Authority Officer";
+
+  // Citizen confirmation (In-App + Email + FCM)
   await createNotification({
     userId: citizenId,
     recipientRole: "citizen",
     title: "Complaint Closed",
-    summary: `Your complaint "${complaintTitle}" (Ref #GG-${shortId}) has been verified and closed. Thank you for your report.`,
+    summary: `Your complaint "${complaintTitle}" (Ref #GG-${shortId}) has been ${closedBy === "citizen_accepted" ? "accepted and closed" : "verified and closed"}. Thank you for your report.`,
     category: "complaints",
     priority: "medium",
-    link: `/citizen?tab=complaints&id=${complaintId}`,
+    link: citizenLink,
     entityId: complaintId,
     entityType: "complaint",
+    idempotencyKey: `complaint_closed_citizen:${complaintId}`,
+    emailPayload: {
+      subject: `GreenGuard AI — Complaint Closed: Ref #GG-${shortId}`,
+      html: complaintClosedEmailHtml({
+        name: citizenName,
+        role: "citizen",
+        complaintId,
+        title: complaintTitle,
+        closedByReason: closedBy === "citizen_accepted" ? "Accepted by Citizen" : "Verified by Administrator",
+        viewUrl: citizenUrl,
+      }),
+    },
   });
 
+  // Authority confirmation (In-App + Email + FCM)
   if (authorityId) {
+    const authLink = `/command-center?tab=investigation&id=${complaintId}`;
+    const authUrl = `${FRONTEND_URL}${authLink}`;
+
     await createNotification({
       userId: authorityId,
       recipientRole: "authority",
-      title: "Resolution Approved",
-      summary: `Your resolution for "${complaintTitle}" (Ref #GG-${shortId}) has been approved and the complaint is now closed.`,
+      title: "Resolution Approved — Complaint Closed",
+      summary: `Your resolution for "${complaintTitle}" (Ref #GG-${shortId}) has been ${closedBy === "citizen_accepted" ? "accepted by the citizen" : "verified by the administrator"} and closed.`,
       category: "assignments",
       priority: "medium",
-      link: `/command-center?tab=investigation&id=${complaintId}`,
+      link: authLink,
       entityId: complaintId,
       entityType: "complaint",
+      idempotencyKey: `complaint_closed_auth:${complaintId}`,
+      emailPayload: {
+        subject: `Resolution Approved — Complaint Closed: Ref #GG-${shortId}`,
+        html: complaintClosedEmailHtml({
+          name: authorityName,
+          role: "authority",
+          complaintId,
+          title: complaintTitle,
+          closedByReason: closedBy === "citizen_accepted" ? "Accepted by Citizen" : "Verified by Administrator",
+          viewUrl: authUrl,
+        }),
+      },
     });
   }
 }
 
 /**
- * Called when admin requests rework (status → rework).
- *  → Authority: rework requested
+ * Called when Smart Routing fails to assign a complaint.
+ *  → Administrator: alert for manual assignment
  */
-export async function notifyReworkRequested(
-  authorityId: mongoose.Types.ObjectId,
+export async function notifyRoutingFailed(
+  adminIds: mongoose.Types.ObjectId[],
   complaintId: string,
   complaintTitle: string,
+  cityId: string,
   reason: string,
 ): Promise<void> {
   const shortId = complaintId.toString().slice(-6).toUpperCase();
+  const adminLink = `/admin/complaints?id=${complaintId}`;
+  const adminUrl = `${FRONTEND_URL}${adminLink}`;
 
-  await createNotification({
-    userId: authorityId,
-    recipientRole: "authority",
-    title: "Rework Requested",
-    summary: `Your resolution for "${complaintTitle}" (Ref #GG-${shortId}) needs revision: ${reason.slice(0, 120)}${reason.length > 120 ? "…" : ""}`,
-    category: "assignments",
+  await fanOutNotification({
+    recipients: adminIds.map((id) => ({ userId: id, role: "administrator" as const })),
+    title: "Smart Routing Alert",
+    summary: `Routing failure for "${complaintTitle}" (Ref #GG-${shortId}) in ${cityId.toUpperCase()}: ${reason.slice(0, 100)}`,
+    category: "complaints",
     priority: "high",
-    link: `/command-center?tab=investigation&id=${complaintId}`,
+    link: adminLink,
     entityId: complaintId,
     entityType: "complaint",
+    idempotencyKey: `routing_failed_admin:${complaintId}`,
+    emailFactory: (_adminId, adminName) => ({
+      subject: `[Routing Alert] Manual Assignment Required: Ref #GG-${shortId}`,
+      html: routingFailedEmailHtml({
+        name: adminName,
+        complaintId,
+        title: complaintTitle,
+        cityId,
+        reason,
+        viewUrl: adminUrl,
+      }),
+    }),
   });
 }
 
@@ -393,6 +911,7 @@ export async function notifyNewMessage(
     link,
     entityId: complaintId,
     entityType: "complaint",
+    idempotencyKey: `new_msg:${complaintId}:${String(recipientId)}:${Date.now().toString().slice(0, -3)}`,
   });
 }
 
@@ -538,28 +1057,49 @@ export async function notifyPlatformAlert(
   });
 }
 
+// ─── Authority Board Automation notifications ────────────────────────────────
+
+export async function notifyBoardCoverageGap(
+  adminIds: mongoose.Types.ObjectId[],
+  boardName: string,
+  cityId: string,
+  reason: string,
+): Promise<void> {
+  const shortCity = cityId.toUpperCase();
+  await fanOutNotification({
+    recipients: adminIds.map((id) => ({ userId: id, role: "administrator" as const })),
+    title: `Coverage Alert: ${boardName} (${shortCity})`,
+    summary: `Operational coverage gap in ${shortCity}: ${reason}`,
+    category: "authorities",
+    priority: "high",
+    link: `/admin/authorities?city=${cityId}`,
+    entityType: "authority",
+    idempotencyKey: `coverage_gap:${boardName}:${cityId}:${new Date().toDateString()}`,
+  });
+}
+
 // ─── Communication Hub — tickets / bug reports / feature requests / feedback ──
-//
-// One set of helpers shared by all four communication types instead of four
-// near-identical copies. Reuses createNotification/fanOutNotification above —
-// no second notification model, service, or store.
 
 export type SupportItemType = "ticket" | "bug" | "feature" | "feedback";
 
 const SUPPORT_TYPE_LABEL: Record<SupportItemType, string> = {
-  ticket:  "support ticket",
-  bug:     "bug report",
+  ticket: "support ticket",
+  bug: "bug report",
   feature: "feature request",
   feedback: "feedback",
 };
 
-// Help Center tab id each type lives under, and the Communication Hub tab id
-// an admin should land on — kept in one place so both stay in sync.
 const SUPPORT_HELP_TAB: Record<SupportItemType, string> = {
-  ticket: "tickets", bug: "bug", feature: "feature", feedback: "feedback",
+  ticket: "tickets",
+  bug: "bug",
+  feature: "feature",
+  feedback: "feedback",
 };
 const SUPPORT_HUB_TAB: Record<SupportItemType, string> = {
-  ticket: "tickets", bug: "bugs", feature: "features", feedback: "feedback",
+  ticket: "tickets",
+  bug: "bugs",
+  feature: "features",
+  feedback: "feedback",
 };
 
 function citizenSupportLink(type: SupportItemType, id: string): string {
@@ -570,12 +1110,6 @@ function adminSupportLink(type: SupportItemType, id: string): string {
   return `/admin/communication?tab=${SUPPORT_HUB_TAB[type]}&id=${id}`;
 }
 
-/**
- * Called when a citizen submits a ticket, bug report, feature request, or
- * feedback item.
- *  → Citizen: confirmation
- *  → All Administrators: new item alert (Communication Hub)
- */
 export async function notifySupportItemSubmitted(
   citizenId: mongoose.Types.ObjectId,
   type: SupportItemType,
@@ -609,10 +1143,6 @@ export async function notifySupportItemSubmitted(
   });
 }
 
-/**
- * Called when an administrator replies to a communication.
- *  → Citizen: new reply
- */
 export async function notifySupportReply(
   citizenId: mongoose.Types.ObjectId,
   type: SupportItemType,
@@ -633,10 +1163,6 @@ export async function notifySupportReply(
   });
 }
 
-/**
- * Called when an administrator resolves a communication.
- *  → Citizen: resolved
- */
 export async function notifySupportResolved(
   citizenId: mongoose.Types.ObjectId,
   type: SupportItemType,
@@ -657,11 +1183,6 @@ export async function notifySupportResolved(
   });
 }
 
-/**
- * Called when a communication is reopened.
- *  → If the citizen reopened it: notify all administrators.
- *  → If an administrator reopened it: notify the citizen.
- */
 export async function notifySupportReopened(
   type: SupportItemType,
   itemId: string,
@@ -699,13 +1220,7 @@ export async function notifySupportReopened(
 }
 
 // ─── Emergency broadcast ──────────────────────────────────────────────────────
-//
-// Administrator-initiated broadcast to a role-based audience. Reuses
-// fanOutNotification exactly like every other notification path above — no
-// separate emergency notification engine. entityType "platform" + a shared
-// entityId (generated by the caller) lets the Communication Hub reconstruct
-// "Emergency History" later by grouping existing Notification documents,
-// without a new model.
+
 export async function notifyEmergencyBroadcast(
   recipients: Array<{ userId: mongoose.Types.ObjectId; role: NotificationRecipientRole }>,
   broadcastId: string,
@@ -722,4 +1237,163 @@ export async function notifyEmergencyBroadcast(
     entityId: broadcastId,
     entityType: "platform",
   });
+}
+
+// ─── Automation 7 — Priority Intelligence & Critical Escalation Notifications ───
+
+/**
+ * Called when Priority Intelligence detects critical operational risk.
+ * Alerts Administrators and assigned Authority (if any) via In-App + Email + FCM.
+ */
+export async function notifyCriticalEscalation(
+  complaintId: string,
+  complaintTitle: string,
+  cityId: string,
+  priorityScore: number,
+  reasons: string[],
+  authorityId?: mongoose.Types.ObjectId,
+  issueType = "general",
+): Promise<void> {
+  try {
+    const shortId = complaintId.toString().slice(-6).toUpperCase();
+    const idempotencyKey = `critical_escalation:${complaintId}`;
+    if (isDuplicateEvent(idempotencyKey, 60000)) {
+      logger.info(`[notification] Critical escalation notification already sent for ${complaintId}`);
+      return;
+    }
+
+    // 1. Fetch active administrators
+    const admins = await User.find({ role: "administrator", isActive: true }).select("_id name email").lean();
+    const adminIds = admins.map((a) => a._id as mongoose.Types.ObjectId);
+
+    // 2. Notify Administrators (In-App + Email + FCM)
+    if (adminIds.length > 0) {
+      const adminLink = `/admin/complaints?id=${complaintId}&tab=escalation`;
+      const adminUrl = `${FRONTEND_URL}${adminLink}`;
+
+      await fanOutNotification({
+        recipients: adminIds.map((id) => ({ userId: id, role: "administrator" as const })),
+        title: `CRITICAL ESCALATION: Ref #GG-${shortId}`,
+        summary: `Critical risk detected (Score ${priorityScore}/100) for "${complaintTitle}" in ${cityId.toUpperCase()}: ${reasons.slice(0, 2).join("; ")}`,
+        category: "platform",
+        priority: "critical",
+        link: adminLink,
+        entityId: complaintId,
+        entityType: "complaint",
+        idempotencyKey: `crit_esc_admin:${complaintId}`,
+        emailFactory: (_adminId, adminName) => ({
+          subject: `[URGENT] CRITICAL ESCALATION: Ref #GG-${shortId} (${cityId.toUpperCase()})`,
+          html: criticalEscalationEmailHtml({
+            name: adminName,
+            role: "administrator",
+            complaintId,
+            title: complaintTitle,
+            issueType,
+            cityId,
+            priorityScore,
+            reasons,
+            viewUrl: adminUrl,
+          }),
+        }),
+      });
+    }
+
+    // 3. Notify Assigned Authority (if assigned)
+    if (authorityId) {
+      const authUser = await User.findById(authorityId).select("name email").lean();
+      if (authUser) {
+        const authLink = `/command-center?tab=investigation&id=${complaintId}`;
+        const authUrl = `${FRONTEND_URL}${authLink}`;
+
+        await createNotification({
+          userId: authorityId,
+          recipientRole: "authority",
+          title: `CRITICAL INCIDENT ALERT: Ref #GG-${shortId}`,
+          summary: `Your assigned incident "${complaintTitle}" has been assessed as CRITICAL (Score: ${priorityScore}/100). Immediate action required.`,
+          category: "assignments",
+          priority: "critical",
+          link: authLink,
+          entityId: complaintId,
+          entityType: "complaint",
+          idempotencyKey: `crit_esc_auth:${complaintId}`,
+          emailPayload: {
+            subject: `[CRITICAL ACTION REQUIRED] Incident Ref #GG-${shortId}`,
+            html: criticalEscalationEmailHtml({
+              name: authUser.name || "Authority Officer",
+              role: "authority",
+              complaintId,
+              title: complaintTitle,
+              issueType,
+              cityId,
+              priorityScore,
+              reasons,
+              viewUrl: authUrl,
+            }),
+          },
+        });
+      }
+    }
+  } catch (err) {
+    logger.warn(`[notification] notifyCriticalEscalation non-blocking error: ${(err as Error).message}`);
+  }
+}
+
+/**
+ * Called when an administrator or authority acknowledges an escalation.
+ */
+export async function notifyEscalationAcknowledged(
+  complaintId: string,
+  complaintTitle: string,
+  acknowledgedByName: string,
+  authorityId?: mongoose.Types.ObjectId,
+): Promise<void> {
+  try {
+    const shortId = complaintId.toString().slice(-6).toUpperCase();
+    if (authorityId) {
+      await createNotification({
+        userId: authorityId,
+        recipientRole: "authority",
+        title: "Escalation Acknowledged",
+        summary: `Escalation for "${complaintTitle}" (Ref #GG-${shortId}) has been acknowledged by ${acknowledgedByName}.`,
+        category: "assignments",
+        priority: "medium",
+        link: `/command-center?tab=investigation&id=${complaintId}`,
+        entityId: complaintId,
+        entityType: "complaint",
+        idempotencyKey: `esc_ack:${complaintId}:${Date.now().toString().slice(0, -4)}`,
+      });
+    }
+  } catch (err) {
+    logger.warn(`[notification] notifyEscalationAcknowledged error: ${(err as Error).message}`);
+  }
+}
+
+/**
+ * Called when critical condition / escalation is resolved.
+ */
+export async function notifyEscalationResolved(
+  complaintId: string,
+  complaintTitle: string,
+  resolvedByName: string,
+  authorityId?: mongoose.Types.ObjectId,
+): Promise<void> {
+  try {
+    const shortId = complaintId.toString().slice(-6).toUpperCase();
+    if (authorityId) {
+      await createNotification({
+        userId: authorityId,
+        recipientRole: "authority",
+        title: "Critical Escalation Resolved",
+        summary: `Critical escalation for "${complaintTitle}" (Ref #GG-${shortId}) marked resolved by ${resolvedByName}.`,
+        category: "assignments",
+        priority: "medium",
+        link: `/command-center?tab=investigation&id=${complaintId}`,
+        entityId: complaintId,
+        entityType: "complaint",
+        idempotencyKey: `esc_res:${complaintId}:${Date.now().toString().slice(0, -4)}`,
+      });
+    }
+  } catch (err) {
+    logger.warn(`[notification] notifyEscalationResolved error: ${(err as Error).message}`);
+  }
 }

@@ -14,6 +14,9 @@ import {
   generateExecutiveReport,
 } from "../services/gemini.service";
 import { buildCommandReportPdf, buildAuthorityOperationsReportPdf } from "../services/commandPdfExport.service";
+import { getBoardOperationalContext, updateAuthorityAvailability } from "../services/boardAutomation.service";
+import { AppError } from "../middleware/errorHandler";
+import type { AuthorityAvailability } from "../models/User";
 
 // ─── GET /api/command/executive-dashboard ────────────────────────────────────
 // Returns composite scorecards + alert/complaint aggregates for the Overview tab
@@ -943,3 +946,63 @@ export async function exportAuthorityOperationsReportPdf(
     next(err);
   }
 }
+
+// ─── GET /api/command/board-context (Automation 4) ───────────────────────────
+// Returns the real aggregate operational context of the Authority's Organization/Board.
+// Respects RBAC: provides aggregate roster and board workload without exposing private
+// complaint details of other officers.
+export async function getBoardContext(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) return next(new AppError("Not authenticated", 401));
+
+    const boardContext = await getBoardOperationalContext(req.user);
+
+    res.json({
+      success: true,
+      data: { boardContext },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ─── PATCH /api/command/availability (Automation 4) ──────────────────────────
+// Updates the authenticated Authority officer's operational availability state.
+export async function updateAvailability(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) return next(new AppError("Not authenticated", 401));
+
+    const { availability } = req.body as { availability?: AuthorityAvailability };
+    const validStates: AuthorityAvailability[] = ["available", "busy", "on_leave", "inactive"];
+
+    if (!availability || !validStates.includes(availability)) {
+      return next(
+        new AppError(
+          "Invalid availability state. Must be 'available', 'busy', 'on_leave', or 'inactive'",
+          400,
+        ),
+      );
+    }
+
+    const result = await updateAuthorityAvailability(req.user._id, availability);
+
+    res.json({
+      success: true,
+      data: {
+        availability,
+        gapTriggered: result.gapTriggered,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+

@@ -170,7 +170,80 @@ export interface AuthorityAnalyticsData {
   generatedAt: string;
 }
 
+export interface OfficerSummary {
+  id: string;
+  name: string;
+  email: string;
+  designation?: string;
+  department?: string;
+  assignedCities: string[];
+  availability: "available" | "busy" | "on_leave" | "inactive";
+  activeCaseCount: number;
+  totalCaseCount: number;
+}
+
+export interface CityCoverageSummary {
+  cityId: string;
+  cityName: string;
+  officerCount: number;
+  availableOfficerCount: number;
+  activeComplaintCount: number;
+  hasGap: boolean;
+}
+
+export interface BoardWorkloadSummary {
+  totalAssigned: number;
+  inProgress: number;
+  rework: number;
+  awaitingReview: number;
+  resolved: number;
+  closed: number;
+}
+
+export interface BoardOperationalContextData {
+  organization: string;
+  department?: string;
+  jurisdiction: string[];
+  totalOfficers: number;
+  availability: {
+    available: number;
+    busy: number;
+    on_leave: number;
+    inactive: number;
+  };
+  officers: OfficerSummary[];
+  workload: BoardWorkloadSummary;
+  jurisdictionCoverage: CityCoverageSummary[];
+  coverageGaps: Array<{ cityId: string; cityName: string; reason: string }>;
+  boardStatus: "optimal" | "warning" | "critical";
+  self: {
+    id: string;
+    name: string;
+    availability: "available" | "busy" | "on_leave" | "inactive";
+    department?: string;
+    assignedCities: string[];
+    myActiveCases: number;
+    myTotalCases: number;
+  };
+}
+
 export const commandApi = {
+  // Authority Board Automation (Automation 4)
+  getBoardContext: () =>
+    client
+      .get<{ success: boolean; data: { boardContext: BoardOperationalContextData } }>(
+        "/command/board-context",
+      )
+      .then((r) => r.data),
+
+  updateAvailability: (availability: "available" | "busy" | "on_leave" | "inactive") =>
+    client
+      .patch<{ success: boolean; data: { availability: string; gapTriggered?: boolean } }>(
+        "/command/availability",
+        { availability },
+      )
+      .then((r) => r.data),
+
   // Executive Overview tab
   getExecutiveDashboard: () => client.get("/command/executive-dashboard").then((r) => r.data),
 

@@ -54,7 +54,11 @@ export interface CitizenComplaint {
   verifiedBy?: PopulatedUser | null;
   verifiedAt?: string;
   verifiedByName?: string;
+  reworkReason?: string;
+  reworkComments?: string;
   reworkCount?: number;
+  citizenFeedback?: string;
+  citizenAcceptedAt?: string;
   events: ComplaintEvent[];
   createdAt: string;
   updatedAt: string;
@@ -288,17 +292,22 @@ export function useUploadComplaintImages() {
 export function useAcceptResolution() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => complaintApi.acceptResolution(id),
-    onSuccess: (_res, id) => {
+    mutationFn: (args: string | { id: string; feedback?: string }) => {
+      const id = typeof args === "string" ? args : args.id;
+      const data = typeof args === "string" ? undefined : { feedback: args.feedback };
+      return complaintApi.acceptResolution(id, data);
+    },
+    onSuccess: (_res, vars) => {
+      const id = typeof vars === "string" ? vars : vars.id;
       qc.invalidateQueries({ queryKey: CITIZEN_KEYS.complaint(id) });
       qc.invalidateQueries({ queryKey: ["citizen-complaints"] });
       qc.invalidateQueries({ queryKey: CITIZEN_KEYS.stats });
-      toast("Resolution accepted — complaint closed.");
+      toast.success("Resolution accepted — complaint closed.");
     },
     onError: (err: unknown) => {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast(msg ?? "Failed to accept resolution. Please try again.");
+      toast.error(msg ?? "Failed to accept resolution. Please try again.");
     },
   });
 }

@@ -9,6 +9,8 @@ import {
   getGeminiIntelligence,
   exportCommandReportPdf,
   exportAuthorityOperationsReportPdf,
+  getBoardContext,
+  updateAvailability,
 } from "../controllers/command.controller";
 import { authenticate, authorize, AUTHORITY_ROLES } from "../middleware/auth";
 
@@ -30,6 +32,11 @@ router.get("/authority-analytics", getAuthorityAnalytics);
 
 // ─── Trend Intelligence ───────────────────────────────────────────────────────
 router.get("/trend-intelligence", getTrendIntelligence);
+
+// ─── Authority Board Automation (Automation 4) ────────────────────────────────
+// Board operational context & team availability
+router.get("/board-context", getBoardContext);
+router.patch("/availability", updateAvailability);
 
 // ─── Authority Actions ────────────────────────────────────────────────────────
 router.get("/authority-actions", getAuthorityActions);

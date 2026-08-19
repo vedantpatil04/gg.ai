@@ -38,7 +38,11 @@ export type ComplaintEventType =
   | "closed" // Phase 3C — admin approved, OR citizen accepted (Citizen Review)
   | "rework_requested" // by citizen (Citizen Review) or by admin (Phase 3C)
   | "resubmitted" // Phase 3C — admin rejected / authority resubmitted
-  | "citizen_accepted"; // Citizen Review — citizen accepted the authority's resolution
+  | "citizen_accepted" // Citizen Review — citizen accepted the authority's resolution
+  | "priority_assessed" // Automation 7 — priority intelligence scored and evaluated
+  | "critical_escalated" // Automation 7 — critical risk detected and escalation triggered
+  | "escalation_acknowledged" // Automation 7 — escalation acknowledged by admin/authority
+  | "escalation_resolved"; // Automation 7 — critical escalation marked resolved
 
 export interface IComplaintEvent {
   type: ComplaintEventType;
@@ -85,6 +89,21 @@ export interface IComplaint extends Document {
   reworkComments?: string;
   reworkCount?: number;
 
+  // Citizen Review (Automation 5)
+  citizenFeedback?: string;
+  citizenAcceptedAt?: Date;
+
+  // ─── Priority Intelligence & Critical Escalation (Automation 7) ───────────
+  priorityLevel?: ComplaintPriority;
+  priorityScore?: number;
+  escalationLevel?: "none" | "attention" | "urgent" | "critical";
+  escalationStatus?: "not_escalated" | "escalated" | "acknowledged" | "resolved";
+  escalationReasons?: string[];
+  escalatedAt?: Date;
+  escalationAcknowledgedBy?: mongoose.Types.ObjectId;
+  escalationAcknowledgedAt?: Date;
+  escalationResolvedAt?: Date;
+
   events: IComplaintEvent[];
   createdAt: Date;
   updatedAt: Date;
@@ -104,7 +123,7 @@ const ComplaintEventSchema = new Schema<IComplaintEvent>(
 const ComplaintSchema = new Schema<IComplaint>(
   {
     title: { type: String, required: true, trim: true, maxlength: 200 },
-    description: { type: String, required: true, trim: true, maxlength: 2000 },
+    description: { type: String, required: true, trim: true, maxlength: 4000 },
     issueType: {
       type: String,
       enum: [
@@ -157,6 +176,21 @@ const ComplaintSchema = new Schema<IComplaint>(
     reworkComments: { type: String, trim: true, maxlength: 2000 },
     reworkCount: { type: Number, default: 0, min: 0 },
 
+    // Citizen Review (Automation 5)
+    citizenFeedback: { type: String, trim: true, maxlength: 1000 },
+    citizenAcceptedAt: { type: Date },
+
+    // Priority Intelligence & Escalation (Automation 7)
+    priorityLevel: { type: String, enum: ["low", "medium", "high", "critical"], default: "medium" },
+    priorityScore: { type: Number, min: 0, max: 100 },
+    escalationLevel: { type: String, enum: ["none", "attention", "urgent", "critical"], default: "none" },
+    escalationStatus: { type: String, enum: ["not_escalated", "escalated", "acknowledged", "resolved"], default: "not_escalated" },
+    escalationReasons: { type: [String], default: [] },
+    escalatedAt: { type: Date },
+    escalationAcknowledgedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    escalationAcknowledgedAt: { type: Date },
+    escalationResolvedAt: { type: Date },
+
     events: { type: [ComplaintEventSchema], default: [] },
   },
   { timestamps: true },
@@ -165,6 +199,7 @@ const ComplaintSchema = new Schema<IComplaint>(
 ComplaintSchema.index({ cityId: 1, status: 1 });
 ComplaintSchema.index({ assignedTo: 1, status: 1 });
 ComplaintSchema.index({ status: 1, resolvedAt: -1 }); // verification queue
+ComplaintSchema.index({ priorityLevel: 1, escalationStatus: 1 });
 ComplaintSchema.index({ createdAt: -1 });
 
 export const Complaint = mongoose.model<IComplaint>("Complaint", ComplaintSchema);

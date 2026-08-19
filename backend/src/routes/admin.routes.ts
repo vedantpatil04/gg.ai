@@ -16,6 +16,12 @@ import {
   rejectAuthorityRequest,
   // Phase 3B
   getAuthorityWorkload,
+  // Automation 6 — Governance & ML Analytics
+  getGovernanceExceptions,
+  getMLAnalytics,
+  getRoutingAnalytics,
+  getReworkAnalytics,
+  getGovernanceOverview,
 } from "../controllers/admin.controller";
 import { authenticate, authorize } from "../middleware/auth";
 
@@ -42,5 +48,12 @@ router.patch("/authority-requests/:id/reject", rejectAuthorityRequest);
 
 // ─── Phase 3B: assignment workload ───────────────────────────────────────────
 router.get("/workload", getAuthorityWorkload);
+
+// ─── Automation 6: Admin Governance + ML Analytics ────────────────────────────
+router.get("/governance/exceptions", getGovernanceExceptions);
+router.get("/governance/ml-analytics", getMLAnalytics);
+router.get("/governance/routing-analytics", getRoutingAnalytics);
+router.get("/governance/rework-analytics", getReworkAnalytics);
+router.get("/governance/overview", getGovernanceOverview);
 
 export default router;

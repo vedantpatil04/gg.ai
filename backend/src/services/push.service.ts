@@ -211,6 +211,7 @@ const PUSH_PREFERENCE_CATEGORY: Record<NotificationModelCategory, (typeof NOTIFI
   security: "security",
   ai: "system",
   system: "system",
+  support: "system",
 };
 
 async function isPushEnabledForUser(

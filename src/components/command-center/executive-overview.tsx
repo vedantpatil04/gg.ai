@@ -37,6 +37,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { BoardOperationalCard } from "./BoardOperationalCard";
 
 // ─── Cross-tab navigation ─────────────────────────────────────────────────────
 type NavigateFn = (topTabId: string, subTabId?: string) => void;
@@ -865,6 +866,9 @@ export function ExecutiveOverview({ onNavigate }: { onNavigate?: NavigateFn }) {
           </Button>
         </div>
       </div>
+
+      {/* ── 1.5 BOARD OPERATIONAL CONTEXT (Automation 4) ─────────── */}
+      <BoardOperationalCard />
 
       {/* ── 2. PRIORITY STATS BAR ───────────────────────────────────────── */}
       <section className="space-y-2">

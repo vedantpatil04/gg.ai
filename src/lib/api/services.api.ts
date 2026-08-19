@@ -48,12 +48,13 @@ export const complaintApi = {
     client.patch(`/complaints/${id}/notes`, { notes }).then((r) => r.data),
 
   verifyResolution: (id: string) => client.post(`/complaints/${id}/verify`).then((r) => r.data),
-  acceptResolution: (id: string) => client.post(`/complaints/${id}/verify`).then((r) => r.data),
+  acceptResolution: (id: string, data?: { feedback?: string }) =>
+    client.post(`/complaints/${id}/accept`, data ?? {}).then((r) => r.data),
 
   requestRework: (id: string, data: { reason: string; comments?: string }) =>
     client.post(`/complaints/${id}/rework`, data).then((r) => r.data),
   citizenRequestRework: (id: string, data: { reason: string; comments?: string }) =>
-    client.post(`/complaints/${id}/rework`, data).then((r) => r.data),
+    client.post(`/complaints/${id}/request-rework`, data).then((r) => r.data),
 };
 
 // ─── Alerts ───────────────────────────────────────────────────────────────────

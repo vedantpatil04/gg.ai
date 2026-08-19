@@ -3,11 +3,30 @@ import fs   from "fs/promises";
 import path from "path";
 import mongoose from "mongoose";
 import { Complaint, type ComplaintEventType } from "../models/Complaint";
+import { User } from "../models/User";
 import { AppError }          from "../middleware/errorHandler";
 import { AuthRequest }       from "../middleware/auth";
 import { isValidImageBuffer } from "../middleware/uploadPhoto";
 import { getLatestComplaintPrediction, generateComplaintPrediction } from "../services/complaintIntelligence.service";
 import { routeComplaint, getLatestRoutingResult } from "../services/smartRouting.service";
+import {
+  assessComplaintPriority,
+  getLatestPriorityAssessment,
+  acknowledgeEscalation,
+  resolveEscalation,
+} from "../services/priorityIntelligence.service";
+import {
+  notifyComplaintSubmitted,
+  notifyComplaintAssigned,
+  notifyInvestigationStarted,
+  notifyEvidenceAdded,
+  notifyResolutionSubmitted,
+  notifyCitizenReworkRequested,
+  notifyAdminReworkRequested,
+  notifyComplaintClosed,
+  notifyRoutingFailed,
+  getAdminUserIds,
+} from "../services/notification.service";
 
 // ─── Evidence storage ─────────────────────────────────────────────────────────
 // Must resolve to the SAME directory app.ts serves statically at "/uploads"
@@ -88,13 +107,76 @@ export async function createComplaint(req: AuthRequest, res: Response, next: Nex
 
     let complaint = await Complaint.create({ ...safeBody, submittedBy: req.user._id });
 
+    // Step 1: Always notify the citizen that complaint was submitted (Automation 3 requirement 1)
+    void notifyComplaintSubmitted(
+      req.user._id as mongoose.Types.ObjectId,
+      complaint._id.toString(),
+      complaint.title,
+      {
+        cityId: complaint.cityId,
+        issueType: complaint.issueType,
+        priority: complaint.severity,
+        address: complaint.location?.address,
+      },
+    );
+
     const prediction = await generateComplaintPrediction(complaint);
-    await routeComplaint(complaint, prediction);
+    const routingResult = await routeComplaint(complaint, prediction);
 
     // routeComplaint may have mutated and saved `complaint` (on automatic
     // assignment) — re-fetch to return the authoritative, fully populated
     // final state regardless of whether routing assigned it or not.
     complaint = (await Complaint.findById(complaint._id)) ?? complaint;
+
+    // Step 2: Handle post-routing notification events
+    if (complaint.assignedTo) {
+      // Auto-assigned: notify citizen of assignment + notify authority of new assignment
+      const authorityDoc = await User.findById(complaint.assignedTo).select("name email").lean();
+      const authorityName = authorityDoc?.name || "Assigned Authority";
+
+      void notifyComplaintAssigned(
+        req.user._id as mongoose.Types.ObjectId,
+        complaint.assignedTo,
+        complaint._id.toString(),
+        complaint.title,
+        authorityName,
+        false,
+        "automatic",
+        {
+          cityId: complaint.cityId,
+          issueType: complaint.issueType,
+          priority: complaint.severity,
+          address: complaint.location?.address,
+        },
+      );
+    } else {
+      // Unassigned / Routing Pending or Failed -> Alert Administrators
+      const adminIds = await getAdminUserIds();
+      if (adminIds.length > 0) {
+        if (routingResult?.status === "failed") {
+          void notifyRoutingFailed(
+            adminIds,
+            complaint._id.toString(),
+            complaint.title,
+            complaint.cityId,
+            routingResult.failureReason || "Smart Routing could not automatically assign this complaint",
+          );
+        } else {
+          void notifyComplaintSubmitted(
+            req.user._id as mongoose.Types.ObjectId,
+            complaint._id.toString(),
+            complaint.title,
+            {
+              cityId: complaint.cityId,
+              issueType: complaint.issueType,
+              priority: complaint.severity,
+              address: complaint.location?.address,
+            },
+            adminIds,
+          );
+        }
+      }
+    }
 
     res.status(201).json({ success: true, data: { complaint } });
   } catch (err) { next(err); }
@@ -198,6 +280,8 @@ export async function updateComplaint(req: AuthRequest, res: Response, next: Nex
     if (!complaint) return next(new AppError("Complaint not found", 404));
 
     const actor = { _id: req.user._id as mongoose.Types.ObjectId, name: req.user.name };
+    const previousStatus = complaint.status;
+    const previousAssignedTo = complaint.assignedTo;
 
     // ── Citizen: can only touch their own pending complaint ───────────────────
     if (req.user.role === "citizen") {
@@ -224,6 +308,7 @@ export async function updateComplaint(req: AuthRequest, res: Response, next: Nex
     }
 
     const { status, resolution, assignedTo } = req.body;
+    let effectiveStatus: typeof status = undefined;
 
     // ── Status transition ─────────────────────────────────────────────────────
     if (status && status !== complaint.status) {
@@ -237,7 +322,7 @@ export async function updateComplaint(req: AuthRequest, res: Response, next: Nex
       // a resubmitted resolution keeps going to "resolved" for
       // administrator verification exactly as it always has — that
       // existing path is untouched.
-      const effectiveStatus: typeof status =
+      effectiveStatus =
         status === "resolved" && (complaint.reworkCount ?? 0) === 0
           ? "awaiting_citizen_review"
           : status;
@@ -261,8 +346,11 @@ export async function updateComplaint(req: AuthRequest, res: Response, next: Nex
     if (resolution !== undefined) complaint.resolution = resolution;
 
     // ── Assignment (admin only — authority path blocked above) ────────────────
+    let assignmentChanged = false;
+    let isReassign = false;
     if (assignedTo !== undefined && String(assignedTo) !== String(complaint.assignedTo ?? "")) {
-      const isReassign = !!complaint.assignedTo;
+      assignmentChanged = true;
+      isReassign = Boolean(complaint.assignedTo);
       (complaint.assignedTo as unknown) = new mongoose.Types.ObjectId(String(assignedTo));
       complaint.assignedBy     = actor._id;
       complaint.assignedAt     = new Date();
@@ -286,6 +374,70 @@ export async function updateComplaint(req: AuthRequest, res: Response, next: Nex
       { path: "assignedTo",  select: "name email" },
       { path: "assignedBy",  select: "name email" },
     ]);
+
+    // ── Central Notification Triggering (Automation 3) ────────────────────────
+    const citizenId = ((complaint.submittedBy as unknown as { _id?: mongoose.Types.ObjectId })._id || complaint.submittedBy) as mongoose.Types.ObjectId;
+    const currentAuthorityId = complaint.assignedTo
+      ? (((complaint.assignedTo as unknown as { _id?: mongoose.Types.ObjectId })._id || complaint.assignedTo) as mongoose.Types.ObjectId)
+      : undefined;
+
+    // 1. Manual assignment / reassignment
+    if (assignmentChanged && currentAuthorityId) {
+      const assignedToUser = complaint.assignedTo as unknown as { name?: string };
+      const authorityName = assignedToUser?.name || "Assigned Authority";
+
+      void notifyComplaintAssigned(
+        citizenId,
+        currentAuthorityId,
+        complaint._id.toString(),
+        complaint.title,
+        authorityName,
+        isReassign,
+        "manual",
+        {
+          cityId: complaint.cityId,
+          issueType: complaint.issueType,
+          priority: complaint.severity,
+          address: complaint.location?.address,
+        },
+      );
+    }
+
+    // 2. Status transitions
+    if (effectiveStatus && effectiveStatus !== previousStatus) {
+      if (effectiveStatus === "in-progress" && previousStatus !== "in-progress") {
+        void notifyInvestigationStarted(
+          citizenId,
+          complaint._id.toString(),
+          complaint.title,
+          complaint.cityId,
+        );
+      } else if (effectiveStatus === "awaiting_citizen_review") {
+        // Normal Citizen Review resolution
+        void notifyResolutionSubmitted(
+          citizenId,
+          currentAuthorityId,
+          [],
+          complaint._id.toString(),
+          complaint.title,
+          "citizen_review",
+          complaint.resolution || "Resolution submitted for your review.",
+        );
+      } else if (effectiveStatus === "resolved") {
+        // Post-rework resolution awaiting admin verification
+        const adminIds = await getAdminUserIds();
+        void notifyResolutionSubmitted(
+          citizenId,
+          currentAuthorityId,
+          adminIds,
+          complaint._id.toString(),
+          complaint.title,
+          "admin_verify",
+          complaint.resolution || "Revised resolution submitted for verification.",
+        );
+      }
+    }
+
     res.json({ success: true, data: { complaint } });
   } catch (err) { next(err); }
 }
@@ -355,6 +507,17 @@ export async function addComplaintImages(req: AuthRequest, res: Response, next: 
       { path: "submittedBy", select: "name email role" },
       { path: "assignedTo",  select: "name email" },
     ]);
+
+    // Notify citizen if evidence was added by an authority (stripped of internal details)
+    if (req.user.role === "authority") {
+      const citizenId = ((complaint.submittedBy as unknown as { _id?: mongoose.Types.ObjectId })._id || complaint.submittedBy) as mongoose.Types.ObjectId;
+      void notifyEvidenceAdded(
+        citizenId,
+        complaint._id.toString(),
+        complaint.title,
+      );
+    }
+
     res.json({ success: true, data: { complaint, invalidFiles: invalid.length ? invalid : undefined } });
   } catch (err) { next(err); }
 }
@@ -446,6 +609,21 @@ export async function verifyResolution(req: AuthRequest, res: Response, next: Ne
       { path: "assignedTo",  select: "name email" },
       { path: "verifiedBy",  select: "name email" },
     ]);
+
+    // Notify citizen & authority of verified closure (deduplicated to prevent duplicate closure notices)
+    const citizenId = ((complaint.submittedBy as unknown as { _id?: mongoose.Types.ObjectId })._id || complaint.submittedBy) as mongoose.Types.ObjectId;
+    const authorityId = complaint.assignedTo
+      ? (((complaint.assignedTo as unknown as { _id?: mongoose.Types.ObjectId })._id || complaint.assignedTo) as mongoose.Types.ObjectId)
+      : undefined;
+
+    void notifyComplaintClosed(
+      citizenId,
+      authorityId,
+      complaint._id.toString(),
+      complaint.title,
+      "admin_verified",
+    );
+
     res.json({ success: true, data: { complaint } });
   } catch (err) { next(err); }
 }
@@ -483,6 +661,19 @@ export async function requestRework(req: AuthRequest, res: Response, next: NextF
       { path: "submittedBy", select: "name email role" },
       { path: "assignedTo",  select: "name email" },
     ]);
+
+    // Admin-initiated rework -> Notify assigned authority
+    if (complaint.assignedTo) {
+      const authorityId = ((complaint.assignedTo as unknown as { _id?: mongoose.Types.ObjectId })._id || complaint.assignedTo) as mongoose.Types.ObjectId;
+      void notifyAdminReworkRequested(
+        authorityId,
+        complaint._id.toString(),
+        complaint.title,
+        reason.trim(),
+        comments?.trim(),
+      );
+    }
+
     res.json({ success: true, data: { complaint } });
   } catch (err) { next(err); }
 }
@@ -499,7 +690,11 @@ export async function acceptResolution(req: AuthRequest, res: Response, next: Ne
     const complaint = await Complaint.findById(req.params.id);
     if (!complaint) return next(new AppError("Complaint not found", 404));
 
-    if (complaint.submittedBy.toString() !== req.user._id.toString()) {
+    const submittedById =
+      (complaint.submittedBy as unknown as { _id?: mongoose.Types.ObjectId })._id?.toString() ??
+      complaint.submittedBy.toString();
+
+    if (submittedById !== req.user._id.toString()) {
       return next(new AppError("Access denied", 403));
     }
     if (complaint.status !== "awaiting_citizen_review") {
@@ -507,9 +702,21 @@ export async function acceptResolution(req: AuthRequest, res: Response, next: Ne
     }
 
     const actor = { _id: req.user._id as mongoose.Types.ObjectId, name: req.user.name };
+    const { feedback } = req.body as { feedback?: string };
 
     complaint.status = "closed";
-    appendEvent(complaint, "citizen_accepted", `Resolution accepted by ${actor.name}`, actor);
+    complaint.citizenAcceptedAt = new Date();
+    if (feedback && feedback.trim()) {
+      complaint.citizenFeedback = feedback.trim();
+      appendEvent(
+        complaint,
+        "citizen_accepted",
+        `Resolution accepted by ${actor.name}: "${feedback.trim().slice(0, 100)}"`,
+        actor,
+      );
+    } else {
+      appendEvent(complaint, "citizen_accepted", `Resolution accepted by ${actor.name}`, actor);
+    }
     appendEvent(complaint, "closed", "Complaint closed", actor);
 
     await complaint.save();
@@ -517,6 +724,21 @@ export async function acceptResolution(req: AuthRequest, res: Response, next: Ne
       { path: "submittedBy", select: "name email role" },
       { path: "assignedTo",  select: "name email phone" },
     ]);
+
+    // Notify citizen & authority of closure (deduplicated)
+    const citizenId = ((complaint.submittedBy as unknown as { _id?: mongoose.Types.ObjectId })._id || complaint.submittedBy) as mongoose.Types.ObjectId;
+    const authorityId = complaint.assignedTo
+      ? (((complaint.assignedTo as unknown as { _id?: mongoose.Types.ObjectId })._id || complaint.assignedTo) as mongoose.Types.ObjectId)
+      : undefined;
+
+    void notifyComplaintClosed(
+      citizenId,
+      authorityId,
+      complaint._id.toString(),
+      complaint.title,
+      "citizen_accepted",
+    );
+
     res.json({ success: true, data: { complaint } });
   } catch (err) { next(err); }
 }
@@ -541,7 +763,11 @@ export async function citizenRequestRework(req: AuthRequest, res: Response, next
     const complaint = await Complaint.findById(req.params.id);
     if (!complaint) return next(new AppError("Complaint not found", 404));
 
-    if (complaint.submittedBy.toString() !== req.user._id.toString()) {
+    const submittedById =
+      (complaint.submittedBy as unknown as { _id?: mongoose.Types.ObjectId })._id?.toString() ??
+      complaint.submittedBy.toString();
+
+    if (submittedById !== req.user._id.toString()) {
       return next(new AppError("Access denied", 403));
     }
     if (complaint.status !== "awaiting_citizen_review") {
@@ -561,6 +787,22 @@ export async function citizenRequestRework(req: AuthRequest, res: Response, next
       { path: "submittedBy", select: "name email role" },
       { path: "assignedTo",  select: "name email phone" },
     ]);
+
+    // Notify authority and administrator governance queue
+    const adminIds = await getAdminUserIds();
+    const authorityId = complaint.assignedTo
+      ? (((complaint.assignedTo as unknown as { _id?: mongoose.Types.ObjectId })._id || complaint.assignedTo) as mongoose.Types.ObjectId)
+      : undefined;
+
+    void notifyCitizenReworkRequested(
+      authorityId,
+      adminIds,
+      complaint._id.toString(),
+      complaint.title,
+      reason.trim(),
+      comments?.trim(),
+    );
+
     res.json({ success: true, data: { complaint } });
   } catch (err) { next(err); }
 }
@@ -642,6 +884,106 @@ export async function getComplaintRouting(
         routing: routing ?? null,
       },
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ─── Automation 7 — Priority Intelligence & Escalation Handlers ───────────────
+
+export async function getComplaintPriorityIntelligence(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) return next(new AppError("Not authenticated", 401));
+
+    const complaint = await Complaint.findById(req.params.id);
+    if (!complaint) return next(new AppError("Complaint not found", 404));
+
+    // Role-based data sanitization
+    if (req.user.role === "citizen") {
+      const submittedById =
+        (complaint.submittedBy as unknown as { _id?: mongoose.Types.ObjectId })._id?.toString() ??
+        complaint.submittedBy.toString();
+      if (submittedById !== req.user._id.toString()) {
+        return next(new AppError("Access denied", 403));
+      }
+      // Safe citizen view — no internal scoring weights or governance reasons
+      res.json({
+        success: true,
+        data: {
+          complaintId: req.params.id,
+          priorityLevel: complaint.priorityLevel || complaint.severity,
+          escalationStatus: complaint.escalationStatus === "escalated" ? "high_priority_review" : "standard",
+        },
+      });
+      return;
+    }
+
+    if (req.user.role === "authority") {
+      const assignedTo = complaint.assignedTo?.toString() ?? "";
+      if (assignedTo !== req.user._id.toString()) {
+        return next(new AppError("Access denied — this complaint is not assigned to you", 403));
+      }
+    }
+
+    // Full assessment for Admin and Assigned Authority
+    let assessment = await getLatestPriorityAssessment(req.params.id);
+    if (!assessment) {
+      assessment = await assessComplaintPriority(complaint);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        complaintId: req.params.id,
+        assessment: assessment ?? null,
+        priorityLevel: complaint.priorityLevel || "medium",
+        priorityScore: complaint.priorityScore || 50,
+        escalationLevel: complaint.escalationLevel || "none",
+        escalationStatus: complaint.escalationStatus || "not_escalated",
+        reasons: complaint.escalationReasons || [],
+        escalatedAt: complaint.escalatedAt,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function acknowledgeComplaintEscalation(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) return next(new AppError("Not authenticated", 401));
+    if (req.user.role !== "administrator" && req.user.role !== "authority") {
+      return next(new AppError("Only administrators and assigned authorities can acknowledge escalations", 403));
+    }
+
+    const complaint = await acknowledgeEscalation(req.params.id, req.user);
+    res.json({ success: true, data: { complaint } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function resolveComplaintEscalation(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) return next(new AppError("Not authenticated", 401));
+    if (req.user.role !== "administrator" && req.user.role !== "authority") {
+      return next(new AppError("Only administrators and assigned authorities can resolve escalations", 403));
+    }
+
+    const complaint = await resolveEscalation(req.params.id, req.user);
+    res.json({ success: true, data: { complaint } });
   } catch (err) {
     next(err);
   }
