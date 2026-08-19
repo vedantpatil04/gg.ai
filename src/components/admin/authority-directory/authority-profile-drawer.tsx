@@ -25,6 +25,7 @@ import {
   Ban,
   RefreshCw,
   ChevronDown,
+  ArrowLeft,
 } from "lucide-react";
 import {
   Sheet,
@@ -218,13 +219,25 @@ export function AuthorityProfileDrawer({
           ) : (
             <>
               {/* ── Sticky header ── */}
-              <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-6 py-4">
+              <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-4 sm:px-6 py-3 sm:py-4">
+                <div className="mb-2.5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onOpenChange(false)}
+                    className="h-7 -ml-2 px-2 text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                  >
+                    <ArrowLeft className="size-3.5" />
+                    Back to Authority Directory
+                  </Button>
+                </div>
+
                 <SheetHeader className="text-left gap-3">
-                  <div className="flex items-start gap-4">
+                  <div className="flex items-start gap-3 sm:gap-4">
                     <ProfileAvatar name={a.name} avatar={a.avatar} />
                     <div className="flex-1 min-w-0">
-                      <SheetTitle className="text-lg">{a.name}</SheetTitle>
-                      <SheetDescription className="text-xs">
+                      <SheetTitle className="text-base sm:text-lg">{a.name}</SheetTitle>
+                      <SheetDescription className="text-xs truncate">
                         {a.designation || "Authority"}{a.department ? ` · ${a.department}` : ""}
                         {a.employeeId && <span className="ml-1 text-muted-foreground">#{a.employeeId}</span>}
                       </SheetDescription>
@@ -249,13 +262,13 @@ export function AuthorityProfileDrawer({
 
               {/* ── Tabs ── */}
               <Tabs value={tab} onValueChange={setTab} className="flex-1">
-                <div className="px-6 pt-3 border-b">
+                <div className="px-4 sm:px-6 pt-2 sm:pt-3 border-b overflow-x-auto scrollbar-hide">
                   <TabsList className="w-full justify-start gap-0 bg-transparent p-0 h-auto">
                     {["overview", "cities", "workload", "performance", "activity"].map((t) => (
                       <TabsTrigger
                         key={t}
                         value={t}
-                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent capitalize pb-2.5 text-xs"
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent capitalize pb-2 sm:pb-2.5 text-xs whitespace-nowrap px-3 sm:px-4"
                       >
                         {t}
                       </TabsTrigger>
@@ -263,7 +276,7 @@ export function AuthorityProfileDrawer({
                   </TabsList>
                 </div>
 
-                <div className="px-6 py-5 space-y-5">
+                <div className="px-4 sm:px-6 py-4 sm:py-5 space-y-5">
                   {/* ── Overview ── */}
                   <TabsContent value="overview" className="mt-0 space-y-5">
                     <div className="space-y-3">

@@ -13,6 +13,7 @@ import {
   UserPlus,
   RotateCcw,
   Lock,
+  ArrowLeft,
 } from "lucide-react";
 import {
   Sheet,
@@ -133,17 +134,29 @@ export function ComplaintDetailPanel({
 }: ComplaintDetailPanelProps) {
   return (
     <Sheet open={!!complaint} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto p-4 sm:p-6">
         {complaint && (
           <>
+            <div className="mb-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onOpenChange(false)}
+                className="h-8 -ml-2 px-2 text-xs text-muted-foreground hover:text-foreground gap-1.5"
+              >
+                <ArrowLeft className="size-3.5" />
+                Back to Complaint Queue
+              </Button>
+            </div>
+
             <SheetHeader>
-              <SheetTitle>{complaint.title}</SheetTitle>
+              <SheetTitle className="text-lg font-bold leading-snug">{complaint.title}</SheetTitle>
               <SheetDescription>
                 #{complaint._id.slice(-6)} · {humanizeIssueType(complaint.issueType)}
               </SheetDescription>
             </SheetHeader>
 
-            <div className="mt-6 space-y-5">
+            <div className="mt-5 space-y-5">
               <div className="flex items-center gap-2 flex-wrap">
                 <Pill tone={STATUS_PILL_TONE[complaint.status]}>
                   {STATUS_LABEL[complaint.status]}

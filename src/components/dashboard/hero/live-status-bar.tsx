@@ -1,18 +1,11 @@
 /**
- * LiveStatusBar — Cinematic Hero Phase 1
+ * LiveStatusBar — Responsive Cinematic Hero Status Bar
  *
- * A floating glass pill row that shows live sensor data at a glance.
- * Positioned at the top of the hero (or bottom on mobile).
+ * A floating glass pill row displaying live sensor telemetry at a glance.
+ * Smoothly touch-scrollable on mobile with compact padding and crisp hierarchy.
  *
  * Displays:
  *   🛰 Live · AQI · Temperature · Humidity · Wind · Sensors Online · Last Updated
- *
- * Features:
- * - Pulsing live indicator
- * - Glassmorphism pill
- * - Subtle glow on active
- * - Horizontally scrollable on mobile (no wrapping needed)
- * - Reduced motion: pulse suppressed
  */
 
 import { motion, useReducedMotion } from "framer-motion";
@@ -31,45 +24,45 @@ interface StatusPillProps {
 function StatusPill({ icon: Icon, label, value, unit, highlight, highlightColor }: StatusPillProps) {
   return (
     <div
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shrink-0 transition-colors"
+      className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0 transition-colors"
       style={{
         background: highlight
           ? `${highlightColor}18`
-          : "rgba(255,255,255,0.06)",
+          : "rgba(255,255,255,0.08)",
         border: highlight
-          ? `1px solid ${highlightColor}40`
-          : "1px solid rgba(255,255,255,0.09)",
+          ? `1px solid ${highlightColor}45`
+          : "1px solid rgba(255,255,255,0.12)",
+        backdropFilter: "blur(12px)",
       }}
     >
       <Icon
-        className="size-3.5 shrink-0"
-        style={{ color: highlight ? highlightColor : "rgba(255,255,255,0.55)" }}
+        className="size-3 sm:size-3.5 shrink-0"
+        style={{ color: highlight ? highlightColor : "rgba(255,255,255,0.65)" }}
       />
       <span
-        className="text-[11px] font-medium tabular-nums"
-        style={{ color: highlight ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.65)" }}
+        className="text-[10px] sm:text-[11px] font-semibold tabular-nums"
+        style={{ color: highlight ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.80)" }}
       >
         {value}
         {unit && (
-          <span style={{ color: highlight ? highlightColor : "rgba(255,255,255,0.40)" }}>
+          <span style={{ color: highlight ? highlightColor : "rgba(255,255,255,0.50)" }}>
             &thinsp;{unit}
           </span>
         )}
       </span>
-      <span className="text-[10px] hidden sm:inline" style={{ color: "rgba(255,255,255,0.30)" }}>
+      <span className="text-[9px] sm:text-[10px] hidden md:inline" style={{ color: "rgba(255,255,255,0.40)" }}>
         {label}
       </span>
     </div>
   );
 }
 
-/** Separator between pills */
 function Sep() {
   return (
     <div
       aria-hidden
-      className="w-px h-4 shrink-0 self-center"
-      style={{ background: "rgba(255,255,255,0.10)" }}
+      className="w-px h-3.5 sm:h-4 shrink-0 self-center"
+      style={{ background: "rgba(255,255,255,0.12)" }}
     />
   );
 }
@@ -94,40 +87,37 @@ export function LiveStatusBar({
   const prefersReduced = useReducedMotion() ?? false;
   const band = findAqiBand(aqi);
 
-  // Derive highlight color from AQI
-  const aqiColor =
-    aqi <= 50  ? "#10b981" :
-    aqi <= 100 ? "#eab308" :
-    aqi <= 150 ? "#f97316" :
-    aqi <= 200 ? "#ef4444" :
-                 "#a855f7";
+  const aqiColor = band.color;
 
   return (
     <motion.div
-      className="flex items-center gap-1.5 overflow-x-auto scrollbar-none"
+      className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-full py-0.5"
       initial={prefersReduced ? false : { opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={prefersReduced ? { duration: 0 } : { duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-      style={{ scrollbarWidth: "none" }}
+      style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
     >
       {/* Live indicator */}
       <div
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shrink-0"
+        className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0"
         style={{
-          background: "rgba(16,185,129,0.15)",
-          border: "1px solid rgba(16,185,129,0.35)",
+          background: "rgba(16,185,129,0.18)",
+          border: "1px solid rgba(16,185,129,0.40)",
+          backdropFilter: "blur(12px)",
         }}
       >
         <span
-          className="size-2 rounded-full shrink-0"
+          className="size-1.5 sm:size-2 rounded-full shrink-0"
           style={{
             background: "#10b981",
             boxShadow: "0 0 6px #10b981",
             animation: prefersReduced ? "none" : "live-pulse 2s ease-in-out infinite",
           }}
         />
-        <Radio className="size-3.5 text-emerald-400 shrink-0" />
-        <span className="text-[11px] font-semibold text-emerald-400">Live</span>
+        <Radio className="size-3 sm:size-3.5 text-emerald-400 shrink-0" />
+        <span className="text-[10px] sm:text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
+          Live
+        </span>
       </div>
 
       <Sep />
@@ -170,17 +160,18 @@ export function LiveStatusBar({
         <>
           <Sep />
           <div
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shrink-0"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0"
             style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.09)",
+              background: "rgba(255,255,255,0.08)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              backdropFilter: "blur(12px)",
             }}
           >
             <span
               className="size-1.5 rounded-full bg-emerald-400 shrink-0"
               style={{ animation: prefersReduced ? "none" : "live-pulse 3s ease-in-out 1s infinite" }}
             />
-            <span className="text-[11px] text-white/65 font-medium">
+            <span className="text-[10px] sm:text-[11px] text-white/75 font-medium">
               {sensorsOnline} sensors
             </span>
           </div>

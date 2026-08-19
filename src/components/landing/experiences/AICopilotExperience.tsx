@@ -125,7 +125,7 @@ export function AICopilotExperience() {
   };
 
   return (
-    <section className="relative overflow-hidden py-16 lg:py-20">
+    <section className="relative overflow-hidden py-14 lg:py-16">
       {/* Command-center backdrop — kept quiet, not glowy */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-gradient-to-b from-background via-[color:var(--color-chart-5)]/[0.04] to-background" />

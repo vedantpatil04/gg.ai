@@ -49,6 +49,24 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- Phase 3 — FCM background/terminated notification defaults.
+             These only apply when Android itself auto-displays a message
+             (app backgrounded or fully closed) — the channel id here must
+             match ANDROID_NOTIFICATION_CHANNEL_ID in the backend's
+             push.service.ts and the channel created by the JS push bridge
+             on Android at app start. Without these, Android would fall
+             back to the full-color launcher icon in a generic "Miscellaneous"
+             channel bucket. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="gg_notifications" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_notify" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_accent_color" />
     </application>
 
 </manifest>

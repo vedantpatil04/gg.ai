@@ -7,13 +7,13 @@ import { usePlatformConfig } from "../platform-admin-api";
 
 function ConfigRow({ label, value, ok }: { label: string; value: string; ok?: boolean }) {
   return (
-    <div className="flex items-center justify-between py-2.5 border-b last:border-0">
-      <span className="text-sm text-muted-foreground">{label}</span>
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 py-2.5 border-b last:border-0">
+      <span className="text-xs sm:text-sm text-muted-foreground">{label}</span>
       <div className="flex items-center gap-2">
         {ok !== undefined && (
-          ok ? <CheckCircle2 className="size-3.5 text-success" /> : <XCircle className="size-3.5 text-muted-foreground" />
+          ok ? <CheckCircle2 className="size-3.5 text-success shrink-0" /> : <XCircle className="size-3.5 text-muted-foreground shrink-0" />
         )}
-        <span className="text-sm font-medium">{value}</span>
+        <span className="text-xs sm:text-sm font-medium break-all sm:break-normal">{value}</span>
       </div>
     </div>
   );
@@ -23,7 +23,7 @@ function Section({
   icon: Icon, title, children,
 }: { icon: React.ComponentType<{ className?: string }>; title: string; children: React.ReactNode }) {
   return (
-    <div className="glass rounded-2xl p-5 space-y-3">
+    <div className="glass rounded-2xl p-4 sm:p-5 space-y-3">
       <div className="flex items-center gap-2">
         <Icon className="size-4 text-primary" />
         <h3 className="text-sm font-semibold">{title}</h3>
@@ -38,12 +38,12 @@ export function PlatformSettingsPage() {
   const { data, isLoading, isError } = usePlatformConfig();
 
   return (
-    <div className="px-4 md:px-6 py-6 space-y-5">
+    <div className="px-3.5 sm:px-4 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5 max-w-full overflow-hidden">
       <SectionTitle
         eyebrow="Platform"
         title="Platform Settings"
         action={
-          <Button variant="outline" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ["pa-config"] })}>
+          <Button variant="outline" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ["pa-config"] })} className="h-8 text-xs">
             <RefreshCw className="size-3.5 mr-1.5" />Refresh
           </Button>
         }

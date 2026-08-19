@@ -37,7 +37,7 @@ export function UserDirectoryPage() {
   const limit = searchTerm.trim() ? 100 : 20;
 
   return (
-    <div className="px-4 md:px-6 py-6 space-y-5">
+    <div className="px-3.5 sm:px-4 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5 max-w-full overflow-hidden">
       <SectionTitle
         eyebrow="Administration"
         title="User Directory"
@@ -46,6 +46,7 @@ export function UserDirectoryPage() {
             variant="outline"
             size="sm"
             onClick={() => qc.invalidateQueries({ queryKey: ["admin-users-directory"] })}
+            className="h-8 text-xs"
           >
             <RefreshCw className="size-3.5 mr-1.5" />
             Refresh
@@ -53,34 +54,34 @@ export function UserDirectoryPage() {
         }
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Role tabs — mirrors the same pattern used in
-            src/components/admin/authority-requests/authority-requests-page.tsx */}
-        <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl w-fit border border-border">
-          {ROLE_TABS.map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => {
-                setRole(tab.value);
-                setPage(1);
-              }}
-              className={cn(
-                "flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all",
-                role === tab.value
-                  ? "bg-card shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <tab.icon className="size-3.5" />
-              {tab.label}
-            </button>
-          ))}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Role tabs */}
+        <div className="overflow-x-auto scrollbar-hide pb-0.5 -mx-1 px-1 sm:mx-0 sm:px-0">
+          <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl w-max border border-border">
+            {ROLE_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => {
+                  setRole(tab.value);
+                  setPage(1);
+                }}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap",
+                  role === tab.value
+                    ? "bg-card shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <tab.icon className="size-3.5" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Active/Inactive — the one additional filter /admin/users
-              already supports (isActive query param) */}
-          <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl w-fit border border-border">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+          {/* Active/Inactive filter */}
+          <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl border border-border shrink-0">
             {STATUS_FILTERS.map((f) => (
               <button
                 key={f.value}
@@ -89,7 +90,7 @@ export function UserDirectoryPage() {
                   setPage(1);
                 }}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                  "px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-medium transition-all",
                   statusFilter === f.value
                     ? "bg-card shadow-sm text-foreground"
                     : "text-muted-foreground hover:text-foreground",
@@ -100,7 +101,7 @@ export function UserDirectoryPage() {
             ))}
           </div>
 
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none min-w-[180px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
             <Input
               value={searchTerm}
@@ -109,13 +110,13 @@ export function UserDirectoryPage() {
                 setPage(1);
               }}
               placeholder="Search name or email..."
-              className="pl-8 h-9 w-56"
+              className="pl-8 h-9 w-full sm:w-56 text-xs sm:text-sm"
             />
           </div>
         </div>
       </div>
 
-      <div className="glass rounded-2xl p-4 md:p-5">
+      <div className="glass rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden">
         <UserDirectoryList
           role={role === "all" ? undefined : role}
           isActive={isActive}

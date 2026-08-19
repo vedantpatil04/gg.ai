@@ -43,7 +43,7 @@ export function Hero() {
 
       <motion.div
         style={{ y: reducedMotion ? 0 : yRaw, opacity: reducedMotion ? 1 : opacityRaw }}
-        className={`${LANDING_CONTAINER} flex min-h-[88vh] items-center pb-16 pt-8 lg:min-h-[94vh] lg:pb-24 lg:pt-10`}
+        className={`${LANDING_CONTAINER} flex min-h-[560px] items-center pb-12 pt-8 lg:min-h-[640px] lg:pb-14 lg:pt-10`}
       >
         <motion.div
           initial="hidden"

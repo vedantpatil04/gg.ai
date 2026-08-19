@@ -90,56 +90,102 @@ export function UserDirectoryList({
 
   return (
     <div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Approval</TableHead>
-            <TableHead>Account</TableHead>
-            <TableHead>Registered</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {users.map((u) => (
-            <TableRow key={u._id} className="cursor-pointer" onClick={() => onSelect(u)}>
-              <TableCell className="font-medium">{u.name}</TableCell>
-              <TableCell className="text-muted-foreground">{u.email}</TableCell>
-              <TableCell>
-                <Pill tone={ROLE_PILL_TONE[u.role]}>{u.role}</Pill>
-              </TableCell>
-              <TableCell>
-                {u.role === "authority" ? (
-                  <Pill tone={APPROVAL_PILL_TONE[u.approvalStatus]}>{u.approvalStatus}</Pill>
-                ) : (
-                  <span className="text-muted-foreground">—</span>
+      {/* Mobile Stacked Cards (< md) */}
+      <div className="md:hidden space-y-2.5">
+        {users.map((u) => (
+          <div
+            key={u._id}
+            onClick={() => onSelect(u)}
+            className="p-3.5 rounded-xl border border-border/70 bg-card hover:bg-muted/40 active:bg-muted/60 transition-all cursor-pointer space-y-2"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="size-8 rounded-lg bg-primary/10 text-primary text-xs font-semibold grid place-items-center shrink-0">
+                  {u.name.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold truncate leading-snug">{u.name}</div>
+                  <div className="text-xs text-muted-foreground truncate">{u.email}</div>
+                </div>
+              </div>
+              <Pill tone={ROLE_PILL_TONE[u.role]} className="shrink-0">
+                {u.role}
+              </Pill>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 text-xs pt-1 border-t border-border/40">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {u.role === "authority" && (
+                  <Pill tone={APPROVAL_PILL_TONE[u.approvalStatus]}>
+                    {u.approvalStatus}
+                  </Pill>
                 )}
-              </TableCell>
-              <TableCell>
                 <Pill tone={u.isActive ? "success" : "muted"}>
                   {u.isActive ? "Active" : "Inactive"}
                 </Pill>
-              </TableCell>
-              <TableCell className="text-muted-foreground">
+              </div>
+              <span className="text-[11px] text-muted-foreground shrink-0">
                 {format(new Date(u.createdAt), "MMM d, yyyy")}
-              </TableCell>
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop Table (md+) */}
+      <div className="hidden md:block overflow-x-auto scrollbar-hide">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Approval</TableHead>
+              <TableHead>Account</TableHead>
+              <TableHead>Registered</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {users.map((u) => (
+              <TableRow key={u._id} className="cursor-pointer hover:bg-muted/40" onClick={() => onSelect(u)}>
+                <TableCell className="font-medium">{u.name}</TableCell>
+                <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                <TableCell>
+                  <Pill tone={ROLE_PILL_TONE[u.role]}>{u.role}</Pill>
+                </TableCell>
+                <TableCell>
+                  {u.role === "authority" ? (
+                    <Pill tone={APPROVAL_PILL_TONE[u.approvalStatus]}>{u.approvalStatus}</Pill>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Pill tone={u.isActive ? "success" : "muted"}>
+                    {u.isActive ? "Active" : "Inactive"}
+                  </Pill>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {format(new Date(u.createdAt), "MMM d, yyyy")}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
 
       {!term && data && data.pagination.pages > 1 && (
-        <div className="flex items-center justify-between mt-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-3 border-t border-border/50">
           <span className="text-xs text-muted-foreground">
             Page {data.pagination.page} of {data.pagination.pages} · {data.pagination.total} total
           </span>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto justify-end">
             <Button
               variant="outline"
               size="sm"
               disabled={page <= 1}
               onClick={() => onPageChange(page - 1)}
+              className="h-8 text-xs flex-1 sm:flex-none"
             >
               <ChevronLeft className="size-3.5 mr-1" />
               Prev
@@ -149,6 +195,7 @@ export function UserDirectoryList({
               size="sm"
               disabled={page >= data.pagination.pages}
               onClick={() => onPageChange(page + 1)}
+              className="h-8 text-xs flex-1 sm:flex-none"
             >
               Next
               <ChevronRight className="size-3.5 ml-1" />

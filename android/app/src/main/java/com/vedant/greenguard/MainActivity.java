@@ -6,6 +6,7 @@ import androidx.annotation.Nullable;
 
 import com.getcapacitor.BridgeActivity;
 import com.vedant.greenguard.downloads.WebDownloadManager;
+import com.vedant.greenguard.notifications.NotificationPermissionPlugin;
 import com.vedant.greenguard.permissions.PermissionManager;
 
 public class MainActivity extends BridgeActivity {
@@ -14,6 +15,15 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+        // Phase 3: local plugins must be registered before super.onCreate()
+        // runs (that's what actually starts the Capacitor bridge). This is
+        // the JS bridge onto PermissionManager's NOTIFICATIONS category —
+        // see NotificationPermissionPlugin's class doc for why it exists
+        // instead of using @capacitor/push-notifications' own permission
+        // flow. FCM token retrieval/message handling itself is that
+        // official plugin, auto-registered via capacitor.plugins.json.
+        registerPlugin(NotificationPermissionPlugin.class);
+
         super.onCreate(savedInstanceState);
         // Registered here (before the activity reaches STARTED) so it stays
         // lifecycle-safe. Nothing is requested yet - this only makes the

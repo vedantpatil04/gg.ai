@@ -24,9 +24,9 @@ export function AdminPlatformStats() {
 
   if (stats.isLoading || cities.isLoading) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-[124px] rounded-2xl" />
+          <Skeleton key={i} className="h-[116px] sm:h-[124px] rounded-2xl" />
         ))}
       </div>
     );
@@ -42,9 +42,9 @@ export function AdminPlatformStats() {
   const totalAuthorities = usersByRole.find((r) => r._id === "authority")?.count ?? 0;
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
       {/* Phase 2.4 — the one card that navigates, to the new User Directory */}
-      <Link to="/admin/users" className="block rounded-2xl transition-opacity hover:opacity-90">
+      <Link to="/admin/users" className="block rounded-2xl transition-opacity hover:opacity-90 active:scale-[0.99]">
         <StatCard
           label="Total Users"
           value={stats.data.users ?? 0}
@@ -62,19 +62,21 @@ export function AdminPlatformStats() {
         icon={<ClipboardList className="size-4" />}
       />
       {/* Phase 2.6 — the second navigable card, to the new City Directory */}
-      <Link to="/admin/cities" className="block rounded-2xl transition-opacity hover:opacity-90">
+      <Link to="/admin/cities" className="block rounded-2xl transition-opacity hover:opacity-90 active:scale-[0.99]">
         <StatCard
           label="Cities Monitored"
           value={cities.data?.total ?? 0}
           icon={<Building2 className="size-4" />}
         />
       </Link>
-      <StatCard
-        label="Active Alerts"
-        value={stats.data.activeAlerts ?? 0}
-        icon={<AlertTriangle className="size-4" />}
-        accent="warning"
-      />
+      <div className="col-span-2 sm:col-span-1">
+        <StatCard
+          label="Active Alerts"
+          value={stats.data.activeAlerts ?? 0}
+          icon={<AlertTriangle className="size-4" />}
+          accent="warning"
+        />
+      </div>
     </div>
   );
 }

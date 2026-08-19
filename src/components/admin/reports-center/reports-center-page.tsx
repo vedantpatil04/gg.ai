@@ -105,7 +105,7 @@ export function ReportsCenterPage() {
   const hasSearch = !!search.trim();
 
   return (
-    <div className="px-4 md:px-6 py-6 space-y-5">
+    <div className="px-3.5 sm:px-4 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5 max-w-full overflow-hidden">
       <SectionTitle
         eyebrow="Intelligence"
         title="Reports Center"
@@ -115,11 +115,12 @@ export function ReportsCenterPage() {
               variant="outline"
               size="sm"
               onClick={() => qc.invalidateQueries({ queryKey: ["admin-reports"] })}
+              className="h-8 text-xs"
             >
               <RefreshCw className="size-3.5 mr-1.5" />
               Refresh
             </Button>
-            <Button size="sm" className="gap-1.5" onClick={() => setGenerating((v) => !v)}>
+            <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={() => setGenerating((v) => !v)}>
               <Sparkles className="size-3.5" />
               Generate
             </Button>
@@ -129,15 +130,15 @@ export function ReportsCenterPage() {
 
       {/* ── Generate panel ── */}
       {generating && (
-        <div className="glass rounded-2xl p-5 space-y-4 animate-in slide-in-from-top-2 duration-200">
+        <div className="glass rounded-2xl p-4 sm:p-5 space-y-4 animate-in slide-in-from-top-2 duration-200">
           <h3 className="text-sm font-semibold">Generate AI Report</h3>
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="space-y-1.5">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+            <div className="space-y-1.5 flex-1">
               <label className="text-xs text-muted-foreground font-medium">Report Type</label>
               <select
                 value={genType}
                 onChange={(e) => setGenType(e.target.value as typeof genType)}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-primary/30"
                 aria-label="Report type"
               >
                 {(["Daily", "Weekly", "Monthly", "City", "Sustainability"] as const).map((t) => (
@@ -145,17 +146,18 @@ export function ReportsCenterPage() {
                 ))}
               </select>
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 flex-1">
               <label className="text-xs text-muted-foreground font-medium">City</label>
-              <div className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-muted-foreground h-9 flex items-center">
+              <div className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs sm:text-sm text-muted-foreground h-9 flex items-center">
                 {city.name}
               </div>
             </div>
-            <div className="flex gap-2 pb-0.5">
+            <div className="flex gap-2 pb-0.5 pt-1 sm:pt-0">
               <Button
                 size="sm"
                 disabled={generateMutation.isPending}
                 onClick={() => generateMutation.mutate()}
+                className="h-9 text-xs flex-1 sm:flex-none"
               >
                 {generateMutation.isPending ? (
                   <Loader2 className="size-3.5 mr-1.5 animate-spin" />
@@ -164,7 +166,7 @@ export function ReportsCenterPage() {
                 )}
                 Generate for {city.name}
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setGenerating(false)}>
+              <Button variant="ghost" size="sm" onClick={() => setGenerating(false)} className="h-9 text-xs">
                 Cancel
               </Button>
             </div>
@@ -181,7 +183,7 @@ export function ReportsCenterPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search reports…"
-              className="pl-8 h-9"
+              className="pl-8 h-9 text-xs sm:text-sm"
               aria-label="Search reports"
             />
             {search && (
@@ -217,7 +219,7 @@ export function ReportsCenterPage() {
       </div>
 
       {/* ── Report list ── */}
-      <div className="glass rounded-2xl p-4 md:p-5">
+      <div className="glass rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden">
         {data?.pagination && (
           <p className="text-xs text-muted-foreground mb-3">
             {data.pagination.total} report{data.pagination.total !== 1 ? "s" : ""}
@@ -242,33 +244,37 @@ export function ReportsCenterPage() {
             {reports.map((r) => (
               <div
                 key={r._id}
-                className="flex items-center gap-3 sm:gap-4 p-3.5 rounded-xl border border-border/60 bg-card hover:bg-muted/30 transition-colors"
+                className="flex items-center justify-between gap-3 p-3 sm:p-3.5 rounded-xl border border-border/60 bg-card hover:bg-muted/30 transition-colors"
               >
-                <div className="size-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <FileText className="size-4 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{r.title}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {format(new Date(r.createdAt), "MMM d, yyyy 'at' h:mm a")}
-                    {r.cityId && <span className="text-muted-foreground/60"> · {r.cityId}</span>}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="size-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <FileText className="size-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold truncate">{r.title}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {format(new Date(r.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                      {r.cityId && <span className="text-muted-foreground/60"> · {r.cityId}</span>}
+                    </div>
                   </div>
                 </div>
-                <Pill tone="info" className="hidden sm:flex">{r.type}</Pill>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground shrink-0"
-                  aria-label={`Download ${r.title}`}
-                  disabled={downloadingId === r._id}
-                  onClick={() => handleDownload(r)}
-                >
-                  {downloadingId === r._id ? (
-                    <Loader2 className="size-3.5 animate-spin" />
-                  ) : (
-                    <Download className="size-3.5" />
-                  )}
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Pill tone="info" className="hidden sm:flex">{r.type}</Pill>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground shrink-0"
+                    aria-label={`Download ${r.title}`}
+                    disabled={downloadingId === r._id}
+                    onClick={() => handleDownload(r)}
+                  >
+                    {downloadingId === r._id ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Download className="size-3.5" />
+                    )}
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -276,17 +282,18 @@ export function ReportsCenterPage() {
 
         {/* Pagination */}
         {data && data.pagination.pages > 1 && (
-          <div className="flex items-center justify-between pt-4 mt-2 border-t border-border/50">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 mt-2 border-t border-border/50">
             <span className="text-xs text-muted-foreground">
               Page {data.pagination.page} of {data.pagination.pages}
             </span>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto justify-end">
               <Button
                 variant="outline"
                 size="sm"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
                 aria-label="Previous page"
+                className="h-8 text-xs flex-1 sm:flex-none"
               >
                 <ChevronLeft className="size-3.5 mr-1" />
                 Prev
@@ -297,6 +304,7 @@ export function ReportsCenterPage() {
                 disabled={page >= data.pagination.pages}
                 onClick={() => setPage((p) => p + 1)}
                 aria-label="Next page"
+                className="h-8 text-xs flex-1 sm:flex-none"
               >
                 Next
                 <ChevronRight className="size-3.5 ml-1" />

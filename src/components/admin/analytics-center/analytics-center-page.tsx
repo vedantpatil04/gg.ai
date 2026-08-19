@@ -201,7 +201,7 @@ export function AnalyticsCenterPage() {
   const totalUsers = (data?.usersByRole ?? []).reduce((s, d) => s + d.count, 0);
 
   return (
-    <div className="px-4 md:px-6 py-6 space-y-5">
+    <div className="px-3.5 sm:px-4 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5 max-w-full overflow-hidden">
       <SectionTitle
         eyebrow="Intelligence"
         title="Analytics Center"
@@ -210,6 +210,7 @@ export function AnalyticsCenterPage() {
             variant="outline"
             size="sm"
             onClick={() => qc.invalidateQueries({ queryKey: ["pa-analytics"] })}
+            className="h-8 text-xs"
           >
             <RefreshCw className="size-3.5 mr-1.5" />
             Refresh

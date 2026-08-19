@@ -88,29 +88,29 @@ export function AdminProfilePage() {
   const browserInfo = typeof window !== "undefined" ? describeBrowserAndOS() : "Unavailable";
 
   return (
-    <div className="px-4 md:px-6 py-6 space-y-5">
+    <div className="px-3.5 sm:px-4 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5 max-w-full overflow-hidden">
       <SectionTitle eyebrow="Administration" title="Profile & Settings" />
 
       {/* Profile header */}
-      <div className="glass rounded-2xl p-6 relative overflow-hidden">
+      <div className="glass rounded-2xl p-4 sm:p-6 relative overflow-hidden">
         <div className="absolute inset-0 aurora opacity-10" />
-        <div className="relative flex flex-wrap items-center gap-5">
-          <div className="size-16 rounded-2xl aurora grid place-items-center text-primary-foreground text-xl font-semibold shrink-0">
+        <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5">
+          <div className="size-14 sm:size-16 rounded-2xl aurora grid place-items-center text-primary-foreground text-lg sm:text-xl font-semibold shrink-0">
             {initials}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-semibold tracking-tight">{user.name}</h1>
+              <h1 className="text-lg sm:text-xl font-semibold tracking-tight">{user.name}</h1>
               <Pill tone="muted">Administrator</Pill>
               {user.isVerified && <Pill tone="success">Verified</Pill>}
             </div>
-            <div className="text-sm text-muted-foreground mt-1.5 flex flex-wrap gap-4">
-              <span className="inline-flex items-center gap-1.5">
-                <Mail className="size-3.5" />
+            <div className="text-xs sm:text-sm text-muted-foreground mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+              <span className="inline-flex items-center gap-1.5 truncate">
+                <Mail className="size-3.5 shrink-0" />
                 {user.email}
               </span>
-              <span className="inline-flex items-center gap-1.5">
-                <CalendarDays className="size-3.5" />
+              <span className="inline-flex items-center gap-1.5 shrink-0">
+                <CalendarDays className="size-3.5 shrink-0" />
                 Joined {format(new Date(user.createdAt), "MMMM yyyy")}
               </span>
             </div>
@@ -118,37 +118,40 @@ export function AdminProfilePage() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
         {/* Account Settings */}
         <Panel title="Account Settings" eyebrow="Profile">
           <div className="space-y-5">
             <div>
               <div className="text-xs text-muted-foreground mb-1.5">Display Name</div>
               {editingName ? (
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     value={nameValue}
                     onChange={(e) => setNameValue(e.target.value)}
-                    className="h-9"
+                    className="h-9 text-xs sm:text-sm"
                     autoFocus
                   />
-                  <Button size="sm" onClick={saveName} disabled={saving}>
-                    {saving && <Loader2 className="size-3.5 mr-1 animate-spin" />}Save
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setEditingName(false);
-                      setNameValue(user.name);
-                    }}
-                  >
-                    Cancel
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={saveName} disabled={saving} className="h-9 flex-1 sm:flex-none">
+                      {saving && <Loader2 className="size-3.5 mr-1 animate-spin" />}Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingName(false);
+                        setNameValue(user.name);
+                      }}
+                      className="h-9 flex-1 sm:flex-none"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">{user.name}</span>
+                  <span className="text-sm font-medium">{user.name}</span>
                   <div className="flex items-center gap-2">
                     {saved && (
                       <span className="text-xs text-[var(--color-success)] inline-flex items-center gap-1">
@@ -156,7 +159,7 @@ export function AdminProfilePage() {
                         Saved
                       </span>
                     )}
-                    <Button size="sm" variant="outline" onClick={() => setEditingName(true)}>
+                    <Button size="sm" variant="outline" onClick={() => setEditingName(true)} className="h-8 text-xs">
                       Edit
                     </Button>
                   </div>
@@ -177,13 +180,13 @@ export function AdminProfilePage() {
                     key={id}
                     onClick={() => setTheme(id)}
                     className={cn(
-                      "flex items-center gap-2 rounded-lg border p-3 text-sm transition-colors",
+                      "flex items-center gap-2 rounded-lg border p-2.5 sm:p-3 text-xs sm:text-sm transition-colors",
                       theme === id
                         ? "border-primary bg-primary/5"
                         : "border-border hover:border-primary/40",
                     )}
                   >
-                    <Icon className="size-4 text-primary" />
+                    <Icon className="size-4 text-primary shrink-0" />
                     {label}
                   </button>
                 ))}
@@ -204,7 +207,7 @@ export function AdminProfilePage() {
           <Row label="Active Role" value="Administrator" />
           <Row label="Authentication Method" value="Email & password (JWT)" />
           <Link to="/settings">
-            <Button variant="outline" className="w-full mt-4">
+            <Button variant="outline" className="w-full mt-4 h-9 text-xs sm:text-sm">
               <Lock className="size-3.5 mr-1.5" />
               Change Password
             </Button>
@@ -214,7 +217,7 @@ export function AdminProfilePage() {
 
       {/* Active Session */}
       <Panel title="Active Session" eyebrow="This Device">
-        <div className="grid sm:grid-cols-2 gap-x-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
           <div>
             <Row
               label="Last Login"
@@ -255,7 +258,7 @@ export function AdminProfilePage() {
             <Link
               key={l.to}
               to={l.to}
-              className="flex items-center gap-2 rounded-lg border border-border p-3 text-sm hover:bg-muted transition-colors"
+              className="flex items-center gap-2 rounded-lg border border-border p-2.5 sm:p-3 text-xs sm:text-sm hover:bg-muted transition-colors"
             >
               <l.icon className="size-4 text-muted-foreground shrink-0" />
               <span className="truncate">{l.label}</span>

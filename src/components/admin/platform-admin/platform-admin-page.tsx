@@ -120,7 +120,7 @@ function MobileTabBar({
   onChange: (t: TabId) => void;
 }) {
   return (
-    <div className="lg:hidden flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-hide">
+    <div className="lg:hidden flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
       {TABS.map(({ id, label, icon: Icon }) => (
         <button
           key={id}
@@ -128,8 +128,8 @@ function MobileTabBar({
           className={cn(
             "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all shrink-0",
             active === id
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/70",
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted/80",
           )}
         >
           <Icon className="size-3.5" />
@@ -165,7 +165,7 @@ export function PlatformAdminPage() {
   }
 
   return (
-    <div className="px-4 md:px-6 py-6 space-y-5 max-w-[1600px] mx-auto">
+    <div className="px-3.5 sm:px-4 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5 max-w-[1600px] mx-auto overflow-hidden">
       {/* ── Page header ── */}
       <SectionTitle
         eyebrow="Administration"
@@ -176,7 +176,7 @@ export function PlatformAdminPage() {
               <Shield className="size-3.5" />
               Administrator Only
             </div>
-            <Button variant="outline" size="sm" onClick={refresh}>
+            <Button variant="outline" size="sm" onClick={refresh} className="h-8 text-xs">
               <RefreshCw className="size-3.5 mr-1.5" />
               Refresh
             </Button>
@@ -188,7 +188,7 @@ export function PlatformAdminPage() {
       <MobileTabBar active={tab} onChange={setTab} />
 
       {/* ── Split layout: sidebar + content ── */}
-      <div className="flex gap-6 items-start">
+      <div className="flex gap-4 sm:gap-6 items-start">
         {/* Desktop sidebar */}
         <SideNav active={tab} onChange={setTab} />
 

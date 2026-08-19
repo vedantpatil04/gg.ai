@@ -1,15 +1,16 @@
 /**
- * FloatingClouds — Cinematic Hero Phase 1
+ * FloatingClouds — Responsive Atmospheric Cloud System
  *
- * Renders realistic animated cloud shapes as Layer 4 of the hero.
- * Clouds drift horizontally with varying speeds, sizes, and opacities
- * to create a natural, parallax-like depth effect.
+ * Renders animated cloud shapes as Layer 4 of the hero with responsive scaling:
+ *   - Desktop (>= 1024px): Full cinematic scale (~100%) for immersive depth
+ *   - Tablet (768px - 1023px): Scaled down (~75%) for balanced composition
+ *   - Mobile (< 768px): Intelligently scaled down (~40–45%), positioned away from text
+ *     and cards so clouds never dominate or obstruct important information.
  *
  * Implementation:
- * - Pure CSS animations (transform: translateX) — GPU-composited
- * - No JavaScript animation loop; zero runtime cost
- * - prefers-reduced-motion: all animations suppressed
- * - Responsive: SVG viewBox + preserveAspectRatio handles any size
+ * - Pure CSS GPU-composited animations (transform: translateX)
+ * - Zero JS animation loop; zero performance overhead
+ * - prefers-reduced-motion: animations gracefully suppressed
  */
 
 interface CloudDef {
@@ -17,7 +18,7 @@ interface CloudDef {
   startX: string;
   /** Vertical position (% of container height) */
   topPct: number;
-  /** Cloud width in vw-equivalent units */
+  /** Desktop width in px */
   widthPx: number;
   /** Opacity of the cloud */
   opacity: number;
@@ -27,25 +28,25 @@ interface CloudDef {
   delay: number;
   /** Blur amount for distance effect */
   blur: number;
+  /** Mobile-only visibility / positioning tweak */
+  mobileHidden?: boolean;
 }
 
 const CLOUD_DEFS: CloudDef[] = [
-  // Background (smaller, slower, more blurred = feel farther away)
-  { startX: "-15%",  topPct: 8,  widthPx: 280, opacity: 0.22, duration: 120, delay: 0,   blur: 4 },
-  { startX: "30%",   topPct: 12, widthPx: 200, opacity: 0.16, duration: 160, delay: 20,  blur: 6 },
-  { startX: "68%",   topPct: 5,  widthPx: 240, opacity: 0.18, duration: 140, delay: 55,  blur: 5 },
-  // Midground
-  { startX: "-5%",   topPct: 22, widthPx: 360, opacity: 0.28, duration: 90,  delay: 10,  blur: 3 },
-  { startX: "50%",   topPct: 18, widthPx: 300, opacity: 0.22, duration: 100, delay: 40,  blur: 3 },
-  // Foreground (larger, faster, less blurred = feel closer)
-  { startX: "-20%",  topPct: 30, widthPx: 420, opacity: 0.14, duration: 70,  delay: 0,   blur: 2 },
-  { startX: "60%",   topPct: 35, widthPx: 380, opacity: 0.10, duration: 80,  delay: 30,  blur: 2 },
+  // Background horizon clouds (small, slow, subtle)
+  { startX: "-10%", topPct: 6,  widthPx: 260, opacity: 0.18, duration: 130, delay: 0,  blur: 4 },
+  { startX: "35%",  topPct: 10, widthPx: 200, opacity: 0.14, duration: 160, delay: 20, blur: 5 },
+  { startX: "70%",  topPct: 5,  widthPx: 230, opacity: 0.16, duration: 140, delay: 55, blur: 4 },
+
+  // Midground clouds (upper-right and center-sky)
+  { startX: "-5%",  topPct: 16, widthPx: 320, opacity: 0.22, duration: 95,  delay: 10, blur: 3 },
+  { startX: "55%",  topPct: 14, widthPx: 280, opacity: 0.18, duration: 110, delay: 40, blur: 3 },
+
+  // Foreground clouds (desktop only — hidden or scaled way down on mobile to protect greeting)
+  { startX: "20%",  topPct: 24, widthPx: 380, opacity: 0.12, duration: 75,  delay: 5,  blur: 2, mobileHidden: true },
+  { startX: "65%",  topPct: 28, widthPx: 340, opacity: 0.10, duration: 85,  delay: 30, blur: 2, mobileHidden: true },
 ];
 
-/**
- * Renders a single fluffy cloud shape using SVG path.
- * The cloud is a combination of overlapping circles that form a natural silhouette.
- */
 function CloudShape({
   def,
   index,
@@ -59,14 +60,15 @@ function CloudShape({
     <>
       <div
         aria-hidden
-        className="absolute pointer-events-none"
+        className={`absolute pointer-events-none origin-top-left ${
+          def.mobileHidden ? "hidden md:block" : "block"
+        } scale-[0.42] sm:scale-[0.65] md:scale-[0.80] lg:scale-100 opacity-60 md:opacity-100`}
         style={{
           top: `${def.topPct}%`,
           left: def.startX,
-          width: def.widthPx,
+          width: `${def.widthPx}px`,
           filter: `blur(${def.blur}px)`,
           opacity: def.opacity,
-          // GPU-only: transform animation via CSS
           animation: `${animId} ${def.duration}s linear ${def.delay}s infinite`,
           willChange: "transform",
         }}
@@ -77,7 +79,7 @@ function CloudShape({
           xmlns="http://www.w3.org/2000/svg"
           fill="white"
         >
-          {/* Cloud body built from overlapping ellipses */}
+          {/* Natural cloud silhouette with overlapping ellipses */}
           <ellipse cx="100" cy="55" rx="90"  ry="28" />
           <ellipse cx="80"  cy="42" rx="55"  ry="35" />
           <ellipse cx="120" cy="40" rx="52"  ry="32" />

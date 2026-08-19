@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Accent color Android uses to tint the small status-bar/notification
+      icon (ic_stat_notify) on API 21-25 and in some notification shade
+      renderings. Placeholder green consistent with the GreenGuard name:
+      replace with your exact brand hex any time.
+    -->
+    <color name="notification_accent_color">#16A34A</color>
+</resources>

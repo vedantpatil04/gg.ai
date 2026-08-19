@@ -10,6 +10,7 @@ import {
   ShieldX,
   Check,
   X,
+  ArrowLeft,
 } from "lucide-react";
 import {
   Sheet,
@@ -64,15 +65,27 @@ export function AuthorityRequestDetailPanel({
 }: AuthorityRequestDetailPanelProps) {
   return (
     <Sheet open={!!request} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-4 sm:p-6">
         {request && (
           <>
+            <div className="mb-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onOpenChange(false)}
+                className="h-8 -ml-2 px-2 text-xs text-muted-foreground hover:text-foreground gap-1.5"
+              >
+                <ArrowLeft className="size-3.5" />
+                Back to Authority Requests
+              </Button>
+            </div>
+
             <SheetHeader>
-              <SheetTitle>{request.name}</SheetTitle>
-              <SheetDescription>Authority access request</SheetDescription>
+              <SheetTitle className="text-lg font-bold">{request.name}</SheetTitle>
+              <SheetDescription>Authority access request details</SheetDescription>
             </SheetHeader>
 
-            <div className="mt-6 space-y-5">
+            <div className="mt-5 space-y-5">
               <Pill tone={STATUS_PILL_TONE[request.approvalStatus]}>{request.approvalStatus}</Pill>
 
               <div className="space-y-4">
@@ -102,12 +115,12 @@ export function AuthorityRequestDetailPanel({
             </div>
 
             {request.approvalStatus === "pending" && (
-              <SheetFooter className="mt-8 gap-2 sm:gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => onReject(request)}>
+              <SheetFooter className="mt-8 flex-col sm:flex-row gap-2">
+                <Button variant="outline" className="w-full sm:flex-1" onClick={() => onReject(request)}>
                   <X className="size-4 mr-1.5" />
                   Reject
                 </Button>
-                <Button className="flex-1" onClick={() => onApprove(request)}>
+                <Button className="w-full sm:flex-1" onClick={() => onApprove(request)}>
                   <Check className="size-4 mr-1.5" />
                   Approve
                 </Button>

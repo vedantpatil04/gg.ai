@@ -1,29 +1,27 @@
 /**
- * WelcomeHero — Cinematic Phase 1
+ * WelcomeHero — Responsive Cinematic Citizen Dashboard Hero
  *
- * Complete replacement of the Phase 10 hero with an immersive, cinematic
- * environmental experience. All existing props and exports are preserved
- * for backward compatibility with dashboard.tsx.
+ * Immersive, atmospheric environmental hero that adapts seamlessly across
+ * all desktop viewports (1920px down to 1280px) and mobile screens (320px to 430px).
  *
- * Layer stack (bottom → top):
- *   Layer 1 — Animated gradient background           (EnvironmentBackground)
- *   Layer 2 — Real environmental photo               (EnvironmentBackground)
- *   Layer 3 — Dark overlay                           (EnvironmentBackground)
- *   Layer 4 — Animated clouds                        (FloatingClouds)
- *   Layer 5 — Environmental particles                (EnvironmentParticles)
- *   Layer 6 — Glassmorphism cards (AQI + Weather)    (AQIGlassCard, WeatherGlassCard)
- *   Layer 7 — Foreground content                     (greeting, status bar)
+ * Layer stack:
+ *   Layer 1 — Tier-reactive gradient background (EnvironmentBackground)
+ *   Layer 2 — Responsively cropped environmental photo (EnvironmentBackground)
+ *   Layer 3 — Multi-stage darkening and readability overlay (EnvironmentBackground)
+ *   Layer 4 — Responsively scaled floating clouds (FloatingClouds)
+ *   Layer 5 — Environmental particles (EnvironmentParticles)
+ *   Layer 6 — Glassmorphism cards for AQI + Weather (AQIGlassCard, WeatherGlassCard)
+ *   Layer 7 — Foreground content (live status bar, greeting, outdoor guidance, mobile stats)
  *
- * Height: 460px desktop / 520px on wide screens / responsive on mobile
- * All animations: GPU-only (transform + opacity).
- * prefers-reduced-motion: ambient layers suppressed, content remains.
- *
- * No backend / API changes. No route changes. TypeScript strict.
+ * Responsive Height:
+ *   Desktop: 420–480px
+ *   Tablet: 380–440px
+ *   Mobile: 360–420px
  */
 
 import { useReducedMotion, motion } from "framer-motion";
 import { useRef, useState, useCallback } from "react";
-import { Sunrise, Sun, Moon, Moon as NightIcon } from "lucide-react";
+import { Sunrise, Sun, Moon, Moon as NightIcon, MapPin } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getGreetingText } from "@/lib/format-time";
 import { findAqiBand } from "@/lib/mock-data";
@@ -37,16 +35,12 @@ import { AQIGlassCard } from "@/components/dashboard/hero/aqi-glass-card";
 import { WeatherGlassCard } from "@/components/dashboard/hero/weather-glass-card";
 import { LiveStatusBar } from "@/components/dashboard/hero/live-status-bar";
 
-// ─── Greeting icon ────────────────────────────────────────────────────────────
-
 function greetingIcon(text: string) {
   if (text === "Good morning")   return Sunrise;
   if (text === "Good afternoon") return Sun;
   if (text === "Good night")     return NightIcon;
   return Moon;
 }
-
-// ─── Greeting emoji ───────────────────────────────────────────────────────────
 
 function greetingEmoji(text: string) {
   if (text === "Good morning")   return "🌅";
@@ -55,30 +49,23 @@ function greetingEmoji(text: string) {
   return "🌙";
 }
 
-// ─── Outdoor safety message driven by AQI ────────────────────────────────────
-
 function getOutdoorMessage(aqi: number, cityName: string): string {
-  if (aqi <= 50)  return `${cityName} is experiencing healthy environmental conditions today.`;
-  if (aqi <= 100) return `Air quality in ${cityName} is acceptable for most people.`;
-  if (aqi <= 150) return `Sensitive groups should limit outdoor activities in ${cityName}.`;
-  if (aqi <= 200) return `Air quality is unhealthy — limit outdoor exposure in ${cityName}.`;
-  return `Very unhealthy air in ${cityName}. Avoid outdoor activities.`;
+  if (aqi <= 50)  return `${cityName} is experiencing clean, healthy air quality today.`;
+  if (aqi <= 100) return `Air quality in ${cityName} is acceptable for normal outdoor activity.`;
+  if (aqi <= 150) return `Sensitive groups should consider reducing prolonged outdoor exposure in ${cityName}.`;
+  if (aqi <= 200) return `Air quality is unhealthy — limit outdoor activities in ${cityName}.`;
+  return `Hazardous air in ${cityName}. Minimize outdoor exposure and protect your health.`;
 }
-
-// ─── AQI theme color (for glow / borders) ────────────────────────────────────
 
 function getAqiGlow(aqi: number): string {
-  if (aqi <= 50)  return "rgba(16,185,129,0.25)";
-  if (aqi <= 100) return "rgba(234,179,8,0.25)";
-  if (aqi <= 150) return "rgba(249,115,22,0.25)";
-  if (aqi <= 200) return "rgba(239,68,68,0.25)";
-  return "rgba(168,85,247,0.25)";
+  if (aqi <= 50)  return "rgba(16,185,129,0.22)";
+  if (aqi <= 100) return "rgba(234,179,8,0.22)";
+  if (aqi <= 150) return "rgba(249,115,22,0.22)";
+  if (aqi <= 200) return "rgba(239,68,68,0.22)";
+  return "rgba(168,85,247,0.22)";
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
-
 export interface WelcomeHeroProps {
-  /** city.id from CityContext — used to resolve the background photo */
   cityId?: string;
   userName?: string;
   cityName: string;
@@ -87,9 +74,7 @@ export interface WelcomeHeroProps {
   temp?: number;
   humidity?: number;
   windSpeed?: number;
-  /** Passed as lastUpdated string from dashboard */
   lastUpdated?: string;
-  /** Number of active sensors (optional enhancement) */
   sensorsOnline?: number;
 }
 
@@ -121,7 +106,7 @@ export function WelcomeHero({
   const outdoorMessage = getOutdoorMessage(aqi, cityName);
   const aqiGlow = getAqiGlow(aqi);
 
-  // Mouse-reactive spotlight (desktop only, respects reduced-motion)
+  // Mouse-reactive spotlight (desktop only)
   const containerRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
   const handleMouseMove = useCallback(
@@ -143,21 +128,20 @@ export function WelcomeHero({
       initial={prefersReduced ? false : "hidden"}
       animate="show"
       onMouseMove={handleMouseMove}
-      className="relative overflow-hidden rounded-2xl select-none"
+      className="relative overflow-hidden rounded-2xl sm:rounded-3xl select-none"
       style={{
-        minHeight: "clamp(320px, 40vw, 520px)",
-        // AQI-reactive border glow (hero only — not the whole app)
-        boxShadow: `0 0 0 1px rgba(255,255,255,0.06), 0 24px 80px rgba(0,0,0,0.45), 0 0 60px ${aqiGlow}`,
+        minHeight: "clamp(360px, 38vw, 480px)",
+        boxShadow: `0 0 0 1px rgba(255,255,255,0.06), 0 20px 60px rgba(0,0,0,0.40), 0 0 50px ${aqiGlow}`,
       }}
-      aria-label={`Environmental dashboard hero. ${greet}${userName ? `, ${userName.split(" ")[0]}` : ""}. ${outdoorMessage}`}
+      aria-label={`Citizen dashboard hero. ${greet}${userName ? `, ${userName.split(" ")[0]}` : ""}. ${outdoorMessage}`}
     >
-      {/* ── Layers 1–3: Environment background + photo + overlay ── */}
+      {/* ── Layers 1–3: Environment background + photo + responsive overlays ── */}
       <EnvironmentBackground aqi={aqi} cityName={cityName} cityId={cityId} />
 
-      {/* ── Layer 4: Animated clouds ── */}
+      {/* ── Layer 4: Responsive animated clouds ── */}
       {!prefersReduced && <FloatingClouds />}
 
-      {/* ── Layer 5: Environmental particles ── */}
+      {/* ── Layer 5: Atmospheric environmental particles ── */}
       <EnvironmentParticles aqi={aqi} />
 
       {/* ── Ambient AQI glow orb (top-left) ── */}
@@ -166,17 +150,17 @@ export function WelcomeHero({
         className="absolute -top-1/4 -left-1/6 w-2/3 h-2/3 rounded-full blur-3xl pointer-events-none"
         style={{
           background: scene.glowColor,
-          opacity: 0.5,
+          opacity: 0.45,
         }}
       />
 
-      {/* ── Mouse-reactive spotlight ── */}
+      {/* ── Mouse-reactive spotlight (desktop only) ── */}
       {!prefersReduced && (
         <div
           aria-hidden
-          className="absolute inset-0 pointer-events-none"
+          className="absolute inset-0 pointer-events-none hidden md:block"
           style={{
-            background: `radial-gradient(ellipse 35% 40% at ${mousePos.x}% ${mousePos.y}%, rgba(255,255,255,0.06), transparent 70%)`,
+            background: `radial-gradient(ellipse 35% 40% at ${mousePos.x}% ${mousePos.y}%, rgba(255,255,255,0.05), transparent 70%)`,
           }}
         />
       )}
@@ -191,8 +175,8 @@ export function WelcomeHero({
             className="absolute top-0 left-[-100%] w-1/2 h-full"
             style={{
               background:
-                "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.04) 50%, transparent 60%)",
-              animation: "hero-sweep 8s ease-in-out 1s infinite",
+                "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%)",
+              animation: "hero-sweep 9s ease-in-out 1s infinite",
             }}
           />
         </div>
@@ -201,25 +185,15 @@ export function WelcomeHero({
       {/* ── Noise grain texture ── */}
       <div
         aria-hidden
-        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        className="absolute inset-0 opacity-[0.025] pointer-events-none"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
           backgroundSize: "180px 180px",
         }}
       />
 
-      {/* ── Bottom readability gradient ── */}
-      <div
-        aria-hidden
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.20) 45%, transparent 100%)",
-        }}
-      />
-
-      {/* ── Layer 6: Glassmorphism cards (positioned right, stacked) ── */}
-      <div className="absolute bottom-5 right-5 hidden lg:flex flex-col gap-3 w-[220px] z-20">
+      {/* ── Layer 6: Floating glassmorphism cards (Desktop: Stacked right) ── */}
+      <div className="absolute bottom-6 right-6 hidden lg:flex flex-col gap-3 w-[215px] z-20">
         <AQIGlassCard aqi={aqi} />
         <WeatherGlassCard
           temp={temp}
@@ -228,63 +202,77 @@ export function WelcomeHero({
         />
       </div>
 
-      {/* ── Medium screens: horizontal card row ── */}
-      <div className="absolute bottom-5 right-5 hidden md:flex lg:hidden flex-row gap-2 z-20 max-w-[340px]">
+      {/* ── Medium screens (Tablet): Horizontal compact card row ── */}
+      <div className="absolute bottom-6 right-6 hidden md:flex lg:hidden flex-row gap-2.5 z-20 max-w-[320px]">
         <AQIGlassCard aqi={aqi} className="flex-1" />
       </div>
 
-      {/* ── Layer 7: Foreground content ── */}
-      <div className="relative z-10 flex flex-col justify-between h-full p-5 md:p-8 min-h-[inherit]">
+      {/* ── Layer 7: Foreground interactive content ── */}
+      <div className="relative z-10 flex flex-col justify-between h-full p-4 sm:p-6 md:p-8 min-h-[inherit]">
         {/* Top: Live status bar */}
-        <LiveStatusBar
-          aqi={aqi}
-          temp={temp}
-          humidity={humidity}
-          windSpeed={windSpeed}
-          sensorsOnline={sensorsOnline}
-          lastUpdated={lastUpdated}
-        />
+        <div className="w-full">
+          <LiveStatusBar
+            aqi={aqi}
+            temp={temp}
+            humidity={humidity}
+            windSpeed={windSpeed}
+            sensorsOnline={sensorsOnline}
+            lastUpdated={lastUpdated}
+          />
+        </div>
 
-        {/* Bottom: Greeting + subtitle */}
-        <div className="mt-auto md:max-w-[56%] lg:max-w-[48%] xl:max-w-[44%]">
+        {/* Bottom: Location, Greeting + outdoor message + mobile stats */}
+        <div className="mt-auto w-full md:max-w-[58%] lg:max-w-[50%] xl:max-w-[46%] pt-4">
+          {/* Location badge */}
+          <motion.div
+            initial={prefersReduced ? false : { opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: DUR_MD, ease: EASE_OUT }}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 border border-white/10 backdrop-blur-md text-[11px] font-medium text-white/80 mb-2"
+          >
+            <MapPin className="size-3 text-primary shrink-0" />
+            <span>{cityName}, {country}</span>
+          </motion.div>
+
           {/* Greeting line */}
           <motion.div
-            initial={prefersReduced ? false : { opacity: 0, x: -14 }}
+            initial={prefersReduced ? false : { opacity: 0, x: -12 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.18, duration: DUR_MD, ease: EASE_OUT }}
-            className="flex items-center gap-2.5 flex-wrap"
+            transition={{ delay: 0.15, duration: DUR_MD, ease: EASE_OUT }}
+            className="flex items-center gap-2 sm:gap-2.5 flex-wrap"
           >
-            <Icon className="size-6 text-white/75 shrink-0" aria-hidden />
-            <h1 className="text-2xl md:text-3xl xl:text-4xl font-bold tracking-tight text-white drop-shadow-md leading-tight">
+            <Icon className="size-5 sm:size-6 text-white/80 shrink-0" aria-hidden />
+            <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight text-white drop-shadow-md leading-tight">
               {greet}
               {userName ? `, ${userName.split(" ")[0]}` : ""}{" "}
               <span aria-hidden>{emoji}</span>
             </h1>
           </motion.div>
 
-          {/* City subtitle */}
+          {/* Subtitle / Outdoor message */}
           <motion.p
             initial={prefersReduced ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.30, duration: DUR_MD }}
-            className="mt-2 text-sm md:text-base text-white/65 leading-relaxed drop-shadow-sm"
+            transition={{ delay: 0.25, duration: DUR_MD }}
+            className="mt-1.5 sm:mt-2 text-xs sm:text-sm md:text-base text-white/70 leading-relaxed drop-shadow-sm max-w-xl"
           >
-            {cityName}, {country} · {outdoorMessage}
+            {outdoorMessage}
           </motion.p>
 
-          {/* Mobile-only inline AQI badge */}
+          {/* Mobile-only rich glass summary strip (under 768px) */}
           <motion.div
             initial={prefersReduced ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.45, duration: DUR_MD, ease: EASE_OUT }}
-            className="mt-4 flex flex-wrap items-center gap-2 md:hidden"
+            transition={{ delay: 0.35, duration: DUR_MD, ease: EASE_OUT }}
+            className="mt-3.5 flex flex-wrap items-center gap-2 md:hidden"
           >
+            {/* AQI Badge */}
             <div
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm"
               style={{
-                background: `color-mix(in oklab, ${band.color} 20%, rgba(0,0,0,0.55))`,
-                border: `1px solid color-mix(in oklab, ${band.color} 45%, transparent)`,
-                backdropFilter: "blur(12px)",
+                background: `color-mix(in oklab, ${band.color} 22%, rgba(0,0,0,0.60))`,
+                border: `1px solid color-mix(in oklab, ${band.color} 48%, transparent)`,
+                backdropFilter: "blur(14px)",
                 color: "white",
               }}
             >
@@ -293,15 +281,16 @@ export function WelcomeHero({
                   className="size-1.5 rounded-full shrink-0"
                   style={{
                     background: band.color,
+                    boxShadow: `0 0 6px ${band.color}`,
                     animation: "live-dot 2s ease-in-out infinite",
                   }}
                 />
               )}
-              AQI {aqi}
+              <span>AQI {aqi}</span>
               <span
-                className="text-[11px] font-normal px-1.5 py-0.5 rounded-lg"
+                className="text-[10px] font-medium px-1.5 py-0.2 rounded"
                 style={{
-                  background: `color-mix(in oklab, ${band.color} 28%, transparent)`,
+                  background: `color-mix(in oklab, ${band.color} 30%, transparent)`,
                   color: band.color,
                 }}
               >
@@ -309,28 +298,45 @@ export function WelcomeHero({
               </span>
             </div>
 
+            {/* Weather pills */}
             {temp != null && (
               <div
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs text-white/80"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium text-white/90 shadow-sm"
                 style={{
-                  background: "rgba(255,255,255,0.10)",
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  backdropFilter: "blur(12px)",
+                  background: "rgba(0,0,0,0.45)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  backdropFilter: "blur(14px)",
                 }}
               >
-                {temp}°C
+                <span>{temp}°C</span>
               </div>
             )}
+
             {humidity != null && (
               <div
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs text-white/80"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium text-white/90 shadow-sm"
                 style={{
-                  background: "rgba(255,255,255,0.10)",
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  backdropFilter: "blur(12px)",
+                  background: "rgba(0,0,0,0.45)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  backdropFilter: "blur(14px)",
                 }}
               >
-                {humidity}%
+                <span className="text-white/60 text-[10px]">Humidity</span>
+                <span>{humidity}%</span>
+              </div>
+            )}
+
+            {windSpeed != null && (
+              <div
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium text-white/90 shadow-sm"
+                style={{
+                  background: "rgba(0,0,0,0.45)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  backdropFilter: "blur(14px)",
+                }}
+              >
+                <span className="text-white/60 text-[10px]">Wind</span>
+                <span>{windSpeed} km/h</span>
               </div>
             )}
           </motion.div>
@@ -344,8 +350,8 @@ export function WelcomeHero({
           100% { transform: translateX(300%); }
         }
         @keyframes live-dot {
-          0%, 100% { opacity: 1; }
-          50%       { opacity: 0.4; }
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50%       { opacity: 0.4; transform: scale(1.3); }
         }
         @media (prefers-reduced-motion: reduce) {
           @keyframes hero-sweep { from {} to {} }

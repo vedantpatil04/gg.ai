@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   CalendarDays,
   ClipboardList,
+  ArrowLeft,
 } from "lucide-react";
 import {
   Sheet,
@@ -19,6 +20,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Pill } from "@/components/ui-bits";
+import { Button } from "@/components/ui/button";
 import { aqiPill } from "./aqi-pill";
 import {
   getMonitoringStatus,
@@ -70,19 +72,31 @@ export function CityDetailPanel({ city, onOpenChange }: CityDetailPanelProps) {
 
   return (
     <Sheet open={!!city} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-4 sm:p-6">
         {city &&
           (() => {
             const status = getMonitoringStatus(city.reading);
             const aqi = city.reading ? aqiPill(city.reading.aqi) : null;
             return (
               <>
+                <div className="mb-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onOpenChange(false)}
+                    className="h-8 -ml-2 px-2 text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                  >
+                    <ArrowLeft className="size-3.5" />
+                    Back to City Directory
+                  </Button>
+                </div>
+
                 <SheetHeader>
-                  <SheetTitle>{city.name}</SheetTitle>
+                  <SheetTitle className="text-lg font-bold">{city.name}</SheetTitle>
                   <SheetDescription>{city.country}</SheetDescription>
                 </SheetHeader>
 
-                <div className="mt-6 space-y-5">
+                <div className="mt-5 space-y-5">
                   <div className="flex items-center gap-2 flex-wrap">
                     {aqi ? (
                       <Pill tone={aqi.tone}>{aqi.label}</Pill>

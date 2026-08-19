@@ -209,9 +209,9 @@ export function AuthorityEnterpriseList({
     <div className="space-y-3">
       {/* ── Bulk action bar ── */}
       {selected.size > 0 && (
-        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-primary/8 border border-primary/20">
-          <span className="text-sm font-medium">{selected.size} selected</span>
-          <div className="flex gap-2 ml-auto">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 px-3.5 sm:px-4 py-2.5 rounded-xl bg-primary/8 border border-primary/20">
+          <span className="text-xs sm:text-sm font-medium">{selected.size} selected</span>
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <Button size="sm" variant="outline" className="h-7 text-xs" disabled={bulk.isPending} onClick={handleBulkActivate}>
               {bulk.isPending && <Loader2 className="size-3 mr-1 animate-spin" />}
               Activate
@@ -219,131 +219,207 @@ export function AuthorityEnterpriseList({
             <Button size="sm" variant="outline" className="h-7 text-xs text-destructive hover:text-destructive" disabled={bulk.isPending} onClick={handleBulkDeactivate}>
               Deactivate
             </Button>
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setSelected(new Set())}>
+            <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => setSelected(new Set())}>
               Clear
             </Button>
           </div>
         </div>
       )}
 
-      {/* ── Table header ── */}
-      <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] gap-3 items-center px-4 py-2 border-b text-xs">
-        <button onClick={toggleAll} className="text-muted-foreground">
-          {selected.size === authorities.length && selected.size > 0 ? (
-            <CheckSquare className="size-3.5" />
-          ) : (
-            <Square className="size-3.5" />
-          )}
-        </button>
-        <SortBtn field="name" current={sort} dir={sortDir} onToggle={toggleSort}>Name</SortBtn>
-        <SortBtn field="joinedDate" current={sort} dir={sortDir} onToggle={toggleSort}>Joined</SortBtn>
-        <SortBtn field="activeCases" current={sort} dir={sortDir} onToggle={toggleSort}>Active</SortBtn>
-        <SortBtn field="resolutionRate" current={sort} dir={sortDir} onToggle={toggleSort}>Rate</SortBtn>
-        <span className="text-muted-foreground">Capacity</span>
-        <span className="text-muted-foreground">Status</span>
-      </div>
-
-      {/* ── Rows ── */}
-      <div className="space-y-1.5">
+      {/* ── Mobile/Tablet Stacked Cards (< lg) ── */}
+      <div className="lg:hidden space-y-2.5">
         {authorities.map((a) => {
           const isSelected = selected.has(a._id);
           return (
             <div
               key={a._id}
+              onClick={() => onSelect(a)}
               className={cn(
-                "grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] gap-3 items-center px-4 py-3 rounded-xl border cursor-pointer transition-all",
+                "p-3.5 rounded-xl border transition-all cursor-pointer space-y-2.5",
                 isSelected
                   ? "bg-primary/5 border-primary/25"
                   : "bg-card hover:bg-muted/40 border-border/60",
               )}
             >
-              {/* Checkbox */}
-              <button
-                onClick={(e) => { e.stopPropagation(); toggleSelect(a._id); }}
-                className="text-muted-foreground"
-              >
-                {isSelected ? (
-                  <CheckSquare className="size-3.5 text-primary" />
-                ) : (
-                  <Square className="size-3.5" />
-                )}
-              </button>
-
-              {/* Identity */}
-              <div
-                className="min-w-0 cursor-pointer"
-                onClick={() => onSelect(a)}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="size-7 rounded-lg bg-primary/15 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSelect(a._id);
+                    }}
+                    className="text-muted-foreground p-0.5"
+                    aria-label="Select authority"
+                  >
+                    {isSelected ? (
+                      <CheckSquare className="size-4 text-primary" />
+                    ) : (
+                      <Square className="size-4" />
+                    )}
+                  </button>
+                  <div className="size-8 rounded-lg bg-primary/15 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
                     {(a.name || "AU").slice(0, 2).toUpperCase()}
                   </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium truncate">{a.name}</div>
-                    <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate">
-                      {a.email}
-                      {a.primaryCity && (
-                        <>
-                          <span>·</span>
-                          <MapPin className="size-2.5" />
-                          <span className="capitalize">{a.primaryCity}</span>
-                        </>
-                      )}
-                    </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold truncate leading-snug">{a.name}</div>
+                    <div className="text-xs text-muted-foreground truncate">{a.email}</div>
                   </div>
+                </div>
+
+                <div className="flex flex-col gap-1 items-end shrink-0">
+                  <Pill tone={a.approvalStatus && APPROVAL_PILL[a.approvalStatus] ? APPROVAL_PILL[a.approvalStatus] : "warning"}>
+                    {a.approvalStatus || "pending"}
+                  </Pill>
+                  <Pill tone={a.availability && AVAILABILITY_PILL[a.availability] ? AVAILABILITY_PILL[a.availability] : "muted"}>
+                    {a.availability ? a.availability.replace("_", " ") : "unknown"}
+                  </Pill>
                 </div>
               </div>
 
-              {/* Joined */}
-              <div className="text-xs text-muted-foreground whitespace-nowrap">
-                {a.createdAt ? format(new Date(a.createdAt), "MMM d, yyyy") : "—"}
-              </div>
-
-              {/* Active cases */}
-              <div className="text-xs font-semibold text-center w-10">
-                {a.workload?.active ?? 0}
-              </div>
-
-              {/* Resolution rate */}
-              <div className="text-xs font-semibold text-center w-10">
-                {a.workload?.resolutionRate ?? 0}%
-              </div>
-
-              {/* Capacity */}
-              {a.workload && a.workload.capacity && CAPACITY_META[a.workload.capacity] ? (
-                <Pill tone={CAPACITY_META[a.workload.capacity].tone}>
-                  {CAPACITY_META[a.workload.capacity].label}
-                </Pill>
-              ) : (
-                <span className="text-xs text-muted-foreground">—</span>
-              )}
-
-              {/* Status */}
-              <div className="flex flex-col gap-1 items-end">
-                <Pill tone={a.approvalStatus && APPROVAL_PILL[a.approvalStatus] ? APPROVAL_PILL[a.approvalStatus] : "warning"}>
-                  {a.approvalStatus || "pending"}
-                </Pill>
-                <Pill tone={a.availability && AVAILABILITY_PILL[a.availability] ? AVAILABILITY_PILL[a.availability] : "muted"}>
-                  {a.availability ? a.availability.replace("_", " ") : "unknown"}
-                </Pill>
+              <div className="flex items-center justify-between gap-2 text-xs pt-2 border-t border-border/40 text-muted-foreground">
+                <div className="flex items-center gap-3">
+                  <span>
+                    <strong className="text-foreground font-semibold">{a.workload?.active ?? 0}</strong> active
+                  </span>
+                  <span>
+                    <strong className="text-foreground font-semibold">{a.workload?.resolutionRate ?? 0}%</strong> rate
+                  </span>
+                </div>
+                {a.workload?.capacity && CAPACITY_META[a.workload.capacity] ? (
+                  <Pill tone={CAPACITY_META[a.workload.capacity].tone}>
+                    {CAPACITY_META[a.workload.capacity].label}
+                  </Pill>
+                ) : (
+                  <span>{a.primaryCity ? `City: ${a.primaryCity}` : "No city"}</span>
+                )}
               </div>
             </div>
           );
         })}
       </div>
 
+      {/* ── Desktop Table (lg+) ── */}
+      <div className="hidden lg:block overflow-x-auto scrollbar-hide">
+        {/* Table header */}
+        <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] gap-3 items-center px-4 py-2 border-b text-xs">
+          <button onClick={toggleAll} className="text-muted-foreground">
+            {selected.size === authorities.length && selected.size > 0 ? (
+              <CheckSquare className="size-3.5" />
+            ) : (
+              <Square className="size-3.5" />
+            )}
+          </button>
+          <SortBtn field="name" current={sort} dir={sortDir} onToggle={toggleSort}>Name</SortBtn>
+          <SortBtn field="joinedDate" current={sort} dir={sortDir} onToggle={toggleSort}>Joined</SortBtn>
+          <SortBtn field="activeCases" current={sort} dir={sortDir} onToggle={toggleSort}>Active</SortBtn>
+          <SortBtn field="resolutionRate" current={sort} dir={sortDir} onToggle={toggleSort}>Rate</SortBtn>
+          <span className="text-muted-foreground">Capacity</span>
+          <span className="text-muted-foreground">Status</span>
+        </div>
+
+        {/* Rows */}
+        <div className="space-y-1.5 mt-1.5">
+          {authorities.map((a) => {
+            const isSelected = selected.has(a._id);
+            return (
+              <div
+                key={a._id}
+                className={cn(
+                  "grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] gap-3 items-center px-4 py-3 rounded-xl border cursor-pointer transition-all",
+                  isSelected
+                    ? "bg-primary/5 border-primary/25"
+                    : "bg-card hover:bg-muted/40 border-border/60",
+                )}
+              >
+                {/* Checkbox */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); toggleSelect(a._id); }}
+                  className="text-muted-foreground"
+                >
+                  {isSelected ? (
+                    <CheckSquare className="size-3.5 text-primary" />
+                  ) : (
+                    <Square className="size-3.5" />
+                  )}
+                </button>
+
+                {/* Identity */}
+                <div
+                  className="min-w-0 cursor-pointer"
+                  onClick={() => onSelect(a)}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="size-7 rounded-lg bg-primary/15 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
+                      {(a.name || "AU").slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{a.name}</div>
+                      <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate">
+                        {a.email}
+                        {a.primaryCity && (
+                          <>
+                            <span>·</span>
+                            <MapPin className="size-2.5" />
+                            <span className="capitalize">{a.primaryCity}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Joined */}
+                <div className="text-xs text-muted-foreground whitespace-nowrap">
+                  {a.createdAt ? format(new Date(a.createdAt), "MMM d, yyyy") : "—"}
+                </div>
+
+                {/* Active cases */}
+                <div className="text-xs font-semibold text-center w-10">
+                  {a.workload?.active ?? 0}
+                </div>
+
+                {/* Resolution rate */}
+                <div className="text-xs font-semibold text-center w-10">
+                  {a.workload?.resolutionRate ?? 0}%
+                </div>
+
+                {/* Capacity */}
+                {a.workload && a.workload.capacity && CAPACITY_META[a.workload.capacity] ? (
+                  <Pill tone={CAPACITY_META[a.workload.capacity].tone}>
+                    {CAPACITY_META[a.workload.capacity].label}
+                  </Pill>
+                ) : (
+                  <span className="text-xs text-muted-foreground">—</span>
+                )}
+
+                {/* Status */}
+                <div className="flex flex-col gap-1 items-end">
+                  <Pill tone={a.approvalStatus && APPROVAL_PILL[a.approvalStatus] ? APPROVAL_PILL[a.approvalStatus] : "warning"}>
+                    {a.approvalStatus || "pending"}
+                  </Pill>
+                  <Pill tone={a.availability && AVAILABILITY_PILL[a.availability] ? AVAILABILITY_PILL[a.availability] : "muted"}>
+                    {a.availability ? a.availability.replace("_", " ") : "unknown"}
+                  </Pill>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ── Pagination ── */}
       {data && data.pagination.pages > 1 && (
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-border/50">
           <span className="text-xs text-muted-foreground">
             Page {data.pagination.page} of {data.pagination.pages} · {data.pagination.total} total
           </span>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto justify-end">
             <Button
               variant="outline"
               size="sm"
               disabled={page <= 1}
               onClick={() => onPageChange(page - 1)}
+              className="h-8 text-xs flex-1 sm:flex-none"
             >
               <ChevronLeft className="size-3.5 mr-1" />
               Prev
@@ -353,6 +429,7 @@ export function AuthorityEnterpriseList({
               size="sm"
               disabled={page >= data.pagination.pages}
               onClick={() => onPageChange(page + 1)}
+              className="h-8 text-xs flex-1 sm:flex-none"
             >
               Next
               <ChevronRight className="size-3.5 ml-1" />

@@ -99,7 +99,7 @@ export function ExperienceCTA({
  */
 export function SectionDivider({ tone = "primary" }: { tone?: ExperienceTone }) {
   return (
-    <div aria-hidden="true" className="relative h-10 overflow-hidden lg:h-16">
+    <div aria-hidden="true" className="relative h-8 overflow-hidden lg:h-12">
       <div
         className="absolute inset-0 opacity-25 blur-2xl"
         style={{

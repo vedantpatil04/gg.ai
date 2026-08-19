@@ -1,19 +1,13 @@
 /**
- * WhatMattersNow — Phase 1: Dashboard Foundation & Realism
- * Phase 2: Production UI & Information Hierarchy
+ * WhatMattersNow — Section 1: What Matters Now
  *
- * Replaces the old oversized AI Daily Brief. Maximum 3 items, each built
- * from real numbers already on the page (see lib/ai-brief.ts
- * `deriveWhatMattersNow`). Deliberately free of AI branding — no confidence
- * score, no bot avatar, no "GreenGuard Intelligence" language. The user
- * should care about the condition, not that an AI wrote the sentence.
+ * High-value citizen intelligence section.
+ * Translates raw data into a small number of useful observations:
+ *   1. Air quality status & recent trend
+ *   2. Key weather / comfort observation (e.g. humidity, wind)
+ *   3. Active environmental alert status
  *
- * Phase 2 change (UI only, same data/props): items no longer look uniform
- * regardless of severity. Warning/destructive items get a small tinted,
- * left-accented treatment and an "Active" eyebrow; routine good-news or
- * neutral items stay quiet with just a status dot. No new content is
- * invented — the visual weight is derived entirely from the existing
- * `tone` field.
+ * Plus one concise GreenGuard AI interpretation where real AI insight is available.
  */
 
 import { useReducedMotion, motion } from "framer-motion";
@@ -22,7 +16,7 @@ import { CardSkeleton } from "@/components/dashboard/dashboard-skeletons";
 import { STAGGER, FADE_UP } from "@/lib/motion";
 import type { MattersItem } from "@/lib/ai-brief";
 import { cn } from "@/lib/utils";
-import { Info } from "lucide-react";
+import { Info, Sparkles } from "lucide-react";
 
 const TONE_COLOR: Record<MattersItem["tone"], string> = {
   success: "var(--color-success)",
@@ -37,15 +31,17 @@ function isElevated(tone: MattersItem["tone"]): boolean {
 
 export function WhatMattersNow({
   items,
+  aiInterpretation,
   isLoading,
 }: {
   items: MattersItem[];
+  aiInterpretation?: string;
   isLoading?: boolean;
 }) {
   const prefersReduced = useReducedMotion();
 
   return (
-    <Panel title="What Matters Now" surface="card">
+    <Panel eyebrow="Citizen Intelligence" title="What Matters Now" surface="card">
       {isLoading ? (
         <CardSkeleton rows={3} />
       ) : items.length === 0 ? (
@@ -54,52 +50,93 @@ export function WhatMattersNow({
           title="Nothing notable to report right now."
         />
       ) : (
-        <motion.div
-          role="list"
-          className="space-y-2.5"
-          variants={STAGGER(0.08)}
-          initial={prefersReduced ? false : "hidden"}
-          animate="show"
-        >
-          {items.map((item) => {
-            const color = TONE_COLOR[item.tone];
-            const elevated = isElevated(item.tone);
-            return (
-              <motion.div
-                key={item.id}
-                role="listitem"
-                variants={FADE_UP}
-                className={cn("flex gap-3 rounded-lg", elevated ? "p-2.5 -mx-0.5" : "px-0.5 py-0.5")}
-                style={
-                  elevated
-                    ? {
-                        background: `color-mix(in oklab, ${color} 7%, transparent)`,
-                        borderLeft: `2px solid ${color}`,
-                      }
-                    : undefined
-                }
-              >
-                <span
-                  aria-hidden
-                  className={cn("mt-1.5 rounded-full shrink-0", elevated ? "size-2" : "size-1.5")}
-                  style={{ background: color }}
-                />
-                <div className="min-w-0">
-                  {elevated && (
-                    <div
-                      className="text-[10px] font-semibold uppercase tracking-[0.12em] mb-0.5"
-                      style={{ color }}
-                    >
-                      Active
-                    </div>
+        <div className="space-y-3.5">
+          <motion.div
+            role="list"
+            className="grid grid-cols-1 md:grid-cols-3 gap-3"
+            variants={STAGGER(0.08)}
+            initial={prefersReduced ? false : "hidden"}
+            animate="show"
+          >
+            {items.map((item) => {
+              const color = TONE_COLOR[item.tone];
+              const elevated = isElevated(item.tone);
+
+              return (
+                <motion.div
+                  key={item.id}
+                  role="listitem"
+                  variants={FADE_UP}
+                  className={cn(
+                    "flex flex-col justify-between p-3.5 rounded-xl border transition-all",
+                    elevated
+                      ? "border-l-[3px] bg-muted/25"
+                      : "bg-muted/15 border-border/60 hover:bg-muted/25",
                   )}
-                  <div className="text-sm font-medium leading-snug">{item.title}</div>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{item.body}</p>
-                </div>
-              </motion.div>
-            );
-          })}
-        </motion.div>
+                  style={
+                    elevated
+                      ? {
+                          borderLeftColor: color,
+                          background: `color-mix(in oklab, ${color} 7%, transparent)`,
+                        }
+                      : undefined
+                  }
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span
+                          aria-hidden
+                          className={cn("rounded-full shrink-0", elevated ? "size-2" : "size-1.5")}
+                          style={{ background: color }}
+                        />
+                        <span className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground truncate">
+                          {item.id === "aqi-status"
+                            ? "Air Quality"
+                            : item.id === "watch"
+                              ? "Conditions"
+                              : "Alert Status"}
+                        </span>
+                      </div>
+                      {elevated && (
+                        <span
+                          className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded"
+                          style={{
+                            color,
+                            background: `color-mix(in oklab, ${color} 15%, transparent)`,
+                          }}
+                        >
+                          Notice
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-sm font-semibold text-foreground leading-snug">{item.title}</div>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{item.body}</p>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+
+          {/* GreenGuard AI Interpretation Callout */}
+          {aiInterpretation && (
+            <motion.div
+              variants={FADE_UP}
+              initial={prefersReduced ? false : { opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-3.5 rounded-xl border border-primary/25 bg-primary/5 flex items-start gap-3 text-xs leading-relaxed"
+            >
+              <div className="size-6 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                <Sparkles className="size-3.5" />
+              </div>
+              <div className="text-foreground/90">
+                <strong className="text-primary font-semibold mr-1.5">GreenGuard AI:</strong>
+                {aiInterpretation}
+              </div>
+            </motion.div>
+          )}
+        </div>
       )}
     </Panel>
   );

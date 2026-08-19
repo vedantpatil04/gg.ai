@@ -43,7 +43,7 @@ export function SmartMapExperience() {
   );
 
   return (
-    <section className="relative overflow-hidden py-16 lg:py-20">
+    <section className="relative overflow-hidden py-14 lg:py-16">
       {/* Satellite-inspired backdrop with a faint topographic grid */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-gradient-to-b from-background via-[color:var(--color-info)]/[0.05] to-background" />
@@ -57,7 +57,7 @@ export function SmartMapExperience() {
         />
       </div>
 
-      <div className="mx-auto flex w-full max-w-[1900px] flex-col gap-10 px-4 sm:px-6 lg:px-10">
+      <div className="mx-auto flex w-full max-w-[1900px] flex-col gap-8 px-4 sm:px-6 lg:px-10">
         <ExperienceHeader
           tone="info"
           eyebrow="Smart Map"

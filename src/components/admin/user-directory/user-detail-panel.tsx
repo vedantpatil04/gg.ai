@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   ShieldX,
   Fingerprint,
+  ArrowLeft,
 } from "lucide-react";
 import {
   Sheet,
@@ -18,6 +19,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import { Pill } from "@/components/ui-bits";
 import type { DirectoryRole, DirectoryUser } from "./user-directory-queries";
 
@@ -61,24 +63,30 @@ interface UserDetailPanelProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/**
- * Read-only per Phase 2.4 scope — no edit/suspend/role-change actions here.
- * Only fields the User model actually has are shown; organization is
- * included alongside city/phone since it's part of the same "contact info"
- * the Phase 2.3 detail panel already surfaces for authority accounts.
- */
 export function UserDetailPanel({ user, onOpenChange }: UserDetailPanelProps) {
   return (
     <Sheet open={!!user} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-4 sm:p-6">
         {user && (
           <>
+            <div className="mb-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onOpenChange(false)}
+                className="h-8 -ml-2 px-2 text-xs text-muted-foreground hover:text-foreground gap-1.5"
+              >
+                <ArrowLeft className="size-3.5" />
+                Back to User Directory
+              </Button>
+            </div>
+
             <SheetHeader>
-              <SheetTitle>{user.name}</SheetTitle>
-              <SheetDescription>Platform user</SheetDescription>
+              <SheetTitle className="text-lg font-bold">{user.name}</SheetTitle>
+              <SheetDescription>Platform user details &amp; status</SheetDescription>
             </SheetHeader>
 
-            <div className="mt-6 space-y-5">
+            <div className="mt-5 space-y-5">
               <div className="flex items-center gap-2 flex-wrap">
                 <Pill tone={ROLE_PILL_TONE[user.role]}>{user.role}</Pill>
                 {user.role === "authority" && (

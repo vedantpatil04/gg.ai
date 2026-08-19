@@ -360,26 +360,3 @@ export function getCityImageConfig(cityId: string): CityImageConfig | undefined 
 export function getSupportedCityIds(): string[] {
   return Object.keys(CITY_IMAGES);
 }
-
-/**
- * City visual representation for data-driven rendering.
- */
-export interface CityVisual {
-  image: string | undefined;
-  alt: string;
-}
-
-/**
- * getCityVisual
- *
- * Simple future-ready API to resolve a city's visual configuration.
- * Returns the default hero image and semantic alt text.
- */
-export function getCityVisual(cityId: string, cityName?: string): CityVisual {
-  const normalizedId = (cityId || "").toLowerCase();
-  const config = CITY_IMAGES[normalizedId];
-  const image = config?.hero ?? GLOBAL_FALLBACK;
-  const name = cityName || config?.label || cityId;
-  const alt = `${name} environmental photograph`;
-  return { image, alt };
-}

@@ -50,7 +50,7 @@ export function AuthorityRequestsPage() {
   };
 
   return (
-    <div className="px-4 md:px-6 py-6 space-y-5">
+    <div className="px-3.5 sm:px-4 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5 max-w-full overflow-hidden">
       <SectionTitle
         eyebrow="Administration"
         title="Authority Requests"
@@ -59,6 +59,7 @@ export function AuthorityRequestsPage() {
             variant="outline"
             size="sm"
             onClick={() => qc.invalidateQueries({ queryKey: ["admin-authority-requests"] })}
+            className="h-8 text-xs"
           >
             <RefreshCw className="size-3.5 mr-1.5" />
             Refresh
@@ -66,27 +67,28 @@ export function AuthorityRequestsPage() {
         }
       />
 
-      {/* Tab switcher — mirrors the sub-tab pattern already used in
-          src/components/command-center/complaint-intelligence.tsx */}
-      <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl w-fit border border-border">
-        {TABS.map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => changeTab(tab.value)}
-            className={cn(
-              "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-              status === tab.value
-                ? "bg-card shadow-sm text-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <tab.icon className="size-3.5" />
-            {tab.label}
-          </button>
-        ))}
+      {/* Tab switcher */}
+      <div className="overflow-x-auto scrollbar-hide pb-0.5 -mx-1 px-1 sm:mx-0 sm:px-0">
+        <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl w-max border border-border">
+          {TABS.map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => changeTab(tab.value)}
+              className={cn(
+                "flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap",
+                status === tab.value
+                  ? "bg-card shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <tab.icon className="size-3.5" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="glass rounded-2xl p-4 md:p-5">
+      <div className="glass rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden">
         <AuthorityRequestList
           status={status}
           page={page}

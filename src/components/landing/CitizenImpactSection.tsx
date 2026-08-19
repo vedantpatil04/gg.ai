@@ -19,9 +19,9 @@ export function CitizenImpactSection() {
   const reducedMotion = useReducedMotion();
 
   return (
-    <section className="border-t border-border/60 py-20 lg:py-24">
+    <section className="border-t border-border/60 py-16 lg:py-20">
       <div className={LANDING_CONTAINER}>
-        <div className="grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-16">
+        <div className="grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-12">
           <motion.div
             initial={{ opacity: 0, scale: reducedMotion ? 1 : 0.97 }}
             whileInView={{ opacity: 1, scale: 1 }}
@@ -56,10 +56,8 @@ export function CitizenImpactSection() {
               The people closest to the problem are part of the solution.
             </h2>
             <p className="mt-4 max-w-md text-base leading-relaxed text-muted-foreground lg:text-lg">
-              Residents contribute localized reports and observations that complement
-              environmental data — the Citizen Hub verifies and triages each one alongside the
-              same data authorities already act on, so nothing gets lost between a street-level
-              report and a real response.
+              Residents contribute localized reports that complement environmental data. The Citizen
+              Hub verifies and triages each one alongside the same data authorities already act on.
             </p>
             <Link
               to="/citizen"

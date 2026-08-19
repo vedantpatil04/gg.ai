@@ -83,45 +83,91 @@ export function CityDirectoryList({ healthFilter, searchTerm, onSelect }: CityDi
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>City</TableHead>
-          <TableHead>Country</TableHead>
-          <TableHead>Current AQI</TableHead>
-          <TableHead>Air Quality</TableHead>
-          <TableHead>Monitoring</TableHead>
-          <TableHead>Last Updated</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+    <div>
+      {/* Mobile Stacked Cards (< md) */}
+      <div className="md:hidden space-y-2.5">
         {filtered.map((city) => {
           const status = getMonitoringStatus(city.reading);
           const aqi = city.reading ? aqiPill(city.reading.aqi) : null;
           return (
-            <TableRow key={city.cityId} className="cursor-pointer" onClick={() => onSelect(city)}>
-              <TableCell className="font-medium">{city.name}</TableCell>
-              <TableCell className="text-muted-foreground">{city.country}</TableCell>
-              <TableCell className="tabular-nums">{city.reading?.aqi ?? "—"}</TableCell>
-              <TableCell>
-                {aqi ? (
-                  <Pill tone={aqi.tone}>{aqi.label}</Pill>
-                ) : (
-                  <span className="text-muted-foreground">No data</span>
+            <div
+              key={city.cityId}
+              onClick={() => onSelect(city)}
+              className="p-3.5 rounded-xl border border-border/70 bg-card hover:bg-muted/40 active:bg-muted/60 transition-all cursor-pointer space-y-2"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="text-sm font-semibold truncate leading-snug">{city.name}</div>
+                  <div className="text-xs text-muted-foreground truncate">{city.country}</div>
+                </div>
+                {aqi && (
+                  <Pill tone={aqi.tone} className="shrink-0">
+                    {aqi.label}
+                  </Pill>
                 )}
-              </TableCell>
-              <TableCell>
-                <Pill tone={MONITORING_PILL_TONE[status]}>{MONITORING_LABEL[status]}</Pill>
-              </TableCell>
-              <TableCell className="text-muted-foreground">
-                {city.reading
-                  ? formatDistanceToNow(new Date(city.reading.timestamp), { addSuffix: true })
-                  : "Never"}
-              </TableCell>
-            </TableRow>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 text-xs pt-1.5 border-t border-border/40 text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-foreground">
+                    AQI {city.reading?.aqi ?? "—"}
+                  </span>
+                  <Pill tone={MONITORING_PILL_TONE[status]}>{MONITORING_LABEL[status]}</Pill>
+                </div>
+                <span className="text-[11px] shrink-0">
+                  {city.reading
+                    ? formatDistanceToNow(new Date(city.reading.timestamp), { addSuffix: true })
+                    : "Never"}
+                </span>
+              </div>
+            </div>
           );
         })}
-      </TableBody>
-    </Table>
+      </div>
+
+      {/* Desktop Table (md+) */}
+      <div className="hidden md:block overflow-x-auto scrollbar-hide">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>City</TableHead>
+              <TableHead>Country</TableHead>
+              <TableHead>Current AQI</TableHead>
+              <TableHead>Air Quality</TableHead>
+              <TableHead>Monitoring</TableHead>
+              <TableHead>Last Updated</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.map((city) => {
+              const status = getMonitoringStatus(city.reading);
+              const aqi = city.reading ? aqiPill(city.reading.aqi) : null;
+              return (
+                <TableRow key={city.cityId} className="cursor-pointer hover:bg-muted/40" onClick={() => onSelect(city)}>
+                  <TableCell className="font-medium">{city.name}</TableCell>
+                  <TableCell className="text-muted-foreground">{city.country}</TableCell>
+                  <TableCell className="tabular-nums">{city.reading?.aqi ?? "—"}</TableCell>
+                  <TableCell>
+                    {aqi ? (
+                      <Pill tone={aqi.tone}>{aqi.label}</Pill>
+                    ) : (
+                      <span className="text-muted-foreground">No data</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Pill tone={MONITORING_PILL_TONE[status]}>{MONITORING_LABEL[status]}</Pill>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {city.reading
+                      ? formatDistanceToNow(new Date(city.reading.timestamp), { addSuffix: true })
+                      : "Never"}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   );
 }

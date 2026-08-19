@@ -524,17 +524,17 @@ export function ResolutionVerificationWorkspace({
       className="space-y-5"
     >
       {/* Back bar */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground active:text-primary transition-colors group py-1"
         >
-          <ArrowLeft className="size-4 group-hover:-translate-x-0.5 transition-transform" />
-          Back to verification queue
+          <ArrowLeft className="size-4 group-hover:-translate-x-0.5 transition-transform shrink-0" />
+          <span className="font-medium">Back to verification queue</span>
         </button>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap justify-between sm:justify-end">
           {complaint && (
-            <>
+            <div className="flex items-center gap-1.5 flex-wrap">
               {isClosed && (
                 <Pill tone="success">
                   <Lock className="size-2.5" />
@@ -549,9 +549,9 @@ export function ResolutionVerificationWorkspace({
               )}
               {!isClosed && !isReworked && <Pill tone="info">Awaiting Verification</Pill>}
               <Pill tone={SEVERITY_TONE[complaint.severity] ?? "muted"}>{complaint.severity}</Pill>
-            </>
+            </div>
           )}
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading} className="h-8 text-xs shrink-0">
             <RefreshCw className={cn("size-3.5 mr-1.5", isLoading && "animate-spin")} />
             Refresh
           </Button>

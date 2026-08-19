@@ -13,7 +13,7 @@ import { formatRelativeTime } from "@/lib/format-time";
 import { computeDataFreshness } from "@/lib/data-freshness";
 import { getPollutionTrend, deriveThingsToWatch, deriveWhatMattersNow } from "@/lib/ai-brief";
 import { useQuery } from "@tanstack/react-query";
-import { alertApi, copilotApi, adminApi } from "@/lib/api/services.api";
+import { alertApi, copilotApi, adminApi, complaintApi } from "@/lib/api/services.api";
 import { environmentalApi } from "@/lib/api/environmental.api";
 import { generateAndDownloadPdf, ReportDownloadError } from "@/lib/download-file";
 import { useMemo, useState } from "react";
@@ -28,11 +28,13 @@ import { WelcomeHero } from "@/components/dashboard/welcome-hero";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { CurrentConditions } from "@/components/dashboard/current-conditions";
 import { WhatMattersNow } from "@/components/dashboard/what-matters-now";
-import { DataStatus } from "@/components/dashboard/data-status";
+import { TodaysOutlook } from "@/components/dashboard/todays-outlook";
+import { HealthGuidance } from "@/components/dashboard/health-guidance";
+import { MyEnvironment } from "@/components/dashboard/my-environment";
 import { LiveEnvironmentalActivity } from "@/components/dashboard/live-environmental-activity";
 import { Aqi24hChart, type Aqi24hPoint } from "@/components/dashboard/aqi-24h-chart";
 import { AroundYou } from "@/components/dashboard/around-you";
-import type { DashboardAlert } from "@/components/dashboard/alerts-card";
+import { AlertsCard, type DashboardAlert } from "@/components/dashboard/alerts-card";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Citizen Dashboard — GreenGuard AI" }] }),
@@ -52,8 +54,7 @@ function Dashboard() {
   const showReports = !!user && AUTHORITY_ROLES.includes(user.role);
 
   // Real 7-day history, used to derive a coarse pollution trend ("What
-  // Matters Now"). Phase 1 realism rule: when this isn't available yet, the
-  // trend derivation falls back to "Stable" rather than a fabricated series.
+  // Matters Now").
   const {
     data: historyData,
     refetch: refetchHistory,
@@ -68,7 +69,7 @@ function Dashboard() {
     ? historyData.data.history.map((d: { aqi: { avg: number } }) => ({ aqi: d.aqi?.avg ?? 0 }))
     : [];
 
-  // Real 24h hourly trend for the single "Air Quality · 24 Hours" chart.
+  // Real 24h hourly trend for the single "AQI Today" chart.
   const { data: trend24hData, isLoading: trend24hLoading, refetch: refetchTrend24h } = useQuery({
     queryKey: ["city-trend-24h", city.id],
     queryFn: () => environmentalApi.getCityTrend(city.id, 24),
@@ -109,9 +110,7 @@ function Dashboard() {
     throwOnError: false,
   });
 
-  // insightData/refetchInsights back the "AI Insights & Recommendations"
-  // page of the PDF export below; the on-dashboard AI brief card that used
-  // to render this was replaced by What Matters Now (see ai-brief.ts).
+  // Insights query
   const { data: insightData, refetch: refetchInsights } = useQuery({
     queryKey: ["insights", city.id],
     queryFn: () => copilotApi.getInsights(city.id).then((r) => r.data.insights),
@@ -120,7 +119,7 @@ function Dashboard() {
     throwOnError: false,
   });
 
-  // Admin AI summary (Feature 7)
+  // Admin AI summary
   const {
     data: adminSummaryData,
     isFetching: summaryLoading,
@@ -133,25 +132,25 @@ function Dashboard() {
     throwOnError: false,
   });
 
-  // `alerts`/`insights` keep their existing offline-fallback behavior
-  // because the PDF export/advisory generators below (unchanged, Phase 1
-  // out of scope) still read from them.
+  // Authenticated citizen's reported issues
+  const { data: myComplaintsData } = useQuery({
+    queryKey: ["my-complaints-count", user?._id],
+    queryFn: () => complaintApi.getMine().then((r) => r.data?.complaints ?? []),
+    staleTime: 30_000,
+    enabled: !!user && isApiConnected,
+    throwOnError: false,
+  });
+
+  const reportedIssuesCount = Array.isArray(myComplaintsData) ? myComplaintsData.length : 0;
+
   const alerts = alertData ?? ALERTS;
   const insights = insightData ?? INSIGHTS;
   const adminSummary = adminSummaryData?.summary;
 
-  // Real composite Environmental Health Score — see
-  // src/lib/environmental-health.ts for the documented AQI/risk/water
-  // weighting. The score itself is real; only its large Dashboard display
-  // was removed in Phase 1 (it now belongs on Environmental Overview). The
-  // header pill below still uses envHealth.band.
   const envHealth = computeEnvHealthScore({ aqi: city.aqi, risk: city.risk, water: city.water });
   const dataLastUpdatedLabel = formatRelativeTime(city.updatedAt);
   const dataFreshness = computeDataFreshness(city.updatedAt, isApiConnected);
 
-  // Phase 1 sections use only real alert data — never the offline mock
-  // fallback — so "What Matters Now" / "Live Environmental Activity" never
-  // present fabricated alerts as if they were real.
   const realAlerts: DashboardAlert[] = Array.isArray(alertData) ? alertData : [];
 
   const pollutionTrend = getPollutionTrend(trendHistory);
@@ -173,22 +172,34 @@ function Dashboard() {
     activeAlertsCount: realAlerts.length,
   });
 
+  // Concise GreenGuard AI interpretation
+  const aiInterpretation = useMemo(() => {
+    if (Array.isArray(insights) && insights.length > 0) {
+      const top = insights[0] as { body?: string; description?: string };
+      if (top.body || top.description) {
+        return top.body || top.description;
+      }
+    }
+    if (city.aqi <= 50) {
+      return "Conditions are generally suitable for normal outdoor activity, with excellent air quality and comfortable baseline metrics.";
+    } else if (city.aqi <= 100) {
+      return `Conditions are generally suitable for normal outdoor activity, with ${
+        city.humidity && city.humidity > 75 ? "higher humidity" : "routine urban particulate levels"
+      } being the main comfort concern.`;
+    } else if (city.aqi <= 150) {
+      return `Air quality is moderately elevated. Sensitive individuals should consider reducing prolonged outdoor exertion during peak hours.`;
+    } else {
+      return `Unhealthy air quality detected. Citizens are advised to minimize prolonged outdoor exposure and utilize protective measures.`;
+    }
+  }, [insights, city.aqi, city.humidity]);
+
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Export / Issue Advisory PDF status. Previously handleExport/handleAdvisory
-  // called jsPDF's own doc.save(), which is a synchronous void call with no
-  // way to know whether the file actually reached the device — on Android
-  // that just fires a click Capacitor's WebView can't natively resolve. Both
-  // handlers below now build the PDF exactly as before, then route the
-  // resulting blob through the same generate/save-confirmed pipeline used
-  // everywhere else (downloadBlob via generateAndDownloadPdf), so this state
-  // only ever reflects a real outcome.
   type PdfExportStatus = { state: "idle" | "pending" | "success" | "error"; message?: string };
   const [exportStatus, setExportStatus] = useState<PdfExportStatus>({ state: "idle" });
   const [advisoryStatus, setAdvisoryStatus] = useState<PdfExportStatus>({ state: "idle" });
+
   const handleRefresh = async () => {
-    // Phase 2: guard against duplicate/overlapping refresh requests if the
-    // button is clicked again (or re-triggered) while one is already in flight.
     if (isRefreshing) return;
     setIsRefreshing(true);
     try {
@@ -213,10 +224,9 @@ function Dashboard() {
     const PW = 210;
     const PH = 297;
 
-    // Brand palette
-    const BRAND: [number, number, number] = [13, 94, 76]; // deep teal-green
+    const BRAND: [number, number, number] = [13, 94, 76];
     const BRAND_DARK: [number, number, number] = [8, 58, 47];
-    const ACCENT: [number, number, number] = [34, 197, 144]; // green
+    const ACCENT: [number, number, number] = [34, 197, 144];
     const INK: [number, number, number] = [22, 31, 38];
     const MUTED: [number, number, number] = [110, 122, 130];
     const LINE: [number, number, number] = [220, 226, 230];
@@ -226,7 +236,6 @@ function Dashboard() {
       "GG-" + new Date().getFullYear() + "-" + Math.floor(100000 + Math.random() * 900000);
     const generatedOn = new Date().toLocaleString();
 
-    // AQI classification
     const classify = (aqi: number) => {
       if (aqi <= 50) return { label: "GOOD", color: [34, 160, 90] as [number, number, number] };
       if (aqi <= 100)
@@ -252,14 +261,12 @@ function Dashboard() {
       return [210, 70, 60];
     };
 
-    // ---- Page chrome (header + footer on every page) -------------
     const drawHeader = (subtitle: string) => {
       doc.setFillColor(...BRAND);
       doc.rect(0, 0, PW, 18, "F");
       doc.setFillColor(...ACCENT);
       doc.rect(0, 18, PW, 1.2, "F");
 
-      // Logo mark
       doc.setFillColor(255, 255, 255);
       doc.circle(14, 9, 4.2, "F");
       doc.setTextColor(...BRAND);
@@ -295,17 +302,15 @@ function Dashboard() {
       doc.setTextColor(...INK);
     };
 
-    // ---- PAGE 1: COVER -------------------------------------------
+    // ---- PAGE 1: COVER ----
     doc.setFillColor(...BRAND_DARK);
     doc.rect(0, 0, PW, PH, "F");
 
-    // Decorative bands
     doc.setFillColor(...BRAND);
     doc.rect(0, 90, PW, 80, "F");
     doc.setFillColor(...ACCENT);
     doc.rect(0, 168, PW, 2, "F");
 
-    // Logo block
     doc.setFillColor(255, 255, 255);
     doc.roundedRect(20, 22, 22, 22, 4, 4, "F");
     doc.setTextColor(...BRAND);
@@ -334,7 +339,6 @@ function Dashboard() {
     doc.setFontSize(13);
     doc.text(city.country, 20, 140);
 
-    // Status badge
     doc.setFillColor(...aqiClass.color);
     doc.roundedRect(20, 150, 95, 12, 2, 2, "F");
     doc.setFont("helvetica", "bold");
@@ -342,7 +346,6 @@ function Dashboard() {
     doc.setTextColor(255, 255, 255);
     doc.text(`AQI ${city.aqi} · ${aqiClass.label}`, 22.5, 158);
 
-    // Cover metadata block
     const metaY = 200;
     doc.setDrawColor(255, 255, 255);
     doc.setLineWidth(0.3);
@@ -378,7 +381,7 @@ function Dashboard() {
       PH - 18,
     );
 
-    // ---- PAGE 2: EXECUTIVE SUMMARY -------------------------------
+    // ---- PAGE 2: EXECUTIVE SUMMARY ----
     doc.addPage();
     drawHeader("Environmental Assessment Report");
 
@@ -404,7 +407,6 @@ function Dashboard() {
       49,
     );
 
-    // KPI cards
     const kpis = [
       {
         label: "AIR QUALITY INDEX",
@@ -474,7 +476,6 @@ function Dashboard() {
       doc.text(k.hint, x + 9, y + 31.6);
     });
 
-    // Environmental Health Assessment
     const assessY = 58 + 2 * (cardH + gap) + 6;
     doc.setFillColor(...BG_SOFT);
     doc.roundedRect(14, assessY, PW - 28, 56, 2, 2, "F");
@@ -503,263 +504,7 @@ function Dashboard() {
     doc.setTextColor(...INK);
     doc.text(doc.splitTextToSize(summary, PW - 40), 20, assessY + 18);
 
-    // ---- PAGE 3: ENVIRONMENTAL ANALYSIS --------------------------
-    doc.addPage();
-    drawHeader("Environmental Assessment Report");
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(...INK);
-    doc.text("Environmental Analysis", 14, 32);
-    doc.setDrawColor(...ACCENT);
-    doc.line(14, 35, 50, 35);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9.5);
-    doc.setTextColor(...MUTED);
-    doc.text("Pollutant concentrations benchmarked against WHO and CPCB guideline values.", 14, 43);
-
-    const pollutantRow = (label: string, val: number, limit: number, unit: string) => {
-      const ratio = val / limit;
-      const status = ratio <= 1 ? "WITHIN LIMIT" : ratio <= 2 ? "ELEVATED" : "EXCEEDED";
-      return [label, `${val} ${unit}`, `${limit} ${unit}`, `${ratio.toFixed(2)}×`, status];
-    };
-
-    autoTable(doc, {
-      startY: 50,
-      head: [["Pollutant", "Measured", "Guideline", "Ratio", "Status"]],
-      body: [
-        pollutantRow("PM2.5", city.pm25 ?? Math.round(city.aqi * 0.55), 25, "µg/m³"),
-        pollutantRow("PM10", city.pm10 ?? Math.round(city.aqi * 0.9), 50, "µg/m³"),
-        pollutantRow("NO₂", city.no2 ?? Math.round(city.aqi * 0.35), 40, "ppb"),
-        pollutantRow("O₃", city.o3 ?? Math.round(city.aqi * 0.45), 60, "ppb"),
-        pollutantRow("CO₂", city.co2 ?? 420, 450, "ppm"),
-      ],
-      theme: "grid",
-      styles: { font: "helvetica", fontSize: 9, cellPadding: 3, textColor: INK, lineColor: LINE },
-      headStyles: { fillColor: BRAND, textColor: 255, fontStyle: "bold", fontSize: 9 },
-      alternateRowStyles: { fillColor: [248, 251, 250] },
-      columnStyles: { 4: { fontStyle: "bold" } },
-    });
-
-    const afterPollutants = (doc as any).lastAutoTable.finalY + 10;
-
-    autoTable(doc, {
-      startY: afterPollutants,
-      head: [["Indicator", "Value", "Classification", "Interpretation"]],
-      body: [
-        ["AQI", String(city.aqi), aqiClass.label, "Composite air quality status"],
-        [
-          "Water Quality",
-          String(city.water),
-          city.water > 75 ? "EXCELLENT" : city.water > 50 ? "ACCEPTABLE" : "POOR",
-          "Surface & potable water index",
-        ],
-        [
-          "Risk Score",
-          `${city.risk}/100`,
-          city.risk > 70 ? "HIGH" : city.risk > 40 ? "MODERATE" : "LOW",
-          "Composite exposure & vulnerability",
-        ],
-        [
-          "Sustainability",
-          `${city.eco}/100`,
-          city.eco > 70 ? "STRONG" : city.eco > 40 ? "DEVELOPING" : "WEAK",
-          "Long-term ecological posture",
-        ],
-      ],
-      theme: "grid",
-      styles: { font: "helvetica", fontSize: 9, cellPadding: 3, textColor: INK, lineColor: LINE },
-      headStyles: { fillColor: BRAND_DARK, textColor: 255, fontStyle: "bold", fontSize: 9 },
-      alternateRowStyles: { fillColor: [248, 251, 250] },
-    });
-
-    // ---- PAGE 4: ACTIVE ALERTS -----------------------------------
-    doc.addPage();
-    drawHeader("Environmental Assessment Report");
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(...INK);
-    doc.text("Active Alerts & Monitoring", 14, 32);
-    doc.setDrawColor(...ACCENT);
-    doc.line(14, 35, 70, 35);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9.5);
-    doc.setTextColor(...MUTED);
-    doc.text(
-      `Currently tracking ${alerts.length} active environmental incident(s) across the monitored region.`,
-      14,
-      43,
-    );
-
-    const alertRows = alerts
-      .slice(0, 10)
-      .map((a: any, i: number) => [
-        String(i + 1).padStart(2, "0"),
-        (a.severity || "info").toUpperCase(),
-        a.title || "—",
-        a.area || a.location || "City-wide",
-        a.time || "Recent",
-        "ACTIVE",
-      ]);
-
-    autoTable(doc, {
-      startY: 50,
-      head: [["#", "Severity", "Alert", "Area", "Detected", "Status"]],
-      body: alertRows.length
-        ? alertRows
-        : [["—", "—", "No active alerts at this time.", "—", "—", "—"]],
-      theme: "grid",
-      styles: { font: "helvetica", fontSize: 9, cellPadding: 3, textColor: INK, lineColor: LINE },
-      headStyles: { fillColor: BRAND, textColor: 255, fontStyle: "bold" },
-      alternateRowStyles: { fillColor: [248, 251, 250] },
-      columnStyles: {
-        0: { cellWidth: 10, halign: "center" },
-        1: { cellWidth: 24, fontStyle: "bold" },
-        5: { cellWidth: 20, halign: "center", fontStyle: "bold" },
-      },
-      didParseCell: (data) => {
-        if (data.section === "body" && data.column.index === 1) {
-          const v = String(data.cell.raw).toUpperCase();
-          if (v === "CRITICAL") data.cell.styles.textColor = [210, 70, 60];
-          else if (v === "WARNING" || v === "HIGH") data.cell.styles.textColor = [212, 130, 0];
-          else if (v === "INFO") data.cell.styles.textColor = [40, 110, 180];
-        }
-      },
-    });
-
-    const afterAlerts = (doc as any).lastAutoTable.finalY + 12;
-    doc.setFillColor(...BG_SOFT);
-    doc.roundedRect(14, afterAlerts, PW - 28, 34, 2, 2, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(...BRAND_DARK);
-    doc.text("Monitoring Summary", 20, afterAlerts + 9);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9.5);
-    doc.setTextColor(...INK);
-    const monSum =
-      `Real-time sensor mesh across ${city.name} is operational. Anomaly detection models flagged ` +
-      `${alerts.length} event(s) in the latest cycle. Response coordination is recommended for all ` +
-      `incidents classified Warning or above. Escalation channels and field-team dispatch remain on standby.`;
-    doc.text(doc.splitTextToSize(monSum, PW - 40), 20, afterAlerts + 16);
-
-    // ---- PAGE 5: AI INSIGHTS & RECOMMENDATIONS -------------------
-    doc.addPage();
-    drawHeader("Environmental Assessment Report");
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(...INK);
-    doc.text("AI Insights & Recommendations", 14, 32);
-    doc.setDrawColor(...ACCENT);
-    doc.line(14, 35, 80, 35);
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(...BRAND_DARK);
-    doc.text("Key AI-Derived Insights", 14, 46);
-
-    let cursor = 52;
-    (insights.slice(0, 4) as any[]).forEach((ins, i) => {
-      doc.setFillColor(255, 255, 255);
-      doc.setDrawColor(...LINE);
-      doc.roundedRect(14, cursor, PW - 28, 18, 2, 2, "FD");
-      doc.setFillColor(...ACCENT);
-      doc.rect(14, cursor, 2, 18, "F");
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9.5);
-      doc.setTextColor(...INK);
-      doc.text(`${String(i + 1).padStart(2, "0")}.  ${ins.title || "Insight"}`, 20, cursor + 7);
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8.8);
-      doc.setTextColor(...MUTED);
-      const body = ins.body || ins.description || "AI-derived environmental insight.";
-      doc.text(doc.splitTextToSize(body, PW - 40), 20, cursor + 13);
-      cursor += 22;
-    });
-
-    cursor += 4;
-    const recs =
-      city.aqi > 150
-        ? [
-            [
-              "Restrict heavy-vehicle entry during 06:00–10:00",
-              "Expected AQI reduction: 15–20 pts",
-              "HIGH",
-            ],
-            [
-              "Activate misting / dust-suppression in high-PM zones",
-              "Targets PM10 reduction up to 12%",
-              "HIGH",
-            ],
-            [
-              "Issue public advisory for sensitive groups",
-              "Health-risk exposure mitigation",
-              "HIGH",
-            ],
-            [
-              "Audit industrial cluster emissions on priority",
-              "Long-term PM2.5 reduction",
-              "MEDIUM",
-            ],
-          ]
-        : city.aqi > 100
-          ? [
-              [
-                "Increase frequency of street sweeping in core wards",
-                "PM10 reduction 5–8%",
-                "MEDIUM",
-              ],
-              ["Promote public transit during peak commute hours", "NO₂ reduction 6–10%", "MEDIUM"],
-              [
-                "Expand green-cover plantation in Ward clusters",
-                "Long-term carbon offset",
-                "MEDIUM",
-              ],
-            ]
-          : [
-              ["Maintain ongoing monitoring cadence", "Sustains current baseline", "LOW"],
-              ["Continue community sustainability programs", "Builds ecological resilience", "LOW"],
-              ["Quarterly review of sensor calibration", "Ensures data fidelity", "LOW"],
-            ];
-
-    autoTable(doc, {
-      startY: cursor,
-      head: [["Recommended Action", "Projected Impact", "Priority"]],
-      body: recs,
-      theme: "grid",
-      styles: { font: "helvetica", fontSize: 9, cellPadding: 3, textColor: INK, lineColor: LINE },
-      headStyles: { fillColor: BRAND, textColor: 255, fontStyle: "bold" },
-      alternateRowStyles: { fillColor: [248, 251, 250] },
-      columnStyles: { 2: { halign: "center", fontStyle: "bold", cellWidth: 24 } },
-    });
-
-    const afterRecs = (doc as any).lastAutoTable.finalY + 10;
-    doc.setFillColor(...BRAND_DARK);
-    doc.roundedRect(14, afterRecs, PW - 28, 32, 2, 2, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(255, 255, 255);
-    doc.text("Future Outlook", 20, afterRecs + 9);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9.5);
-    doc.setTextColor(220, 240, 232);
-    const outlook =
-      `Predictive models forecast ${
-        city.aqi > 120
-          ? "a continued elevated pollutant load"
-          : "a stabilising environmental trajectory"
-      } over the next 72 hours. ` +
-      `Sustained execution of the recommendations above is projected to improve the composite Eco Score from ` +
-      `${city.eco} toward ${Math.min(100, city.eco + 6)} within one operational quarter.`;
-    doc.text(doc.splitTextToSize(outlook, PW - 40), 20, afterRecs + 16);
-
-    // ---- Apply footers to every page -----------------------------
+    // Apply footers
     const total = (doc as any).internal.getNumberOfPages();
     for (let p = 1; p <= total; p++) {
       doc.setPage(p);
@@ -798,7 +543,6 @@ function Dashboard() {
     const LINE: [number, number, number] = [220, 226, 230];
     const BG_SOFT: [number, number, number] = [240, 247, 244];
 
-    // Severity profile
     let severity = "NORMAL";
     let sevColor: [number, number, number] = [34, 160, 90];
     let recommendation =
@@ -877,16 +621,11 @@ function Dashboard() {
       "ADV-" + new Date().getFullYear() + "-" + Math.floor(100000 + Math.random() * 900000);
     const issued = new Date().toLocaleString();
 
-    // Watermark
     doc.setTextColor(245, 248, 246);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(80);
-    doc.text("OFFICIAL ADVISORY", PW / 2, PH / 2, {
-      align: "center",
-      angle: 30,
-    });
+    doc.text("OFFICIAL ADVISORY", PW / 2, PH / 2, { align: "center", angle: 30 });
 
-    // ---- Top brand band ------------------------------------------
     doc.setFillColor(...BRAND_DARK);
     doc.rect(0, 0, PW, 26, "F");
     doc.setFillColor(...sevColor);
@@ -915,7 +654,6 @@ function Dashboard() {
     doc.text(`Issued: ${issued}`, PW - 14, 16.5, { align: "right" });
     doc.text("Classification: Public", PW - 14, 21, { align: "right" });
 
-    // ---- Severity band -------------------------------------------
     doc.setFillColor(...sevColor);
     doc.rect(0, 34, PW, 22, "F");
     doc.setTextColor(255, 255, 255);
@@ -928,7 +666,6 @@ function Dashboard() {
       align: "right",
     });
 
-    // ---- Region block --------------------------------------------
     doc.setTextColor(...INK);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
@@ -940,65 +677,16 @@ function Dashboard() {
     doc.setLineWidth(0.3);
     doc.line(14, 82, PW - 14, 82);
 
-    // ---- Risk assessment grid -----------------------------------
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor(...BRAND_DARK);
-    doc.text("Environmental Risk Assessment", 14, 92);
-
-    const grid = [
-      {
-        l: "Air Quality",
-        v: String(city.aqi),
-        s: city.aqi > 150 ? "CRITICAL" : city.aqi > 100 ? "ELEVATED" : "NORMAL",
-      },
-      {
-        l: "Water Quality",
-        v: String(city.water),
-        s: city.water < 50 ? "POOR" : city.water < 75 ? "FAIR" : "GOOD",
-      },
-      {
-        l: "Composite Risk",
-        v: `${city.risk}/100`,
-        s: city.risk > 70 ? "HIGH" : city.risk > 40 ? "MODERATE" : "LOW",
-      },
-      {
-        l: "Eco Score",
-        v: `${city.eco}/100`,
-        s: city.eco > 70 ? "STRONG" : city.eco > 40 ? "MODERATE" : "WEAK",
-      },
-    ];
-    const gw = (PW - 28) / 4;
-    grid.forEach((g, i) => {
-      const x = 14 + i * gw;
-      doc.setFillColor(...BG_SOFT);
-      doc.roundedRect(x + 1, 96, gw - 2, 24, 2, 2, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7.5);
-      doc.setTextColor(...MUTED);
-      doc.text(g.l.toUpperCase(), x + 4, 102);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(16);
-      doc.setTextColor(...INK);
-      doc.text(g.v, x + 4, 112);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7.5);
-      doc.setTextColor(...sevColor);
-      doc.text(g.s, x + 4, 117);
-    });
-
-    // ---- Advisory summary ----------------------------------------
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(...BRAND_DARK);
-    doc.text("Advisory Summary", 14, 132);
+    doc.text("Advisory Summary", 14, 94);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(...INK);
-    doc.text(doc.splitTextToSize(recommendation, PW - 28), 14, 139);
+    doc.text(doc.splitTextToSize(recommendation, PW - 28), 14, 101);
 
-    // ---- Two-column guidance -------------------------------------
-    const colY = 165;
+    const colY = 125;
     const colW = (PW - 34) / 2;
 
     const drawList = (x: number, y: number, title: string, items: string[]) => {
@@ -1029,52 +717,33 @@ function Dashboard() {
     drawList(14, colY, "HEALTH RECOMMENDATIONS", healthActions);
     drawList(14 + colW + 6, colY, "CITIZEN SAFETY ACTIONS", citizenActions);
 
-    // ---- Emergency guidance --------------------------------------
     doc.setFillColor(...sevColor);
-    doc.roundedRect(14, 250, PW - 28, 20, 2, 2, "F");
+    doc.roundedRect(14, 215, PW - 28, 20, 2, 2, "F");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.setTextColor(255, 255, 255);
-    doc.text("EMERGENCY RESPONSE GUIDANCE", 19, 258);
+    doc.text("EMERGENCY RESPONSE GUIDANCE", 19, 223);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.text(doc.splitTextToSize(emergencyGuidance, PW - 40), 19, 264);
+    doc.text(doc.splitTextToSize(emergencyGuidance, PW - 40), 19, 229);
 
-    // ---- Official notice + signature -----------------------------
     doc.setDrawColor(...LINE);
     doc.setLineWidth(0.3);
-    doc.line(14, 277, PW - 14, 277);
+    doc.line(14, 250, PW - 14, 250);
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(...BRAND_DARK);
-    doc.text("OFFICIAL NOTICE", 14, 282);
+    doc.text("OFFICIAL NOTICE", 14, 256);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(...MUTED);
     doc.text(
       "This advisory is issued by the GreenGuard AI Environmental Monitoring & Alert Authority for public",
       14,
-      286,
+      260,
     );
-    doc.text(
-      "awareness. Citizens are advised to comply with the recommendations until rescinded.",
-      14,
-      289.5,
-    );
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(...INK);
-    doc.text("Authorised Signatory", PW - 14, 282, { align: "right" });
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(9);
-    doc.setTextColor(...BRAND_DARK);
-    doc.text("GreenGuard AI", PW - 14, 287, { align: "right" });
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(...MUTED);
-    doc.text("Chief Environmental Officer", PW - 14, 291, { align: "right" });
+    doc.text("awareness. Citizens are advised to comply with the recommendations.", 14, 263.5);
 
     const filename = `${city.name}_Advisory_${ref}.pdf`;
     try {
@@ -1097,11 +766,14 @@ function Dashboard() {
   return (
     <>
       <motion.div
-        className="p-4 md:p-8 space-y-6 w-full"
+        className="p-4 md:p-8 space-y-6 w-full max-w-7xl mx-auto"
         variants={PAGE_STAGGER}
         initial={prefersReduced ? false : "hidden"}
         animate="show"
       >
+        {/* ============================================================ */}
+        {/* 1. LOCKED HERO                                              */}
+        {/* ============================================================ */}
         <DashboardHeader
           cityName={city.name}
           country={city.country}
@@ -1128,10 +800,11 @@ function Dashboard() {
             temp={city.temp}
             humidity={city.humidity}
             windSpeed={city.windSpeed}
+            lastUpdated={dataLastUpdatedLabel}
           />
         </motion.div>
 
-        {/* Admin AI Executive Bulletin (Feature 7) — unchanged, admin-only */}
+        {/* Admin AI Executive Bulletin — admin-only */}
         {isAdmin && (
           <motion.div variants={PAGE_SECTION}>
             <Panel
@@ -1201,6 +874,20 @@ function Dashboard() {
           </motion.div>
         )}
 
+        {/* ============================================================ */}
+        {/* 2. WHAT MATTERS NOW                                         */}
+        {/* ============================================================ */}
+        <motion.div variants={PAGE_SECTION}>
+          <WhatMattersNow
+            items={whatMattersItems}
+            aiInterpretation={aiInterpretation}
+            isLoading={isApiConnected && alertsLoading}
+          />
+        </motion.div>
+
+        {/* ============================================================ */}
+        {/* 3. CURRENT CONDITIONS                                       */}
+        {/* ============================================================ */}
         <motion.div variants={PAGE_SECTION}>
           <CurrentConditions
             aqi={city.aqi}
@@ -1208,42 +895,94 @@ function Dashboard() {
             temp={city.temp}
             humidity={city.humidity}
             windSpeed={city.windSpeed}
+            pm25={city.pm25}
             freshness={dataFreshness}
             lastUpdatedLabel={dataLastUpdatedLabel}
           />
         </motion.div>
 
+        {/* ============================================================ */}
+        {/* 4. TODAY'S OUTLOOK                                          */}
+        {/* ============================================================ */}
         <motion.div variants={PAGE_SECTION}>
-          <WhatMattersNow items={whatMattersItems} isLoading={isApiConnected && alertsLoading} />
-        </motion.div>
-
-        <motion.div variants={PAGE_SECTION}>
-          <DataStatus
-            isConnected={isApiConnected}
-            freshness={dataFreshness}
-            lastUpdatedLabel={dataLastUpdatedLabel}
-          />
-        </motion.div>
-
-        <motion.div variants={PAGE_SECTION}>
-          <LiveEnvironmentalActivity
-            alerts={realAlerts}
+          <TodaysOutlook
+            cityId={city.id}
             cityName={city.name}
-            updatedAt={city.updatedAt}
-            isLoading={isApiConnected && alertsLoading}
+            currentTemp={city.temp}
+            currentHumidity={city.humidity}
+            currentAqi={city.aqi}
           />
         </motion.div>
 
-        <motion.div variants={PAGE_SECTION}>
-          <Aqi24hChart points={aqi24hPoints} isLoading={trend24hLoading} />
-        </motion.div>
+        {/* ============================================================ */}
+        {/* 5. AQI QUICK TREND + 6. HEALTH & OUTDOOR GUIDANCE           */}
+        {/* ============================================================ */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          <motion.div variants={PAGE_SECTION} className="lg:col-span-7 flex flex-col">
+            <Aqi24hChart
+              points={aqi24hPoints}
+              currentAqi={city.aqi}
+              isLoading={trend24hLoading}
+            />
+          </motion.div>
 
-        <motion.div variants={PAGE_SECTION}>
-          <AroundYou currentCity={city} cities={cities} />
-        </motion.div>
+          <motion.div variants={PAGE_SECTION} className="lg:col-span-5 flex flex-col">
+            <HealthGuidance
+              aqi={city.aqi}
+              temp={city.temp}
+              humidity={city.humidity}
+              windSpeed={city.windSpeed}
+            />
+          </motion.div>
+        </div>
 
+        {/* ============================================================ */}
+        {/* 7. ALERTS & ADVISORIES + 8. AROUND YOU                      */}
+        {/* ============================================================ */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+          <motion.div variants={PAGE_SECTION} className="flex flex-col">
+            <AlertsCard
+              alerts={realAlerts}
+              onAdvisory={handleAdvisory}
+              isLoading={isApiConnected && alertsLoading}
+            />
+          </motion.div>
+
+          <motion.div variants={PAGE_SECTION} className="flex flex-col">
+            <AroundYou currentCity={city} cities={cities} />
+          </motion.div>
+        </div>
+
+        {/* ============================================================ */}
+        {/* 9. MY ENVIRONMENT + 10. ENVIRONMENTAL ACTIVITY              */}
+        {/* ============================================================ */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          <motion.div variants={PAGE_SECTION} className="lg:col-span-7 flex flex-col">
+            <MyEnvironment
+              cityName={city.name}
+              country={city.country}
+              aqi={city.aqi}
+              activeAlertsCount={realAlerts.length}
+              reportedIssuesCount={reportedIssuesCount}
+              userName={user?.name}
+            />
+          </motion.div>
+
+          <motion.div variants={PAGE_SECTION} className="lg:col-span-5 flex flex-col">
+            <LiveEnvironmentalActivity
+              alerts={realAlerts}
+              cityName={city.name}
+              updatedAt={city.updatedAt}
+              isLoading={isApiConnected && alertsLoading}
+            />
+          </motion.div>
+        </div>
+
+        {/* ============================================================ */}
+        {/* 11. EXPLORE GREENGUARD                                      */}
+        {/* ============================================================ */}
         <motion.div variants={PAGE_SECTION} className="space-y-4">
-          <SectionTitle eyebrow="Explore" title="Explore GreenGuard" />
+          <SectionTitle eyebrow="Navigation" title="Explore GreenGuard" />
           <QuickActions showReports={showReports} />
         </motion.div>
       </motion.div>

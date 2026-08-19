@@ -1,20 +1,16 @@
 /**
- * QuickActions — renders the "Explore GreenGuard" navigation cards.
+ * QuickActions — Section 11: Explore GreenGuard
  *
- * Phase 2: Production UI & Information Hierarchy — restraint pass:
- *  - Dropped the extra box-shadow glow ring on the icon badge; the badge's
- *    own hover scale + shadow already reads as an affordance without a
- *    second glow layer on top of it
- *  - Softened the hover gradient sweep so it reads as a light surface
- *    lift rather than a colored bloom
- *  - Press: coordinated spring sink (icon + tile together via shared variants)
- *  - Uses shared HOVER_LIFT / TAP_PRESS from motion.ts so it stays in sync
- *    with the rest of the design system
- *  - Proper focus-visible ring for keyboard navigation
+ * Fast navigation shortcuts to key platform modules:
+ *   - Environmental Overview — Deep environmental intelligence (/environment)
+ *   - Smart Map — Explore environmental conditions spatially (/map)
+ *   - Forecast — Detailed weather and environmental outlook (/forecast)
+ *   - Report Issue — Report an environmental problem (/citizen)
+ *   - AI Copilot — Ask GreenGuard about your environment (/copilot)
  */
 
 import { Link } from "@tanstack/react-router";
-import { Activity, Map, CloudSun, Megaphone } from "lucide-react";
+import { Activity, Map, CloudSun, Megaphone, Bot, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, useReducedMotion } from "framer-motion";
 import { STAGGER, HOVER_LIFT, TAP_PRESS } from "@/lib/motion";
@@ -23,89 +19,118 @@ interface QuickAction {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   href: string;
-  anchor?: boolean;
   accent: string;
   description: string;
 }
 
-// Phase 1 correction pass: reduced to the canonical set of Explore
-// destinations. "Intelligence Center" and "Reports" were removed from this
-// Dashboard promotion — neither is one of the spec's named destinations,
-// and both remain reachable from their own areas of the app.
 const ACTIONS: QuickAction[] = [
-  { label: "Environmental Overview", icon: Activity, href: "/environment", accent: "var(--color-success)",     description: "Health score & metrics" },
-  { label: "Smart Map",     icon: Map,      href: "/map",                  accent: "var(--color-info)",        description: "Interactive AQI map" },
-  { label: "Forecast",      icon: CloudSun, href: "/forecast",             accent: "var(--color-warning)",     description: "7-day outlook" },
-  { label: "Report Issue",  icon: Megaphone,href: "/citizen",              accent: "var(--color-destructive)", description: "Flag a problem" },
+  {
+    label: "Environmental Overview",
+    icon: Activity,
+    href: "/environment",
+    accent: "var(--color-success)",
+    description: "Deep environmental intelligence",
+  },
+  {
+    label: "Smart Map",
+    icon: Map,
+    href: "/map",
+    accent: "var(--color-info)",
+    description: "Explore conditions spatially",
+  },
+  {
+    label: "Forecast",
+    icon: CloudSun,
+    href: "/forecast",
+    accent: "var(--color-warning)",
+    description: "Weather & environmental outlook",
+  },
+  {
+    label: "Report Issue",
+    icon: Megaphone,
+    href: "/citizen",
+    accent: "var(--color-destructive)",
+    description: "Report an environmental problem",
+  },
+  {
+    label: "GreenGuard Intelligence",
+    icon: Bot,
+    href: "/copilot",
+    accent: "var(--color-primary)",
+    description: "Ask GreenGuard about your environment",
+  },
 ];
 
 const tileVariant = {
   hidden: { opacity: 0, y: 12 },
-  show:   { opacity: 1, y: 0 },
+  show: { opacity: 1, y: 0 },
 };
 
 function ActionTile({ action }: { action: QuickAction }) {
   const prefersReduced = useReducedMotion();
 
-  const tile = (
-    <motion.div
-      variants={tileVariant}
-      whileHover={prefersReduced ? undefined : HOVER_LIFT}
-      whileTap={prefersReduced ? undefined : TAP_PRESS}
-      className={cn(
-        "glass-card rounded-2xl p-4 flex flex-col items-center justify-center gap-3 text-center",
-        "min-w-[110px] shrink-0 sm:min-w-0 sm:shrink cursor-pointer group",
-        "border border-border/70 relative overflow-hidden",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-      )}
-    >
-      {/* Hover surface lift — GPU opacity only, kept subtle */}
-      <div
-        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"
-        style={{
-          background: `radial-gradient(ellipse 70% 50% at 50% 0%, color-mix(in oklab, ${action.accent} 7%, transparent), transparent)`,
-        }}
-      />
-
-      {/* Icon badge */}
-      <div
+  return (
+    <Link to={action.href} className="block h-full group focus-visible:outline-none">
+      <motion.div
+        variants={tileVariant}
+        whileHover={prefersReduced ? undefined : HOVER_LIFT}
+        whileTap={prefersReduced ? undefined : TAP_PRESS}
         className={cn(
-          "relative size-11 rounded-xl grid place-items-center text-white",
-          "transition-all duration-200 group-hover:scale-110 group-hover:shadow-lg",
+          "glass-card rounded-2xl p-4 flex flex-col justify-between h-full",
+          "border border-border/70 relative overflow-hidden transition-all duration-200",
+          "hover:border-primary/40 hover:shadow-md",
+          "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
         )}
-        style={{
-          background: `linear-gradient(140deg, ${action.accent}, color-mix(in oklab, ${action.accent} 60%, var(--color-primary)))`,
-          boxShadow: `0 4px 16px color-mix(in oklab, ${action.accent} 28%, transparent)`,
-        }}
       >
-        <action.icon className="size-[18px] transition-transform duration-200 group-hover:scale-110" />
-      </div>
+        {/* Subtle background glow on hover */}
+        <div
+          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"
+          style={{
+            background: `radial-gradient(ellipse 75% 60% at 50% 0%, color-mix(in oklab, ${action.accent} 9%, transparent), transparent)`,
+          }}
+        />
 
-      <div className="relative">
-        <div className="text-xs font-semibold leading-tight">{action.label}</div>
-        <div className="text-[10px] text-muted-foreground mt-0.5 leading-snug hidden sm:block">{action.description}</div>
-      </div>
-    </motion.div>
-  );
+        <div className="flex items-start justify-between gap-2">
+          {/* Icon badge */}
+          <div
+            className="size-10 rounded-xl grid place-items-center text-white transition-transform duration-200 group-hover:scale-105"
+            style={{
+              background: `linear-gradient(135deg, ${action.accent}, color-mix(in oklab, ${action.accent} 60%, var(--color-primary)))`,
+              boxShadow: `0 4px 14px color-mix(in oklab, ${action.accent} 25%, transparent)`,
+            }}
+          >
+            <action.icon className="size-5" />
+          </div>
 
-  return action.anchor ? (
-    <a key={action.label} href={action.href} tabIndex={0}>{tile}</a>
-  ) : (
-    <Link key={action.label} to={action.href}>{tile}</Link>
+          <ArrowUpRight className="size-4 text-muted-foreground group-hover:text-primary transition-colors opacity-60 group-hover:opacity-100" />
+        </div>
+
+        <div className="mt-4 relative">
+          <div className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-tight">
+            {action.label}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1 leading-snug">
+            {action.description}
+          </div>
+        </div>
+      </motion.div>
+    </Link>
   );
 }
 
-export function QuickActions({ showReports: _showReports }: { showReports: boolean }) {
+export function QuickActions({ showReports: _showReports }: { showReports?: boolean }) {
   const prefersReduced = useReducedMotion();
 
   return (
     <motion.div
-      className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible"
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5"
       variants={STAGGER(0.06)}
       initial={prefersReduced ? false : "hidden"}
       animate="show"
     >
-      {ACTIONS.map((a) => <ActionTile key={a.label} action={a} />)}
+      {ACTIONS.map((a) => (
+        <ActionTile key={a.label} action={a} />
+      ))}
     </motion.div>
   );
 }

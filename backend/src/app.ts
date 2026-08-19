@@ -37,6 +37,7 @@ import communityRoutes     from "./routes/community.routes";
 
 import { getCityAIInsights }                   from "./controllers/copilot.controller";
 import { startScheduler, getSchedulerStatus }  from "./jobs/scheduler";
+import { isPushConfigured }                    from "./services/push.service";
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
@@ -155,6 +156,7 @@ const handleHealthCheck = (_req: express.Request, res: express.Response) => {
     version: "6.0.0",
     environment: process.env.NODE_ENV || "development",
     aiEnabled: !!process.env.GEMINI_API_KEY,
+    pushEnabled: isPushConfigured(),
     database: {
       connected: dbState === 1,
       state: DB_STATE_LABELS[dbState] ?? "unknown",
@@ -178,6 +180,7 @@ async function bootstrap() {
   app.listen(PORT, () => {
     logger.info(`🚀 GreenGuard API v6.0 → http://localhost:${PORT}`);
     logger.info(`🤖 Gemini AI: ${process.env.GEMINI_API_KEY ? "✅ enabled" : "⚠️ disabled — set GEMINI_API_KEY"}`);
+    logger.info(`📱 Push Notifications (FCM): ${isPushConfigured() ? "✅ enabled" : "⚠️ disabled — set FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY"}`);
     logger.info(`🌍 Real-time data: Open-Meteo ✅ (no API key required) — weather ${process.env.OPEN_METEO_WEATHER_BASE_URL || "https://api.open-meteo.com/v1/forecast"}`);
   });
   startScheduler();

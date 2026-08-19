@@ -97,16 +97,16 @@ export function CityManagementPage() {
   );
 
   return (
-    <div className="px-4 md:px-6 py-6 space-y-5">
+    <div className="px-3.5 sm:px-4 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5 max-w-full overflow-hidden">
       <SectionTitle
         eyebrow="Governance"
         title="City Management"
         action={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ["admin-city-directory-cities"] })}>
+            <Button variant="outline" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ["admin-city-directory-cities"] })} className="h-8 text-xs">
               <RefreshCw className="size-3.5 mr-1.5" />Refresh
             </Button>
-            <Button size="sm" className="gap-1.5" onClick={() => setShowCreate(true)}>
+            <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={() => setShowCreate(true)}>
               <Plus className="size-3.5" />Add City
             </Button>
           </div>
@@ -116,12 +116,12 @@ export function CityManagementPage() {
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search city…" className="pl-8 h-9" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search city…" className="pl-8 h-9 text-xs sm:text-sm" />
           {search && <button className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setSearch("")}><X className="size-3.5" /></button>}
         </div>
       </div>
 
-      <div className="glass rounded-2xl p-4 md:p-5">
+      <div className="glass rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden">
         {isLoading ? (
           <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-16 rounded-xl bg-muted/40 animate-pulse" />)}</div>
         ) : isError ? (
@@ -133,28 +133,33 @@ export function CityManagementPage() {
         ) : (
           <div className="space-y-2">
             {filtered.map(c => (
-              <div key={c.cityId} className="flex items-center gap-4 p-4 rounded-xl border border-border/60 bg-card hover:bg-muted/30 transition-colors">
-                <div className="size-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <MapPin className="size-4 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{c.name}</span>
-                    <span className="text-[10px] text-muted-foreground font-mono">{c.cityId}</span>
+              <div key={c.cityId} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl border border-border/60 bg-card hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-3 min-w-0 flex-1 w-full sm:w-auto">
+                  <div className="size-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <MapPin className="size-4 text-primary" />
                   </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {c.country}{c.timezone ? ` · ${c.timezone}` : ""} · {c.lat.toFixed(4)}, {c.lng.toFixed(4)}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold truncate">{c.name}</span>
+                      <span className="text-[10px] text-muted-foreground font-mono shrink-0">#{c.cityId}</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                      {c.country}{c.timezone ? ` · ${c.timezone}` : ""} · {c.lat.toFixed(4)}, {c.lng.toFixed(4)}
+                    </div>
                   </div>
                 </div>
-                <div className="hidden md:block text-xs text-muted-foreground shrink-0">
-                  {format(new Date(c.createdAt), "MMM d, yyyy")}
-                </div>
-                <Pill tone={c.isActive ? "success" : "muted"}>{c.isActive ? "Active" : "Inactive"}</Pill>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" onClick={() => setEditCity(c as EnrichedCity)}><Edit2 className="size-3.5" /></Button>
-                  <Button variant="ghost" size="sm" className={cn("h-7 w-7 p-0", c.isActive ? "text-muted-foreground hover:text-destructive" : "text-muted-foreground hover:text-success")} onClick={() => setPendingToggle(c as EnrichedCity)}>
-                    {c.isActive ? <PowerOff className="size-3.5" /> : <Power className="size-3.5" />}
-                  </Button>
+
+                <div className="flex items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40 shrink-0">
+                  <div className="text-xs text-muted-foreground shrink-0">
+                    {format(new Date(c.createdAt), "MMM d, yyyy")}
+                  </div>
+                  <Pill tone={c.isActive ? "success" : "muted"}>{c.isActive ? "Active" : "Inactive"}</Pill>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={() => setEditCity(c as EnrichedCity)}><Edit2 className="size-3.5" /></Button>
+                    <Button variant="ghost" size="sm" className={cn("h-8 w-8 p-0", c.isActive ? "text-muted-foreground hover:text-destructive" : "text-muted-foreground hover:text-success")} onClick={() => setPendingToggle(c as EnrichedCity)}>
+                      {c.isActive ? <PowerOff className="size-3.5" /> : <Power className="size-3.5" />}
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -164,7 +169,7 @@ export function CityManagementPage() {
 
       {/* Create sheet */}
       <Sheet open={showCreate} onOpenChange={o => !o && setShowCreate(false)}>
-        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-4 sm:p-6">
           <SheetHeader><SheetTitle>Add New City</SheetTitle><SheetDescription>Register a new monitored city.</SheetDescription></SheetHeader>
           <CityForm initial={EMPTY} isSubmitting={createCity.isPending} submitLabel="Create City" onSubmit={d => createCity.mutate(d)} />
         </SheetContent>
@@ -172,7 +177,7 @@ export function CityManagementPage() {
 
       {/* Edit sheet */}
       <Sheet open={!!editCity} onOpenChange={o => !o && setEditCity(null)}>
-        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-4 sm:p-6">
           {editCity && (
             <>
               <SheetHeader><SheetTitle>Edit {editCity.name}</SheetTitle><SheetDescription>Update city details.</SheetDescription></SheetHeader>
@@ -188,7 +193,7 @@ export function CityManagementPage() {
 
       {/* Toggle confirm */}
       <AlertDialog open={!!pendingToggle} onOpenChange={o => !o && setPendingToggle(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[calc(100vw-2rem)] sm:max-w-md p-4 sm:p-6">
           <AlertDialogHeader>
             <AlertDialogTitle>{pendingToggle?.isActive ? "Deactivate" : "Activate"} {pendingToggle?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -197,9 +202,9 @@ export function CityManagementPage() {
                 : "This city will be available for monitoring and authority assignment."}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={toggleCity.isPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction disabled={toggleCity.isPending} className={cn(pendingToggle?.isActive && "bg-destructive hover:bg-destructive/90 text-destructive-foreground")}
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <AlertDialogCancel disabled={toggleCity.isPending} className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={toggleCity.isPending} className={cn("w-full sm:w-auto", pendingToggle?.isActive && "bg-destructive hover:bg-destructive/90 text-destructive-foreground")}
               onClick={e => { e.preventDefault(); if (pendingToggle) toggleCity.mutate((pendingToggle as { _id?: string })._id ?? pendingToggle.cityId); }}>
               {toggleCity.isPending && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}Confirm
             </AlertDialogAction>

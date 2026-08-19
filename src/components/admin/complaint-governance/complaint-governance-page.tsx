@@ -182,7 +182,7 @@ export function ComplaintGovernancePage() {
   // If a verification workspace is open, show it full-page
   if (verifyingId) {
     return (
-      <div className="px-4 md:px-6 py-6">
+      <div className="px-3.5 sm:px-4 md:px-6 py-4 sm:py-6 max-w-full overflow-hidden">
         <AnimatePresence mode="wait">
           <ResolutionVerificationWorkspace
             key={verifyingId}
@@ -198,23 +198,25 @@ export function ComplaintGovernancePage() {
   }
 
   return (
-    <div className="px-4 md:px-6 py-6 space-y-5">
+    <div className="px-3.5 sm:px-4 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5 max-w-full overflow-hidden">
       <WorkspaceHeader
         eyebrow="ADMINISTRATION · COMPLAINT GOVERNANCE"
         title="Complaint Queue"
         description="Review, assign, verify, and close environmental complaints across the network."
         action={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setShowWorkload((v) => !v)}>
+            <Button variant="outline" size="sm" onClick={() => setShowWorkload((v) => !v)} className="h-8 text-xs">
               {showWorkload ? (
                 <>
                   <BarChart3 className="size-3.5 mr-1.5" />
-                  Hide Workload
+                  <span className="hidden sm:inline">Hide Workload</span>
+                  <span className="sm:hidden">Workload</span>
                 </>
               ) : (
                 <>
                   <Users className="size-3.5 mr-1.5" />
-                  Show Workload
+                  <span className="hidden sm:inline">Show Workload</span>
+                  <span className="sm:hidden">Workload</span>
                 </>
               )}
             </Button>
@@ -222,6 +224,7 @@ export function ComplaintGovernancePage() {
               variant="outline"
               size="sm"
               onClick={() => qc.invalidateQueries({ queryKey: ["admin-complaint-queue"] })}
+              className="h-8 text-xs"
             >
               <RefreshCw className="size-3.5 mr-1.5" />
               Refresh
@@ -244,45 +247,50 @@ export function ComplaintGovernancePage() {
       </AnimatePresence>
 
       {/* Status tabs + severity filter */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl w-fit border border-border overflow-x-auto">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => changeTab(tab.value)}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap",
-                status === tab.value
-                  ? "bg-card shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <tab.icon
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
+        <div className="overflow-x-auto scrollbar-hide pb-0.5 -mx-1 px-1 sm:mx-0 sm:px-0">
+          <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl w-max border border-border">
+            {STATUS_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => changeTab(tab.value)}
                 className={cn(
-                  "size-3.5",
-                  tab.value === "resolved" && status !== "resolved" && "text-info",
-                  tab.value === "rework" && status !== "rework" && "text-destructive",
+                  "flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap",
+                  status === tab.value
+                    ? "bg-card shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
-              />
-              {tab.label}
-            </button>
-          ))}
+              >
+                <tab.icon
+                  className={cn(
+                    "size-3.5",
+                    tab.value === "resolved" && status !== "resolved" && "text-info",
+                    tab.value === "rework" && status !== "rework" && "text-destructive",
+                  )}
+                />
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl w-fit border border-border">
-          {SEVERITY_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => changeSev(f.value)}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize",
-                severity === f.value
-                  ? "bg-card shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
+
+        <div className="overflow-x-auto scrollbar-hide pb-0.5">
+          <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl w-max border border-border">
+            {SEVERITY_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                onClick={() => changeSev(f.value)}
+                className={cn(
+                  "px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-medium transition-all capitalize whitespace-nowrap",
+                  severity === f.value
+                    ? "bg-card shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -294,14 +302,14 @@ export function ComplaintGovernancePage() {
           className="flex items-start gap-3 rounded-xl border border-info/30 bg-info/8 px-4 py-3"
         >
           <CheckSquare className="size-4 text-info shrink-0 mt-0.5" />
-          <p className="text-sm text-info">
+          <p className="text-xs sm:text-sm text-info leading-snug">
             These complaints have been investigated and resolved by authorities. Click any complaint
             to open the full verification workspace and approve or request rework.
           </p>
         </motion.div>
       )}
 
-      <div className="glass rounded-2xl p-4 md:p-5">
+      <div className="glass rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden">
         <ComplaintQueueList
           status={status}
           severity={severity === "all" ? undefined : severity}

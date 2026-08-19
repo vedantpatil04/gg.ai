@@ -24,7 +24,7 @@ export function ForecastIntelligenceExperience() {
   const reducedMotion = useReducedMotion();
 
   return (
-    <section className="relative overflow-hidden py-16 lg:py-20">
+    <section className="relative overflow-hidden py-14 lg:py-16">
       {/* Atmospheric backdrop: a real sky photograph (Kolkata — see
           src/assets/landing/imagery.ts) fading in low-opacity along the top
           edge, under the same soft info-tinted glow used before. Purely
@@ -50,7 +50,7 @@ export function ForecastIntelligenceExperience() {
         <AtmosphereGlow reducedMotion={!!reducedMotion} />
       </div>
 
-      <div className={`${LANDING_CONTAINER} flex flex-col gap-10`}>
+      <div className={`${LANDING_CONTAINER} flex flex-col gap-8`}>
         <ExperienceHeader
           align="center"
           tone="info"

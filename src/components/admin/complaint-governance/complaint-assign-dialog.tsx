@@ -52,7 +52,7 @@ export function ComplaintAssignDialog({
 
   return (
     <Dialog open={!!complaint} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>{isReassign ? "Reassign Complaint" : "Assign Complaint"}</DialogTitle>
           <DialogDescription>
@@ -74,7 +74,7 @@ export function ComplaintAssignDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+        <div className="space-y-2 max-h-60 sm:max-h-72 overflow-y-auto pr-1">
           {authorities.isLoading || workload.isLoading ? (
             <div className="flex items-center justify-center h-24 gap-2 text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
@@ -98,13 +98,13 @@ export function ComplaintAssignDialog({
                   key={a._id}
                   onClick={() => setSelectedId(a._id)}
                   className={cn(
-                    "w-full flex items-center justify-between gap-3 rounded-xl px-4 py-3 border text-left transition-all",
+                    "w-full flex items-center justify-between gap-2.5 sm:gap-3 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 border text-left transition-all",
                     isSelected
                       ? "border-primary bg-primary/8 shadow-[0_0_0_1px_var(--color-primary)]"
-                      : "border-border hover:border-primary/40 hover:bg-muted/30",
+                      : "border-border hover:border-primary/40 hover:bg-muted/30 active:bg-muted/60",
                   )}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
                     {/* Avatar */}
                     <div
                       className={cn(
@@ -116,16 +116,16 @@ export function ComplaintAssignDialog({
                     >
                       {a.name[0].toUpperCase()}
                     </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-sm font-medium truncate">{a.name}</span>
                         {isCurrent && (
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-info/15 text-info">
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-info/15 text-info shrink-0">
                             Current
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-muted-foreground truncate">{a.email}</span>
+                      <span className="text-xs text-muted-foreground truncate block">{a.email}</span>
                     </div>
                   </div>
 
@@ -165,13 +165,14 @@ export function ComplaintAssignDialog({
           )}
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+        <DialogFooter className="flex-col-reverse sm:flex-row gap-2 pt-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="w-full sm:w-auto">
             Cancel
           </Button>
           <Button
             onClick={() => selectedId && onConfirm(selectedId)}
             disabled={!selectedId || isSubmitting || selectedId === complaint?.assignedTo?._id}
+            className="w-full sm:w-auto"
           >
             {isSubmitting && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
             {isReassign ? "Reassign" : "Assign"}

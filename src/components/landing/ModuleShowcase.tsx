@@ -78,7 +78,7 @@ export function ModuleShowcase() {
               aria-selected={isActive}
               onClick={() => setActiveIndex(i)}
               className={cn(
-                "group relative flex shrink-0 items-center gap-3 whitespace-nowrap rounded-xl px-4 py-3.5 text-left transition-colors lg:w-full lg:shrink lg:whitespace-normal lg:rounded-none",
+                "group relative flex shrink-0 items-center gap-3 whitespace-nowrap rounded-xl px-4 py-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:w-full lg:shrink lg:whitespace-normal lg:rounded-none",
                 isActive
                   ? "bg-card text-foreground lg:bg-[color:var(--color-primary)]/[0.06]"
                   : "text-muted-foreground hover:bg-card/60 hover:text-foreground",
@@ -142,7 +142,7 @@ export function ModuleShowcase() {
 
             <Link
               to={active.to}
-              className="group mt-6 inline-flex w-fit items-center gap-2 rounded-full border border-border/70 bg-background px-5 py-2.5 text-sm font-medium transition-all hover:bg-card"
+              className="group mt-6 inline-flex w-fit items-center gap-2 rounded-full border border-border/70 bg-background px-5 py-2.5 text-sm font-medium transition-all hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               Open {active.name}
               <ArrowUpRight className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />

@@ -22,7 +22,7 @@ export function EnvironmentalOverviewExperience() {
   const reducedMotion = useReducedMotion();
 
   return (
-    <section className="relative overflow-hidden py-16 lg:py-20">
+    <section className="relative overflow-hidden py-14 lg:py-16">
       {/* Eco-toned backdrop: a real, low-opacity photograph (Belagavi's
           green hills — see src/assets/landing/imagery.ts) masked so it only
           shows through along the bottom edge, under a soft success-tinted
@@ -57,7 +57,7 @@ export function EnvironmentalOverviewExperience() {
         />
       </div>
 
-      <div className={`${LANDING_CONTAINER} flex flex-col gap-10`}>
+      <div className={`${LANDING_CONTAINER} flex flex-col gap-8`}>
         <ExperienceHeader
           tone="success"
           eyebrow="Environmental Overview"

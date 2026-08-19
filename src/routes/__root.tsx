@@ -20,6 +20,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { I18nProvider } from "@/lib/i18n-context";
 import { Toaster } from "@/components/ui/sonner";
 import { NavigationTransitionOverlay } from "@/components/shared/navigation-transition";
+import { PushNotificationsBridge } from "@/components/push/push-notifications-bridge";
 
 function NotFoundComponent() {
   return (
@@ -133,6 +134,7 @@ function RootComponent() {
                 <TooltipProvider delayDuration={150}>
                   <MotionPreferences>
                     <Outlet />
+                    <PushNotificationsBridge />
                     <NavigationTransitionOverlay />
                     <Toaster />
                   </MotionPreferences>

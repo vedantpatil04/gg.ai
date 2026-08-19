@@ -24,7 +24,7 @@ export function CityDirectoryPage() {
   const qc = useQueryClient();
 
   return (
-    <div className="px-4 md:px-6 py-6 space-y-5">
+    <div className="px-3.5 sm:px-4 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5 max-w-full overflow-hidden">
       <SectionTitle
         eyebrow="Administration"
         title="City Directory"
@@ -36,6 +36,7 @@ export function CityDirectoryPage() {
               qc.invalidateQueries({ queryKey: ["admin-city-directory-cities"] });
               qc.invalidateQueries({ queryKey: ["admin-city-directory-env"] });
             }}
+            className="h-8 text-xs"
           >
             <RefreshCw className="size-3.5 mr-1.5" />
             Refresh
@@ -43,36 +44,38 @@ export function CityDirectoryPage() {
         }
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl w-fit border border-border">
-          {HEALTH_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setHealthFilter(f.value)}
-              className={cn(
-                "px-3.5 py-2 rounded-lg text-sm font-medium transition-all",
-                healthFilter === f.value
-                  ? "bg-card shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="overflow-x-auto scrollbar-hide pb-0.5 -mx-1 px-1 sm:mx-0 sm:px-0">
+          <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl w-max border border-border">
+            {HEALTH_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                onClick={() => setHealthFilter(f.value)}
+                className={cn(
+                  "px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap",
+                  healthFilter === f.value
+                    ? "bg-card shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="relative">
+        <div className="relative w-full sm:w-56">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search city name..."
-            className="pl-8 h-9 w-56"
+            className="pl-8 h-9 text-xs sm:text-sm w-full"
           />
         </div>
       </div>
 
-      <div className="glass rounded-2xl p-4 md:p-5">
+      <div className="glass rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden">
         <CityDirectoryList
           healthFilter={healthFilter}
           searchTerm={searchTerm}

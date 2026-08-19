@@ -39,3 +39,5 @@ uploads/
 
 # Downloaded nested copies
 greenguard-Ai (3)/
+# Firebase (Phase 3) -- project-specific, never commit real credentials
+android/app/google-services.json

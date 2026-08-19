@@ -158,7 +158,7 @@ function LiveOperations() {
   const ranked = [...CITIES].sort((a, b) => b.aqi - a.aqi).slice(0, 6);
 
   return (
-    <section className="py-24">
+    <section className="py-16 lg:py-20">
       <div className={LANDING_CONTAINER}>
         <SectionHead
           eyebrow="Live Operations"
@@ -308,7 +308,7 @@ function LiveOperations() {
 /* ---------------- MODULES ---------------- */
 function Modules() {
   return (
-    <section className="py-24 border-t border-border/60">
+    <section className="py-16 border-t border-border/60 lg:py-20">
       <div className={LANDING_CONTAINER}>
         <SectionHead
           eyebrow="The Rest Of The Platform"
@@ -345,7 +345,7 @@ function HowItWorks() {
     },
   ];
   return (
-    <section className="py-24 border-t border-border/60">
+    <section className="py-16 border-t border-border/60 lg:py-20">
       <div className={LANDING_CONTAINER}>
         <SectionHead
           eyebrow="How It Works"
@@ -397,7 +397,7 @@ function Benefits() {
     },
   ];
   return (
-    <section className="py-24 border-t border-border/60 bg-card/30">
+    <section className="py-16 border-t border-border/60 bg-card/30 lg:py-20">
       <div className={`${LANDING_CONTAINER} grid gap-12 lg:grid-cols-[1fr_1.2fr] items-start`}>
         <div>
           <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
@@ -433,7 +433,7 @@ function Benefits() {
 /* ---------------- CTA ---------------- */
 function CTA() {
   return (
-    <section className="py-24 border-t border-border/60">
+    <section className="py-16 border-t border-border/60 lg:py-20">
       <div className={LANDING_CONTAINER}>
         <div className="relative rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-[color:var(--color-primary)]/5 p-10 lg:p-16 overflow-hidden">
           <div

@@ -166,9 +166,6 @@ export interface CityTrendPoint {
   timestamp: string;
   aqi: number;
   pm25: number;
-  pm10?: number;
-  no2?: number;
-  o3?: number;
   water: number;
   eco: number;
   risk?: number;
@@ -179,21 +176,6 @@ export interface CityTrendPoint {
   greenCover?: number;
 }
 
-// ─── In-flight client-side request deduplication ────────────────────────────
-// Prevents duplicate concurrent HTTP calls when multiple components on the same
-// page or hydration cycle request identical forecast resources.
-const clientInFlight = new Map<string, Promise<any>>();
-
-function dedupeRequest<T>(key: string, fn: () => Promise<T>): Promise<T> {
-  const existing = clientInFlight.get(key);
-  if (existing) return existing as Promise<T>;
-  const promise = fn().finally(() => {
-    clientInFlight.delete(key);
-  });
-  clientInFlight.set(key, promise);
-  return promise;
-}
-
 // ─── Existing API surface (unchanged — no breaking changes) ───────────────────
 export const environmentalApi = {
   getCities: () => client.get("/environmental/cities").then((r) => r.data),
@@ -201,9 +183,7 @@ export const environmentalApi = {
   getCity: (cityId: string) => client.get(`/environmental/cities/${cityId}`).then((r) => r.data),
 
   getCityWeatherForecast: (cityId: string) =>
-    dedupeRequest(`wx-forecast:${cityId.toLowerCase()}`, () =>
-      client.get(`/environmental/cities/${cityId}/forecast`).then((r) => r.data),
-    ),
+    client.get(`/environmental/cities/${cityId}/forecast`).then((r) => r.data),
 
   getCityTrend: (cityId: string, hours = 24) =>
     client.get(`/environmental/cities/${cityId}/trend`, { params: { hours } }).then((r) => r.data),
@@ -253,16 +233,10 @@ export const environmentalApi = {
 
 export const forecastApi = {
   getForecast: (cityId: string, hours = 48) =>
-    dedupeRequest(`forecast:${cityId.toLowerCase()}:${hours}`, () =>
-      client.get(`/forecast/${cityId}`, { params: { hours } }).then((r) => r.data),
-    ),
+    client.get(`/forecast/${cityId}`, { params: { hours } }).then((r) => r.data),
 
-  getWeekly: (cityId: string) =>
-    dedupeRequest(`forecast-weekly:${cityId.toLowerCase()}`, () =>
-      client.get(`/forecast/${cityId}/weekly`).then((r) => r.data),
-    ),
+  getWeekly: (cityId: string) => client.get(`/forecast/${cityId}/weekly`).then((r) => r.data),
 };
-
 
 // ─── Phase 4: Environmental intelligence API ──────────────────────────────────
 export const intelligenceApi = {

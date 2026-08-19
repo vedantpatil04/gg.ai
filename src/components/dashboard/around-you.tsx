@@ -1,32 +1,18 @@
 /**
- * AroundYou — Phase 1: Dashboard Foundation & Realism
- * Phase 2: Production UI & Information Hierarchy
- * Phase 2A: Correction & Production Polish
+ * AroundYou — Section 8: Around You
  *
- * Compact local comparison — the current city plus its 3 nearest
- * neighbours by straight-line distance, from the same city list already
- * used app-wide (live API list when connected, the existing offline
- * fallback list otherwise). No sparklines, no artificial rankings, no
- * invented cities or readings.
- *
- * Phase 2 change (UI only, same data/props): stronger AQI/name hierarchy,
- * tighter row rhythm, and a subtle hover state on the comparison rows.
- * Rows remain non-interactive display data (no navigation exists today),
- * so no focus/keyboard affordance was added — that would be a false
- * signal without a real action behind it.
- *
- * Phase 2A layout: the previous single-column list (name left, AQI right)
- * left most of the panel's width empty on wide screens — every row used
- * the same narrow shape regardless of how much room the card had. The
- * current city now gets one prominent full-width row (it's the one the
- * citizen actually cares about), and its neighbours sit in a 3-column
- * grid below, so the same data fills the available width instead of
- * stretching a single thin column across it. Same rows, same fields, no
- * new metrics.
+ * Compact local/regional comparison answering: "How does my environment compare with other places?"
+ * Displays:
+ *   - Current user's city first with "You are here" badge + AQI status
+ *   - 3 comparison / nearby cities
+ *   - Compact card format with band color coding
+ *   - Link to /map for spatial exploration
  */
 
+import { Link } from "@tanstack/react-router";
 import { Panel } from "@/components/ui-bits";
 import { aqiBand, type City } from "@/lib/mock-data";
+import { MapPin, ArrowRight } from "lucide-react";
 
 function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
@@ -49,7 +35,10 @@ export function AroundYou({
 }) {
   const nearby = cities
     .filter((c) => c.id !== currentCity.id)
-    .map((c) => ({ city: c, dist: distanceKm(currentCity.lat, currentCity.lng, c.lat, c.lng) }))
+    .map((c) => ({
+      city: c,
+      dist: distanceKm(currentCity.lat, currentCity.lng, c.lat, c.lng),
+    }))
     .sort((a, b) => a.dist - b.dist)
     .slice(0, Math.max(0, maxTotal - 1))
     .map((n) => n.city);
@@ -57,28 +46,64 @@ export function AroundYou({
   const currentBand = aqiBand(currentCity.aqi);
 
   return (
-    <Panel title="Around You" surface="card">
+    <Panel
+      eyebrow="Regional Comparison"
+      title="Around You"
+      surface="card"
+      action={
+        <Link
+          to="/map"
+          className="text-xs text-primary hover:underline inline-flex items-center gap-1 font-medium"
+        >
+          <span>Explore on Smart Map</span>
+          <ArrowRight className="size-3.5" />
+        </Link>
+      }
+    >
       <div className="space-y-3">
-        {/* Current city — the one row the citizen is actually here for,
-            so it stays full-width and visually first regardless of how
-            many neighbours are shown below. */}
-        <div className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3.5 py-3 text-sm">
-          <span className="font-medium flex items-center gap-2 min-w-0">
-            <span className="truncate">{currentCity.name}</span>
-            <span className="shrink-0 text-[10px] font-normal text-muted-foreground uppercase tracking-wider">
-              You
-            </span>
-          </span>
-          <span className="flex items-baseline gap-1.5 shrink-0">
-            <span className="tabular-nums font-semibold text-lg" style={{ color: currentBand.color }}>
+        {/* Current city — prominent top row */}
+        <div
+          className="flex items-center justify-between gap-3 rounded-xl p-3.5 border transition-all"
+          style={{
+            background: `color-mix(in oklab, ${currentBand.color} 10%, transparent)`,
+            borderColor: `color-mix(in oklab, ${currentBand.color} 30%, transparent)`,
+          }}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div
+              className="size-7 rounded-lg flex items-center justify-center shrink-0"
+              style={{
+                background: `color-mix(in oklab, ${currentBand.color} 20%, transparent)`,
+                color: currentBand.color,
+              }}
+            >
+              <MapPin className="size-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="font-bold text-sm text-foreground flex items-center gap-2 truncate">
+                <span>{currentCity.name}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.2 rounded-full bg-primary/20 text-primary border border-primary/30 shrink-0">
+                  You are here
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground truncate">{currentCity.country}</div>
+            </div>
+          </div>
+
+          <div className="flex items-baseline gap-2 shrink-0 text-right">
+            <span
+              className="tabular-nums font-extrabold text-2xl"
+              style={{ color: currentBand.color }}
+            >
               {currentCity.aqi}
             </span>
-            <span className="text-xs" style={{ color: currentBand.color }}>
+            <span className="text-xs font-semibold" style={{ color: currentBand.color }}>
               {currentBand.label}
             </span>
-          </span>
+          </div>
         </div>
 
+        {/* Nearby / comparison cities */}
         {nearby.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             {nearby.map((c) => {
@@ -86,17 +111,24 @@ export function AroundYou({
               return (
                 <div
                   key={c.id}
-                  className="flex items-center justify-between gap-2.5 rounded-lg border border-border/70 px-3 py-2.5 text-sm transition-colors hover:bg-muted/25"
+                  className="flex items-center justify-between gap-2.5 rounded-xl border border-border/70 bg-muted/20 hover:bg-muted/35 px-3.5 py-3 text-sm transition-all"
                 >
-                  <span className="font-medium truncate min-w-0">{c.name}</span>
-                  <span className="flex items-baseline gap-1 shrink-0">
-                    <span className="tabular-nums font-semibold" style={{ color: band.color }}>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-xs text-foreground truncate">{c.name}</div>
+                    <div className="text-[10px] text-muted-foreground truncate">{c.country}</div>
+                  </div>
+
+                  <div className="flex items-baseline gap-1.5 shrink-0">
+                    <span
+                      className="tabular-nums font-bold text-base"
+                      style={{ color: band.color }}
+                    >
                       {c.aqi}
                     </span>
-                    <span className="text-[11px]" style={{ color: band.color }}>
+                    <span className="text-[10px] font-medium" style={{ color: band.color }}>
                       {band.label}
                     </span>
-                  </span>
+                  </div>
                 </div>
               );
             })}

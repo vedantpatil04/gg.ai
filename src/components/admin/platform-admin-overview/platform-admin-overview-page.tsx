@@ -38,12 +38,12 @@ export function PlatformAdminOverviewPage() {
   }
 
   return (
-    <div className="px-4 md:px-6 py-6 space-y-6">
+    <div className="px-3.5 sm:px-4 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6 max-w-full overflow-hidden">
       <SectionTitle
         eyebrow="Platform"
         title="Platform Administration"
         action={
-          <Button variant="outline" size="sm" onClick={refresh}>
+          <Button variant="outline" size="sm" onClick={refresh} className="h-8 text-xs">
             <RefreshCw className="size-3.5 mr-1.5" />Refresh
           </Button>
         }
@@ -56,12 +56,12 @@ export function PlatformAdminOverviewPage() {
       ) : isError || !data ? (
         <div className="text-center py-12 space-y-3">
           <p className="text-sm text-destructive">Failed to load platform data.</p>
-          <Button variant="outline" size="sm" onClick={refresh}><RefreshCw className="size-3.5 mr-1.5" />Retry</Button>
+          <Button variant="outline" size="sm" onClick={refresh} className="h-8 text-xs"><RefreshCw className="size-3.5 mr-1.5" />Retry</Button>
         </div>
       ) : (
         <>
           {/* Platform health strip */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {[
               { ok: data.platform.database, label: "Database" },
               { ok: data.platform.ai, label: "AI Services" },
@@ -69,7 +69,7 @@ export function PlatformAdminOverviewPage() {
               { ok: data.platform.dataFreshOk, label: "Data Pipeline" },
             ].map(({ ok, label }) => (
               <div key={label} className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium",
+                "flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border text-[11px] sm:text-xs font-medium",
                 ok ? "border-success/20 bg-success/8 text-success" : "border-destructive/20 bg-destructive/8 text-destructive",
               )}>
                 {ok ? <CheckCircle2 className="size-3.5" /> : <AlertTriangle className="size-3.5" />}
@@ -79,7 +79,7 @@ export function PlatformAdminOverviewPage() {
           </div>
 
           {/* KPI grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2.5 sm:gap-3">
             <StatCard label="Total Users" value={data.users.total} accent="primary" icon={<Users className="size-4" />} />
             <StatCard label="Citizens" value={data.users.citizens} accent="info" icon={<Users className="size-4" />} />
             <StatCard label="Authorities" value={data.users.authorities} accent="primary" icon={<Users className="size-4" />} />

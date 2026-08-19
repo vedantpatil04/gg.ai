@@ -113,12 +113,12 @@ export function PlatformHealthPage() {
           : "offline";
 
   return (
-    <div className="px-4 md:px-6 py-6 space-y-5">
+    <div className="px-3.5 sm:px-4 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5 max-w-full overflow-hidden">
       <SectionTitle
         eyebrow="Administration"
         title="Platform Health"
         action={
-          <Button variant="outline" size="sm" onClick={refresh}>
+          <Button variant="outline" size="sm" onClick={refresh} className="h-8 text-xs">
             <RefreshCw className="size-3.5 mr-1.5" />
             Refresh
           </Button>
@@ -127,27 +127,27 @@ export function PlatformHealthPage() {
 
       {/* Overall status */}
       {copy ? (
-        <div className="glass rounded-2xl p-5 flex items-center gap-4">
-          <copy.icon className={cn("size-8 shrink-0", copy.className)} />
-          <div>
-            <div className={cn("text-lg font-semibold", copy.className)}>{copy.label}</div>
-            <div className="text-sm text-muted-foreground">{copy.description}</div>
+        <div className="glass rounded-2xl p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4">
+          <copy.icon className={cn("size-7 sm:size-8 shrink-0", copy.className)} />
+          <div className="min-w-0">
+            <div className={cn("text-base sm:text-lg font-semibold", copy.className)}>{copy.label}</div>
+            <div className="text-xs sm:text-sm text-muted-foreground">{copy.description}</div>
           </div>
         </div>
       ) : (
-        <div className="glass rounded-2xl p-5 flex items-center gap-4">
-          <RadarIcon className="size-8 shrink-0 text-muted-foreground animate-pulse" />
-          <div>
-            <div className="text-lg font-semibold text-muted-foreground">
+        <div className="glass rounded-2xl p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4">
+          <RadarIcon className="size-7 sm:size-8 shrink-0 text-muted-foreground animate-pulse" />
+          <div className="min-w-0">
+            <div className="text-base sm:text-lg font-semibold text-muted-foreground">
               Checking platform status…
             </div>
-            <div className="text-sm text-muted-foreground">Running a health check now.</div>
+            <div className="text-xs sm:text-sm text-muted-foreground">Running a health check now.</div>
           </div>
         </div>
       )}
 
       {/* Service cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
         <PlatformServiceCard
           icon={Server}
           name="Backend API"

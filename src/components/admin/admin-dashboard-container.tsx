@@ -80,14 +80,14 @@ export function AdminDashboardContainer({
   isRefreshing,
 }: AdminDashboardContainerProps) {
   return (
-    <div className="px-4 md:px-6 py-6 space-y-6">
+    <div className="px-3.5 sm:px-4 md:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6 max-w-full overflow-hidden">
       <section>
         <SectionTitle
           eyebrow="Platform"
           title="Statistics"
           action={
             onRefresh && (
-              <Button variant="outline" size="sm" onClick={onRefresh}>
+              <Button variant="outline" size="sm" onClick={onRefresh} className="h-8 text-xs shrink-0">
                 <RefreshCw className={cn("size-3.5 mr-1.5", isRefreshing && "animate-spin")} />
                 Refresh
               </Button>
@@ -97,19 +97,19 @@ export function AdminDashboardContainer({
         {statsCards}
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
         <Panel title="Environmental Intelligence" eyebrow="Network">
           {environmentalIntelligence}
         </Panel>
         <Panel title="Complaint Intelligence" eyebrow="Summary">
           {complaintSummary}
         </Panel>
-        <Panel title="Authority Overview" eyebrow="Workforce">
+        <Panel title="Authority Overview" eyebrow="Workforce" className="md:col-span-2 lg:col-span-1">
           {authorityOverview}
         </Panel>
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 sm:gap-4">
         <Panel
           title="Analytics"
           eyebrow="Charts"
@@ -130,7 +130,7 @@ export function AdminDashboardContainer({
         </Panel>
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
         <Panel title="Quick Actions" eyebrow="Shortcuts">
           {quickActions}
         </Panel>
@@ -145,7 +145,7 @@ export function AdminDashboardContainer({
           )}
         </Panel>
 
-        <Panel title="System Health" eyebrow="Live">
+        <Panel title="System Health" eyebrow="Live" className="md:col-span-2 lg:col-span-1">
           {systemStatus}
         </Panel>
       </section>

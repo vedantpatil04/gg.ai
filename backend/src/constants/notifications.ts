@@ -29,12 +29,16 @@ export interface NotificationChannels {
 
 export type NotificationPreferences = Record<NotificationCategory, NotificationChannels>;
 
-// In-App and Email default on; Push is a disabled placeholder (not yet
-// implemented) and defaults off regardless of category.
+// In-App, Email, and Push (Phase 3 — Firebase Cloud Messaging) all default
+// on. Push previously defaulted off as a placeholder for a channel that
+// didn't exist yet; now that push.service.ts actually delivers it, a
+// freshly-created user gets the same "everything on, opt out later"
+// behavior as the other two channels instead of silently never receiving
+// pushes until they discover a settings toggle.
 export const DEFAULT_NOTIFICATION_CHANNELS: NotificationChannels = {
   inApp: true,
   email: true,
-  push: false,
+  push: true,
 };
 
 export function defaultNotificationPreferences(): NotificationPreferences {

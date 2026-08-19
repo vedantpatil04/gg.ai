@@ -14,6 +14,7 @@ import {
   type NotificationRecipientRole,
 } from "../models/Notification";
 import { logger } from "../utils/logger";
+import { sendPushToUser, sendPushToUsers } from "./push.service";
 
 // ─── Core creation helper ─────────────────────────────────────────────────────
 
@@ -29,9 +30,21 @@ interface CreateNotificationInput {
   entityType?: "complaint" | "authority" | "platform" | "user";
 }
 
+/**
+ * Creates the notification record (source of truth for the in-app
+ * Notification Center) and, independently, attempts a push delivery via
+ * the central push service (Phase 3). The two are intentionally
+ * sequenced: the database write happens first and is what every existing
+ * caller has always relied on, and a push failure — or FCM not being
+ * configured at all — can never roll it back or throw back into the
+ * caller. This is also the single choke point every current and future
+ * notifyX() helper below funnels through, which is what lets Phase 3's
+ * FCM delivery cover all of them without each one calling push.service.ts
+ * itself.
+ */
 export async function createNotification(input: CreateNotificationInput): Promise<void> {
   try {
-    await Notification.create({
+    const notification = await Notification.create({
       userId: input.userId,
       recipientRole: input.recipientRole,
       title: input.title,
@@ -42,6 +55,19 @@ export async function createNotification(input: CreateNotificationInput): Promis
       link: input.link,
       entityId: input.entityId,
       entityType: input.entityType,
+    });
+
+    // sendPushToUser never throws (see push.service.ts) — a push failure,
+    // or FCM simply not being configured, can't undo the record write above.
+    await sendPushToUser(input.userId, {
+      notificationId: notification._id.toString(),
+      type: input.category,
+      title: input.title,
+      body: input.summary,
+      entityType: input.entityType,
+      entityId: input.entityId,
+      route: input.link,
+      priority: input.priority ?? "medium",
     });
   } catch (err) {
     // Notifications must never break the calling workflow
@@ -69,7 +95,23 @@ export async function fanOutNotification(input: BulkNotificationInput): Promise<
       entityId: input.entityId,
       entityType: input.entityType,
     }));
-    await Notification.insertMany(docs, { ordered: false });
+    const created = await Notification.insertMany(docs, { ordered: false });
+    const notificationIdByUser = new Map(created.map((doc) => [String(doc.userId), doc._id.toString()]));
+
+    // sendPushToUsers never throws (see push.service.ts).
+    await sendPushToUsers({
+      recipients: input.recipients,
+      payload: {
+        type: input.category,
+        title: input.title,
+        body: input.summary,
+        entityType: input.entityType,
+        entityId: input.entityId,
+        route: input.link,
+        priority: input.priority ?? "medium",
+        notificationIdByUser,
+      },
+    });
   } catch (err) {
     logger.error("Failed to fan-out notifications:", err);
   }
