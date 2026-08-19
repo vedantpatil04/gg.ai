@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "103850000000",
+    "project_id": "greenguard-ai-6",
+    "storage_bucket": "greenguard-ai-6.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:103850000000:android:a1b2c3d4e5f60718293a4b",
+        "android_client_info": {
+          "package_name": "com.vedant.greenguard"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDummyKeyForGreenGuardAIApp12345"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
