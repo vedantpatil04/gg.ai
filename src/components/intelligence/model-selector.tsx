@@ -24,7 +24,7 @@ export const AUTO_OPTION = "auto";
 export interface ProviderOption {
   name: string; // "gemini" | "groq" | "openrouter"
   displayName: string; // "Gemini" | "Groq" | "OpenRouter"
-  model: string; // "Gemini 2.5 Flash" | "Llama 3.3 70B"
+  model: string; // "Gemini 3.6 Flash" | "Llama 3.3 70B"
   modelDisplayName?: string;
   capabilities?: {
     text: boolean;

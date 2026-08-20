@@ -7,17 +7,22 @@ const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
 export class OpenRouterProvider implements AIProvider {
   readonly name = "openrouter" as const;
-  private readonly config = PROVIDER_REGISTRY.openrouter;
-  readonly displayName = this.config.displayName;
-  readonly model = this.config.model;
-  readonly capabilities = this.config.capabilities;
+  get displayName(): string {
+    return PROVIDER_REGISTRY.openrouter.displayName;
+  }
+  get model(): string {
+    return PROVIDER_REGISTRY.openrouter.model;
+  }
+  get capabilities() {
+    return PROVIDER_REGISTRY.openrouter.capabilities;
+  }
 
   isConfigured(): boolean {
     return isProviderConfigured("openrouter");
   }
 
   async generate(request: AIGenerationRequest): Promise<GreenGuardAIResponse> {
-    const apiKey = process.env[this.config.apiKeyEnvVar];
+    const apiKey = process.env[PROVIDER_REGISTRY.openrouter.apiKeyEnvVar];
     if (!apiKey) {
       throw new AIAuthenticationError(this.name, "This AI provider is currently unavailable.");
     }
@@ -28,6 +33,7 @@ export class OpenRouterProvider implements AIProvider {
       apiKey,
       model: this.model,
       systemInstruction: request.systemInstruction,
+      history: request.history,
       prompt: request.prompt,
       // OpenRouter-recommended attribution headers — optional but improves
       // routing/ranking visibility on their side. Safe to omit silently if

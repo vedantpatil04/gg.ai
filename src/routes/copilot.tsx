@@ -1035,8 +1035,12 @@ function IntelligenceCenterWorkspace() {
     staleTime: 5 * 60 * 1000,
   });
   const providers: ProviderOption[] = providersQuery.data?.providers ?? [
-    { name: "gemini", displayName: "Gemini", model: "Gemini 2.5 Flash", capabilities: { text: true, image: true, document: true }, available: true },
+    { name: "gemini", displayName: "Gemini", model: "Gemini 3.6 Flash", capabilities: { text: true, image: true, document: true }, available: true },
   ];
+  // Display/gating only — e.g. which capabilities to show as available in
+  // the "+" Document/Image/Data menu, and the header status pill. When in
+  // Auto mode this reflects the primary (highest-priority) provider, since
+  // that's who normally answers; it is NOT what gets sent to the backend.
   const effectiveProvider =
     selectedProvider === AUTO_OPTION
       ? providersQuery.data?.default || "gemini"
@@ -1045,8 +1049,12 @@ function IntelligenceCenterWorkspace() {
   const effectiveCapabilities = effectiveProviderMeta?.capabilities ?? { text: true, image: true, document: true };
 
   const chatMutation = useMutation({
+    // Phase 3 — send the raw selection ("auto" or an explicit provider)
+    // rather than a client-resolved provider name. This is what lets the
+    // backend's real Auto-mode fallback (Gemini → Groq → OpenRouter) run;
+    // resolving "auto" to a fixed provider here would silently bypass it.
     mutationFn: (q: string) =>
-      copilotApi.chat(q, city.id, sessionId, effectiveProvider).then((r) => r.data),
+      copilotApi.chat(q, city.id, sessionId, selectedProvider).then((r) => r.data),
     onSuccess: (data) => {
       if (data.sessionId) setSessionId(data.sessionId);
       setMessages((h) => [
@@ -1150,7 +1158,7 @@ function IntelligenceCenterWorkspace() {
               </h1>
               <Pill tone={isApiConnected ? "success" : "warning"}>
                 <span className="size-1.5 rounded-full bg-current animate-pulse mr-1" />
-                {isApiConnected ? (effectiveProviderMeta?.model ?? "Gemini 2.5 Flash") : "Offline"}
+                {isApiConnected ? (effectiveProviderMeta?.model ?? "Gemini 3.6 Flash") : "Offline"}
               </Pill>
             </div>
             <p className="text-[11px] text-muted-foreground hidden sm:block">

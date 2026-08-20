@@ -36,9 +36,9 @@ interface NotificationPermissionBridgePlugin {
   openAppSettings(): Promise<void>;
 }
 
-const NotificationPermissionBridge = registerPlugin<NotificationPermissionBridgePlugin>(
-  "GreenGuardNotificationPermission",
-);
+const NotificationPermissionBridge: NotificationPermissionBridgePlugin =
+  ((Capacitor as any).Plugins?.GreenGuardNotificationPermission as NotificationPermissionBridgePlugin) ||
+  registerPlugin<NotificationPermissionBridgePlugin>("GreenGuardNotificationPermission");
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 

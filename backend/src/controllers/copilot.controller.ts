@@ -6,7 +6,6 @@ import { AIInsight } from "../models/AIInsight";
 import { AppError } from "../middleware/errorHandler";
 import { AuthRequest } from "../middleware/auth";
 import {
-  generateCopilotResponse,
   generateHealthAdvice,
   generateRecommendations,
   getInsightsFromData,
@@ -26,7 +25,7 @@ import {
   getAvailableProviderConfigs,
 } from "../services/ai/config";
 import { AIProviderError } from "../services/ai/errors";
-import { AIProviderName } from "../services/ai/types";
+import { AIProviderName, AIConversationTurn, ProviderSelection } from "../services/ai/types";
 
 // ─── Helper: get city data ────────────────────────────────────────────────────
 async function getCityData(cityId: string) {
@@ -37,21 +36,34 @@ async function getCityData(cityId: string) {
 }
 
 // ─── POST /api/copilot/chat ──────────────────────────────────────────────────
+// Phase 3 — this is the whole Intelligence Center Assistant surface (the
+// standalone /copilot page AND the same chat widget embedded on Dashboard,
+// Map, Forecast, and the legacy /intelligence route). Every request —
+// Gemini included — now goes through intelligenceCenterAIGateway, so Gemini
+// here uses the dedicated INTELLIGENCE_GEMINI_API_KEY and gets the same
+// Auto-mode fallback, retry, timeout, and cooldown protection as Groq/
+// OpenRouter. Callers that omit `provider` (every widget besides the
+// Assistant's own selector) default to Auto — identical behavior to before
+// whenever Gemini succeeds, plus resilience when it doesn't.
+//
+// This is the ONLY handler in this file that talks to the gateway. Every
+// other GreenGuard AI feature below (health advice, recommendations,
+// insights, city AI insights, sustainability chat) keeps calling
+// gemini.service.ts directly with the existing GEMINI_API_KEY, unchanged.
 export async function chat(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const { question, cityId, sessionId, provider } = req.body;
     if (!question?.trim()) return next(new AppError("Question is required", 400));
 
-    // Optional Phase 2 provider override — only the Intelligence Center's
-    // Assistant selector ever sends this. Every other caller of this shared
-    // endpoint (Dashboard, Map, Forecast, legacy /intelligence widgets)
-    // omits it and gets the exact unchanged Gemini behavior below.
-    let resolvedProvider: AIProviderName = "gemini";
-    if (provider !== undefined && provider !== null && provider !== "gemini") {
+    // Provider selection: "auto" (default) or an explicit provider name
+    // from the Assistant's ModelSelector. Validated server-side — never
+    // trust the raw value from the browser (§28).
+    let resolvedSelection: ProviderSelection = "auto";
+    if (provider !== undefined && provider !== null && provider !== "" && provider !== "auto") {
       if (!isValidProviderName(provider)) {
         return next(new AppError("Unsupported AI provider", 400));
       }
-      resolvedProvider = provider;
+      resolvedSelection = provider;
     }
 
     const city = cityId || "belagavi";
@@ -60,39 +72,56 @@ export async function chat(req: AuthRequest, res: Response, next: NextFunction):
 
     const userRole = req.user?.role ?? "citizen";
 
+    // Load this conversation's prior turns BEFORE calling the AI so that
+    // a mid-conversation fallback to a different provider still has full
+    // context — the user is never asked to repeat themselves (§15).
+    const sid = sessionId || uuidv4();
+    const existing = sessionId ? await AIConversation.findOne({ sessionId }).lean() : null;
+    const history: AIConversationTurn[] = (existing?.messages ?? []).map((m) => ({
+      role: m.role === "user" ? ("user" as const) : ("assistant" as const),
+      content: m.content,
+    }));
+
+    // Correlates every attempt in a fallback chain to this one logical
+    // request in the AI Gateway's logs (§19).
+    const requestId = uuidv4();
+
     let answer: string;
+    let finalProvider: AIProviderName;
     let model: string;
 
-    if (resolvedProvider === "gemini") {
-      // Unchanged path — identical to pre-Phase-2 behavior.
-      answer = await generateCopilotResponse(question, cityData as Record<string, unknown>, userRole);
-      model = PROVIDER_REGISTRY.gemini.modelDisplayName;
-    } else {
-      if (!isProviderConfigured(resolvedProvider)) {
-        return next(new AppError("This AI provider is currently unavailable.", 503));
+    try {
+      const result = await intelligenceCenterAIGateway.generate(
+        {
+          prompt: buildCopilotPrompt(question, cityData as Record<string, unknown>, userRole),
+          systemInstruction: SYSTEM_ENV_ANALYST,
+          history,
+          capability: "text",
+          requestId,
+        },
+        resolvedSelection,
+        requestId,
+      );
+      answer = result.text;
+      finalProvider = result.provider;
+      model = PROVIDER_REGISTRY[result.provider].modelDisplayName;
+    } catch (err) {
+      if (err instanceof AIProviderError) {
+        const status =
+          err.code === "rate_limit_error"
+            ? 429
+            : err.code === "timeout_error"
+              ? 504
+              : err.code === "invalid_request"
+                ? 400
+                : 503;
+        return next(new AppError(err.message, status));
       }
-      try {
-        const result = await intelligenceCenterAIGateway.generate(
-          {
-            prompt: buildCopilotPrompt(question, cityData as Record<string, unknown>, userRole),
-            systemInstruction: SYSTEM_ENV_ANALYST,
-          },
-          resolvedProvider,
-        );
-        answer = result.text;
-        model = PROVIDER_REGISTRY[resolvedProvider].modelDisplayName;
-      } catch (err) {
-        if (err instanceof AIProviderError) {
-          const status =
-            err.code === "rate_limit_error" ? 429 : err.code === "timeout_error" ? 504 : 503;
-          return next(new AppError(err.message, status));
-        }
-        throw err;
-      }
+      throw err;
     }
 
-    // Persist conversation
-    const sid = sessionId || uuidv4();
+    // Persist conversation — exactly one final assistant response per
+    // user message, regardless of how many providers were tried (§18).
     await AIConversation.findOneAndUpdate(
       { sessionId: sid },
       {
@@ -129,7 +158,9 @@ export async function chat(req: AuthRequest, res: Response, next: NextFunction):
           risk: cityData.risk,
           temp: cityData.temp,
         },
-        provider: resolvedProvider,
+        // Always the provider that actually answered — e.g. "groq" when
+        // Auto mode fell back off Gemini — never the raw "auto" request.
+        provider: finalProvider,
         model,
         timestamp: new Date().toISOString(),
       },
@@ -147,7 +178,10 @@ export async function chat(req: AuthRequest, res: Response, next: NextFunction):
 export async function getAIProviders(_req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const configured = getAvailableProviderConfigs();
-    const geminiAvailable = Boolean(process.env.GEMINI_API_KEY);
+    // Phase 3 — Gemini's availability here now reflects the Intelligence
+    // Center's own INTELLIGENCE_GEMINI_API_KEY, not the shared
+    // GEMINI_API_KEY used by other GreenGuard AI modules.
+    const geminiAvailable = isProviderConfigured("gemini");
 
     const providers = [
       {

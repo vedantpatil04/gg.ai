@@ -7,17 +7,22 @@ const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
 
 export class GroqProvider implements AIProvider {
   readonly name = "groq" as const;
-  private readonly config = PROVIDER_REGISTRY.groq;
-  readonly displayName = this.config.displayName;
-  readonly model = this.config.model;
-  readonly capabilities = this.config.capabilities;
+  get displayName(): string {
+    return PROVIDER_REGISTRY.groq.displayName;
+  }
+  get model(): string {
+    return PROVIDER_REGISTRY.groq.model;
+  }
+  get capabilities() {
+    return PROVIDER_REGISTRY.groq.capabilities;
+  }
 
   isConfigured(): boolean {
     return isProviderConfigured("groq");
   }
 
   async generate(request: AIGenerationRequest): Promise<GreenGuardAIResponse> {
-    const apiKey = process.env[this.config.apiKeyEnvVar];
+    const apiKey = process.env[PROVIDER_REGISTRY.groq.apiKeyEnvVar];
     if (!apiKey) {
       throw new AIAuthenticationError(this.name, "This AI provider is currently unavailable.");
     }
@@ -28,6 +33,7 @@ export class GroqProvider implements AIProvider {
       apiKey,
       model: this.model,
       systemInstruction: request.systemInstruction,
+      history: request.history,
       prompt: request.prompt,
     });
 
