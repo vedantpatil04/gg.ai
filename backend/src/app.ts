@@ -192,6 +192,15 @@ async function bootstrap() {
   }
 }
 
+// ─── Process Crash Guards ────────────────────────────────────────────────────
+process.on("unhandledRejection", (reason) => {
+  logger.error("Unhandled Promise Rejection:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  logger.error("Uncaught Exception:", error);
+});
+
 bootstrap().catch((err) => {
   logger.error("Bootstrap failed:", err);
   process.exit(1);
