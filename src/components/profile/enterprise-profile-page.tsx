@@ -35,8 +35,7 @@ export function EnterpriseProfilePage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isPhotoOpen, setIsPhotoOpen] = useState(false);
 
-  // Dedicated fetch so this page has its own loading / error lifecycle —
-  // avoids borrowing a flag from AuthProvider that's already settled.
+  // Dedicated fetch so this page has its own loading / error lifecycle
   const {
     data: response,
     isLoading,
@@ -49,8 +48,6 @@ export function EnterpriseProfilePage() {
     retry: 1,
   });
 
-  // Stable callbacks — prevent ProfileHero / ProfileTabs from re-rendering
-  // whenever this parent re-renders for unrelated reasons.
   const handleLogout = useCallback(async () => {
     await logout();
     navigate({ to: "/login" });
@@ -64,7 +61,7 @@ export function EnterpriseProfilePage() {
   const profile = (response?.data?.user ?? null) as EnterpriseProfile | null;
 
   return (
-    <div className="p-4 md:p-8 space-y-6 w-full" aria-label="Profile page">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6" aria-label="Profile page">
       {isLoading ? (
         <ProfileSkeleton />
       ) : isError || !profile ? (
@@ -78,8 +75,6 @@ export function EnterpriseProfilePage() {
             onChangePhoto={handlePhotoOpen}
           />
           <ProfileTabs profile={profile} onEditProfile={handleEditOpen} />
-          {/* Single shared drawer/dialog instance regardless of which
-              button opened it (hero header or Personal Information tab). */}
           <ProfileEditDrawer open={isEditOpen} onOpenChange={setIsEditOpen} profile={profile} />
           <ProfilePhotoDialog open={isPhotoOpen} onOpenChange={setIsPhotoOpen} profile={profile} />
         </>

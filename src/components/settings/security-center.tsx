@@ -26,6 +26,8 @@ import {
   Ban,
   Inbox,
   ChevronRight,
+  ShieldAlert,
+  ArrowRight,
 } from "lucide-react";
 import { Panel, Pill } from "@/components/ui-bits";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -60,7 +62,7 @@ import {
   type SecurityEventEntry,
 } from "@/lib/api/security.api";
 
-// ─── Shared small input, matches settings.tsx's Field styling ────────────────
+// ─── Shared Input Field ───────────────────────────────────────────────────────
 function Field({
   label,
   className,
@@ -68,11 +70,11 @@ function Field({
 }: { label: string; className?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label className="block">
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
       <input
         {...rest}
         className={cn(
-          "mt-1.5 w-full rounded-lg border border-input bg-background/40 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors",
+          "mt-1.5 w-full h-10 rounded-xl border border-input bg-background/50 px-3.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/50",
           className,
         )}
       />
@@ -135,11 +137,6 @@ function maskPhone(phone?: string | null) {
   return "•".repeat(Math.max(phone.length - 2, 0)) + phone.slice(-2);
 }
 
-/**
- * Recovery Center — Phase 10. Both use only browser-native APIs (Blob +
- * object URL for download, a print-only popup window for printing) — no
- * new dependency for either.
- */
 function downloadRecoveryCodes(codes: string[]) {
   const body = [
     "GreenGuard AI — Two-Factor Authentication Recovery Codes",
@@ -205,23 +202,17 @@ const EVENT_META: Record<string, { icon: typeof KeyRound; label: string }> = {
   ACCOUNT_DEACTIVATED: { icon: AlertTriangle, label: "Account deactivated" },
 };
 
-// ─── Small empty-state block ───────────────────────────────────────────────────
 function EmptyState({ icon: Icon, text }: { icon: typeof Inbox; text: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
-      <div className="size-10 rounded-full glass grid place-items-center">
+      <div className="size-10 rounded-xl glass grid place-items-center">
         <Icon className="size-4 text-muted-foreground" />
       </div>
-      <p className="text-sm text-muted-foreground">{text}</p>
+      <p className="text-xs sm:text-sm text-muted-foreground">{text}</p>
     </div>
   );
 }
 
-// Security Center Phase 4: a failed fetch previously fell through to the
-// same UI as "loaded, nothing here" (or, for Overview, to default/false
-// values like "Unverified") — indistinguishable from a real negative
-// security status. This makes a failed load visibly a failed load, with a
-// retry that reuses react-query's own refetch rather than a full reload.
 function ErrorState({
   text = "Couldn't load this right now.",
   onRetry,
@@ -231,13 +222,13 @@ function ErrorState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-8 text-center" role="alert">
-      <div className="size-10 rounded-full bg-destructive/10 grid place-items-center">
+      <div className="size-10 rounded-xl bg-destructive/10 grid place-items-center">
         <AlertTriangle className="size-4 text-destructive" />
       </div>
-      <p className="text-sm text-muted-foreground">{text}</p>
+      <p className="text-xs sm:text-sm text-muted-foreground">{text}</p>
       <button
         onClick={onRetry}
-        className="text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded px-1"
+        className="text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded px-1.5 py-0.5 cursor-pointer"
       >
         Try again
       </button>
@@ -246,6 +237,9 @@ function ErrorState({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// MAIN SECURITY CENTER
+// ═══════════════════════════════════════════════════════════════════════════
+
 export function SecurityCenter() {
   const { user } = useAuth();
 
@@ -261,20 +255,47 @@ export function SecurityCenter() {
     throwOnError: false,
   });
 
-  return (
-    <div className="space-y-6 animate-in fade-in-0 duration-300 motion-reduce:animate-none">
-      <header className="flex items-start gap-2.5">
-        <div className="size-8 rounded-lg glass grid place-items-center shrink-0 mt-0.5">
-          <ShieldCheck className="size-4 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Security Center</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Protect your GreenGuard account and manage your security settings.
-          </p>
-        </div>
-      </header>
+  const is2FAEnabled = status?.twoFactorAuthentication === "ENABLED";
+  const isEmailVerified = status?.email?.verified ?? false;
+  const isProtected = isEmailVerified && is2FAEnabled;
 
+  return (
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8 animate-in fade-in-0 duration-300">
+      {/* ── 1. Security Header ────────────────────────────────────────────── */}
+      <div className="glass rounded-2xl border border-border/80 p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-3.5 min-w-0">
+          <div className="size-10 rounded-xl bg-primary/15 border border-primary/25 grid place-items-center shrink-0 text-primary mt-0.5">
+            <ShieldCheck className="size-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                Security Center
+              </h1>
+              {!statusLoading && !statusError && (
+                <Pill tone={isProtected ? "success" : "warning"}>
+                  {isProtected ? (
+                    <>
+                      <ShieldCheck className="size-3" />
+                      Account Protected
+                    </>
+                  ) : (
+                    <>
+                      <ShieldAlert className="size-3" />
+                      Attention Required
+                    </>
+                  )}
+                </Pill>
+              )}
+            </div>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-relaxed">
+              Protect your GreenGuard account, manage active sessions, and review security access.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 2. Security Health Overview (6 Cards) ─────────────────────────── */}
       <SecurityOverview
         status={status}
         loading={statusLoading}
@@ -283,190 +304,31 @@ export function SecurityCenter() {
         email={user?.email}
         phone={user?.phone}
       />
+
+      {/* ── 3. Account Security Controls (Email, Phone, Password, 2FA) ────── */}
       <SecurityWidgetsGrid
         status={status}
         loading={statusLoading}
         email={user?.email}
         phone={user?.phone}
       />
+
+      {/* ── 4. Active Sessions ────────────────────────────────────────────── */}
       <SessionsSection />
+
+      {/* ── 5. Login History ──────────────────────────────────────────────── */}
       <LoginHistorySection />
+
+      {/* ── 6. Recent Security Activity ──────────────────────────────────── */}
       <RecentActivitySection />
+
+      {/* ── 7. Danger Zone ────────────────────────────────────────────────── */}
       <DangerZoneSection />
     </div>
   );
 }
 
-// ─── Compact management widgets (Email / Phone / Password / 2FA) ─────────────
-type WidgetKey = "email" | "phone" | "password" | "2fa";
-
-function SectionWidget({
-  icon: Icon,
-  title,
-  statusLabel,
-  tone,
-  description,
-  onManage,
-}: {
-  icon: typeof Mail;
-  title: string;
-  statusLabel: string;
-  tone: "success" | "warning" | "muted" | "primary";
-  description: string;
-  onManage: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onManage}
-      className="group w-full text-left rounded-xl border border-border bg-card/40 px-3.5 py-3 transition-colors hover:border-primary/25 hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-      aria-label={`Manage ${title}`}
-    >
-      <div className="flex items-center gap-3">
-        <div className="size-8 rounded-lg glass grid place-items-center shrink-0">
-          <Icon className="size-4 text-primary" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium">{title}</div>
-          <div className="text-xs text-muted-foreground mt-0.5 truncate">{description}</div>
-        </div>
-        <div className="flex flex-col items-end gap-1 shrink-0">
-          <Pill tone={tone}>{statusLabel}</Pill>
-          <span className="text-xs text-muted-foreground group-hover:text-primary inline-flex items-center gap-0.5 transition-colors">
-            Manage <ChevronRight className="size-3" />
-          </span>
-        </div>
-      </div>
-    </button>
-  );
-}
-
-function SecurityWidgetsGrid({
-  status,
-  loading,
-  email,
-  phone,
-}: {
-  status?: SecurityStatus;
-  loading: boolean;
-  email?: string;
-  phone?: string;
-}) {
-  const [open, setOpen] = useState<WidgetKey | null>(null);
-  const is2FAEnabled = status?.twoFactorAuthentication === "ENABLED";
-
-  const widgets: Array<{
-    key: WidgetKey;
-    icon: typeof Mail;
-    title: string;
-    statusLabel: string;
-    tone: "success" | "warning" | "muted" | "primary";
-    description: string;
-  }> = [
-    {
-      key: "email",
-      icon: Mail,
-      title: "Email",
-      statusLabel: loading ? "…" : status?.email.verified ? "Verified" : "Unverified",
-      tone: status?.email.verified ? "success" : "warning",
-      description: maskEmail(email) ?? "No email on file",
-    },
-    {
-      key: "phone",
-      icon: Phone,
-      title: "Phone",
-      statusLabel: loading
-        ? "…"
-        : !phone
-          ? "Not added"
-          : status?.phone.verified
-            ? "Verified"
-            : "Unverified",
-      tone: !phone ? "primary" : status?.phone.verified ? "success" : "warning",
-      description: phone ? (maskPhone(phone) ?? phone) : "Add a phone number",
-    },
-    {
-      key: "password",
-      icon: Lock,
-      title: "Password",
-      statusLabel: loading
-        ? "…"
-        : status?.passwordLastChangedAt
-          ? relativeTime(status.passwordLastChangedAt)
-          : "Never changed",
-      tone: "muted",
-      description: "Update your account password",
-    },
-    {
-      key: "2fa",
-      icon: ShieldOff,
-      title: "Two-factor auth",
-      statusLabel: loading ? "…" : is2FAEnabled ? "Enabled" : "Disabled",
-      tone: is2FAEnabled ? "success" : "warning",
-      description: is2FAEnabled
-        ? "Protected with an authenticator app"
-        : "Add an extra layer of protection",
-    },
-  ];
-
-  // Each dialog hosts the EXISTING, unchanged section component — same
-  // hooks, mutations, and behavior as before this phase. Only the
-  // container moved (from always-inline to opened-on-demand), which is
-  // what actually reduces the page's default scroll length.
-  return (
-    <Panel
-      eyebrow="Manage"
-      title={
-        <span className="inline-flex items-center gap-2">
-          <KeyRound className="size-4 text-primary" />
-          Account security
-        </span>
-      }
-    >
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
-        {widgets.map((w) => (
-          <SectionWidget
-            key={w.key}
-            icon={w.icon}
-            title={w.title}
-            statusLabel={w.statusLabel}
-            tone={w.tone}
-            description={w.description}
-            onManage={() => setOpen(w.key)}
-          />
-        ))}
-      </div>
-
-      <Dialog open={open === "email"} onOpenChange={(o) => setOpen(o ? "email" : null)}>
-        <DialogContent className="p-0 border-none bg-transparent shadow-none sm:max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogTitle className="sr-only">Manage email</DialogTitle>
-          <EmailSection email={email} status={status} loading={loading} />
-        </DialogContent>
-      </Dialog>
-      <Dialog open={open === "phone"} onOpenChange={(o) => setOpen(o ? "phone" : null)}>
-        <DialogContent className="p-0 border-none bg-transparent shadow-none sm:max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogTitle className="sr-only">Manage phone number</DialogTitle>
-          <PhoneSection status={status} loading={loading} />
-        </DialogContent>
-      </Dialog>
-      <Dialog open={open === "password"} onOpenChange={(o) => setOpen(o ? "password" : null)}>
-        <DialogContent className="p-0 border-none bg-transparent shadow-none sm:max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogTitle className="sr-only">Change password</DialogTitle>
-          <PasswordSection lastChangedAt={status?.passwordLastChangedAt} />
-        </DialogContent>
-      </Dialog>
-      <Dialog open={open === "2fa"} onOpenChange={(o) => setOpen(o ? "2fa" : null)}>
-        <DialogContent className="p-0 border-none bg-transparent shadow-none sm:max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogTitle className="sr-only">Manage two-factor authentication</DialogTitle>
-          <TwoFactorSection status={status} loading={loading} />
-        </DialogContent>
-      </Dialog>
-    </Panel>
-  );
-}
-
-// ─── Compact overview stat card (Security Overview only — deliberately not
-// added to the shared ui-bits.tsx, which is used by other pages) ────────────
+// ─── Compact Overview Stat Card ───────────────────────────────────────────────
 function CompactStatCard({
   icon: Icon,
   label,
@@ -479,20 +341,22 @@ function CompactStatCard({
   hint?: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card/30 px-3.5 py-3 transition-colors hover:border-primary/20">
-      <div className="flex items-center gap-1.5 mb-2">
-        <Icon className="size-3.5 text-muted-foreground shrink-0" />
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-xl border border-border/80 bg-background/50 p-4 transition-all hover:border-primary/30 hover:shadow-sm">
+      <div className="flex items-center justify-between gap-2 mb-2.5">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           {label}
         </span>
+        <div className="size-7 rounded-lg bg-primary/10 grid place-items-center text-primary shrink-0">
+          <Icon className="size-3.5" />
+        </div>
       </div>
       <div className="text-sm font-semibold leading-snug truncate">{value}</div>
-      {hint && <div className="text-xs text-muted-foreground mt-0.5 truncate">{hint}</div>}
+      {hint && <div className="text-xs text-muted-foreground mt-1 truncate">{hint}</div>}
     </div>
   );
 }
 
-// ─── Security Overview ────────────────────────────────────────────────────────
+// ─── Security Overview (6-Card Grid) ──────────────────────────────────────────
 function SecurityOverview({
   status,
   loading,
@@ -519,18 +383,18 @@ function SecurityOverview({
 
   return (
     <Panel
-      eyebrow="Overview"
+      eyebrow="Health Status"
       title={
-        <span className="inline-flex items-center gap-2">
+        <span className="inline-flex items-center gap-2 text-base font-semibold">
           <ShieldCheck className="size-4 text-primary" />
-          Security overview
+          Security Overview
         </span>
       }
     >
       {isError ? (
         <ErrorState text="Couldn't load your security overview." onRetry={refetch} />
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <CompactStatCard
             icon={Mail}
             label="Email"
@@ -581,7 +445,7 @@ function SecurityOverview({
           />
           <CompactStatCard
             icon={History}
-            label="Last login"
+            label="Last Login"
             value={
               loading
                 ? "…"
@@ -599,13 +463,13 @@ function SecurityOverview({
           />
           <CompactStatCard
             icon={Monitor}
-            label="Active sessions"
-            value={loading ? "…" : (status?.activeSessionCount ?? 0)}
+            label="Active Sessions"
+            value={loading ? "…" : `${status?.activeSessionCount ?? 0} active`}
             hint={loading ? undefined : "Devices currently signed in"}
           />
           <CompactStatCard
             icon={ShieldOff}
-            label="Two-factor auth"
+            label="Two-Factor Auth"
             value={
               loading ? (
                 "…"
@@ -615,7 +479,7 @@ function SecurityOverview({
                 </Pill>
               )
             }
-            hint={loading ? undefined : is2FAEnabled ? "Authenticator app" : "Not enabled"}
+            hint={loading ? undefined : is2FAEnabled ? "Authenticator app (TOTP)" : "Not enabled"}
           />
         </div>
       )}
@@ -623,7 +487,177 @@ function SecurityOverview({
   );
 }
 
-// ─── Password ─────────────────────────────────────────────────────────────────
+// ─── Account Security Controls (Widgets) ──────────────────────────────────────
+type WidgetKey = "email" | "phone" | "password" | "2fa";
+
+function SectionWidget({
+  icon: Icon,
+  title,
+  statusLabel,
+  tone,
+  description,
+  onManage,
+}: {
+  icon: typeof Mail;
+  title: string;
+  statusLabel: string;
+  tone: "success" | "warning" | "muted" | "primary";
+  description: string;
+  onManage: () => void;
+}) {
+  return (
+    <div className="group rounded-xl border border-border/80 bg-background/50 p-4 sm:p-5 transition-all hover:border-primary/30 hover:bg-muted/30">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+        <div className="flex items-start gap-3.5 min-w-0">
+          <div className="size-10 rounded-xl bg-primary/10 text-primary border border-primary/20 grid place-items-center shrink-0">
+            <Icon className="size-4.5" />
+          </div>
+          <div className="min-w-0 space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-semibold text-foreground">{title}</span>
+              <Pill tone={tone}>{statusLabel}</Pill>
+            </div>
+            <p className="text-xs text-muted-foreground truncate max-w-sm">{description}</p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onManage}
+          className="self-end sm:self-center h-8.5 px-3.5 rounded-lg text-xs font-semibold border border-border bg-card/80 hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-all inline-flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 shrink-0"
+        >
+          <span>Manage</span>
+          <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SecurityWidgetsGrid({
+  status,
+  loading,
+  email,
+  phone,
+}: {
+  status?: SecurityStatus;
+  loading: boolean;
+  email?: string;
+  phone?: string;
+}) {
+  const [open, setOpen] = useState<WidgetKey | null>(null);
+  const is2FAEnabled = status?.twoFactorAuthentication === "ENABLED";
+
+  const widgets: Array<{
+    key: WidgetKey;
+    icon: typeof Mail;
+    title: string;
+    statusLabel: string;
+    tone: "success" | "warning" | "muted" | "primary";
+    description: string;
+  }> = [
+    {
+      key: "email",
+      icon: Mail,
+      title: "Email Address",
+      statusLabel: loading ? "…" : status?.email.verified ? "Verified" : "Unverified",
+      tone: status?.email.verified ? "success" : "warning",
+      description: maskEmail(email) ?? "No email on file",
+    },
+    {
+      key: "phone",
+      icon: Phone,
+      title: "Phone Number",
+      statusLabel: loading
+        ? "…"
+        : !phone
+          ? "Not added"
+          : status?.phone.verified
+            ? "Verified"
+            : "Unverified",
+      tone: !phone ? "primary" : status?.phone.verified ? "success" : "warning",
+      description: phone ? (maskPhone(phone) ?? phone) : "Add a phone number for alerts",
+    },
+    {
+      key: "password",
+      icon: Lock,
+      title: "Account Password",
+      statusLabel: loading
+        ? "…"
+        : status?.passwordLastChangedAt
+          ? relativeTime(status.passwordLastChangedAt)
+          : "Never changed",
+      tone: "muted",
+      description: "Update your account password regularly",
+    },
+    {
+      key: "2fa",
+      icon: ShieldOff,
+      title: "Two-Factor Authentication",
+      statusLabel: loading ? "…" : is2FAEnabled ? "Enabled" : "Disabled",
+      tone: is2FAEnabled ? "success" : "warning",
+      description: is2FAEnabled
+        ? "Protected with an authenticator app (TOTP)"
+        : "Add an extra layer of protection to your account",
+    },
+  ];
+
+  return (
+    <Panel
+      eyebrow="Access & Protection"
+      title={
+        <span className="inline-flex items-center gap-2 text-base font-semibold">
+          <KeyRound className="size-4 text-primary" />
+          Account Security Controls
+        </span>
+      }
+    >
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+        {widgets.map((w) => (
+          <SectionWidget
+            key={w.key}
+            icon={w.icon}
+            title={w.title}
+            statusLabel={w.statusLabel}
+            tone={w.tone}
+            description={w.description}
+            onManage={() => setOpen(w.key)}
+          />
+        ))}
+      </div>
+
+      <Dialog open={open === "email"} onOpenChange={(o) => setOpen(o ? "email" : null)}>
+        <DialogContent className="p-0 border-none bg-transparent shadow-none sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Manage email</DialogTitle>
+          <EmailSection email={email} status={status} loading={loading} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={open === "phone"} onOpenChange={(o) => setOpen(o ? "phone" : null)}>
+        <DialogContent className="p-0 border-none bg-transparent shadow-none sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Manage phone number</DialogTitle>
+          <PhoneSection status={status} loading={loading} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={open === "password"} onOpenChange={(o) => setOpen(o ? "password" : null)}>
+        <DialogContent className="p-0 border-none bg-transparent shadow-none sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Change password</DialogTitle>
+          <PasswordSection lastChangedAt={status?.passwordLastChangedAt} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={open === "2fa"} onOpenChange={(o) => setOpen(o ? "2fa" : null)}>
+        <DialogContent className="p-0 border-none bg-transparent shadow-none sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Manage two-factor authentication</DialogTitle>
+          <TwoFactorSection status={status} loading={loading} />
+        </DialogContent>
+      </Dialog>
+    </Panel>
+  );
+}
+
+// ─── Password Section (Modal Content) ─────────────────────────────────────────
 function PasswordSection({ lastChangedAt }: { lastChangedAt?: string | null }) {
   const [pwForm, setPwForm] = useState({ currentPassword: "", newPassword: "", confirm: "" });
   const [pwSaving, setPwSaving] = useState(false);
@@ -665,7 +699,7 @@ function PasswordSection({ lastChangedAt }: { lastChangedAt?: string | null }) {
       title={
         <span className="inline-flex items-center gap-2">
           <Lock className="size-4 text-primary" />
-          Change password
+          Change Password
         </span>
       }
       action={
@@ -710,7 +744,7 @@ function PasswordSection({ lastChangedAt }: { lastChangedAt?: string | null }) {
         <button
           onClick={changePassword}
           disabled={pwSaving}
-          className="w-full sm:w-auto aurora text-primary-foreground rounded-lg px-4 py-2.5 text-sm font-medium inline-flex items-center justify-center gap-2 disabled:opacity-60 transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          className="w-full sm:w-auto aurora text-primary-foreground rounded-xl px-4 py-2.5 text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-60 transition-transform active:scale-[0.98] cursor-pointer"
         >
           {pwSaving && <Loader2 className="size-3.5 animate-spin" />} Update password
         </button>
@@ -719,7 +753,7 @@ function PasswordSection({ lastChangedAt }: { lastChangedAt?: string | null }) {
   );
 }
 
-// ─── Email ────────────────────────────────────────────────────────────────────
+// ─── Email Section (Modal Content) ────────────────────────────────────────────
 function useCountdown(targetMs: number | null) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -751,15 +785,7 @@ function EmailSection({
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
   const secondsLeft = useCountdown(cooldownUntil);
 
-  const reset = () => {
-    setEditing(false);
-    setOtpSent(false);
-    setOtp("");
-    setNewEmail("");
-    setErrorMsg("");
-    setAttemptsRemaining(null);
-    setCooldownUntil(null);
-  };
+  const isVerified = status?.email.verified ?? false;
 
   const extractError = (err: unknown) => {
     const res = (
@@ -774,21 +800,32 @@ function EmailSection({
     };
   };
 
+  const reset = () => {
+    setEditing(false);
+    setNewEmail("");
+    setOtpSent(false);
+    setOtp("");
+    setErrorMsg("");
+    setAttemptsRemaining(null);
+    setCooldownUntil(null);
+  };
+
   const sendMutation = useMutation({
-    mutationFn: (targetEmail: string) => securityApi.sendEmailChangeOtp(targetEmail),
+    mutationFn: (target: string) => securityApi.sendEmailChangeOtp(target),
     onSuccess: () => {
       setOtpSent(true);
       setErrorMsg("");
       setAttemptsRemaining(null);
       toast.success("Verification code sent", {
-        description: `Check ${newEmail} for a 6-digit code.`,
+        description: `Check your inbox at ${newEmail}.`,
       });
     },
     onError: (err: unknown) => {
       const { status, message, data } = extractError(err);
-      setErrorMsg(message);
-      if (status === 429 && data?.retryAfterSeconds)
+      if (status === 429 && data?.retryAfterSeconds) {
         setCooldownUntil(Date.now() + data.retryAfterSeconds * 1000);
+      }
+      setErrorMsg(message);
       toast.error("Couldn't send code", { description: message });
     },
   });
@@ -796,20 +833,17 @@ function EmailSection({
   const verifyMutation = useMutation({
     mutationFn: (code: string) => securityApi.verifyEmailChangeOtp(newEmail, code),
     onSuccess: async () => {
-      toast.success("Email changed", { description: "Please log in again with your new email." });
+      toast.success("Email updated", { description: `Your email is now ${newEmail}.` });
       reset();
-      qc.invalidateQueries({ queryKey: ["security-status"] });
       await refreshUser();
+      qc.invalidateQueries({ queryKey: ["security-status"] });
     },
     onError: (err: unknown) => {
       const { message, data } = extractError(err);
       setErrorMsg(message);
       if (typeof data?.attemptsRemaining === "number") {
-        // Wrong code, but retries remain — stay put so they can try again.
         setAttemptsRemaining(data.attemptsRemaining);
       } else {
-        // Expired / not found / mismatched / rate-limited — this OTP
-        // session is dead either way; send them back to request a fresh one.
         setOtpSent(false);
         setOtp("");
         setAttemptsRemaining(null);
@@ -824,71 +858,73 @@ function EmailSection({
       title={
         <span className="inline-flex items-center gap-2">
           <Mail className="size-4 text-primary" />
-          Email address
+          Email Address
         </span>
       }
     >
-      <div className="rounded-xl border border-border p-3 transition-colors hover:border-primary/25">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-sm font-medium truncate">{email ?? "—"}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">
-              {status?.email.verifiedAt
-                ? `Verified ${relativeTime(status.email.verifiedAt)}`
-                : "Email changes require verification."}
-            </div>
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border bg-card/30 p-3.5">
+          <div>
+            <div className="text-xs text-muted-foreground">Current email address</div>
+            <div className="text-sm font-semibold mt-0.5">{email ?? "—"}</div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {!loading && (
-              <Pill tone={status?.email.verified ? "success" : "warning"}>
-                {status?.email.verified ? "Verified" : "Unverified"}
+          {!loading && (
+            <div className="flex items-center gap-2 shrink-0">
+              <Pill tone={isVerified ? "success" : "warning"}>
+                {isVerified ? "Verified" : "Unverified"}
               </Pill>
-            )}
-            {!editing && (
-              <button
-                onClick={() => setEditing(true)}
-                className="text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded px-1"
-              >
-                Change email
-              </button>
-            )}
-          </div>
+              {!editing && (
+                <button
+                  onClick={() => setEditing(true)}
+                  className="text-xs font-semibold text-primary border border-primary/30 rounded-lg px-3 py-1.5 hover:bg-primary/5 transition-colors cursor-pointer"
+                >
+                  Change email
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {editing && !otpSent && (
-          <div className="mt-3 pt-3 border-t border-border flex flex-col sm:flex-row sm:items-end gap-3">
-            <div className="flex-1">
-              <Field
-                label="New email address"
-                type="email"
-                placeholder="you@example.com"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-2 shrink-0">
-              <button
-                onClick={() => reset()}
-                className="rounded-lg px-4 py-2.5 text-sm font-medium border border-border hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => sendMutation.mutate(newEmail)}
-                disabled={sendMutation.isPending || !newEmail}
-                className="w-full sm:w-auto aurora text-primary-foreground rounded-lg px-4 py-2.5 text-sm font-medium inline-flex items-center justify-center gap-2 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-              >
-                {sendMutation.isPending && <Loader2 className="size-3.5 animate-spin" />} Send code
-              </button>
+          <div className="rounded-xl border border-border p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Enter your new email address. We'll send a 6-digit verification code to confirm it.
+            </p>
+            <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+              <div className="flex-1">
+                <Field
+                  label="New email address"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={reset}
+                  className="rounded-lg px-3 py-2 text-sm border border-border hover:bg-accent cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => sendMutation.mutate(newEmail)}
+                  disabled={sendMutation.isPending || !newEmail || secondsLeft > 0}
+                  className="aurora text-primary-foreground rounded-lg px-4 py-2 text-sm font-medium inline-flex items-center gap-2 disabled:opacity-60 cursor-pointer"
+                >
+                  {sendMutation.isPending && <Loader2 className="size-3.5 animate-spin" />}
+                  {secondsLeft > 0 ? `Wait ${secondsLeft}s` : "Send code"}
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {editing && otpSent && (
-          <div className="mt-3 pt-3 border-t border-border space-y-3">
+          <div className="rounded-xl border border-border p-4 space-y-3">
             <p className="text-xs text-muted-foreground">
-              Enter the 6-digit code sent to{" "}
-              <span className="font-medium text-foreground">{newEmail}</span>.
+              Enter the 6-digit code sent to <strong className="text-foreground">{newEmail}</strong>
+              .
             </p>
             <div className="flex flex-col sm:flex-row sm:items-end gap-3">
               <div className="flex-1 max-w-[180px]">
@@ -906,23 +942,20 @@ function EmailSection({
                 <button
                   onClick={() => sendMutation.mutate(newEmail)}
                   disabled={sendMutation.isPending || secondsLeft > 0}
-                  className="rounded-lg px-3 py-2.5 text-sm font-medium border border-border hover:bg-accent transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="rounded-lg px-3 py-2 text-sm font-medium border border-border hover:bg-accent cursor-pointer"
                 >
                   {secondsLeft > 0 ? `Resend (${secondsLeft}s)` : "Resend code"}
                 </button>
                 <button
                   onClick={() => verifyMutation.mutate(otp)}
                   disabled={verifyMutation.isPending || otp.length !== 6}
-                  className="w-full sm:w-auto aurora text-primary-foreground rounded-lg px-4 py-2.5 text-sm font-medium inline-flex items-center justify-center gap-2 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="aurora text-primary-foreground rounded-lg px-4 py-2 text-sm font-medium inline-flex items-center gap-2 disabled:opacity-60 cursor-pointer"
                 >
                   {verifyMutation.isPending && <Loader2 className="size-3.5 animate-spin" />} Verify
                 </button>
               </div>
             </div>
-            <button
-              onClick={() => reset()}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded px-1"
-            >
+            <button onClick={reset} className="text-xs text-muted-foreground hover:text-foreground">
               Cancel
             </button>
           </div>
@@ -941,16 +974,13 @@ function EmailSection({
   );
 }
 
-// ─── Phone ────────────────────────────────────────────────────────────────────
+// ─── Phone Section (Modal Content) ────────────────────────────────────────────
 function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: boolean }) {
   const { user, updateProfile, refreshUser } = useAuth();
   const qc = useQueryClient();
 
-  // ── Update sub-state ──
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [saving, setSaving] = useState(false);
-
-  // ── Verification sub-state ──
   const [verifyMode, setVerifyMode] = useState(false);
   const [otp, setOtp] = useState("");
   const [otpRequested, setOtpRequested] = useState(false);
@@ -961,7 +991,7 @@ function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: b
   const secondsLeft = useCountdown(cooldownUntil);
 
   const isVerified = status?.phone.verified ?? false;
-  const hasPhone = !!user?.phone;
+  const hasPhone = Boolean(user?.phone);
 
   const extractError = (err: unknown) => {
     const res = (
@@ -992,11 +1022,9 @@ function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: b
       await updateProfile({ phone });
       await refreshUser();
       qc.invalidateQueries({ queryKey: ["security-status"] });
-      resetVerify(); // phone changed — verification state is fresh
+      resetVerify();
       toast.success("Phone number updated", {
-        description: phone
-          ? "Your number was saved. You'll need to verify it."
-          : "Phone number removed.",
+        description: phone ? "Your number was saved. You'll need to verify it." : "Phone number removed.",
       });
     } catch (err: unknown) {
       const { message } = extractError(err);
@@ -1038,7 +1066,6 @@ function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: b
       if (typeof data?.attemptsRemaining === "number") {
         setAttemptsRemaining(data.attemptsRemaining);
       } else {
-        // Expired / too many attempts — OTP session is dead, start over
         setOtpRequested(false);
         setOtp("");
         setAttemptsRemaining(null);
@@ -1054,11 +1081,10 @@ function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: b
       title={
         <span className="inline-flex items-center gap-2">
           <Phone className="size-4 text-primary" />
-          Phone number
+          Phone Number
         </span>
       }
     >
-      {/* ── Update row ── */}
       {!hasPhone && !loading && (
         <p className="text-xs text-muted-foreground mb-3 inline-flex items-center gap-1.5">
           <Inbox className="size-3.5" /> No phone number on file yet.
@@ -1073,7 +1099,6 @@ function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: b
             onChange={(e) => setPhone(e.target.value)}
             type="tel"
             autoComplete="tel"
-            aria-label="Phone number"
           />
         </div>
         {!loading && hasPhone && (
@@ -1084,7 +1109,7 @@ function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: b
         <button
           onClick={savePhone}
           disabled={saving || phone === (user?.phone ?? "")}
-          className="w-full sm:w-auto aurora text-primary-foreground rounded-lg px-4 py-2.5 text-sm font-medium inline-flex items-center justify-center gap-2 disabled:opacity-60 shrink-0 transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          className="w-full sm:w-auto aurora text-primary-foreground rounded-lg px-4 py-2.5 text-sm font-medium inline-flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer shrink-0"
         >
           {saving && <Loader2 className="size-3.5 animate-spin" />} Update phone
         </button>
@@ -1093,23 +1118,20 @@ function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: b
         Changing your phone number resets its verification status.
       </p>
 
-      {/* ── Verify banner (shown when phone exists and is unverified) ── */}
       {hasPhone && !isVerified && !loading && !verifyMode && (
         <div className="mt-3 pt-3 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-warning/5 border border-warning/20 p-3">
           <p className="text-xs text-muted-foreground">Your phone number is not verified yet.</p>
           <button
             onClick={() => setVerifyMode(true)}
-            className="w-full sm:w-auto text-xs font-medium text-primary border border-primary/30 rounded-lg px-3 py-2 hover:bg-primary/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="w-full sm:w-auto text-xs font-semibold text-primary border border-primary/30 rounded-lg px-3 py-1.5 hover:bg-primary/5 transition-colors cursor-pointer"
           >
             Verify phone
           </button>
         </div>
       )}
 
-      {/* ── Verification panel ── */}
       {verifyMode && (
         <div className="mt-3 pt-3 border-t border-border space-y-3">
-          {/* No SMS provider notice */}
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400">
             SMS delivery is not currently configured on this platform. To verify your phone, an
             administrator must provide you with a verification code directly.
@@ -1124,14 +1146,14 @@ function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: b
               <div className="flex gap-2 shrink-0">
                 <button
                   onClick={resetVerify}
-                  className="rounded-lg px-3 py-2 text-sm border border-border hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="rounded-lg px-3 py-2 text-sm border border-border hover:bg-accent cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => sendOtpMutation.mutate()}
                   disabled={sendOtpMutation.isPending || secondsLeft > 0}
-                  className="aurora text-primary-foreground rounded-lg px-4 py-2 text-sm font-medium inline-flex items-center gap-2 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="aurora text-primary-foreground rounded-lg px-4 py-2 text-sm font-medium inline-flex items-center gap-2 disabled:opacity-60 cursor-pointer"
                 >
                   {sendOtpMutation.isPending && <Loader2 className="size-3.5 animate-spin" />}
                   {secondsLeft > 0 ? `Retry in ${secondsLeft}s` : "Request code"}
@@ -1155,31 +1177,26 @@ function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: b
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                     className="tracking-[0.3em] font-mono text-center"
-                    aria-label="6-digit verification code"
                   />
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <button
                     onClick={() => sendOtpMutation.mutate()}
                     disabled={sendOtpMutation.isPending || secondsLeft > 0}
-                    className="rounded-lg px-3 py-2.5 text-sm font-medium border border-border hover:bg-accent transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    className="rounded-lg px-3 py-2.5 text-sm font-medium border border-border hover:bg-accent cursor-pointer"
                   >
                     {secondsLeft > 0 ? `Resend (${secondsLeft}s)` : "Resend"}
                   </button>
                   <button
                     onClick={() => verifyMutation.mutate(otp)}
                     disabled={verifyMutation.isPending || otp.length !== 6}
-                    className="aurora text-primary-foreground rounded-lg px-4 py-2.5 text-sm font-medium inline-flex items-center gap-2 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    className="aurora text-primary-foreground rounded-lg px-4 py-2.5 text-sm font-medium inline-flex items-center gap-2 disabled:opacity-60 cursor-pointer"
                   >
-                    {verifyMutation.isPending && <Loader2 className="size-3.5 animate-spin" />}{" "}
-                    Verify
+                    {verifyMutation.isPending && <Loader2 className="size-3.5 animate-spin" />} Verify
                   </button>
                 </div>
               </div>
-              <button
-                onClick={resetVerify}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none"
-              >
+              <button onClick={resetVerify} className="text-xs text-muted-foreground hover:text-foreground">
                 Cancel
               </button>
             </div>
@@ -1199,10 +1216,492 @@ function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: b
   );
 }
 
-// ─── Sessions ─────────────────────────────────────────────────────────────────
+// ─── Two-Factor Authentication Section (Modal Content) ────────────────────────
+function TwoFactorSection({ status, loading }: { status?: SecurityStatus; loading: boolean }) {
+  const qc = useQueryClient();
+  const is2FAEnabled = status?.twoFactorAuthentication === "ENABLED";
+
+  const { data: tfaStatus } = useQuery({
+    queryKey: ["2fa-status"],
+    queryFn: () => securityApi.getTwoFactorStatus().then((r) => r.data),
+    enabled: is2FAEnabled,
+    staleTime: 30_000,
+    throwOnError: false,
+  });
+
+  type SetupStep = "idle" | "password" | "qr" | "codes";
+  const [setupStep, setSetupStep] = useState<SetupStep>("idle");
+  const [setupPassword, setSetupPassword] = useState("");
+  const [setupData, setSetupData] = useState<{
+    displayKey: string;
+    secret: string;
+    qrCodeDataUrl: string;
+  } | null>(null);
+  const [setupCode, setSetupCode] = useState("");
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [setupError, setSetupError] = useState("");
+
+  const [disableOpen, setDisableOpen] = useState(false);
+  const [disablePassword, setDisablePassword] = useState("");
+  const [disableCode, setDisableCode] = useState("");
+  const [disableUseRecovery, setDisableUseRecovery] = useState(false);
+  const [disableError, setDisableError] = useState("");
+
+  const [regenOpen, setRegenOpen] = useState(false);
+  const [regenPassword, setRegenPassword] = useState("");
+  const [regenCodes, setRegenCodes] = useState<string[]>([]);
+  const [regenError, setRegenError] = useState("");
+
+  const extractMsg = (err: unknown) =>
+    (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+    "Something went wrong.";
+
+  const resetSetup = () => {
+    setSetupStep("idle");
+    setSetupPassword("");
+    setSetupData(null);
+    setSetupCode("");
+    setRecoveryCodes([]);
+    setSetupError("");
+  };
+
+  const initMutation = useMutation({
+    mutationFn: (pw: string) => securityApi.initiateTwoFactorSetup(pw),
+    onSuccess: (res) => {
+      setSetupData({
+        displayKey: res.data.displayKey,
+        secret: res.data.secret,
+        qrCodeDataUrl: res.data.qrCodeDataUrl,
+      });
+      setSetupStep("qr");
+      setSetupError("");
+    },
+    onError: (err: unknown) => setSetupError(extractMsg(err)),
+  });
+
+  const verifySetupMutation = useMutation({
+    mutationFn: (code: string) => securityApi.verifyTwoFactorSetup(code),
+    onSuccess: (res) => {
+      setRecoveryCodes(res.data.recoveryCodes);
+      setSetupStep("codes");
+      qc.invalidateQueries({ queryKey: ["security-status"] });
+      qc.invalidateQueries({ queryKey: ["2fa-status"] });
+      toast.success("2FA enabled!");
+    },
+    onError: (err: unknown) => {
+      setSetupError(extractMsg(err));
+      toast.error("Verification failed", { description: extractMsg(err) });
+    },
+  });
+
+  const disableMutation = useMutation({
+    mutationFn: () =>
+      securityApi.disableTwoFactor(disablePassword, disableCode, disableUseRecovery),
+    onSuccess: () => {
+      setDisableOpen(false);
+      setDisablePassword("");
+      setDisableCode("");
+      qc.invalidateQueries({ queryKey: ["security-status"] });
+      toast.success("2FA disabled");
+    },
+    onError: (err: unknown) => setDisableError(extractMsg(err)),
+  });
+
+  const regenMutation = useMutation({
+    mutationFn: () => securityApi.regenerateRecoveryCodes(regenPassword),
+    onSuccess: (res) => {
+      setRegenCodes(res.data.recoveryCodes);
+      setRegenPassword("");
+      setRegenError("");
+      qc.invalidateQueries({ queryKey: ["2fa-status"] });
+      toast.success("Recovery codes regenerated");
+    },
+    onError: (err: unknown) => setRegenError(extractMsg(err)),
+  });
+
+  return (
+    <Panel
+      eyebrow="Two-factor authentication"
+      title={
+        <span className="inline-flex items-center gap-2">
+          <ShieldOff className="size-4 text-primary" />
+          Two-Factor Authentication
+        </span>
+      }
+    >
+      {setupStep === "idle" && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border p-4">
+          <div>
+            <div className="text-sm font-semibold">Authenticator app (TOTP)</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {is2FAEnabled
+                ? "Your account is protected by two-factor authentication."
+                : "Require a verification code from your authenticator app at login."}
+            </div>
+          </div>
+          {!loading && (
+            <div className="flex items-center gap-2 shrink-0">
+              <Pill tone={is2FAEnabled ? "success" : "muted"}>
+                {is2FAEnabled ? "Enabled" : "Disabled"}
+              </Pill>
+              {!is2FAEnabled ? (
+                <button
+                  onClick={() => setSetupStep("password")}
+                  className="text-xs font-semibold text-primary border border-primary/30 rounded-lg px-3 py-1.5 hover:bg-primary/5 transition-colors cursor-pointer"
+                >
+                  Enable 2FA
+                </button>
+              ) : (
+                <button
+                  onClick={() => setDisableOpen(true)}
+                  className="text-xs font-semibold text-destructive border border-destructive/30 rounded-lg px-3 py-1.5 hover:bg-destructive/5 transition-colors cursor-pointer"
+                >
+                  Disable 2FA
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {setupStep === "password" && (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Confirm your password to continue setting up two-factor authentication.
+          </p>
+          <Field
+            label="Current password"
+            type="password"
+            autoComplete="current-password"
+            value={setupPassword}
+            onChange={(e) => setSetupPassword(e.target.value)}
+          />
+          {setupError && (
+            <p className="text-xs text-destructive" role="alert">
+              {setupError}
+            </p>
+          )}
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={resetSetup}
+              className="rounded-lg px-4 py-2 text-sm border border-border hover:bg-accent transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => initMutation.mutate(setupPassword)}
+              disabled={initMutation.isPending || !setupPassword}
+              className="aurora text-primary-foreground rounded-lg px-4 py-2 text-sm font-medium inline-flex items-center gap-2 disabled:opacity-60 cursor-pointer"
+            >
+              {initMutation.isPending && <Loader2 className="size-3.5 animate-spin" />} Continue
+            </button>
+          </div>
+        </div>
+      )}
+
+      {setupStep === "qr" && setupData && (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-border p-4 space-y-3">
+            <p className="text-sm font-medium">Scan with your authenticator app</p>
+            <p className="text-xs text-muted-foreground">
+              Open Google Authenticator, Authy, or Microsoft Authenticator and scan this code — or
+              enter the setup key manually.
+            </p>
+            <div className="flex justify-center py-2">
+              <div className="rounded-xl border border-border bg-white p-3 shadow-sm">
+                <img
+                  src={setupData.qrCodeDataUrl}
+                  alt="Scan this QR code with your authenticator app"
+                  width={200}
+                  height={200}
+                  className="block size-[200px]"
+                />
+              </div>
+            </div>
+            <div className="rounded-lg bg-muted/40 border border-border p-3">
+              <p className="text-xs text-muted-foreground mb-1">Manual setup key</p>
+              <p className="font-mono text-sm tracking-widest break-all text-primary select-all">
+                {setupData.displayKey}
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Account name: <strong>GreenGuard AI</strong> · Algorithm: SHA1 · Period: 30s · Digits: 6
+            </p>
+          </div>
+          <Field
+            label="Enter the 6-digit code from your app"
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            placeholder="000000"
+            value={setupCode}
+            onChange={(e) => setSetupCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            className="tracking-[0.3em] font-mono text-center text-lg max-w-[160px]"
+          />
+          {setupError && (
+            <p className="text-xs text-destructive" role="alert">
+              {setupError}
+            </p>
+          )}
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={resetSetup}
+              className="rounded-lg px-4 py-2 text-sm border border-border hover:bg-accent cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => verifySetupMutation.mutate(setupCode)}
+              disabled={verifySetupMutation.isPending || setupCode.length !== 6}
+              className="aurora text-primary-foreground rounded-lg px-4 py-2 text-sm font-medium inline-flex items-center gap-2 disabled:opacity-60 cursor-pointer"
+            >
+              {verifySetupMutation.isPending && <Loader2 className="size-3.5 animate-spin" />} Verify
+              &amp; Enable
+            </button>
+          </div>
+        </div>
+      )}
+
+      {setupStep === "codes" && recoveryCodes.length > 0 && (
+        <div className="space-y-3">
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
+            <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+              Save your recovery codes
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              These codes will only be shown once. Store them somewhere safe — they let you sign in
+              if you lose access to your authenticator app.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {recoveryCodes.map((c) => (
+              <div
+                key={c}
+                className="font-mono text-sm bg-muted/30 border border-border rounded-lg px-3 py-2 text-center select-all tracking-widest"
+              >
+                {c}
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2 justify-end">
+            <button
+              onClick={() => downloadRecoveryCodes(recoveryCodes)}
+              className="rounded-lg px-3 py-2 text-xs font-medium border border-border hover:bg-accent cursor-pointer"
+            >
+              Download .txt
+            </button>
+            <button
+              onClick={() => printRecoveryCodes(recoveryCodes)}
+              className="rounded-lg px-3 py-2 text-xs font-medium border border-border hover:bg-accent cursor-pointer"
+            >
+              Print
+            </button>
+            <button
+              onClick={resetSetup}
+              className="aurora text-primary-foreground rounded-lg px-4 py-2 text-sm font-medium cursor-pointer"
+            >
+              Done — I've saved these codes
+            </button>
+          </div>
+        </div>
+      )}
+
+      {is2FAEnabled && setupStep === "idle" && (
+        <div className="mt-3 pt-3 border-t border-border">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <div className="text-xs font-semibold text-foreground">Recovery codes</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {tfaStatus?.backupCodesGeneratedAt
+                  ? `Last generated ${relativeTime(tfaStatus.backupCodesGeneratedAt)}`
+                  : "Used to sign in if you lose your authenticator."}
+              </div>
+            </div>
+            {!regenOpen && !regenCodes.length && (
+              <button
+                onClick={() => setRegenOpen(true)}
+                className="text-xs font-semibold text-primary hover:underline cursor-pointer px-1 shrink-0"
+              >
+                Regenerate
+              </button>
+            )}
+          </div>
+          {regenOpen && !regenCodes.length && (
+            <div className="space-y-3 mt-3">
+              <p className="text-xs text-muted-foreground">
+                Enter your password to regenerate recovery codes. This will invalidate all existing
+                unused codes.
+              </p>
+              <Field
+                label="Current password"
+                type="password"
+                value={regenPassword}
+                onChange={(e) => setRegenPassword(e.target.value)}
+              />
+              {regenError && (
+                <p className="text-xs text-destructive" role="alert">
+                  {regenError}
+                </p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setRegenOpen(false);
+                    setRegenPassword("");
+                    setRegenError("");
+                  }}
+                  className="rounded-lg px-3 py-2 text-sm border border-border hover:bg-accent cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => regenMutation.mutate()}
+                  disabled={regenMutation.isPending || !regenPassword}
+                  className="aurora text-primary-foreground rounded-lg px-3 py-2 text-sm font-medium inline-flex items-center gap-2 disabled:opacity-60 cursor-pointer"
+                >
+                  {regenMutation.isPending && <Loader2 className="size-3.5 animate-spin" />}{" "}
+                  Regenerate
+                </button>
+              </div>
+            </div>
+          )}
+          {regenCodes.length > 0 && (
+            <div className="space-y-3 mt-3">
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
+                <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                  New recovery codes — save these now. Old codes are no longer valid.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {regenCodes.map((c) => (
+                  <div
+                    key={c}
+                    className="font-mono text-sm bg-muted/30 border border-border rounded-lg px-3 py-2 text-center select-all tracking-widest"
+                  >
+                    {c}
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2 justify-end">
+                <button
+                  onClick={() => downloadRecoveryCodes(regenCodes)}
+                  className="rounded-lg px-3 py-2 text-xs font-medium border border-border hover:bg-accent cursor-pointer"
+                >
+                  Download .txt
+                </button>
+                <button
+                  onClick={() => printRecoveryCodes(regenCodes)}
+                  className="rounded-lg px-3 py-2 text-xs font-medium border border-border hover:bg-accent cursor-pointer"
+                >
+                  Print
+                </button>
+                <button
+                  onClick={() => {
+                    setRegenOpen(false);
+                    setRegenCodes([]);
+                    qc.invalidateQueries({ queryKey: ["2fa-status"] });
+                  }}
+                  className="rounded-lg px-3 py-2 text-xs font-medium text-primary hover:underline cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Disable 2FA AlertDialog */}
+      <AlertDialog
+        open={disableOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDisablePassword("");
+            setDisableCode("");
+            setDisableError("");
+            setDisableUseRecovery(false);
+          }
+          setDisableOpen(open);
+        }}
+      >
+        <AlertDialogContent className="glass border-border sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disable two-factor authentication?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>
+                  Enter your password and current authenticator code (or a recovery code) to disable
+                  2FA.
+                </p>
+                <Field
+                  label="Current password"
+                  type="password"
+                  value={disablePassword}
+                  onChange={(e) => {
+                    setDisablePassword(e.target.value);
+                    setDisableError("");
+                  }}
+                />
+                <Field
+                  label={disableUseRecovery ? "Recovery code" : "Authenticator code"}
+                  type="text"
+                  inputMode={disableUseRecovery ? undefined : "numeric"}
+                  maxLength={disableUseRecovery ? 14 : 6}
+                  value={disableCode}
+                  onChange={(e) => {
+                    setDisableCode(
+                      disableUseRecovery
+                        ? e.target.value.toUpperCase()
+                        : e.target.value.replace(/\D/g, "").slice(0, 6),
+                    );
+                    setDisableError("");
+                  }}
+                  className={!disableUseRecovery ? "tracking-[0.25em] font-mono text-center" : ""}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDisableUseRecovery((v) => !v);
+                    setDisableCode("");
+                  }}
+                  className="text-xs text-primary hover:underline cursor-pointer"
+                >
+                  {disableUseRecovery
+                    ? "Use authenticator code instead"
+                    : "Use a recovery code instead"}
+                </button>
+                {disableError && (
+                  <p className="text-xs text-destructive" role="alert">
+                    {disableError}
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={disableMutation.isPending}>Cancel</AlertDialogCancel>
+            <button
+              onClick={() => disableMutation.mutate()}
+              disabled={disableMutation.isPending || !disablePassword || !disableCode}
+              className={cn(
+                buttonVariants({ variant: "destructive" }),
+                "inline-flex items-center gap-2 disabled:opacity-60 cursor-pointer",
+              )}
+            >
+              {disableMutation.isPending && <Loader2 className="size-3.5 animate-spin" />} Disable
+              2FA
+            </button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Panel>
+  );
+}
+
+// ─── Active Sessions Section ──────────────────────────────────────────────────
 function SessionCardSkeleton() {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border p-3">
+    <div className="flex items-center gap-3 rounded-xl border border-border p-3.5">
       <Skeleton className="size-9 rounded-lg shrink-0" />
       <div className="flex-1 space-y-2">
         <Skeleton className="h-3.5 w-40" />
@@ -1225,24 +1724,24 @@ function SessionCard({
   return (
     <div
       className={cn(
-        "flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border p-3 transition-colors",
+        "flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border p-3.5 transition-colors",
         session.isCurrentSession
-          ? "border-primary/30 bg-primary/[0.03]"
-          : "border-border hover:border-primary/20",
+          ? "border-primary/40 bg-primary/[0.04]"
+          : "border-border hover:border-primary/20 bg-background/50",
       )}
     >
       <div className="flex items-center gap-3 min-w-0">
-        <div className="size-9 rounded-lg glass grid place-items-center shrink-0">
+        <div className="size-9 rounded-xl glass grid place-items-center shrink-0">
           <Icon className="size-4 text-primary" />
         </div>
         <div className="min-w-0">
-          <div className="text-sm font-medium inline-flex flex-wrap items-center gap-2">
+          <div className="text-sm font-semibold inline-flex flex-wrap items-center gap-2">
             <span className="truncate">
               {session.browser ?? "Unknown browser"} on {session.os ?? "Unknown OS"}
             </span>
             {session.isCurrentSession && <Pill tone="primary">Current device</Pill>}
           </div>
-          <div className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+          <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
             {session.ip && <span>{session.ip}</span>}
             {session.location && <span>{session.location}</span>}
             <span title={fullTimestamp(session.createdAt)}>
@@ -1260,7 +1759,7 @@ function SessionCard({
             <button
               disabled={revoking}
               aria-label={`Revoke session on ${session.browser ?? "unknown browser"}`}
-              className="w-full sm:w-auto shrink-0 text-xs font-medium text-destructive border border-destructive/30 rounded-lg px-3 py-2 sm:py-1.5 hover:bg-destructive/10 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
+              className="w-full sm:w-auto shrink-0 text-xs font-semibold text-destructive border border-destructive/30 rounded-lg px-3 py-1.5 hover:bg-destructive/10 transition-colors disabled:opacity-50 cursor-pointer"
             >
               Revoke
             </button>
@@ -1336,10 +1835,6 @@ function SessionsSection() {
     },
   });
 
-  // Compact preview: current session first (always shown if present), plus
-  // up to 2 of the next-most-recently-active others. Sessions already come
-  // back sorted by lastActive desc from the API — no extra fetch needed for
-  // either the preview or the full "View all" list, it's the same data.
   const current = sessions?.find((s) => s.isCurrentSession);
   const others = sessions?.filter((s) => !s.isCurrentSession) ?? [];
   const preview = current ? [current, ...others.slice(0, 2)] : others.slice(0, 3);
@@ -1349,7 +1844,7 @@ function SessionsSection() {
     <button
       onClick={() => logoutAllMutation.mutate()}
       disabled={logoutAllMutation.isPending || (sessions?.length ?? 0) <= 1}
-      className="w-full sm:w-auto glass rounded-lg px-3 py-2 sm:py-1.5 text-xs font-medium inline-flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+      className="w-full sm:w-auto glass rounded-xl px-3 py-1.5 text-xs font-semibold inline-flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors hover:bg-accent cursor-pointer"
     >
       {logoutAllMutation.isPending ? (
         <Loader2 className="size-3.5 animate-spin" />
@@ -1362,11 +1857,11 @@ function SessionsSection() {
 
   return (
     <Panel
-      eyebrow="Sessions"
+      eyebrow="Device Access"
       title={
-        <span className="inline-flex items-center gap-2">
+        <span className="inline-flex items-center gap-2 text-base font-semibold">
           <Monitor className="size-4 text-primary" />
-          Active sessions
+          Active Sessions
           {!isLoading && !isError && (
             <span className="text-xs font-normal text-muted-foreground">
               ({sessions?.length ?? 0})
@@ -1376,7 +1871,7 @@ function SessionsSection() {
       }
       action={logoutAllButton}
     >
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {isError && <ErrorState text="Couldn't load your sessions." onRetry={refetch} />}
         {!isError && isLoading && (
           <>
@@ -1401,7 +1896,7 @@ function SessionsSection() {
       {hiddenCount > 0 && (
         <button
           onClick={() => setViewAllOpen(true)}
-          className="mt-3 w-full sm:w-auto text-xs font-medium text-primary inline-flex items-center justify-center gap-1 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded px-1"
+          className="mt-3 text-xs font-semibold text-primary inline-flex items-center gap-1 hover:underline cursor-pointer"
         >
           View all {sessions?.length} sessions <ChevronRight className="size-3.5" />
         </button>
@@ -1412,7 +1907,7 @@ function SessionsSection() {
           <DialogHeader>
             <DialogTitle className="inline-flex items-center gap-2">
               <Monitor className="size-4 text-primary" />
-              All active sessions
+              All Active Sessions
             </DialogTitle>
             <DialogDescription>Every device currently signed in to your account.</DialogDescription>
           </DialogHeader>
@@ -1433,17 +1928,17 @@ function SessionsSection() {
   );
 }
 
-// ─── Login History ──────────────────────────────────────────────────────────
+// ─── Login History Section ────────────────────────────────────────────────────
 function LoginHistoryRow({ h }: { h: LoginHistoryEntry }) {
   const Icon = deviceIcon(h.device);
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-border p-3 transition-colors hover:border-primary/20 hover:shadow-sm">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border/80 bg-background/50 p-3.5 transition-colors hover:border-primary/30 hover:shadow-sm">
       <div className="flex items-center gap-3 min-w-0">
-        <div className="size-9 rounded-lg glass grid place-items-center shrink-0">
+        <div className="size-9 rounded-xl glass grid place-items-center shrink-0">
           <Icon className="size-4 text-primary" />
         </div>
         <div className="min-w-0">
-          <div className="text-sm font-medium truncate">
+          <div className="text-sm font-semibold truncate">
             {h.browser ?? "Unknown browser"} on {h.os ?? "Unknown OS"}
           </div>
           <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
@@ -1456,9 +1951,9 @@ function LoginHistoryRow({ h }: { h: LoginHistoryEntry }) {
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-1.5 shrink-0">
+      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
         {h.loginStatus === "SUCCESS" ? (
-          <CheckCircle className="size-4 text-[var(--color-success)]" />
+          <CheckCircle className="size-4 text-success" />
         ) : (
           <XCircle className="size-4 text-destructive" />
         )}
@@ -1475,7 +1970,6 @@ function LoginHistorySection() {
   const [filter, setFilter] = useState<LoginHistoryFilter>("all");
   const [page, setPage] = useState(1);
 
-  // Compact preview — 3 latest, unfiltered. Cheap, always fetched.
   const previewQuery = useQuery({
     queryKey: ["security-history-preview"],
     queryFn: () => securityApi.getLoginHistory(1, 3, "all").then((r) => r.data),
@@ -1483,7 +1977,6 @@ function LoginHistorySection() {
     throwOnError: false,
   });
 
-  // Full filtered/paginated data — only fetched once the dialog is opened.
   const fullQuery = useQuery({
     queryKey: ["security-history", page, filter],
     queryFn: () => securityApi.getLoginHistory(page, 10, filter).then((r) => r.data),
@@ -1503,18 +1996,18 @@ function LoginHistorySection() {
 
   return (
     <Panel
-      eyebrow="Login history"
+      eyebrow="Audit Log"
       title={
-        <span className="inline-flex items-center gap-2">
+        <span className="inline-flex items-center gap-2 text-base font-semibold">
           <History className="size-4 text-primary" />
-          Login history
+          Login History
           {!isLoading && !isError && totalCount > 0 && (
             <span className="text-xs font-normal text-muted-foreground">({totalCount})</span>
           )}
         </span>
       }
     >
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {isError && <ErrorState text="Couldn't load your login history." onRetry={refetch} />}
         {!isError && isLoading && (
           <>
@@ -1531,7 +2024,7 @@ function LoginHistorySection() {
       {totalCount > (data?.history.length ?? 0) && (
         <button
           onClick={() => setViewAllOpen(true)}
-          className="mt-3 w-full sm:w-auto text-xs font-medium text-primary inline-flex items-center justify-center gap-1 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded px-1"
+          className="mt-3 text-xs font-semibold text-primary inline-flex items-center gap-1 hover:underline cursor-pointer"
         >
           View all {totalCount} logins <ChevronRight className="size-3.5" />
         </button>
@@ -1548,12 +2041,12 @@ function LoginHistorySection() {
           <DialogHeader>
             <DialogTitle className="inline-flex items-center gap-2">
               <History className="size-4 text-primary" />
-              Login history
+              Login History
             </DialogTitle>
             <DialogDescription>Every recorded sign-in attempt for your account.</DialogDescription>
           </DialogHeader>
 
-          <div className="flex gap-1 flex-wrap">
+          <div className="flex gap-1.5 flex-wrap">
             {filters.map((f) => (
               <button
                 key={f.id}
@@ -1563,9 +2056,9 @@ function LoginHistorySection() {
                 }}
                 aria-pressed={filter === f.id}
                 className={cn(
-                  "text-xs px-2.5 py-1.5 rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+                  "text-xs px-3 py-1.5 rounded-full border transition-colors cursor-pointer",
                   filter === f.id
-                    ? "border-primary text-primary bg-primary/5 font-medium"
+                    ? "border-primary text-primary bg-primary/10 font-semibold"
                     : "border-border text-muted-foreground hover:text-foreground hover:border-primary/30",
                 )}
               >
@@ -1596,7 +2089,7 @@ function LoginHistorySection() {
               <button
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
-                className="disabled:opacity-40 hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded px-1"
+                className="disabled:opacity-40 hover:text-foreground transition-colors cursor-pointer"
               >
                 ← Previous
               </button>
@@ -1606,7 +2099,7 @@ function LoginHistorySection() {
               <button
                 disabled={page >= fullQuery.data.pagination.pages}
                 onClick={() => setPage((p) => p + 1)}
-                className="disabled:opacity-40 hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded px-1"
+                className="disabled:opacity-40 hover:text-foreground transition-colors cursor-pointer"
               >
                 Next →
               </button>
@@ -1618,7 +2111,7 @@ function LoginHistorySection() {
   );
 }
 
-// ─── Recent Security Activity ────────────────────────────────────────────────
+// ─── Recent Security Activity Section ─────────────────────────────────────────
 function ActivityRow({ e }: { e: SecurityEventEntry }) {
   const meta = EVENT_META[e.action] ?? {
     icon: Activity,
@@ -1627,16 +2120,16 @@ function ActivityRow({ e }: { e: SecurityEventEntry }) {
   const Icon = meta.icon;
   const failed = e.result === "FAILURE";
   return (
-    <li className="ml-5 relative">
+    <li className="ml-6 relative pb-4 last:pb-0">
       <span
         className={cn(
-          "absolute -left-[29px] top-0 size-6 rounded-full grid place-items-center border-2 border-background",
+          "absolute -left-[31px] top-0 size-6 rounded-full grid place-items-center border-2 border-background shadow-xs",
           failed ? "bg-destructive/15 text-destructive" : "bg-primary/15 text-primary",
         )}
       >
-        <Icon className="size-3.5" />
+        <Icon className="size-3" />
       </span>
-      <div className="text-sm font-medium capitalize">{meta.label}</div>
+      <div className="text-sm font-semibold capitalize text-foreground">{meta.label}</div>
       <div className="text-xs text-muted-foreground mt-0.5" title={fullTimestamp(e.timestamp)}>
         {relativeTime(e.timestamp)}
         {e.device ? ` · ${e.device}` : ""}
@@ -1649,7 +2142,6 @@ function RecentActivitySection() {
   const [viewAllOpen, setViewAllOpen] = useState(false);
   const [page, setPage] = useState(1);
 
-  // Compact preview — 4 latest. Cheap, always fetched.
   const previewQuery = useQuery({
     queryKey: ["security-events-preview"],
     queryFn: () => securityApi.getSecurityEvents(1, 4).then((r) => r.data),
@@ -1657,7 +2149,6 @@ function RecentActivitySection() {
     throwOnError: false,
   });
 
-  // Full paginated history — only fetched once the dialog is opened.
   const fullQuery = useQuery({
     queryKey: ["security-events", page],
     queryFn: () => securityApi.getSecurityEvents(page, 10).then((r) => r.data),
@@ -1671,11 +2162,11 @@ function RecentActivitySection() {
 
   return (
     <Panel
-      eyebrow="Activity"
+      eyebrow="Timeline"
       title={
-        <span className="inline-flex items-center gap-2">
+        <span className="inline-flex items-center gap-2 text-base font-semibold">
           <Activity className="size-4 text-primary" />
-          Recent security activity
+          Recent Security Activity
           {!isLoading && !isError && totalCount > 0 && (
             <span className="text-xs font-normal text-muted-foreground">({totalCount})</span>
           )}
@@ -1697,7 +2188,7 @@ function RecentActivitySection() {
         <EmptyState icon={Activity} text="No recent security activity." />
       )}
       {!isError && !isLoading && data && data.events.length > 0 && (
-        <ol className="relative border-l border-border ml-4 space-y-5">
+        <ol className="relative border-l border-border/80 ml-3.5 space-y-1 my-2">
           {data.events.map((e, i) => (
             <ActivityRow key={i} e={e} />
           ))}
@@ -1707,7 +2198,7 @@ function RecentActivitySection() {
       {totalCount > (data?.events.length ?? 0) && (
         <button
           onClick={() => setViewAllOpen(true)}
-          className="mt-4 w-full sm:w-auto text-xs font-medium text-primary inline-flex items-center justify-center gap-1 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded px-1"
+          className="mt-3 text-xs font-semibold text-primary inline-flex items-center gap-1 hover:underline cursor-pointer"
         >
           View all {totalCount} events <ChevronRight className="size-3.5" />
         </button>
@@ -1724,7 +2215,7 @@ function RecentActivitySection() {
           <DialogHeader>
             <DialogTitle className="inline-flex items-center gap-2">
               <Activity className="size-4 text-primary" />
-              Recent security activity
+              Recent Security Activity
             </DialogTitle>
             <DialogDescription>Every recorded security event on your account.</DialogDescription>
           </DialogHeader>
@@ -1753,7 +2244,7 @@ function RecentActivitySection() {
               !fullQuery.isLoading &&
               fullQuery.data &&
               fullQuery.data.events.length > 0 && (
-                <ol className="relative border-l border-border ml-4 space-y-5">
+                <ol className="relative border-l border-border/80 ml-3.5 space-y-1 my-2">
                   {fullQuery.data.events.map((e, i) => (
                     <ActivityRow key={i} e={e} />
                   ))}
@@ -1766,7 +2257,7 @@ function RecentActivitySection() {
               <button
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
-                className="disabled:opacity-40 hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded px-1"
+                className="disabled:opacity-40 hover:text-foreground transition-colors cursor-pointer"
               >
                 ← Previous
               </button>
@@ -1776,7 +2267,7 @@ function RecentActivitySection() {
               <button
                 disabled={page >= fullQuery.data.pagination.pages}
                 onClick={() => setPage((p) => p + 1)}
-                className="disabled:opacity-40 hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded px-1"
+                className="disabled:opacity-40 hover:text-foreground transition-colors cursor-pointer"
               >
                 Next →
               </button>
@@ -1788,502 +2279,7 @@ function RecentActivitySection() {
   );
 }
 
-// ─── Two-Factor Authentication ───────────────────────────────────────────────
-function TwoFactorSection({ status, loading }: { status?: SecurityStatus; loading: boolean }) {
-  const qc = useQueryClient();
-  const is2FAEnabled = status?.twoFactorAuthentication === "ENABLED";
-
-  // Separate from the shared /security/status payload — this fetches the
-  // 2FA-specific detail (recovery-codes generation time) only when 2FA is
-  // actually enabled, avoiding an unnecessary call for the common case.
-  const { data: tfaStatus } = useQuery({
-    queryKey: ["2fa-status"],
-    queryFn: () => securityApi.getTwoFactorStatus().then((r) => r.data),
-    enabled: is2FAEnabled,
-    staleTime: 30_000,
-    throwOnError: false,
-  });
-
-  // ── Setup flow state ──
-  type SetupStep = "idle" | "password" | "qr" | "codes";
-  const [setupStep, setSetupStep] = useState<SetupStep>("idle");
-  const [setupPassword, setSetupPassword] = useState("");
-  const [setupData, setSetupData] = useState<{
-    displayKey: string;
-    secret: string;
-    qrCodeDataUrl: string;
-  } | null>(null);
-  const [setupCode, setSetupCode] = useState("");
-  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
-  const [setupError, setSetupError] = useState("");
-
-  // ── Disable flow state ──
-  const [disableOpen, setDisableOpen] = useState(false);
-  const [disablePassword, setDisablePassword] = useState("");
-  const [disableCode, setDisableCode] = useState("");
-  const [disableUseRecovery, setDisableUseRecovery] = useState(false);
-  const [disableError, setDisableError] = useState("");
-
-  // ── Regen flow state ──
-  const [regenOpen, setRegenOpen] = useState(false);
-  const [regenPassword, setRegenPassword] = useState("");
-  const [regenCodes, setRegenCodes] = useState<string[]>([]);
-  const [regenError, setRegenError] = useState("");
-
-  const extractMsg = (err: unknown) =>
-    (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-    "Something went wrong.";
-
-  const resetSetup = () => {
-    setSetupStep("idle");
-    setSetupPassword("");
-    setSetupData(null);
-    setSetupCode("");
-    setRecoveryCodes([]);
-    setSetupError("");
-  };
-
-  // ── Setup mutations ──
-  const initMutation = useMutation({
-    mutationFn: (pw: string) => securityApi.initiateTwoFactorSetup(pw),
-    onSuccess: (res) => {
-      setSetupData({
-        displayKey: res.data.displayKey,
-        secret: res.data.secret,
-        qrCodeDataUrl: res.data.qrCodeDataUrl,
-      });
-      setSetupStep("qr");
-      setSetupError("");
-    },
-    onError: (err: unknown) => setSetupError(extractMsg(err)),
-  });
-
-  const verifySetupMutation = useMutation({
-    mutationFn: (code: string) => securityApi.verifyTwoFactorSetup(code),
-    onSuccess: (res) => {
-      setRecoveryCodes(res.data.recoveryCodes);
-      setSetupStep("codes");
-      qc.invalidateQueries({ queryKey: ["security-status"] });
-      qc.invalidateQueries({ queryKey: ["2fa-status"] });
-      toast.success("2FA enabled!");
-    },
-    onError: (err: unknown) => {
-      setSetupError(extractMsg(err));
-      toast.error("Verification failed", { description: extractMsg(err) });
-    },
-  });
-
-  const disableMutation = useMutation({
-    mutationFn: () =>
-      securityApi.disableTwoFactor(disablePassword, disableCode, disableUseRecovery),
-    onSuccess: () => {
-      setDisableOpen(false);
-      setDisablePassword("");
-      setDisableCode("");
-      qc.invalidateQueries({ queryKey: ["security-status"] });
-      toast.success("2FA disabled");
-    },
-    onError: (err: unknown) => setDisableError(extractMsg(err)),
-  });
-
-  const regenMutation = useMutation({
-    mutationFn: () => securityApi.regenerateRecoveryCodes(regenPassword),
-    onSuccess: (res) => {
-      setRegenCodes(res.data.recoveryCodes);
-      setRegenPassword("");
-      setRegenError("");
-      qc.invalidateQueries({ queryKey: ["2fa-status"] });
-      toast.success("Recovery codes regenerated");
-    },
-    onError: (err: unknown) => setRegenError(extractMsg(err)),
-  });
-
-  return (
-    <Panel
-      eyebrow="Two-factor authentication"
-      title={
-        <span className="inline-flex items-center gap-2">
-          <ShieldOff className="size-4 text-primary" />
-          Two-factor authentication
-        </span>
-      }
-    >
-      {/* ── Status row ── */}
-      {setupStep === "idle" && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border p-3">
-          <div>
-            <div className="text-sm font-medium">Authenticator app (TOTP)</div>
-            <div className="text-xs text-muted-foreground mt-0.5">
-              {is2FAEnabled
-                ? "Your account is protected by two-factor authentication."
-                : "Require a verification code from your authenticator app at login."}
-            </div>
-          </div>
-          {!loading && (
-            <div className="flex items-center gap-2 shrink-0">
-              <Pill tone={is2FAEnabled ? "success" : "muted"}>
-                {is2FAEnabled ? "Enabled" : "Disabled"}
-              </Pill>
-              {!is2FAEnabled ? (
-                <button
-                  onClick={() => setSetupStep("password")}
-                  className="text-xs font-medium text-primary border border-primary/30 rounded-lg px-3 py-2 hover:bg-primary/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                >
-                  Enable 2FA
-                </button>
-              ) : (
-                <button
-                  onClick={() => setDisableOpen(true)}
-                  className="text-xs font-medium text-destructive border border-destructive/30 rounded-lg px-3 py-2 hover:bg-destructive/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
-                >
-                  Disable 2FA
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Step 1: Password confirmation ── */}
-      {setupStep === "password" && (
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Confirm your password to continue setting up two-factor authentication.
-          </p>
-          <Field
-            label="Current password"
-            type="password"
-            autoComplete="current-password"
-            value={setupPassword}
-            onChange={(e) => setSetupPassword(e.target.value)}
-          />
-          {setupError && (
-            <p className="text-xs text-destructive" role="alert">
-              {setupError}
-            </p>
-          )}
-          <div className="flex gap-2 justify-end">
-            <button
-              onClick={resetSetup}
-              className="rounded-lg px-4 py-2 text-sm border border-border hover:bg-accent transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => initMutation.mutate(setupPassword)}
-              disabled={initMutation.isPending || !setupPassword}
-              className="aurora text-primary-foreground rounded-lg px-4 py-2 text-sm font-medium inline-flex items-center gap-2 disabled:opacity-60"
-            >
-              {initMutation.isPending && <Loader2 className="size-3.5 animate-spin" />} Continue
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Step 2: QR / manual key + code entry ── */}
-      {setupStep === "qr" && setupData && (
-        <div className="space-y-4">
-          <div className="rounded-xl border border-border p-4 space-y-3">
-            <p className="text-sm font-medium">Scan with your authenticator app</p>
-            <p className="text-xs text-muted-foreground">
-              Open Google Authenticator, Authy, or Microsoft Authenticator and scan this code — or
-              enter the setup key manually.
-            </p>
-            <div className="flex justify-center py-2">
-              <div className="rounded-xl border border-border bg-white p-3 shadow-sm">
-                <img
-                  src={setupData.qrCodeDataUrl}
-                  alt="Scan this QR code with your authenticator app"
-                  width={200}
-                  height={200}
-                  className="block size-[200px]"
-                />
-              </div>
-            </div>
-            <div className="rounded-lg bg-muted/40 border border-border p-3">
-              <p className="text-xs text-muted-foreground mb-1">Manual setup key</p>
-              <p className="font-mono text-sm tracking-widest break-all text-primary select-all">
-                {setupData.displayKey}
-              </p>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Account name: <strong>GreenGuard AI</strong> · Algorithm: SHA1 · Period: 30s · Digits:
-              6
-            </p>
-          </div>
-          <Field
-            label="Enter the 6-digit code from your app"
-            type="text"
-            inputMode="numeric"
-            maxLength={6}
-            placeholder="000000"
-            value={setupCode}
-            onChange={(e) => setSetupCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            className="tracking-[0.3em] font-mono text-center text-lg max-w-[160px]"
-          />
-          {setupError && (
-            <p className="text-xs text-destructive" role="alert">
-              {setupError}
-            </p>
-          )}
-          <div className="flex gap-2 justify-end">
-            <button
-              onClick={resetSetup}
-              className="rounded-lg px-4 py-2 text-sm border border-border hover:bg-accent transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => verifySetupMutation.mutate(setupCode)}
-              disabled={verifySetupMutation.isPending || setupCode.length !== 6}
-              className="aurora text-primary-foreground rounded-lg px-4 py-2 text-sm font-medium inline-flex items-center gap-2 disabled:opacity-60"
-            >
-              {verifySetupMutation.isPending && <Loader2 className="size-3.5 animate-spin" />}{" "}
-              Verify &amp; Enable
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Step 3: Show recovery codes once ── */}
-      {setupStep === "codes" && recoveryCodes.length > 0 && (
-        <div className="space-y-3">
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
-            <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-              Save your recovery codes
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              These codes will only be shown once. Store them somewhere safe — they let you sign in
-              if you lose access to your authenticator app.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {recoveryCodes.map((c) => (
-              <div
-                key={c}
-                className="font-mono text-sm bg-muted/30 border border-border rounded-lg px-3 py-2 text-center select-all tracking-widest"
-              >
-                {c}
-              </div>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-2 justify-end">
-            <button
-              onClick={() => downloadRecoveryCodes(recoveryCodes)}
-              className="rounded-lg px-3 py-2 text-xs font-medium border border-border hover:bg-accent transition-colors"
-            >
-              Download .txt
-            </button>
-            <button
-              onClick={() => printRecoveryCodes(recoveryCodes)}
-              className="rounded-lg px-3 py-2 text-xs font-medium border border-border hover:bg-accent transition-colors"
-            >
-              Print
-            </button>
-            <button
-              onClick={resetSetup}
-              className="aurora text-primary-foreground rounded-lg px-4 py-2 text-sm font-medium"
-            >
-              Done — I've saved these codes
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Recovery Center (when 2FA enabled) ── */}
-      {is2FAEnabled && setupStep === "idle" && (
-        <div className="mt-3 pt-3 border-t border-border">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <div className="text-xs font-semibold text-foreground">Recovery codes</div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                {tfaStatus?.backupCodesGeneratedAt
-                  ? `Last generated ${relativeTime(tfaStatus.backupCodesGeneratedAt)}`
-                  : "Used to sign in if you lose your authenticator."}
-              </div>
-            </div>
-            {!regenOpen && !regenCodes.length && (
-              <button
-                onClick={() => setRegenOpen(true)}
-                className="text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded px-1 shrink-0"
-              >
-                Regenerate
-              </button>
-            )}
-          </div>
-          {regenOpen && !regenCodes.length && (
-            <div className="space-y-3 mt-3">
-              <p className="text-xs text-muted-foreground">
-                Enter your password to regenerate recovery codes. This will invalidate all existing
-                unused codes.
-              </p>
-              <Field
-                label="Current password"
-                type="password"
-                value={regenPassword}
-                onChange={(e) => setRegenPassword(e.target.value)}
-              />
-              {regenError && (
-                <p className="text-xs text-destructive" role="alert">
-                  {regenError}
-                </p>
-              )}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setRegenOpen(false);
-                    setRegenPassword("");
-                    setRegenError("");
-                  }}
-                  className="rounded-lg px-3 py-2 text-sm border border-border hover:bg-accent"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => regenMutation.mutate()}
-                  disabled={regenMutation.isPending || !regenPassword}
-                  className="aurora text-primary-foreground rounded-lg px-3 py-2 text-sm font-medium inline-flex items-center gap-2 disabled:opacity-60"
-                >
-                  {regenMutation.isPending && <Loader2 className="size-3.5 animate-spin" />}{" "}
-                  Regenerate
-                </button>
-              </div>
-            </div>
-          )}
-          {regenCodes.length > 0 && (
-            <div className="space-y-3 mt-3">
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
-                <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
-                  New recovery codes — save these now. Old codes are no longer valid.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {regenCodes.map((c) => (
-                  <div
-                    key={c}
-                    className="font-mono text-sm bg-muted/30 border border-border rounded-lg px-3 py-2 text-center select-all tracking-widest"
-                  >
-                    {c}
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-wrap gap-2 justify-end">
-                <button
-                  onClick={() => downloadRecoveryCodes(regenCodes)}
-                  className="rounded-lg px-3 py-2 text-xs font-medium border border-border hover:bg-accent transition-colors"
-                >
-                  Download .txt
-                </button>
-                <button
-                  onClick={() => printRecoveryCodes(regenCodes)}
-                  className="rounded-lg px-3 py-2 text-xs font-medium border border-border hover:bg-accent transition-colors"
-                >
-                  Print
-                </button>
-                <button
-                  onClick={() => {
-                    setRegenOpen(false);
-                    setRegenCodes([]);
-                    qc.invalidateQueries({ queryKey: ["2fa-status"] });
-                  }}
-                  className="rounded-lg px-3 py-2 text-xs font-medium text-primary hover:underline"
-                >
-                  Done
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Disable 2FA dialog ── */}
-      <AlertDialog
-        open={disableOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setDisablePassword("");
-            setDisableCode("");
-            setDisableError("");
-            setDisableUseRecovery(false);
-          }
-          setDisableOpen(open);
-        }}
-      >
-        <AlertDialogContent className="glass border-border sm:max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Disable two-factor authentication?</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-3 text-sm text-muted-foreground">
-                <p>
-                  Enter your password and current authenticator code (or a recovery code) to disable
-                  2FA.
-                </p>
-                <Field
-                  label="Current password"
-                  type="password"
-                  value={disablePassword}
-                  onChange={(e) => {
-                    setDisablePassword(e.target.value);
-                    setDisableError("");
-                  }}
-                />
-                <Field
-                  label={disableUseRecovery ? "Recovery code" : "Authenticator code"}
-                  type="text"
-                  inputMode={disableUseRecovery ? undefined : "numeric"}
-                  maxLength={disableUseRecovery ? 14 : 6}
-                  value={disableCode}
-                  onChange={(e) => {
-                    setDisableCode(
-                      disableUseRecovery
-                        ? e.target.value.toUpperCase()
-                        : e.target.value.replace(/\D/g, "").slice(0, 6),
-                    );
-                    setDisableError("");
-                  }}
-                  className={!disableUseRecovery ? "tracking-[0.25em] font-mono text-center" : ""}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDisableUseRecovery((v) => !v);
-                    setDisableCode("");
-                  }}
-                  className="text-xs text-primary hover:underline focus-visible:outline-none"
-                >
-                  {disableUseRecovery
-                    ? "Use authenticator code instead"
-                    : "Use a recovery code instead"}
-                </button>
-                {disableError && (
-                  <p className="text-xs text-destructive" role="alert">
-                    {disableError}
-                  </p>
-                )}
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={disableMutation.isPending}>Cancel</AlertDialogCancel>
-            <button
-              onClick={() => disableMutation.mutate()}
-              disabled={disableMutation.isPending || !disablePassword || !disableCode}
-              className={cn(
-                buttonVariants({ variant: "destructive" }),
-                "inline-flex items-center gap-2 disabled:opacity-60",
-              )}
-            >
-              {disableMutation.isPending && <Loader2 className="size-3.5 animate-spin" />} Disable
-              2FA
-            </button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </Panel>
-  );
-}
-
-// ─── Danger Zone ──────────────────────────────────────────────────────────────
+// ─── Danger Zone Section ──────────────────────────────────────────────────────
 function DangerZoneSection() {
   const { logout } = useAuth();
   const [open, setOpen] = useState(false);
@@ -2297,9 +2293,6 @@ function DangerZoneSection() {
         description: "You have been signed out of all devices.",
       });
       setOpen(false);
-      // Use the existing auth context logout — it clears tokens and resets
-      // auth state, then the interceptor/navigate flow handles the redirect
-      // to login, exactly the same as a normal logout.
       await logout();
     },
     onError: (err: unknown) => {
@@ -2312,7 +2305,6 @@ function DangerZoneSection() {
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
-      // Reset state when the dialog is closed
       setPassword("");
       setErrorMsg("");
       deactivateMutation.reset();
@@ -2326,101 +2318,90 @@ function DangerZoneSection() {
   };
 
   return (
-    <Panel
-      eyebrow="Danger zone"
-      title={
-        <span className="inline-flex items-center gap-2 text-destructive">
-          <AlertTriangle className="size-4" />
-          Danger zone
+    <div className="rounded-2xl border border-destructive/30 bg-destructive/[0.03] p-5 sm:p-6 shadow-sm">
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-destructive">
+          Destructive Action
         </span>
-      }
-    >
-      <div className="rounded-xl border border-destructive/20 bg-destructive/[0.03] p-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="text-sm font-medium">Deactivate account</div>
-            <div className="text-xs text-muted-foreground mt-0.5 max-w-md">
-              Deactivating your account will sign you out of all devices and block further logins
-              until an administrator restores access.
-            </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-base font-semibold text-destructive">
+            <AlertTriangle className="size-4.5" />
+            Deactivate Account
           </div>
-          <AlertDialog open={open} onOpenChange={handleOpenChange}>
-            <AlertDialogTrigger asChild>
-              <button className="w-full sm:w-auto shrink-0 rounded-lg px-4 py-2.5 text-sm font-medium border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40">
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl leading-relaxed">
+            Deactivating your account will immediately revoke all active sessions and block further
+            logins until restored by an administrator.
+          </p>
+        </div>
+
+        <AlertDialog open={open} onOpenChange={handleOpenChange}>
+          <AlertDialogTrigger asChild>
+            <button className="w-full sm:w-auto shrink-0 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold border border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40 cursor-pointer">
+              Deactivate Account
+            </button>
+          </AlertDialogTrigger>
+
+          <AlertDialogContent className="glass border-border sm:max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="inline-flex items-center gap-2 text-destructive">
+                <AlertTriangle className="size-4" /> Deactivate your account?
+              </AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-3 text-sm text-muted-foreground">
+                  <p>This action will:</p>
+                  <ul className="list-disc pl-4 space-y-1 text-xs sm:text-sm">
+                    <li>
+                      Immediately sign you out of <strong>all active sessions</strong>
+                    </li>
+                    <li>Block you from logging in until an administrator restores access</li>
+                    <li>Not permanently delete your data</li>
+                  </ul>
+                  <p className="text-xs sm:text-sm pt-1">
+                    To confirm, enter your current password below.
+                  </p>
+                  <div className="pt-1">
+                    <Field
+                      label="Current password"
+                      type="password"
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setErrorMsg("");
+                      }}
+                      placeholder="Enter your password"
+                      aria-label="Current password"
+                    />
+                    {errorMsg && (
+                      <p className="mt-1.5 text-xs text-destructive" role="alert">
+                        {errorMsg}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deactivateMutation.isPending}>Cancel</AlertDialogCancel>
+              <button
+                onClick={handleConfirm}
+                disabled={deactivateMutation.isPending || !password}
+                className={cn(
+                  buttonVariants({ variant: "destructive" }),
+                  "inline-flex items-center gap-2 disabled:opacity-60 cursor-pointer",
+                )}
+              >
+                {deactivateMutation.isPending && <Loader2 className="size-3.5 animate-spin" />}
                 Deactivate account
               </button>
-            </AlertDialogTrigger>
-
-            <AlertDialogContent className="glass border-border sm:max-w-md">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="inline-flex items-center gap-2 text-destructive">
-                  <AlertTriangle className="size-4" /> Deactivate your account?
-                </AlertDialogTitle>
-                <AlertDialogDescription asChild>
-                  <div className="space-y-3 text-sm text-muted-foreground">
-                    <p>This will:</p>
-                    <ul className="list-disc pl-4 space-y-1">
-                      <li>
-                        Immediately sign you out of <strong>all active sessions</strong>
-                      </li>
-                      <li>Block you from logging in until an administrator restores access</li>
-                      <li>Not delete your data</li>
-                    </ul>
-                    <p>To confirm, enter your current password below.</p>
-                    <div className="pt-1">
-                      <label className="block">
-                        <span className="text-xs text-muted-foreground">Current password</span>
-                        <input
-                          type="password"
-                          autoComplete="current-password"
-                          value={password}
-                          onChange={(e) => {
-                            setPassword(e.target.value);
-                            setErrorMsg("");
-                          }}
-                          placeholder="Enter your password"
-                          className="mt-1.5 w-full rounded-lg border border-input bg-background/40 px-3 py-2.5 text-sm text-foreground outline-none focus:border-destructive focus:ring-2 focus:ring-destructive/20 transition-colors"
-                          aria-label="Current password"
-                          aria-describedby={errorMsg ? "deactivate-error" : undefined}
-                        />
-                      </label>
-                      {errorMsg && (
-                        <p
-                          id="deactivate-error"
-                          className="mt-1.5 text-xs text-destructive"
-                          role="alert"
-                        >
-                          {errorMsg}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={deactivateMutation.isPending}>
-                  Cancel
-                </AlertDialogCancel>
-                {/* Use a plain button instead of AlertDialogAction so we
-                    can control the click handler and prevent default
-                    dialog-close until the mutation resolves. */}
-                <button
-                  onClick={handleConfirm}
-                  disabled={deactivateMutation.isPending || !password}
-                  className={cn(
-                    buttonVariants({ variant: "destructive" }),
-                    "inline-flex items-center gap-2 disabled:opacity-60",
-                  )}
-                >
-                  {deactivateMutation.isPending && <Loader2 className="size-3.5 animate-spin" />}
-                  Deactivate account
-                </button>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-    </Panel>
+    </div>
   );
 }

@@ -153,8 +153,8 @@ export function DashboardHeader({
       </div>
 
       {/* Action buttons */}
-      <div className="flex flex-col items-end gap-1.5">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col items-end gap-1.5 w-full sm:w-auto">
+      <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto">
         {/* Refresh */}
         <motion.button
           whileTap={prefersReduced ? undefined : TAP_PRESS}

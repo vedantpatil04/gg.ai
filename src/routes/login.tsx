@@ -326,8 +326,17 @@ function LoginPage() {
 
   const LoginView = (
     <>
-      <div className="mb-6 lg:hidden">
-        <BrandMark compact />
+      <div className="mb-6 flex items-center justify-between">
+        <div className="lg:hidden">
+          <BrandMark compact />
+        </div>
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground ml-auto"
+        >
+          <ArrowLeft className="size-3.5" />
+          Back to home
+        </Link>
       </div>
 
       <div

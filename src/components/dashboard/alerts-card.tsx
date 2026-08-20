@@ -12,7 +12,7 @@
 
 import { Panel } from "@/components/ui-bits";
 import { CardSkeleton } from "@/components/dashboard/dashboard-skeletons";
-import { ShieldCheck, AlertTriangle, Megaphone, ArrowRight } from "lucide-react";
+import { ShieldCheck, AlertTriangle, AlertOctagon, Info, Megaphone, ArrowRight } from "lucide-react";
 import { useReducedMotion, motion } from "framer-motion";
 import { STAGGER, FADE_UP } from "@/lib/motion";
 
@@ -89,14 +89,30 @@ export function AlertsCard({
             animate="show"
           >
             {alerts.slice(0, 3).map((a) => {
-              const isCritical = a.severity === "critical";
-              const isWarning = a.severity === "warning" || a.severity === "high";
+              // Four-tier severity hierarchy — each tier gets its own icon
+              // and color together, so severity never reads through color
+              // alone (matches the raw severity text badge below).
+              const sev = (a.severity || "").toLowerCase();
+              const tier: "critical" | "warning" | "notice" | "info" =
+                sev === "critical"
+                  ? "critical"
+                  : sev === "warning" || sev === "high"
+                    ? "warning"
+                    : sev === "notice" || sev === "moderate"
+                      ? "notice"
+                      : "info";
 
-              const color = isCritical
-                ? "var(--color-destructive)"
-                : isWarning
-                  ? "var(--color-warning)"
-                  : "var(--color-info)";
+              const color =
+                tier === "critical"
+                  ? "var(--color-destructive)"
+                  : tier === "warning"
+                    ? "var(--color-warning)"
+                    : tier === "notice"
+                      ? "var(--color-info)"
+                      : "var(--color-muted-foreground)";
+
+              const SeverityIcon =
+                tier === "critical" ? AlertOctagon : tier === "warning" ? AlertTriangle : Info;
 
               return (
                 <motion.div
@@ -115,16 +131,16 @@ export function AlertsCard({
                       color,
                     }}
                   >
-                    <AlertTriangle className="size-4" />
+                    <SeverityIcon className="size-4" />
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-semibold text-foreground truncate">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-sm font-semibold text-foreground leading-snug line-clamp-2">
                         {a.title}
                       </span>
                       <span
-                        className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded shrink-0"
+                        className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded shrink-0 mt-0.5"
                         style={{
                           background: `color-mix(in oklab, ${color} 18%, transparent)`,
                           color,

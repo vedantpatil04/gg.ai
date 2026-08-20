@@ -66,11 +66,14 @@ const tileVariant = {
   show: { opacity: 1, y: 0 },
 };
 
-function ActionTile({ action }: { action: QuickAction }) {
+function ActionTile({ action, spanClass }: { action: QuickAction; spanClass?: string }) {
   const prefersReduced = useReducedMotion();
 
   return (
-    <Link to={action.href} className="block h-full group focus-visible:outline-none">
+    <Link
+      to={action.href}
+      className={cn("block h-full group focus-visible:outline-none", spanClass)}
+    >
       <motion.div
         variants={tileVariant}
         whileHover={prefersReduced ? undefined : HOVER_LIFT}
@@ -128,8 +131,14 @@ export function QuickActions({ showReports: _showReports }: { showReports?: bool
       initial={prefersReduced ? false : "hidden"}
       animate="show"
     >
-      {ACTIONS.map((a) => (
-        <ActionTile key={a.label} action={a} />
+      {ACTIONS.map((a, index) => (
+        <ActionTile
+          key={a.label}
+          action={a}
+          // 5 tiles on a 2-column tablet grid leaves the last tile alone in
+          // its row with empty space beside it; let it fill the row instead.
+          spanClass={index === ACTIONS.length - 1 ? "sm:col-span-2 lg:col-span-1" : undefined}
+        />
       ))}
     </motion.div>
   );

@@ -31,44 +31,63 @@ import {
   useCountUp,
 } from "./profile-utils";
 
-// ─── Shared stagger wrapper ────────────────────────────────────────────────
-
-function Stagger({ children, index = 0 }: { children: ReactNode; index?: number }) {
-  return (
-    <div
-      className="animate-in fade-in-0 slide-in-from-bottom-3 fill-mode-both"
-      style={{ animationDelay: `${index * 75}ms`, animationDuration: "360ms" }}
-    >
-      {children}
-    </div>
-  );
-}
-
-// ─── Premium KPI cards (gradient border) ──────────────────────────────────
+// ─── Compact Statistics Cards ─────────────────────────────────────────────────
 
 const KPI_ICON: Record<string, ReactNode> = {
-  submitted: <BarChart3 className="size-5" />,
-  resolved: <CheckCircle2 className="size-5" />,
-  pending: <Clock3 className="size-5" />,
-  reports: <BarChart3 className="size-5" />,
-  managed: <ShieldCheck className="size-5" />,
-  cities: <MapPin className="size-5" />,
-  total: <BarChart3 className="size-5" />,
-  default: <BarChart3 className="size-5" />,
+  submitted: <BarChart3 className="size-4.5" />,
+  resolved: <CheckCircle2 className="size-4.5" />,
+  pending: <Clock3 className="size-4.5" />,
+  reports: <BarChart3 className="size-4.5" />,
+  managed: <ShieldCheck className="size-4.5" />,
+  cities: <MapPin className="size-4.5" />,
+  total: <BarChart3 className="size-4.5" />,
+  default: <BarChart3 className="size-4.5" />,
 };
 
-const KPI_ACCENT: Record<string, string> = {
-  submitted: "var(--color-primary)",
-  resolved: "var(--color-success)",
-  pending: "var(--color-warning)",
-  reports: "var(--color-info)",
-  managed: "var(--color-primary)",
-  cities: "var(--color-info)",
-  total: "var(--color-destructive)",
-  default: "var(--color-primary)",
+const KPI_COLORS: Record<string, { text: string; bg: string; border: string }> = {
+  submitted: {
+    text: "text-primary",
+    bg: "bg-primary/10",
+    border: "border-primary/20",
+  },
+  resolved: {
+    text: "text-success",
+    bg: "bg-success/10",
+    border: "border-success/20",
+  },
+  pending: {
+    text: "text-warning",
+    bg: "bg-warning/10",
+    border: "border-warning/20",
+  },
+  reports: {
+    text: "text-info",
+    bg: "bg-info/10",
+    border: "border-info/20",
+  },
+  managed: {
+    text: "text-primary",
+    bg: "bg-primary/10",
+    border: "border-primary/20",
+  },
+  cities: {
+    text: "text-info",
+    bg: "bg-info/10",
+    border: "border-info/20",
+  },
+  total: {
+    text: "text-foreground",
+    bg: "bg-muted",
+    border: "border-border",
+  },
+  default: {
+    text: "text-primary",
+    bg: "bg-primary/10",
+    border: "border-primary/20",
+  },
 };
 
-function KpiCard({
+function CompactStatCard({
   statKey,
   value,
   label,
@@ -79,42 +98,29 @@ function KpiCard({
   label: string;
   index: number;
 }) {
-  const displayed = useCountUp(value, 550 + index * 90);
+  const displayed = useCountUp(value, 400 + index * 80);
   const kind = guessStatIconKind(statKey);
   const icon = KPI_ICON[kind] ?? KPI_ICON.default;
-  const accent = KPI_ACCENT[kind] ?? KPI_ACCENT.default;
+  const colors = KPI_COLORS[kind] ?? KPI_COLORS.default;
 
   return (
     <div
-      className="relative rounded-2xl p-[1px] group animate-in fade-in-0 slide-in-from-bottom-2 fill-mode-both transition-transform duration-200 hover:-translate-y-1"
-      style={{
-        background: `linear-gradient(135deg, color-mix(in oklab, ${accent} 45%, transparent), transparent 65%)`,
-        animationDelay: `${index * 65}ms`,
-        animationDuration: "340ms",
-      }}
+      className="glass rounded-xl border border-border/80 p-4 sm:p-4.5 transition-all duration-200 hover:border-primary/40 hover:shadow-sm"
+      style={{ animationDelay: `${index * 50}ms` }}
     >
-      <div className="rounded-2xl bg-background/95 backdrop-blur-sm p-6 h-full relative overflow-hidden group-hover:shadow-xl transition-shadow duration-200">
-        {/* Soft glow accent */}
-        <div
-          className="absolute -top-10 -right-10 size-32 rounded-full opacity-20 blur-2xl transition-opacity duration-200 group-hover:opacity-35"
-          style={{ background: accent }}
-          aria-hidden="true"
-        />
-        <div className="relative">
-          <div
-            className="size-11 rounded-xl grid place-items-center mb-4 transition-transform duration-200 group-hover:scale-110"
-            style={{ color: accent, background: `color-mix(in oklab, ${accent} 12%, transparent)` }}
-            aria-hidden="true"
-          >
-            {icon}
-          </div>
-          <div
-            className="text-4xl font-semibold tabular-nums tracking-tight"
-            aria-label={`${value} ${label}`}
-          >
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-xs font-medium text-muted-foreground truncate">{label}</div>
+          <div className="text-2xl sm:text-3xl font-bold tabular-nums tracking-tight text-foreground mt-1">
             {displayed}
           </div>
-          <div className="text-sm text-muted-foreground mt-1.5">{label}</div>
+        </div>
+
+        <div
+          className={`size-10 rounded-xl ${colors.bg} ${colors.text} grid place-items-center shrink-0 border ${colors.border}`}
+          aria-hidden="true"
+        >
+          {icon}
         </div>
       </div>
     </div>
@@ -130,9 +136,9 @@ function StatisticsSection() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-40 rounded-2xl shimmer" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-20 rounded-xl shimmer" />
         ))}
       </div>
     );
@@ -140,18 +146,20 @@ function StatisticsSection() {
 
   if (isError || !data) {
     return (
-      <div className="glass rounded-2xl p-6 flex items-center gap-4" role="alert">
-        <AlertCircle className="size-5 text-destructive shrink-0" aria-hidden="true" />
-        <p className="text-sm text-muted-foreground flex-1">Statistics couldn't be loaded.</p>
+      <div className="glass rounded-xl p-4 flex items-center gap-3" role="alert">
+        <AlertCircle className="size-4 text-destructive shrink-0" aria-hidden="true" />
+        <p className="text-xs sm:text-sm text-muted-foreground flex-1">
+          Activity statistics could not be loaded.
+        </p>
         <Button
           size="sm"
           variant="outline"
           onClick={() => refetch()}
           disabled={isFetching}
-          className="gap-1.5 transition-all duration-150 hover:scale-[1.02] active:scale-[0.98]"
+          className="h-8 text-xs gap-1.5 cursor-pointer"
         >
           <RefreshCw
-            className={`size-3.5 ${isFetching ? "animate-spin" : ""}`}
+            className={`size-3 ${isFetching ? "animate-spin" : ""}`}
             aria-hidden="true"
           />
           Retry
@@ -165,12 +173,12 @@ function StatisticsSection() {
 
   return (
     <div
-      className="grid grid-cols-2 lg:grid-cols-4 gap-5"
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4"
       role="list"
       aria-label="Account statistics"
     >
       {stats.map((stat, i) => (
-        <KpiCard
+        <CompactStatCard
           key={stat.key}
           statKey={stat.key}
           value={stat.value}
@@ -182,24 +190,18 @@ function StatisticsSection() {
   );
 }
 
-// ─── Section label ─────────────────────────────────────────────────────────
+// ─── Section Header ───────────────────────────────────────────────────────────
 
-function SectionLabel({ children }: { children: string }) {
+function SectionHeader({ title }: { title: string }) {
   return (
-    <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground mb-4">{children}</p>
+    <h2 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-3">
+      {title}
+    </h2>
   );
 }
 
-// ─── Main export ───────────────────────────────────────────────────────────
+// ─── Main ProfileOverview Component ───────────────────────────────────────────
 
-/**
- * Phase 10 Master Redesign — Overview tab.
- *
- * Profile completion and its recommendations now live in the Hero (with a
- * full "View All" drawer), so this tab focuses purely on informational
- * panels: Statistics (premium KPI cards) and Identity / Contact / Account.
- * Larger typography and generous spacing throughout — no dense table rows.
- */
 export function ProfileOverview({ profile }: { profile: EnterpriseProfile }) {
   const memberSince = formatDate(profile.createdAt);
   const lastLogin = formatDateTime(profile.lastLogin);
@@ -211,100 +213,104 @@ export function ProfileOverview({ profile }: { profile: EnterpriseProfile }) {
     hasValue(profile.country);
 
   return (
-    <div className="space-y-8">
-      {/* Statistics — premium KPI cards, full width */}
-      <Stagger index={0}>
-        <SectionLabel>Statistics</SectionLabel>
-        <StatisticsSection />
-      </Stagger>
-
-      {/* Identity / Contact / Account — equal-weight, generously spaced */}
+    <div className="space-y-6">
+      {/* ── Quick Statistics ──────────────────────────────────────────────── */}
       <div>
-        <SectionLabel>Account details</SectionLabel>
-        <div className="grid md:grid-cols-3 gap-5">
-          <Stagger index={1}>
-            <Panel
-              eyebrow="Identity"
-              title={<h3 className="text-lg font-semibold tracking-tight">Identity</h3>}
-              className="hover:shadow-lg transition-shadow duration-200 h-full p-6"
-            >
+        <SectionHeader title="Activity Overview" />
+        <StatisticsSection />
+      </div>
+
+      {/* ── Account Details (3-Column Grid) ───────────────────────────────── */}
+      <div>
+        <SectionHeader title="Account Details" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+          {/* Column 1: Identity */}
+          <Panel
+            eyebrow="Identity"
+            title={<h3 className="text-sm font-semibold tracking-tight">Identity</h3>}
+            className="h-full p-4.5 sm:p-5"
+          >
+            <InfoList>
+              <InfoRow
+                icon={<User className="size-3.5" aria-hidden="true" />}
+                label="Full name"
+                value={profile.name}
+              />
+              <InfoRow label="Username" value={getUsername(profile.email)} />
+              <InfoRow
+                icon={<Shield className="size-3.5" aria-hidden="true" />}
+                label="Role"
+                value={formatRole(profile.role)}
+              />
+              {hasValue(profile.organization) && (
+                <InfoRow label="Organization" value={profile.organization} />
+              )}
+            </InfoList>
+          </Panel>
+
+          {/* Column 2: Contact */}
+          <Panel
+            eyebrow="Contact"
+            title={<h3 className="text-sm font-semibold tracking-tight">Contact Information</h3>}
+            className="h-full p-4.5 sm:p-5"
+          >
+            {hasContact ? (
               <InfoList>
                 <InfoRow
-                  icon={<User className="size-4" aria-hidden="true" />}
-                  label="Full name"
-                  value={profile.name}
-                />
-                <InfoRow
-                  icon={<Mail className="size-4" aria-hidden="true" />}
+                  icon={<Mail className="size-3.5" aria-hidden="true" />}
                   label="Email"
                   value={profile.email}
                 />
-                <InfoRow label="Username" value={getUsername(profile.email)} />
                 <InfoRow
-                  icon={<Shield className="size-4" aria-hidden="true" />}
-                  label="Role"
-                  value={formatRole(profile.role)}
+                  icon={<Phone className="size-3.5" aria-hidden="true" />}
+                  label="Phone"
+                  value={profile.phone}
                 />
+                <InfoRow
+                  icon={<MapPin className="size-3.5" aria-hidden="true" />}
+                  label="City"
+                  value={
+                    hasValue(profile.city)
+                      ? profile.city[0].toUpperCase() + profile.city.slice(1)
+                      : undefined
+                  }
+                />
+                <InfoRow label="Country" value={profile.country} />
               </InfoList>
-            </Panel>
-          </Stagger>
+            ) : (
+              <p className="text-xs text-muted-foreground py-2">No contact info on file yet.</p>
+            )}
+          </Panel>
 
-          <Stagger index={2}>
-            <Panel
-              eyebrow="Contact"
-              title={<h3 className="text-lg font-semibold tracking-tight">Contact</h3>}
-              className="hover:shadow-lg transition-shadow duration-200 h-full p-6"
-            >
-              {hasContact ? (
-                <InfoList>
-                  <InfoRow
-                    icon={<Phone className="size-4" aria-hidden="true" />}
-                    label="Phone"
-                    value={profile.phone}
-                  />
-                  <InfoRow
-                    icon={<MapPin className="size-4" aria-hidden="true" />}
-                    label="City"
-                    value={
-                      hasValue(profile.city)
-                        ? profile.city[0].toUpperCase() + profile.city.slice(1)
-                        : undefined
-                    }
-                  />
-                  <InfoRow label="State" value={profile.state} />
-                  <InfoRow label="Country" value={profile.country} />
-                </InfoList>
-              ) : (
-                <p className="text-sm text-muted-foreground py-1">No contact info on file yet.</p>
-              )}
-            </Panel>
-          </Stagger>
-
-          <Stagger index={3}>
-            <Panel
-              eyebrow="Account"
-              title={<h3 className="text-lg font-semibold tracking-tight">Account</h3>}
-              className="hover:shadow-lg transition-shadow duration-200 h-full p-6"
-            >
-              <InfoList>
-                <InfoRow
-                  icon={<ShieldCheck className="size-4" aria-hidden="true" />}
-                  label="Account status"
-                  value={accountStatus}
-                />
-                <InfoRow
-                  icon={<Calendar className="size-4" aria-hidden="true" />}
-                  label="Member since"
-                  value={memberSince}
-                />
-                <InfoRow
-                  icon={<Clock3 className="size-4" aria-hidden="true" />}
-                  label="Last login"
-                  value={lastLogin}
-                />
-              </InfoList>
-            </Panel>
-          </Stagger>
+          {/* Column 3: Account */}
+          <Panel
+            eyebrow="Account"
+            title={<h3 className="text-sm font-semibold tracking-tight">Account Status</h3>}
+            className="h-full p-4.5 sm:p-5"
+          >
+            <InfoList>
+              <InfoRow
+                icon={<ShieldCheck className="size-3.5" aria-hidden="true" />}
+                label="Status"
+                value={accountStatus}
+              />
+              <InfoRow
+                icon={<CheckCircle2 className="size-3.5" aria-hidden="true" />}
+                label="Verification"
+                value={profile.isVerified ? "Verified" : "Unverified"}
+              />
+              <InfoRow
+                icon={<Calendar className="size-3.5" aria-hidden="true" />}
+                label="Member since"
+                value={memberSince}
+              />
+              <InfoRow
+                icon={<Clock3 className="size-3.5" aria-hidden="true" />}
+                label="Last login"
+                value={lastLogin}
+              />
+            </InfoList>
+          </Panel>
         </div>
       </div>
     </div>

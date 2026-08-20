@@ -136,16 +136,20 @@ export function MyEnvironment({
           </span>
         </div>
 
-        {/* Compact 5-tile grid */}
+        {/* Compact 5-tile grid. Two breakpoints only (2-col mobile -> 5-col
+            desktop, skipping an intermediate 3-col tier) so 5 items never
+            leave a lone tile dangling with empty space beside it; the last
+            tile spans the remaining width on the 2-col tier instead. */}
         <motion.div
-          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
+          className="grid grid-cols-2 md:grid-cols-5 gap-3"
           variants={STAGGER(0.05)}
           initial={prefersReduced ? false : "hidden"}
           animate="show"
         >
-          {cards.map((card) => {
+          {cards.map((card, index) => {
             const Icon = card.icon;
             const isClickable = card.link !== "#";
+            const isLast = index === cards.length - 1;
 
             const content = (
               <motion.div
@@ -182,12 +186,18 @@ export function MyEnvironment({
               </motion.div>
             );
 
+            const spanClass = isLast ? "col-span-2 md:col-span-1" : "";
+
             return isClickable ? (
-              <Link key={card.id} to={card.link} className="block h-full focus-visible:outline-none">
+              <Link
+                key={card.id}
+                to={card.link}
+                className={`block h-full focus-visible:outline-none ${spanClass}`}
+              >
                 {content}
               </Link>
             ) : (
-              <div key={card.id} className="h-full">
+              <div key={card.id} className={`h-full ${spanClass}`}>
                 {content}
               </div>
             );

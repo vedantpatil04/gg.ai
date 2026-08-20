@@ -1,5 +1,5 @@
-import { useLayoutEffect, useRef, useState } from "react";
-import { Building2, History, LayoutGrid, UserCog } from "lucide-react";
+import { useLayoutEffect, useRef, useState, useMemo } from "react";
+import { Building2, History, LayoutGrid, UserCog, type LucideIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { EnterpriseProfile } from "./profile-utils";
 import { ProfileOverview } from "./profile-overview";
@@ -7,22 +7,27 @@ import { PersonalInformationTab } from "./profile-personal-info-tab";
 import { OrganizationTab } from "./profile-organization-tab";
 import { ActivityTab } from "./profile-activity-tab";
 
-const TAB_ITEMS = [
+interface TabItemDef {
+  value: "overview" | "personal" | "organization" | "activity";
+  label: string;
+  icon: LucideIcon;
+  roles?: Array<"citizen" | "authority" | "administrator">;
+}
+
+const ALL_TABS: TabItemDef[] = [
   { value: "overview", label: "Overview", icon: LayoutGrid },
   { value: "personal", label: "Personal Info", icon: UserCog },
-  { value: "organization", label: "Organization", icon: Building2 },
+  {
+    value: "organization",
+    label: "Organization",
+    icon: Building2,
+    roles: ["authority", "administrator"],
+  },
   { value: "activity", label: "Activity", icon: History },
-] as const;
+];
 
-type TabValue = (typeof TAB_ITEMS)[number]["value"];
+type TabValue = TabItemDef["value"];
 
-/**
- * Enterprise tab navigation with an animated sliding underline indicator —
- * the indicator's position and width are measured against the active
- * trigger's actual DOM rect and animated with a CSS transition, rather
- * than relying on per-tab border classes (which can't slide smoothly
- * between arbitrary tab widths).
- */
 function SlidingTabIndicator({
   activeValue,
   triggerRefs,
@@ -46,12 +51,11 @@ function SlidingTabIndicator({
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeValue]);
 
   return (
     <div
-      className="absolute bottom-0 h-[2.5px] rounded-full bg-primary transition-all duration-300 ease-out"
+      className="absolute bottom-0 h-[2px] rounded-full bg-primary transition-all duration-300 ease-out"
       style={{ left: style.left, width: style.width }}
       aria-hidden="true"
     />
@@ -65,26 +69,34 @@ export function ProfileTabs({
   profile: EnterpriseProfile;
   onEditProfile: () => void;
 }) {
+  const isCitizen = profile.role === "citizen";
+
+  // Filter tabs dynamically based on user role
+  const tabItems = useMemo(() => {
+    return ALL_TABS.filter((tab) => {
+      if (!tab.roles) return true;
+      return tab.roles.includes(profile.role);
+    });
+  }, [profile.role]);
+
   const [active, setActive] = useState<TabValue>("overview");
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRefs = useRef<Partial<Record<TabValue, HTMLButtonElement | null>>>({});
 
   return (
-    <Tabs value={active} onValueChange={(v) => setActive(v as TabValue)} className="space-y-7">
-      {/* ── Tab bar — enterprise underline navigation ──────────────── */}
-      <div className="relative">
+    <Tabs
+      value={active}
+      onValueChange={(v) => setActive(v as TabValue)}
+      className="space-y-6"
+    >
+      {/* ── Tab Navigation Bar ────────────────────────────────────────────── */}
+      <div className="relative border-b border-border/80 overflow-x-auto no-scrollbar">
         <TabsList
           ref={containerRef}
-          className="
-            sticky top-16 z-20
-            h-auto p-0 gap-1 bg-transparent
-            grid grid-cols-4 w-full
-            md:inline-flex md:w-auto
-            border-b border-border
-          "
+          className="h-auto p-0 gap-1 bg-transparent flex w-max min-w-full sm:min-w-0 sm:inline-flex"
           aria-label="Profile sections"
         >
-          {TAB_ITEMS.map(({ value, label, icon: Icon }) => (
+          {tabItems.map(({ value, label, icon: Icon }) => (
             <TabsTrigger
               key={value}
               value={value}
@@ -93,24 +105,25 @@ export function ProfileTabs({
               }}
               className="
                 relative flex items-center justify-center gap-2
-                px-5 py-3.5 rounded-none
-                text-sm font-medium
+                px-4 sm:px-5 py-3 rounded-none
+                text-xs sm:text-sm font-medium
                 text-muted-foreground
                 bg-transparent shadow-none
                 transition-colors duration-200
                 data-[state=active]:bg-transparent
                 data-[state=active]:text-foreground
+                data-[state=active]:font-semibold
                 data-[state=active]:shadow-none
                 hover:text-foreground
                 focus-visible:outline-none
                 focus-visible:ring-2
                 focus-visible:ring-ring
-                focus-visible:ring-offset-1
                 focus-visible:rounded-md
+                cursor-pointer shrink-0
               "
             >
               <Icon className="size-4 shrink-0" aria-hidden="true" />
-              <span className="hidden sm:inline truncate">{label}</span>
+              <span>{label}</span>
             </TabsTrigger>
           ))}
         </TabsList>
@@ -121,31 +134,33 @@ export function ProfileTabs({
         />
       </div>
 
-      {/* ── Tab panels — entrance animation ──────────────────────── */}
+      {/* ── Tab Contents ─────────────────────────────────────────────────── */}
       <TabsContent
         value="overview"
-        className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 mt-0"
+        className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 mt-0 outline-none"
       >
         <ProfileOverview profile={profile} />
       </TabsContent>
 
       <TabsContent
         value="personal"
-        className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 mt-0"
+        className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 mt-0 outline-none"
       >
         <PersonalInformationTab profile={profile} onEditProfile={onEditProfile} />
       </TabsContent>
 
-      <TabsContent
-        value="organization"
-        className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 mt-0"
-      >
-        <OrganizationTab />
-      </TabsContent>
+      {!isCitizen && (
+        <TabsContent
+          value="organization"
+          className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 mt-0 outline-none"
+        >
+          <OrganizationTab />
+        </TabsContent>
+      )}
 
       <TabsContent
         value="activity"
-        className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 mt-0"
+        className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 mt-0 outline-none"
       >
         <ActivityTab />
       </TabsContent>
