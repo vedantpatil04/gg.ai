@@ -344,6 +344,25 @@ export async function refreshToken(req: Request, res: Response, next: NextFuncti
   }
 }
 
+function resolveFrontendUrl(req: Request): string {
+  if (process.env.FRONTEND_URL && process.env.FRONTEND_URL.trim().length > 0) {
+    return process.env.FRONTEND_URL.trim().replace(/\/+$/, "");
+  }
+  const originHeader = req.headers.origin || req.headers.referer;
+  if (originHeader && typeof originHeader === "string") {
+    try {
+      const originUrl = new URL(originHeader);
+      if (originUrl.hostname.endsWith("vercel.app") || originUrl.hostname.includes("greenguard")) {
+        return `${originUrl.protocol}//${originUrl.host}`;
+      }
+    } catch {}
+  }
+  if (process.env.NODE_ENV === "production") {
+    return "https://gg-ai-system.vercel.app";
+  }
+  return "http://localhost:5173";
+}
+
 // ─── Forgot Password ─────────────────────────────────────────────────────────
 export async function forgotPassword(
   req: Request,
@@ -374,7 +393,7 @@ export async function forgotPassword(
       passwordResetExpires: new Date(Date.now() + 60 * 60 * 1000),
     });
 
-    const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").trim().replace(/\/+$/, "");
+    const frontendUrl = resolveFrontendUrl(req);
     const resetUrl = `${frontendUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
 
     await sendEmail({

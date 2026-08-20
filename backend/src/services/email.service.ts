@@ -13,14 +13,20 @@ function getTransporter(): nodemailer.Transporter | null {
   let rawPass = process.env.SMTP_PASS?.trim();
 
   // If a 16-character Gmail App Password with spaces was provided (e.g. "xxxx xxxx xxxx xxxx"), normalize it
-  if (rawPass && host.includes("gmail.com") && rawPass.replace(/\s+/g, "").length === 16) {
+  if (
+    rawPass &&
+    (host.includes("gmail.com") || process.env.SMTP_SERVICE === "gmail") &&
+    rawPass.replace(/\s+/g, "").length === 16
+  ) {
     rawPass = rawPass.replace(/\s+/g, "");
   }
 
-  const transportConfig: nodemailer.TransportOptions = {
+  const transportConfig: Record<string, unknown> = {
     host,
     port,
     secure: isSecure,
+    // Force IPv4 on Linux/Render containers to prevent ENETUNREACH / IPv6 routing timeouts
+    family: 4,
     ...(rawUser && rawPass
       ? {
           auth: {
@@ -29,12 +35,16 @@ function getTransporter(): nodemailer.Transporter | null {
           },
         }
       : {}),
-    connectionTimeout: 10_000,
-    greetingTimeout: 10_000,
-    socketTimeout: 15_000,
-  } as unknown as nodemailer.TransportOptions;
+    tls: {
+      rejectUnauthorized: false,
+      minVersion: "TLSv1.2",
+    },
+    connectionTimeout: 15_000,
+    greetingTimeout: 15_000,
+    socketTimeout: 20_000,
+  };
 
-  return nodemailer.createTransport(transportConfig);
+  return nodemailer.createTransport(transportConfig as unknown as nodemailer.TransportOptions);
 }
 
 export interface EmailOptions {
@@ -43,18 +53,18 @@ export interface EmailOptions {
   html: string;
 }
 
-export async function sendEmail(options: EmailOptions): Promise<void> {
+export async function sendEmail(options: EmailOptions): Promise<boolean> {
   const smtpUser = process.env.SMTP_USER?.trim();
   if (!smtpUser) {
     logger.warn("Email service not configured (SMTP_USER missing) — skipping email send");
-    return;
+    return false;
   }
 
   try {
     const transporter = getTransporter();
     if (!transporter) {
       logger.warn("Email transporter could not be initialized — skipping email send");
-      return;
+      return false;
     }
 
     const fromAddress = process.env.EMAIL_FROM?.trim() || `GreenGuard AI <${smtpUser}>`;
@@ -66,13 +76,16 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
       html: options.html,
     });
     logger.info(`Email sent successfully to ${options.to}`);
+    return true;
   } catch (err: unknown) {
-    const errorObj = err as { message?: string; code?: string; response?: string };
-    logger.error("Failed to send email:", {
+    const errorObj = err as { message?: string; code?: string; response?: string; command?: string };
+    logger.error("Failed to send email on Render:", {
       to: options.to,
       errorCode: errorObj?.code,
       errorMessage: errorObj?.message,
+      command: errorObj?.command,
     });
+    return false;
   }
 }
 

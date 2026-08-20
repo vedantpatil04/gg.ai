@@ -2,11 +2,20 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
 function getApiBase(): string {
   const envUrl = import.meta.env.VITE_API_URL;
-  if (!envUrl) {
-    return "http://localhost:5000/api";
+  if (envUrl && typeof envUrl === "string" && envUrl.trim().length > 0) {
+    const trimmed = envUrl.trim().replace(/\/+$/, "");
+    return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
   }
-  const trimmed = envUrl.trim().replace(/\/+$/, "");
-  return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
+  // Production fallback on Vercel / non-localhost web deployments
+  if (
+    import.meta.env.PROD ||
+    (typeof window !== "undefined" &&
+      window.location.hostname !== "localhost" &&
+      window.location.hostname !== "127.0.0.1")
+  ) {
+    return "https://gg-ai-11ja.onrender.com/api";
+  }
+  return "http://localhost:5000/api";
 }
 
 export const API_BASE = getApiBase();
