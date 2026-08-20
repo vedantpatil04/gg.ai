@@ -82,9 +82,10 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     try {
       const defaultFrom = "GreenGuard AI <onboarding@resend.dev>";
       const configuredFrom = process.env.RESEND_FROM?.trim() || process.env.EMAIL_FROM?.trim();
-      // Resend requires a verified domain or onboarding@resend.dev for test sends
+      // Resend requires a verified custom domain or onboarding@resend.dev for delivery
+      // Generic webmail domains (e.g. gmail.com) cannot be verified on Resend, so auto-fallback to onboarding@resend.dev
       let fromAddress = configuredFrom || defaultFrom;
-      if (!process.env.RESEND_FROM && configuredFrom && /@(gmail|yahoo|hotmail|outlook)\.com/i.test(configuredFrom)) {
+      if (/@(gmail|yahoo|hotmail|outlook)\.com/i.test(fromAddress)) {
         fromAddress = defaultFrom;
       }
 
