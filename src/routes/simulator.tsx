@@ -364,11 +364,11 @@ function SkeletonBlock({ className }: { className?: string }) {
   return <div className={cn("sim-skeleton rounded-lg", className)} />;
 }
 
-// ─── MobileLiveImpactPanel ────────────────────────────────────────────────────
-// Mobile-only sticky panel that stays visible while the user scrolls through
-// policy levers, showing the most important simulation metrics at a glance.
+// ─── ImpactSnapshotCard (Mobile In-Flow Impact Snapshot) ──────────────────────
+// Responsive compact card embedded in the mobile reading flow (Item 4 in hierarchy)
+// providing a structured 2x2 grid with AQI, Health, Eco, and Sustainability metrics.
 
-const MobileLiveImpactPanel = memo(function MobileLiveImpactPanel({
+const ImpactSnapshotCard = memo(function ImpactSnapshotCard({
   localResults,
   currentAqi,
   simStatus,
@@ -380,101 +380,98 @@ const MobileLiveImpactPanel = memo(function MobileLiveImpactPanel({
   const band = getAqiBand(localResults.projectedAqi);
   const isImprovement = localResults.aqiDelta < 0;
   const deltaPts = Math.abs(Math.round(localResults.aqiDelta));
-  const [collapsed, setCollapsed] = useState(false);
 
-  // Scroll the page to the full results section
   const handleViewFull = () => {
     document.getElementById("sim-results-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   return (
     <div
-      className={`sim-mobile-sticky-panel xl:hidden`}
+      className="sim-panel rounded-2xl p-4 sm:p-5 w-full min-w-0 shadow-sm border border-border/70 bg-card/85 dark:bg-card/75 backdrop-blur-md"
       role="region"
-      aria-label="Live simulation results"
-      aria-live="polite"
+      aria-label="Impact snapshot"
     >
-      <button
-        className="sim-mobile-sticky-collapse-btn"
-        onClick={() => setCollapsed((v) => !v)}
-        aria-label={collapsed ? "Expand live impact panel" : "Collapse live impact panel"}
-        aria-expanded={!collapsed}
-      >
-        <span className="sim-mobile-sticky-header">
-          <span className="sim-mobile-sticky-title">
-            <span
-              className="sim-mobile-sticky-dot"
-              style={{ background: simStatus === "recalculating" ? "var(--color-warning)" : band.color }}
-              aria-hidden
-            />
-            LIVE SIMULATION
-          </span>
-          <ChevronUp
-            className={`sim-mobile-sticky-chevron ${collapsed ? "sim-mobile-sticky-chevron-down" : ""}`}
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-border/50">
+        <div className="flex items-center gap-2">
+          <span
+            className="size-2 rounded-full sim-active-dot"
+            style={{ background: simStatus === "recalculating" ? "var(--color-warning)" : band.color }}
             aria-hidden
           />
-        </span>
-      </button>
-
-      {!collapsed && (
-        <div className="sim-mobile-sticky-body">
-          {/* 2×2 grid on narrow phones (≤430px), 4-column row on wider mobile */}
-          <div className="sim-mobile-sticky-metrics-grid">
-            {/* AQI with inline delta */}
-            <div className="sim-mobile-sticky-metric">
-              <span className="sim-mobile-sticky-metric-label">AQI</span>
-              <div className="sim-mobile-sticky-metric-row">
-                <span className="sim-mobile-sticky-metric-value" style={{ color: band.color }}>
-                  <AnimatedNumber value={localResults.projectedAqi} duration={400} />
-                </span>
-                <span
-                  className="sim-mobile-sticky-metric-delta"
-                  style={{ color: isImprovement ? "var(--color-success)" : "var(--color-destructive)" }}
-                >
-                  {isImprovement ? "↓" : "↑"}{deltaPts}
-                </span>
-              </div>
-            </div>
-            {/* Health */}
-            <div className="sim-mobile-sticky-metric">
-              <span className="sim-mobile-sticky-metric-label">Health</span>
-              <div className="sim-mobile-sticky-metric-row">
-                <span className="sim-mobile-sticky-metric-value" style={{ color: "var(--color-info)" }}>
-                  <AnimatedNumber value={localResults.health} duration={400} />
-                </span>
-                <span className="sim-mobile-sticky-metric-delta">/100</span>
-              </div>
-            </div>
-            {/* Eco */}
-            <div className="sim-mobile-sticky-metric">
-              <span className="sim-mobile-sticky-metric-label">Eco</span>
-              <div className="sim-mobile-sticky-metric-row">
-                <span className="sim-mobile-sticky-metric-value" style={{ color: "var(--color-primary)" }}>
-                  <AnimatedNumber value={localResults.eco} duration={400} />
-                </span>
-                <span className="sim-mobile-sticky-metric-delta">/100</span>
-              </div>
-            </div>
-            {/* Sustainability */}
-            <div className="sim-mobile-sticky-metric">
-              <span className="sim-mobile-sticky-metric-label">SI</span>
-              <div className="sim-mobile-sticky-metric-row">
-                <span className="sim-mobile-sticky-metric-value" style={{ color: "var(--color-success)" }}>
-                  <AnimatedNumber value={localResults.sustain} duration={400} />
-                </span>
-                <span className="sim-mobile-sticky-metric-delta">/100</span>
-              </div>
-            </div>
-          </div>
-          <button
-            className="sim-mobile-sticky-view-btn"
-            onClick={handleViewFull}
-            aria-label="View full simulation results"
-          >
-            View full impact →
-          </button>
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+            Impact Snapshot
+          </span>
         </div>
-      )}
+        {simStatus === "recalculating" && (
+          <span className="text-[10px] text-amber-500 flex items-center gap-1 font-medium">
+            <RefreshCw className="size-2.5 animate-spin" /> Updating
+          </span>
+        )}
+      </div>
+
+      {/* 2x2 Clean Grid */}
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 mb-3.5">
+        {/* Cell 1: AQI */}
+        <div className="sim-summary-cell rounded-xl p-3 flex flex-col justify-between min-w-0 bg-muted/40 border border-border/60">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">AQI</span>
+          <div className="flex items-baseline gap-1.5 mt-1">
+            <span className="text-2xl font-bold tabular-nums tracking-tight" style={{ color: band.color }}>
+              <AnimatedNumber value={localResults.projectedAqi} duration={400} />
+            </span>
+          </div>
+          <div className="flex items-center gap-1 mt-1 text-[11px] font-medium" style={{ color: isImprovement ? "var(--color-success)" : "var(--color-destructive)" }}>
+            <span>{isImprovement ? "↓" : "↑"} {deltaPts} pts</span>
+            <span className="text-[10px] text-muted-foreground">({band.label})</span>
+          </div>
+        </div>
+
+        {/* Cell 2: Health */}
+        <div className="sim-summary-cell rounded-xl p-3 flex flex-col justify-between min-w-0 bg-muted/40 border border-border/60">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Health</span>
+          <div className="flex items-baseline gap-1 mt-1">
+            <span className="text-2xl font-bold tabular-nums tracking-tight text-info">
+              <AnimatedNumber value={localResults.health} duration={400} />
+            </span>
+            <span className="text-xs text-muted-foreground">/ 100</span>
+          </div>
+          <span className="text-[10px] text-muted-foreground mt-1">Population health</span>
+        </div>
+
+        {/* Cell 3: Eco Score */}
+        <div className="sim-summary-cell rounded-xl p-3 flex flex-col justify-between min-w-0 bg-muted/40 border border-border/60">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Eco Score</span>
+          <div className="flex items-baseline gap-1 mt-1">
+            <span className="text-2xl font-bold tabular-nums tracking-tight text-primary">
+              <AnimatedNumber value={localResults.eco} duration={400} />
+            </span>
+            <span className="text-xs text-muted-foreground">/ 100</span>
+          </div>
+          <span className="text-[10px] text-muted-foreground mt-1">Eco benefit</span>
+        </div>
+
+        {/* Cell 4: Sustainability */}
+        <div className="sim-summary-cell rounded-xl p-3 flex flex-col justify-between min-w-0 bg-muted/40 border border-border/60">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Sustainability</span>
+          <div className="flex items-baseline gap-1 mt-1">
+            <span className="text-2xl font-bold tabular-nums tracking-tight text-success">
+              <AnimatedNumber value={localResults.sustain} duration={400} />
+            </span>
+            <span className="text-xs text-muted-foreground">/ 100</span>
+          </div>
+          <span className="text-[10px] text-muted-foreground mt-1">Sustainability index</span>
+        </div>
+      </div>
+
+      {/* CTA Button */}
+      <button
+        onClick={handleViewFull}
+        className="w-full py-2 px-3 rounded-xl text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/15 border border-primary/25 hover:border-primary/40 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+        aria-label="View full simulation results"
+      >
+        <span>View full impact</span>
+        <ChevronRight className="size-3.5" />
+      </button>
     </div>
   );
 });
@@ -609,7 +606,6 @@ function Simulator() {
   const applyPreset = useCallback((preset: ScenarioPreset) => {
     setActivePresetId(preset.id);
     const newVals = Object.fromEntries(LEVERS.map((l) => [l.id, preset.levers[l.id] ?? l.default]));
-    // Detect which levers actually change so we can highlight them
     const changed = new Set(LEVERS.filter((l) => newVals[l.id] !== vals[l.id]).map((l) => l.id));
     setVals(newVals);
     setRecentlyActivatedLeverIds(changed);
@@ -619,9 +615,8 @@ function Simulator() {
     setComparison(null);
     if (aiState !== "idle") setAiState("stale");
     aiRunValsRef.current = null;
-    // Clear highlights after animation
     setTimeout(() => setRecentlyActivatedLeverIds(new Set()), 1800);
-  }, [vals, aiState]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [vals, aiState]);
 
   const handleReset = useCallback(() => {
     setVals({ ...DEFAULT_VALS });
@@ -644,20 +639,14 @@ function Simulator() {
   }, []);
 
   return (
-    <div className={cn("min-h-screen transition-opacity duration-700 sim-page-root", visible ? "opacity-100" : "opacity-0")}>
+    <div className={cn("w-full min-w-0 min-h-screen transition-opacity duration-700 sim-page-root", visible ? "opacity-100" : "opacity-0")}>
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full opacity-[0.04] blur-3xl" style={{ background: "var(--color-primary)" }} />
         <div className="absolute -bottom-48 -left-48 w-[500px] h-[500px] rounded-full opacity-[0.03] blur-3xl" style={{ background: "var(--color-info)" }} />
       </div>
 
-      {/* Mobile-only sticky live impact panel */}
-      <MobileLiveImpactPanel
-        localResults={localResults}
-        currentAqi={city.aqi}
-        simStatus={simStatus}
-      />
-
-      <div className="relative z-10 px-4 sm:px-6 lg:px-8 xl:px-10 py-6 lg:py-8 max-w-[1680px] mx-auto space-y-6 lg:space-y-8 sim-page-content">
+      <div className="relative z-10 w-full min-w-0 px-3.5 sm:px-6 lg:px-8 xl:px-10 py-4 sm:py-6 lg:py-8 max-w-[1680px] mx-auto space-y-5 sm:space-y-6 lg:space-y-8 sim-page-content">
+        {/* 1 & 2. Simulator Header + Action Controls */}
         <SimulatorHeader
           city={city}
           isApiConnected={isApiConnected}
@@ -672,9 +661,19 @@ function Simulator() {
           onRun={() => runMutation.mutate()}
         />
 
+        {/* 3. Scenario Section */}
         {presets.length > 0 && (
           <ScenarioSection presets={presets} activePresetId={activePresetId} onApply={applyPreset} />
         )}
+
+        {/* 4. Mobile Impact Snapshot Card (Item 4 in mobile reading order) */}
+        <div className="xl:hidden w-full min-w-0">
+          <ImpactSnapshotCard
+            localResults={localResults}
+            currentAqi={city.aqi}
+            simStatus={simStatus}
+          />
+        </div>
 
         {compareOpen && (
           <ComparePanel
@@ -688,21 +687,20 @@ function Simulator() {
         )}
 
         {/*
-          Main simulator grid — one grid, one DOM order, responsive placement only:
-            Mobile/tablet (<xl): no grid-template is set below xl, so the three
-              items simply stack in DOM order — Impact Overview → Policy Levers →
-              Simulation Summary/Charts, per the required mobile reading order.
-            Desktop (xl+): explicit column/row placement puts Policy Levers in a
-              full-height left column, with Impact Overview and the rest of the
-              analytics stacked in the right column.
+          Main simulator grid — one unified grid, universal responsive placement:
+            Mobile/tablet (<xl): single-column vertical flow in requested hierarchy:
+              4. Impact Snapshot → 5. AQI Projection → 6-8. Gauges → 9. Policy Levers →
+              10. Simulation Summary → 11. AQI Trajectory → 12. Policy Inputs.
+            Desktop (xl+): 2-column workspace — Policy Levers in full-height left column,
+              KPIs, Summary, and Charts in right column.
         */}
-        <div className="grid xl:grid-cols-12 gap-5 lg:gap-6">
-          {/* Impact Overview — mobile: 1st, desktop: top-right */}
+        <div className="w-full min-w-0 grid xl:grid-cols-12 gap-5 lg:gap-6 items-start">
+          {/* 5-8. Impact Overview (AQI Projection + 3 Gauges) — mobile: 1st, desktop: top-right */}
           <div
             id="sim-impact-overview"
-            className="min-w-0 xl:col-start-5 xl:col-span-8 2xl:col-start-4 2xl:col-span-9 xl:row-start-1"
+            className="w-full min-w-0 xl:col-start-5 xl:col-span-8 2xl:col-start-4 2xl:col-span-9 xl:row-start-1"
           >
-            <div className="sim-kpi-grid">
+            <div className="sim-kpi-grid w-full min-w-0">
               <HeroAqiCard
                 projectedAqi={localResults.projectedAqi}
                 aqiDelta={localResults.aqiDelta}
@@ -716,8 +714,8 @@ function Simulator() {
             </div>
           </div>
 
-          {/* Policy levers — mobile: 2nd, desktop: full-height left column */}
-          <div className="min-w-0 xl:col-start-1 xl:col-span-4 2xl:col-span-3 xl:row-start-1 xl:row-span-2">
+          {/* 9. Policy Levers / Configuration — mobile: 2nd, desktop: full-height left column */}
+          <div className="w-full min-w-0 xl:col-start-1 xl:col-span-4 2xl:col-span-3 xl:row-start-1 xl:row-span-2">
             <LeversPanel
               vals={vals}
               onLeverChange={handleLeverChange}
@@ -726,10 +724,10 @@ function Simulator() {
             />
           </div>
 
-          {/* Simulation summary + charts — mobile: 3rd, desktop: bottom-right */}
+          {/* 10-12. Simulation Summary + Trajectory Chart + Lever Intensity — mobile: 3rd, desktop: bottom-right */}
           <div
             id="sim-results-section"
-            className="min-w-0 xl:col-start-5 xl:col-span-8 2xl:col-start-4 2xl:col-span-9 xl:row-start-2 space-y-5 lg:space-y-6"
+            className="w-full min-w-0 xl:col-start-5 xl:col-span-8 2xl:col-start-4 2xl:col-span-9 xl:row-start-2 space-y-5 lg:space-y-6"
           >
             <SimulationSummary
               localResults={localResults}
@@ -740,9 +738,9 @@ function Simulator() {
 
             {executiveScores && <ExecutiveDashboard executiveScores={executiveScores} />}
 
-            <div className="grid lg:grid-cols-8 gap-5">
-              <TrajectoryChart className="lg:col-span-5" proj={proj} currentAqi={city.aqi} />
-              <LeverIntensityChart className="lg:col-span-3" bars={bars} />
+            <div className="w-full min-w-0 grid grid-cols-1 lg:grid-cols-8 gap-5">
+              <TrajectoryChart className="w-full min-w-0 lg:col-span-5" proj={proj} currentAqi={city.aqi} />
+              <LeverIntensityChart className="w-full min-w-0 lg:col-span-3" bars={bars} />
             </div>
           </div>
         </div>
@@ -824,22 +822,22 @@ const SimulatorHeader = memo(function SimulatorHeader({
         <h1 className="sim-page-title text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight leading-none">
           What-if <span className="text-aurora">{city.name}</span>
         </h1>
-        <p className="sim-subtitle mt-2 text-sm text-muted-foreground max-w-xl leading-relaxed hidden sm:block">
+        <p className="sim-subtitle mt-1.5 text-xs sm:text-sm text-muted-foreground max-w-xl leading-relaxed">
           Quantify the AQI, health, and sustainability impact of policy levers before deploying.
         </p>
       </div>
 
-      {/* Action buttons — responsive: wraps on mobile */}
-      <div className="sim-toolbar sim-toolbar-responsive">
-        {/* Secondary actions row */}
-        <div className="sim-toolbar-secondary">
+      {/* Action buttons — responsive: 2-row layout on mobile, inline on desktop */}
+      <div className="sim-toolbar sim-toolbar-responsive w-full sm:w-auto">
+        {/* Row 1: Secondary actions */}
+        <div className="sim-toolbar-secondary w-full sm:w-auto flex items-center gap-2">
           <SimTooltip label="Restore all levers to defaults">
             <button
               onClick={onReset}
-              className="sim-btn sim-btn-ghost sim-btn-ripple inline-flex items-center gap-1.5 rounded-lg px-3 sm:px-3.5 py-2 text-xs font-medium"
+              className="sim-btn sim-btn-ghost sim-btn-ripple flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-lg px-3 sm:px-3.5 py-2 text-xs font-medium"
               aria-label="Reset all policy levers to defaults"
             >
-              <RotateCcw className="size-3.5" />
+              <RotateCcw className="size-3.5 shrink-0" />
               <span>Reset</span>
             </button>
           </SimTooltip>
@@ -848,13 +846,13 @@ const SimulatorHeader = memo(function SimulatorHeader({
             <button
               onClick={onToggleCompare}
               className={cn(
-                "sim-btn sim-btn-ghost sim-btn-ripple inline-flex items-center gap-1.5 rounded-lg px-3 sm:px-3.5 py-2 text-xs font-medium",
+                "sim-btn sim-btn-ghost sim-btn-ripple flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-lg px-3 sm:px-3.5 py-2 text-xs font-medium",
                 compareOpen && "sim-btn-active",
               )}
               aria-pressed={compareOpen}
               aria-label="Toggle scenario comparison"
             >
-              <GitCompareArrows className="size-3.5" />
+              <GitCompareArrows className="size-3.5 shrink-0" />
               <span>Compare</span>
               {compareOpen && <span className="sim-active-dot" aria-hidden />}
             </button>
@@ -865,7 +863,7 @@ const SimulatorHeader = memo(function SimulatorHeader({
               onClick={onExport}
               disabled={exportState === "pending" || !isApiConnected}
               className={cn(
-                "sim-btn sim-btn-ghost sim-btn-ripple inline-flex items-center gap-1.5 rounded-lg px-3 sm:px-3.5 py-2 text-xs font-medium",
+                "sim-btn sim-btn-ghost sim-btn-ripple flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-lg px-3 sm:px-3.5 py-2 text-xs font-medium",
                 exportState === "success" && "sim-btn-success",
                 exportState === "error" && "sim-btn-error",
               )}
@@ -873,25 +871,25 @@ const SimulatorHeader = memo(function SimulatorHeader({
               aria-busy={exportState === "pending"}
             >
               {exportState === "pending"
-                ? <Loader2 className="size-3.5 animate-spin" />
+                ? <Loader2 className="size-3.5 animate-spin shrink-0" />
                 : exportState === "success"
-                  ? <CheckCircle2 className="size-3.5" />
+                  ? <CheckCircle2 className="size-3.5 shrink-0" />
                   : exportState === "error"
-                    ? <AlertCircle className="size-3.5" />
-                    : <FileDown className="size-3.5" />}
+                    ? <AlertCircle className="size-3.5 shrink-0" />
+                    : <FileDown className="size-3.5 shrink-0" />}
               <span className="hidden sm:inline">{exportLabel}</span>
               <span className="sm:hidden">PDF</span>
             </button>
           </SimTooltip>
         </div>
 
-        {/* Primary CTA — always full-width on xs, auto on sm+ */}
+        {/* Row 2: Primary CTA — full-width on mobile, auto on sm+ */}
         <SimTooltip label={aiTooltip}>
           <button
             onClick={onRun}
             disabled={aiDisabled}
             className={cn(
-              "sim-btn-primary sim-btn-ripple inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold w-full sm:w-auto",
+              "sim-btn-primary sim-btn-ripple inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 sm:py-2 text-xs font-semibold w-full sm:w-auto",
               aiState === "stale" && "sim-ai-stale",
               aiState === "success" && "sim-ai-success",
               aiState === "error" && "sim-ai-error",

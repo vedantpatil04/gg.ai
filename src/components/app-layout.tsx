@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   type ReactNode,
   type ComponentType,
@@ -970,9 +970,15 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { theme, toggle } = useTheme();
   const { t } = useTranslation(["common", "navigation"]);
-
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
   const prefersReduced = useReducedMotion();
+
+  const handleSignOut = useCallback(async () => {
+    setProfileOpen(false);
+    await logout();
+    navigate({ to: "/login" });
+  }, [logout, navigate]);
 
   // Ensure Belagavi is the default fallback city on first launch
   useEffect(() => { ensureDefaultCity(); }, []);
@@ -1300,14 +1306,14 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
 
                     {/* Divider + sign out */}
                     <div className="p-1.5 border-t border-border/60">
-                      <Link
-                        to="/login"
-                        onClick={() => setProfileOpen(false)}
-                        className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      <button
+                        type="button"
+                        onClick={handleSignOut}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors text-left cursor-pointer"
                       >
-                        <LogOut className="size-4" />
+                        <LogOut className="size-4 shrink-0" />
                         <span>{t("signOut", { ns: "navigation" })}</span>
-                      </Link>
+                      </button>
                     </div>
                   </motion.div>
                 )}

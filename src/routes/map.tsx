@@ -27,6 +27,7 @@ import {
   SEV_COLOR,
 } from "@/lib/map/map-visuals";
 import { SmartMapCanvas } from "@/components/map/SmartMapCanvas";
+import { SmartMapMetricStrip } from "@/components/map/smart-map-metric-strip";
 import { WeatherIntelligencePanel } from "@/components/map/WeatherIntelligencePanel";
 import { AirQualityPanel } from "@/components/map/AirQualityPanel";
 import { HazardIntelligencePanel } from "@/components/map/HazardIntelligencePanel";
@@ -107,77 +108,7 @@ export const Route = createFileRoute("/map")({
   ),
 });
 
-// ─── KPI chip — Phase 3B: premium redesign ────────────────────────────────────
-// Same footprint as before (2-line card, same height for cards without a
-// `sub` line) but: an icon replaces the old "colored top border" hack (one
-// subtle neutral border instead of a themed one on every card — reduces
-// unnecessary borders per spec), bolder value type, and an optional real
-// trend/prediction line for the flagship AQI card only. No fabricated deltas
-// — `trend` and `sub` are only ever passed when backed by real fetched data.
-function KpiChip({
-  label,
-  value,
-  unit,
-  accent,
-  icon: Icon,
-  trend,
-  sub,
-  className,
-}: {
-  label: string;
-  value: string | number;
-  unit?: string;
-  accent?: string;
-  icon?: LucideIcon;
-  trend?: { direction: "up" | "down" | "stable"; delta?: number };
-  sub?: string;
-  className?: string;
-}) {
-  const tint = accent ?? "var(--color-muted-foreground)";
-  return (
-    <motion.div
-      whileHover={{ y: -2 }}
-      whileTap={{ scale: 0.97 }}
-      transition={{ type: "spring", stiffness: 400, damping: 28 }}
-      className={cn(
-        "relative min-w-[124px] rounded-xl px-3.5 py-3 flex flex-col gap-1.5 bg-white/[0.03] border border-white/[0.07] hover:border-white/[0.14] hover:bg-white/[0.05] hover:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.3)] transition-[background-color,border-color,box-shadow] duration-200",
-        className ?? "flex-1",
-      )}
-    >
-      {/* Accent hairline — replaces the old free-floating dot with a
-          consistent top-edge treatment shared by every KPI card. */}
-      <span
-        className="absolute inset-x-3 top-0 h-px rounded-full opacity-70"
-        style={{ background: tint }}
-      />
-      <div className="flex items-center gap-1.5">
-        {Icon && (
-          <span
-            className="size-4 rounded-md grid place-items-center shrink-0"
-            style={{
-              background: `color-mix(in oklab, ${tint} 16%, transparent)`,
-            }}
-          >
-            <Icon className="size-2.5" style={{ color: tint }} />
-          </span>
-        )}
-        <span className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground flex-1 truncate">
-          {label}
-        </span>
-      </div>
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-base font-bold tabular-nums tracking-tight">
-          {value}
-          {unit && (
-            <span className="text-[10px] text-muted-foreground font-normal ml-0.5">{unit}</span>
-          )}
-        </span>
-        {trend && <TrendBadge direction={trend.direction} value={trend.delta} />}
-      </div>
-      {sub && <span className="text-[8px] text-muted-foreground/70 truncate">{sub}</span>}
-    </motion.div>
-  );
-}
+
 
 // ─── Mini inline sparkline (canvas) ──────────────────────────────────────────
 function MiniSpark({
@@ -777,73 +708,7 @@ function MapPage() {
     return [...base, ...spatial, ...stability];
   }, [city, selectedHotspot, hotspots, historyAqi]);
 
-  // ── KPI definitions — single source of data for the desktop header strip,
-  //    tablet grid, and mobile scroll row (Sections 2–4 of Phase 1). ────────
-  const kpiItems: Array<{
-    label: string;
-    value: string | number;
-    unit?: string;
-    accent?: string;
-    icon?: LucideIcon;
-    trend?: { direction: "up" | "down" | "stable"; delta?: number };
-    sub?: string;
-  }> = [
-      {
-        label: "AQI",
-        value: city.aqi,
-        icon: Wind,
-        accent: band.color,
-        trend: aqiTrend,
-        sub: aqiForecast6h != null ? `→ ${aqiForecast6h} in 6h` : undefined,
-      },
-      {
-        label: "Water QI",
-        value: city.water,
-        unit: "/100",
-        icon: Droplets,
-        accent: "var(--color-info)",
-      },
-      {
-        label: "Temp",
-        value: `${city.temp}°`,
-        unit: "C",
-        icon: Thermometer,
-        accent: "oklch(0.72 0.18 50)",
-      },
-      {
-        label: "Humidity",
-        value: city.humidity,
-        unit: "%",
-        icon: Droplets,
-        accent: "var(--color-info)",
-      },
-      {
-        label: "Alerts",
-        value: city.alerts,
-        icon: AlertTriangle,
-        accent: city.alerts > 5 ? "var(--color-destructive)" : "var(--color-warning)",
-      },
-      {
-        label: "Active Data",
-        value: `${sensorsOnline}/${hotspots.length}`,
-        icon: Cpu,
-        accent: "var(--color-success)",
-      },
-      {
-        label: "Risk",
-        value: city.risk,
-        unit: "/100",
-        icon: Shield,
-        accent: city.risk > 60 ? "var(--color-destructive)" : "var(--color-warning)",
-      },
-      {
-        label: "Coverage",
-        value: `${Math.round((sensorsOnline / Math.max(hotspots.length, 1)) * 100)}`,
-        unit: "%",
-        icon: Gauge,
-        accent: "oklch(0.6 0.02 240)",
-      },
-    ];
+
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-background">
@@ -955,25 +820,14 @@ function MapPage() {
             </div>
           </div>
 
-          {/* KPI Strip (Desktop/Laptop only, ≥1024px) — varied semantic
-              palette instead of defaulting to primary green everywhere; only
-              AQI (the flagship metric) carries a trend/prediction line, and
-              only when backed by real data. Tablet/mobile get the same data
-              in the responsive KPI band rendered just below the header. */}
-          <div className="hidden lg:flex items-center gap-2 flex-1 max-w-3xl justify-center">
-            {kpiItems.map((k) => (
-              <KpiChip key={k.label} {...k} />
-            ))}
-          </div>
-
           {/* Right status */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             <StatusChip tone={mapLoaded ? "good" : "neutral"} pulse={mapLoaded}>
-              {mapLoaded ? "Live" : "Offline"}
+              {mapLoaded ? "Live Feeds" : "Offline"}
             </StatusChip>
             {mapLoaded && (
               <span className="hidden sm:flex text-[10px] text-muted-foreground items-center gap-1">
-                <Clock3 className="size-2.5" /> {lastUpdated}
+                <Clock3 className="size-2.5" /> Updated {lastUpdated}
               </span>
             )}
           </div>
@@ -981,30 +835,18 @@ function MapPage() {
       </header>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          RESPONSIVE KPI BAND (Tablet + Mobile, <1024px) — Section 3/4 of the
-          Phase 1 spec: tablet gets a wrapping card grid so nothing overflows,
-          mobile gets a single horizontally-scrollable row of metric chips.
-          Desktop/Laptop keep the inline strip in the header above instead.
+          ENVIRONMENTAL TELEMETRY METRIC STRIP (Universal Responsiveness)
       ════════════════════════════════════════════════════════════════════════ */}
-      <div className="lg:hidden shrink-0 border-b border-border/40 bg-background/40">
-        {/* Tablet (≥768px): responsive card grid, wraps instead of scrolling */}
-        <div className="hidden md:grid grid-cols-4 gap-2 px-4 py-2.5">
-          {kpiItems.map((k) => (
-            <KpiChip key={k.label} {...k} />
-          ))}
-        </div>
-        {/* Mobile (<768px): horizontally scrollable chip row, never overflows.
-            Scroll-snap + `overscroll-x-contain` gives it the same settled,
-            native feel as the tablet/desktop presentations (Section 2). */}
-        <div
-          className="flex md:hidden gap-2 overflow-x-auto snap-x snap-mandatory overscroll-x-contain scroll-smooth px-3 py-2.5 [&::-webkit-scrollbar]:hidden"
-          style={{ scrollbarWidth: "none" }}
-        >
-          {kpiItems.map((k) => (
-            <KpiChip key={k.label} {...k} className="shrink-0 w-[108px] snap-start" />
-          ))}
-        </div>
-      </div>
+      <SmartMapMetricStrip
+        city={city}
+        band={band}
+        sensorsOnline={sensorsOnline}
+        totalSensors={hotspots.length}
+        mapLoaded={mapLoaded}
+        lastUpdated={lastUpdated}
+        aqiTrend={aqiTrend}
+        aqiForecast6h={aqiForecast6h}
+      />
 
       {/* ══════════════════════════════════════════════════════════════════════
           MAIN CONTENT — the map is the hero; toolbar, layers, legend and

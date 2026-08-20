@@ -709,119 +709,50 @@
   align-items: center;
 }
 
-/* ─── Entrance animations ────────────────────────────────────────────────── */
-@keyframes sim-card-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes sim-panel-in {
-  from { opacity: 0; transform: translateY(-4px) scale(0.996); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes sim-hero-num-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes sim-cell-in {
-  from { opacity: 0; transform: translateY(5px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes sim-area-fade {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-.sim-panel-enter {
-  animation: sim-panel-in 0.24s var(--sim-ease) both;
-}
-
-.sim-header {
-  animation: sim-card-in 0.28s var(--sim-ease) 0.04s both;
-}
-
-.sim-preset-section {
-  animation: sim-card-in 0.28s var(--sim-ease) 0.08s both;
-}
-
-.sim-kpi-card:nth-child(1) { animation: sim-card-in 0.3s var(--sim-ease) 0.10s both; }
-.sim-kpi-card:nth-child(2) { animation: sim-card-in 0.3s var(--sim-ease) 0.14s both; }
-.sim-kpi-card:nth-child(3) { animation: sim-card-in 0.3s var(--sim-ease) 0.18s both; }
-.sim-kpi-card:nth-child(4) { animation: sim-card-in 0.3s var(--sim-ease) 0.22s both; }
-
-.sim-preset-chip { animation: sim-card-in 0.25s var(--sim-ease) both; }
-
-.sim-hero-aqi .sim-aqi-hero-number {
-  animation: sim-hero-num-in 0.4s var(--sim-ease) 0.05s both;
-}
-
-.sim-summary-cell:nth-child(1) { animation: sim-cell-in 0.25s var(--sim-ease) 0.05s both; }
-.sim-summary-cell:nth-child(2) { animation: sim-cell-in 0.25s var(--sim-ease) 0.09s both; }
-.sim-summary-cell:nth-child(3) { animation: sim-cell-in 0.25s var(--sim-ease) 0.13s both; }
-.sim-summary-cell:nth-child(4) { animation: sim-cell-in 0.25s var(--sim-ease) 0.17s both; }
-.sim-summary-cell:nth-child(5) { animation: sim-cell-in 0.25s var(--sim-ease) 0.21s both; }
-.sim-summary-cell:nth-child(6) { animation: sim-cell-in 0.25s var(--sim-ease) 0.25s both; }
-
-.sim-score-card .h-full { animation: sim-bar-fill 0.8s var(--sim-ease) 0.2s both; }
-
-@keyframes sim-bar-fill { from { width: 0; } }
-
-.recharts-area-area { animation: sim-area-fade 0.5s var(--sim-ease) both; }
-
-/* ─── Accessibility ──────────────────────────────────────────────────────── */
-.sim-kpi-card:focus-within { outline: 2px solid var(--color-ring); outline-offset: 2px; }
-
-@media (forced-colors: active) {
-  .sim-aqi-status-badge  { border: 1px solid ButtonText; forced-color-adjust: none; }
-  .sim-lever-track-fill  { forced-color-adjust: none; }
-  .sim-aqi-hero-number   { forced-color-adjust: none; }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   RESPONSIVE — Mobile / Tablet
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* ─── Prevent horizontal overflow ────────────────────────────────────────── */
-/* Note: overflow-x:hidden on a non-scroll container does NOT clip
-   position:fixed children (the sticky panel), so this is safe.
-   `overflow-x: hidden` is declared first as a fallback for browsers without
-   `overflow: clip` support (clip landed later than hidden); the `clip`
-   declaration below wins wherever it's understood — the cascade lets an
-   unsupported value be ignored rather than break the fallback. */
+/* ─── Prevent horizontal overflow & enforce 100% width ───────────────────── */
 .sim-page-root {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow-x: hidden;
-  overflow-x: clip; /* clip (not hidden) to preserve fixed positioning context */
+  overflow-x: clip;
 }
 
 .sim-page-content {
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
 }
 
 /* ─── KPI cards grid ─────────────────────────────────────────────────────── */
 /*
-  Mirrors the original desktop behaviour exactly:
-    Mobile  (<640px) : AQI full-width, then 2-col for gauge cards
-    Tablet  (640px+) : AQI full-width + 3 gauges side-by-side
-    Desktop (>=1024px): 4-column row — AQI + Health + Eco + Sustainability
-                        (matches original Tailwind grid-cols-2 lg:grid-cols-4)
+  Responsive KPI cards layout:
+    Mobile (<640px)   : 1-column stack (full width, spacious and readable)
+    Small Tablet (640px+) : 3-column row with AQI spanning full width
+    Desktop (>=1024px): 4-column single row (AQI + Health + Eco + Sustainability)
 */
 .sim-kpi-grid {
   display: grid;
-  gap: 1rem;
-  grid-template-columns: 1fr 1fr;
+  gap: 0.875rem;
+  grid-template-columns: 1fr;
+  width: 100%;
+  min-width: 0;
 }
 
-/* AQI card — full width on mobile */
-.sim-kpi-grid > *:nth-child(1) {
-  grid-column: 1 / -1;
+@media (min-width: 480px) and (max-width: 639px) {
+  .sim-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  .sim-kpi-grid > *:nth-child(1) {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (min-width: 640px) {
   .sim-kpi-grid {
     grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
   }
   .sim-kpi-grid > *:nth-child(1) {
     grid-column: 1 / -1;
@@ -830,11 +761,9 @@
 
 @media (min-width: 1024px) {
   .sim-kpi-grid {
-    /* Desktop: restore original 4-column row */
     grid-template-columns: repeat(4, 1fr);
     gap: 1.25rem;
   }
-  /* All 4 cards in one row — clear any span override */
   .sim-kpi-grid > *:nth-child(1) {
     grid-column: auto;
   }
@@ -848,7 +777,7 @@
 
   .sim-aqi-hero-number { font-size: 2.75rem; }
   .sim-hero-aqi        { min-height: 180px; }
-  .sim-summary-cell    { padding: 0.5rem 0.625rem; }
+  .sim-summary-cell    { padding: 0.625rem 0.75rem; }
 }
 
 /* ─── Tablet ─────────────────────────────────────────────────────────────── */
@@ -858,21 +787,10 @@
 }
 
 /* ─── SimulatorHeader — toolbar responsive ───────────────────────────────── */
-/*
-  Mobile (<640px):
-    toolbar stacks vertically below the title (flex-wrap on the header pushes it
-    to a new row because flex-1 title already fills the row).
-    Secondary buttons (Reset/Compare/PDF) are in a horizontal wrapping row.
-    Primary CTA (Generate AI Strategy) is full-width below.
-
-  Desktop (>=640px):
-    toolbar is horizontal inline — matches original.
-*/
 .sim-toolbar-responsive {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  /* On mobile: stretch to fill the row it wraps onto */
   width: 100%;
   align-items: stretch;
 }
@@ -881,7 +799,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
+  width: 100%;
 }
 
 @media (min-width: 640px) {
@@ -893,14 +811,12 @@
     flex-wrap: nowrap;
   }
   .sim-toolbar-secondary {
+    width: auto;
     flex-wrap: nowrap;
   }
 }
 
 /* ─── Scenario section — compact summary + "View Presets" selector ──────── */
-/* The selector itself (Drawer on mobile / Dialog on desktop) is rendered via
-   the shared shadcn primitives, so it already inherits theme tokens. These
-   rules only style the option rows shown inside it. */
 .sim-scenario-list {
   display: flex;
   flex-direction: column;
@@ -928,6 +844,7 @@
 .recharts-wrapper,
 .recharts-surface {
   max-width: 100% !important;
+  width: 100% !important;
 }
 
 /* Fix recharts axis labels on narrow screens */
@@ -936,239 +853,10 @@
   .recharts-xAxis .recharts-cartesian-axis-tick-value {
     font-size: 9px !important;
   }
-  /* LeverIntensityChart: YAxis category labels need narrower width on mobile.
-     Recharts width prop is inline so override via a tighter font. */
   [aria-label="Lever intensity chart"] .recharts-yAxis {
     font-size: 8px !important;
   }
 }
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   MOBILE STICKY LIVE IMPACT PANEL
-   Mobile-only floating panel anchored to the bottom of the viewport.
-   Hidden entirely on lg+ (desktop).
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.sim-mobile-sticky-panel {
-  /* Sticky at bottom of page, above safe-area on phones */
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 40;
-
-  background: var(--sim-panel-bg);
-  border-top: 1px solid var(--sim-panel-border);
-  box-shadow:
-    0 -4px 20px -4px oklch(0.2 0.04 230 / 0.18),
-    0 0 0 1px oklch(1 0 0 / 0.12) inset;
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-
-  /* Safe area for notched phones */
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-
-  /* Smooth open/close */
-  transition: box-shadow var(--sim-t-base) var(--sim-ease);
-
-  /* Prevent it from causing horizontal overflow */
-  max-width: 100vw;
-  overflow: hidden;
-}
-
-.dark .sim-mobile-sticky-panel {
-  box-shadow:
-    0 -6px 24px -6px oklch(0 0 0 / 0.5),
-    0 0 0 1px oklch(1 0 0 / 0.04) inset;
-}
-
-/* Toggle button acts as the header of the panel */
-.sim-mobile-sticky-collapse-btn {
-  width: 100%;
-  padding: 0;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.sim-mobile-sticky-collapse-btn:focus-visible {
-  outline: 2px solid var(--color-ring);
-  outline-offset: -2px;
-}
-
-.sim-mobile-sticky-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem 1rem 0.375rem;
-}
-
-.sim-mobile-sticky-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--color-muted-foreground);
-}
-
-.sim-mobile-sticky-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  transition: background-color var(--sim-t-slow) var(--sim-ease);
-  animation: sim-dot-breathe 2.5s var(--sim-ease) infinite;
-}
-
-.sim-mobile-sticky-chevron {
-  width: 14px;
-  height: 14px;
-  color: var(--color-muted-foreground);
-  transition: transform var(--sim-t-base) var(--sim-ease);
-  flex-shrink: 0;
-}
-
-.sim-mobile-sticky-chevron-down {
-  transform: rotate(180deg);
-}
-
-/* Body — metrics grid + CTA */
-.sim-mobile-sticky-body {
-  padding: 0 1rem 0.75rem;
-  animation: sim-panel-in 0.18s var(--sim-ease) both;
-}
-
-/*
-  Metrics layout:
-  ≤ 430px  → 2×2 grid (safe at 320px — each cell is ~half viewport)
-  > 430px  → 4-column row (enough space for 4 readable metrics)
-*/
-.sim-mobile-sticky-metrics-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.375rem 0.75rem;
-  margin-bottom: 0.625rem;
-}
-
-@media (min-width: 431px) {
-  .sim-mobile-sticky-metrics-grid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.375rem 0.5rem;
-  }
-}
-
-.sim-mobile-sticky-metric {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  min-width: 0;
-}
-
-.sim-mobile-sticky-metric-label {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: var(--color-muted-foreground);
-  line-height: 1;
-  white-space: nowrap;
-}
-
-/* Value + delta on the same line — keeps the card compact */
-.sim-mobile-sticky-metric-row {
-  display: flex;
-  align-items: baseline;
-  gap: 0.25rem;
-  min-width: 0;
-}
-
-.sim-mobile-sticky-metric-value {
-  font-size: 1.25rem;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  transition: color var(--sim-t-slow) var(--sim-ease);
-  flex-shrink: 0;
-}
-
-.sim-mobile-sticky-metric-delta {
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: 0.02em;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.sim-mobile-sticky-view-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  padding: 0.5rem 1rem;
-  border-radius: 0.625rem;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--color-primary);
-  background: color-mix(in oklab, var(--color-primary) 8%, transparent);
-  border: 1px solid color-mix(in oklab, var(--color-primary) 20%, transparent);
-  cursor: pointer;
-  transition:
-    background var(--sim-t-fast) var(--sim-ease),
-    border-color var(--sim-t-fast) var(--sim-ease);
-  -webkit-tap-highlight-color: transparent;
-  min-height: 36px;
-}
-
-.sim-mobile-sticky-view-btn:hover {
-  background: color-mix(in oklab, var(--color-primary) 12%, transparent);
-  border-color: color-mix(in oklab, var(--color-primary) 32%, transparent);
-}
-
-.sim-mobile-sticky-view-btn:focus-visible {
-  outline: 2px solid var(--color-ring);
-  outline-offset: 2px;
-}
-
-/* Add bottom padding to page content so the fixed sticky panel doesn't cover last content.
-   Panel height when expanded:
-     header row  ≈ 36px
-     2×2 grid    ≈ 80px (two rows × ~36px each, plus gap)
-     CTA button  ≈ 40px
-     padding     ≈ 20px
-     safe-area   env()
-   Total collapsed ≈ 36px, expanded ≈ 180px worst-case.
-   Use 200px + safe-area to be generous.
-   Breakpoint matches the panel's xl:hidden Tailwind class (1280px) — the
-   two-column desktop grid only kicks in at xl, so the sticky panel (and this
-   padding) must stay active through the whole tablet range up to that point. */
-@media (max-width: 1279px) {
-  .sim-page-content {
-    padding-bottom: calc(200px + env(safe-area-inset-bottom, 0px));
-  }
-}
-
-/* Hide sticky panel on desktop — handled by xl:hidden Tailwind class
-   (matches the xl:grid-cols-12 breakpoint where the two-column desktop
-   layout takes over), but belt-and-suspenders here */
-@media (min-width: 1280px) {
-  .sim-mobile-sticky-panel {
-    display: none !important;
-  }
-  .sim-page-content {
-    padding-bottom: 0;
-  }
-}
-
-/* ─── Simulation summary — 2-col on mobile ───────────────────────────────── */
-/* The SimulationSummary uses grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 via Tailwind.
-   This is already mobile-friendly. No override needed. */
 
 /* ─── 1080p+ ─────────────────────────────────────────────────────────────── */
 @media (min-width: 1440px) {
