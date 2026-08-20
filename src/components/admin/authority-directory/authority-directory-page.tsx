@@ -6,12 +6,14 @@ import {
   List,
   Filter,
   X,
+  ShieldCheck,
+  SlidersHorizontal,
+  Users,
 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useIsFetching } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { SectionTitle } from "@/components/ui-bits";
 import {
   useApproveAuthorityRequest,
   useRejectAuthorityRequest,
@@ -37,14 +39,14 @@ import type { AuthorityApprovalStatus } from "@/components/admin/authority-reque
 // ─── Filter config ────────────────────────────────────────────────────────────
 
 const APPROVAL_FILTERS: { value: "all" | AuthorityApprovalStatus; label: string }[] = [
-  { value: "all", label: "All" },
+  { value: "all", label: "All Approvals" },
   { value: "pending", label: "Pending" },
   { value: "approved", label: "Approved" },
   { value: "rejected", label: "Rejected" },
 ];
 
 const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
-  { value: "all", label: "All" },
+  { value: "all", label: "All Workforce" },
   { value: "active", label: "Active" },
   { value: "inactive", label: "Inactive" },
   { value: "available", label: "Available" },
@@ -59,7 +61,8 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
 type ViewMode = "directory" | "dashboard";
 
 export function AuthorityDirectoryPage() {
-  const [view, setView] = useState<ViewMode>("dashboard");
+  // Directory is the primary / default view per specification
+  const [view, setView] = useState<ViewMode>("directory");
   const [approvalFilter, setApprovalFilter] = useState<"all" | AuthorityApprovalStatus>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [page, setPage] = useState(1);
@@ -70,6 +73,10 @@ export function AuthorityDirectoryPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   const qc = useQueryClient();
+  const isFetching =
+    useIsFetching({ queryKey: ["p4-authority-list"] }) > 0 ||
+    useIsFetching({ queryKey: ["p4-authority-dashboard"] }) > 0;
+
   const approve = useApproveAuthorityRequest();
   const reject = useRejectAuthorityRequest();
   const activate = useActivateAuthority();
@@ -111,160 +118,214 @@ export function AuthorityDirectoryPage() {
   const hasActiveFilters =
     approvalFilter !== "all" || statusFilter !== "all" || searchTerm.trim() !== "";
 
+  const activeFiltersCount =
+    (approvalFilter !== "all" ? 1 : 0) + (statusFilter !== "all" ? 1 : 0);
+
+  const handleClearFilters = () => {
+    setApprovalFilter("all");
+    setStatusFilter("all");
+    setSearchTerm("");
+    setPage(1);
+  };
+
   return (
-    <div className="px-4 md:px-6 py-6 space-y-5">
-      {/* ── Page header ── */}
-      <SectionTitle
-        eyebrow="Governance"
-        title="Authority Management"
-        action={
-          <div className="flex items-center gap-2">
-            {/* View toggle */}
-            <div className="flex items-center gap-0.5 p-1 bg-muted/50 rounded-xl border border-border">
-              <button
-                onClick={() => setView("dashboard")}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-                  view === "dashboard"
-                    ? "bg-card shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <LayoutDashboard className="size-3.5" />
-                Intelligence
-              </button>
-              <button
-                onClick={() => setView("directory")}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-                  view === "directory"
-                    ? "bg-card shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <List className="size-3.5" />
-                Directory
-              </button>
-            </div>
-
-            <Button variant="outline" size="sm" onClick={refresh}>
-              <RefreshCw className="size-3.5 mr-1.5" />
-              Refresh
-            </Button>
+    <div className="px-3.5 sm:px-5 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5 max-w-full overflow-hidden">
+      {/* ── 1. PAGE HEADER ────────────────────────────────────────────────── */}
+      <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-border/40">
+        <div>
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground/80">
+            <span className="flex items-center gap-1.5">
+              <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Authority Governance &amp; Dispatch
+            </span>
+            <span>&middot;</span>
+            <span>Admin Console</span>
           </div>
-        }
-      />
-
-      {/* ── Intelligence Dashboard ── */}
-      {view === "dashboard" && (
-        <div className="glass rounded-2xl p-5">
-          <AuthorityIntelligenceDashboard />
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground font-display mt-0.5">
+            Authority Directory
+          </h1>
+          <p className="text-xs text-muted-foreground/80 mt-0.5 max-w-2xl leading-relaxed">
+            Manage and monitor registered authorities, operational capacities, and city assignments across the platform.
+          </p>
         </div>
+
+        {/* View Switch + Refresh Action */}
+        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+          {/* Segmented View Switch: Overview | Directory */}
+          <div className="flex items-center gap-1 p-1 bg-muted/40 rounded-xl border border-border/60 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setView("dashboard")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all select-none cursor-pointer outline-none",
+                "focus-visible:ring-1 focus-visible:ring-primary",
+                view === "dashboard"
+                  ? "bg-card text-foreground shadow-2xs border border-border/50 font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/30",
+              )}
+            >
+              <LayoutDashboard className="size-3.5" />
+              <span>Overview</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("directory")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all select-none cursor-pointer outline-none",
+                "focus-visible:ring-1 focus-visible:ring-primary",
+                view === "directory"
+                  ? "bg-card text-foreground shadow-2xs border border-border/50 font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/30",
+              )}
+            >
+              <List className="size-3.5" />
+              <span>Directory</span>
+            </button>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refresh}
+            disabled={isFetching}
+            className="h-8.5 text-xs font-medium border-border/70 hover:border-border hover:bg-muted/60 transition-all cursor-pointer shadow-2xs"
+          >
+            <RefreshCw className={cn("size-3.5 mr-1.5 text-primary", isFetching && "animate-spin")} />
+            <span>{isFetching ? "Syncing..." : "Refresh"}</span>
+          </Button>
+        </div>
+      </section>
+
+      {/* ── 2. OVERVIEW MODE (SECONDARY) ─────────────────────────────────── */}
+      {view === "dashboard" && (
+        <section className="rounded-2xl border border-border/70 bg-card/60 p-4 sm:p-5 shadow-2xs">
+          <AuthorityIntelligenceDashboard />
+        </section>
       )}
 
-      {/* ── Directory View ── */}
+      {/* ── 3. DIRECTORY MODE (PRIMARY / DEFAULT) ────────────────────────── */}
       {view === "directory" && (
         <>
-          {/* Search + filter bar */}
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Search */}
-            <div className="relative flex-1 min-w-[200px] max-w-sm">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-              <Input
-                value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-                placeholder="Search name, email, ID, dept, city…"
-                className="pl-8 h-9"
-              />
-              {searchTerm && (
-                <button
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  onClick={() => setSearchTerm("")}
+          {/* Search + Filter Toolbar */}
+          <section className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+              {/* Search Bar */}
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/80 pointer-events-none" />
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Search officer name, email, city, dept…"
+                  className="pl-8 pr-7 h-9 text-xs sm:text-sm bg-card/60 border-border/60 focus-visible:border-primary/50"
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground hover:text-foreground grid place-items-center cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X className="size-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Filters Toggle + Clear */}
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  variant={showFilters ? "default" : "outline"}
+                  size="sm"
+                  className="h-9 gap-1.5 text-xs font-medium cursor-pointer shadow-2xs border-border/60"
+                  onClick={() => setShowFilters((v) => !v)}
                 >
-                  <X className="size-3.5" />
-                </button>
-              )}
+                  <SlidersHorizontal className="size-3.5" />
+                  <span>Filters</span>
+                  {activeFiltersCount > 0 && (
+                    <span className="size-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-bold">
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                </Button>
+
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 text-muted-foreground hover:text-foreground text-xs cursor-pointer"
+                    onClick={handleClearFilters}
+                  >
+                    <X className="size-3 mr-1" />
+                    Reset Filters
+                  </Button>
+                )}
+              </div>
             </div>
 
-            {/* Filter toggle */}
-            <Button
-              variant={showFilters ? "default" : "outline"}
-              size="sm"
-              className="h-9 gap-1.5"
-              onClick={() => setShowFilters((v) => !v)}
-            >
-              <Filter className="size-3.5" />
-              Filters
-              {hasActiveFilters && (
-                <span className="size-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-semibold">
-                  {(approvalFilter !== "all" ? 1 : 0) + (statusFilter !== "all" ? 1 : 0)}
-                </span>
-              )}
-            </Button>
+            {/* Collapsible Filter Panel */}
+            {showFilters && (
+              <div className="rounded-2xl p-4 border border-border/60 bg-muted/20 space-y-3.5 animate-in fade-in-50 duration-200">
+                {/* Approval Status Filter */}
+                <div className="space-y-1.5">
+                  <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground/80 font-bold">
+                    Approval Status
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {APPROVAL_FILTERS.map((f) => (
+                      <button
+                        key={f.value}
+                        type="button"
+                        onClick={() => {
+                          setApprovalFilter(f.value);
+                          setPage(1);
+                        }}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-xs font-medium border transition-all cursor-pointer select-none",
+                          approvalFilter === f.value
+                            ? "bg-card text-foreground shadow-2xs border-primary/50 ring-1 ring-primary font-semibold"
+                            : "bg-card/60 border-border/60 text-muted-foreground hover:text-foreground hover:bg-card",
+                        )}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-9 text-muted-foreground text-xs"
-                onClick={() => { setApprovalFilter("all"); setStatusFilter("all"); setSearchTerm(""); setPage(1); }}
-              >
-                <X className="size-3 mr-1" />
-                Clear
-              </Button>
+                {/* Workforce Status Filter */}
+                <div className="space-y-1.5">
+                  <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground/80 font-bold">
+                    Workforce &amp; Operational Status
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {STATUS_FILTERS.map((f) => (
+                      <button
+                        key={f.value}
+                        type="button"
+                        onClick={() => {
+                          setStatusFilter(f.value);
+                          setPage(1);
+                        }}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-xs font-medium border transition-all cursor-pointer select-none",
+                          statusFilter === f.value
+                            ? "bg-card text-foreground shadow-2xs border-primary/50 ring-1 ring-primary font-semibold"
+                            : "bg-card/60 border-border/60 text-muted-foreground hover:text-foreground hover:bg-card",
+                        )}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             )}
-          </div>
+          </section>
 
-          {/* Filter panels */}
-          {showFilters && (
-            <div className="glass rounded-2xl p-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
-              <div className="space-y-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-                  Approval Status
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {APPROVAL_FILTERS.map((f) => (
-                    <button
-                      key={f.value}
-                      onClick={() => { setApprovalFilter(f.value); setPage(1); }}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
-                        approvalFilter === f.value
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-foreground/30",
-                      )}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-                  Workforce Status
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {STATUS_FILTERS.map((f) => (
-                    <button
-                      key={f.value}
-                      onClick={() => { setStatusFilter(f.value); setPage(1); }}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
-                        statusFilter === f.value
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-foreground/30",
-                      )}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Directory list */}
-          <div className="glass rounded-2xl p-4 md:p-5">
+          {/* Directory List Container */}
+          <section className="rounded-2xl border border-border/70 bg-card/60 shadow-2xs overflow-hidden">
             <AuthorityEnterpriseList
               searchTerm={searchTerm}
               statusFilter={statusFilter}
@@ -274,11 +335,11 @@ export function AuthorityDirectoryPage() {
               onPageChange={setPage}
               onSelect={setSelected}
             />
-          </div>
+          </section>
         </>
       )}
 
-      {/* ── Profile Drawer ── */}
+      {/* ── 4. PROFILE DRAWER & ACTION DIALOGS ────────────────────────────── */}
       <AuthorityProfileDrawer
         authority={selected}
         onOpenChange={(open) => !open && setSelected(null)}
@@ -290,7 +351,6 @@ export function AuthorityDirectoryPage() {
         }
       />
 
-      {/* ── Approval Dialog (reused from Phase 2.3) ── */}
       <AuthorityRequestActionDialog
         pending={pendingApproval}
         onOpenChange={(open) => !open && setPendingApproval(null)}
@@ -298,7 +358,6 @@ export function AuthorityDirectoryPage() {
         isSubmitting={approve.isPending || reject.isPending}
       />
 
-      {/* ── Lifecycle Dialog (legacy — kept for backward compat) ── */}
       <AuthorityLifecycleDialog
         pending={pendingLifecycle}
         onOpenChange={(open) => !open && setPendingLifecycle(null)}
@@ -308,3 +367,4 @@ export function AuthorityDirectoryPage() {
     </div>
   );
 }
+

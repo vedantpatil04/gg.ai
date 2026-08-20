@@ -1,17 +1,57 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminHeader } from "./admin-header";
 
+const SIDEBAR_COLLAPSED_KEY = "gg-admin-sidebar-collapsed";
+
 /**
- * Administrator shell — persistent sidebar, top header, and a content
- * outlet. Every administrator page renders through this layout.
+ * Administrator shell — persistent full-height sidebar, top header, and an
+ * independently scrollable content area. Every administrator page renders
+ * through this layout.
  *
- * Structurally mirrors AppLayout with mobile navigation drawer, backdrop blur,
- * body scroll lock on open, and responsive horizontal overflow prevention.
+ * Core layout guarantees:
+ * - Desktop: fixed viewport height shell (`h-screen h-[100dvh] overflow-hidden`)
+ * - Main content scrolling never causes the sidebar to shift or move
+ * - Sidebar scrolling is completely isolated to the sidebar navigation
+ * - No double scrollbars
+ * - Mobile: animated slide-over drawer with backdrop blur and scroll lock
  */
 export function AdminLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  // Keyboard shortcut Ctrl+B / Cmd+B to toggle sidebar collapse
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger when inside inputs or textareas
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || (e.target as HTMLElement)?.isContentEditable) {
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        toggleCollapsed();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [toggleCollapsed]);
 
   // Lock body scroll when mobile drawer is open to prevent background scrolling
   useEffect(() => {
@@ -25,10 +65,11 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   }, [mobileOpen]);
 
   return (
-    <div className="min-h-screen flex w-full max-w-full overflow-x-hidden bg-background text-foreground">
+    <div className="h-screen h-[100dvh] flex w-full max-w-full overflow-hidden bg-background text-foreground selection:bg-primary/20 selection:text-primary">
+      {/* Sidebar: persistent on desktop, off-canvas drawer on mobile */}
       <AdminSidebar
         collapsed={collapsed}
-        onToggleCollapsed={() => setCollapsed((c) => !c)}
+        onToggleCollapsed={toggleCollapsed}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
       />
@@ -37,15 +78,23 @@ export function AdminLayout({ children }: { children: ReactNode }) {
       {mobileOpen && (
         <div
           onClick={() => setMobileOpen(false)}
-          className="fixed inset-0 z-40 bg-background/70 backdrop-blur-sm lg:hidden transition-opacity duration-300"
+          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm lg:hidden transition-opacity duration-300"
           aria-hidden="true"
         />
       )}
 
-      <div className="flex-1 flex flex-col min-w-0 max-w-full overflow-x-hidden">
+      {/* Content column: header + independent scrollable main */}
+      <div className="flex-1 flex flex-col min-w-0 h-full max-w-full overflow-hidden">
         <AdminHeader onMenuClick={() => setMobileOpen((o) => !o)} mobileOpen={mobileOpen} />
-        <main className="flex-1 min-w-0 max-w-full overflow-x-hidden">{children}</main>
+        <main
+          id="admin-main-content"
+          tabIndex={-1}
+          className="flex-1 min-w-0 max-w-full overflow-y-auto overflow-x-hidden focus:outline-none"
+        >
+          {children}
+        </main>
       </div>
     </div>
   );
 }
+

@@ -2834,3 +2834,42 @@ html.large-text {
   .sim-lever-track-fill, .sim-lever-row:not(:active) .sim-lever-track-fill { transition: none !important; }
   .sim-kpi-card .h-full.rounded-full, .sim-score-card .h-full.rounded-full { transition: none !important; }
 }
+
+/* ==========================================================================
+   Administrator Portal — Independent Sidebar Scrollbar
+   ========================================================================== */
+.admin-sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(1 0 0 / 0.14) transparent;
+  overscroll-behavior: contain;
+}
+
+.admin-sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.admin-sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: oklch(1 0 0 / 0.14);
+  border-radius: 9999px;
+}
+
+.admin-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: oklch(1 0 0 / 0.28);
+}
+
+:root:not(.dark) .admin-sidebar-scroll {
+  scrollbar-color: oklch(0 0 0 / 0.16) transparent;
+}
+
+:root:not(.dark) .admin-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: oklch(0 0 0 / 0.16);
+}
+
+:root:not(.dark) .admin-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: oklch(0 0 0 / 0.3);
+}
+

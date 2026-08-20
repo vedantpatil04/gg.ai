@@ -1,56 +1,81 @@
-import { Loader2, ChevronRight, AlertTriangle, CheckSquare, RotateCcw } from "lucide-react";
+import { Loader2, ChevronRight, AlertTriangle, CheckSquare, RotateCcw, ClipboardCheck, ArrowUpRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import type { ComplaintIntelligenceData } from "@/lib/api/command.api";
 import { useAdminComplaintIntelligence, useAuthorityWorkload } from "./admin-dashboard-queries";
 
-interface Bucket {
+interface StatusTileProps {
   label: string;
   value: number | string | null;
   note?: string;
-  accent?: "destructive" | "warning" | "success" | "info" | "muted";
+  accent?: "destructive" | "warning" | "success" | "info" | "purple" | "muted";
+  to?: string;
 }
 
-function BucketCell({ label, value, note, accent = "muted" }: Bucket) {
+function StatusTile({ label, value, note, accent = "muted", to = "/admin/complaints" }: StatusTileProps) {
   const tracked = value !== null;
-  const COLOR: Record<string, string> = {
-    destructive: "var(--color-destructive)",
-    warning: "var(--color-warning)",
-    success: "var(--color-success)",
-    info: "var(--color-info)",
-    muted: "inherit",
-  };
+
+  const accentStyles = {
+    destructive: "text-destructive border-destructive/25 bg-destructive/[0.04]",
+    warning: "text-amber-500 border-amber-500/25 bg-amber-500/[0.04]",
+    success: "text-emerald-500 border-emerald-500/25 bg-emerald-500/[0.04]",
+    info: "text-sky-500 border-sky-500/25 bg-sky-500/[0.04]",
+    purple: "text-violet-500 border-violet-500/25 bg-violet-500/[0.04]",
+    muted: "text-muted-foreground border-border/50 bg-muted/20",
+  }[accent];
+
   return (
-    <div
-      className={cn("rounded-lg border border-border p-3", !tracked && "border-dashed opacity-60")}
+    <Link
+      to={to}
+      className={cn(
+        "group relative flex flex-col justify-between p-2.5 rounded-xl border transition-all duration-150 outline-none select-none",
+        "hover:border-border hover:bg-muted/40",
+        "focus-visible:ring-1 focus-visible:ring-primary",
+        accentStyles,
+        !tracked && "border-dashed opacity-50",
+      )}
     >
-      <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
-      <div
-        className="text-xl font-semibold tabular-nums mt-1"
-        style={{ color: tracked ? COLOR[accent] : undefined }}
-      >
+      <div className="flex items-center justify-between gap-1">
+        <span className="text-[10px] uppercase font-bold tracking-[0.12em] text-muted-foreground/80 truncate">
+          {label}
+        </span>
+        <div className="size-1.5 rounded-full bg-current opacity-70" />
+      </div>
+
+      <div className="my-1 text-lg sm:text-xl font-bold tabular-nums tracking-tight text-foreground font-display">
         {tracked ? value : "—"}
       </div>
-      {note && <div className="text-[10px] text-muted-foreground mt-0.5">{note}</div>}
-    </div>
+
+      {note && (
+        <span className="text-[9.5px] text-muted-foreground/75 truncate">
+          {note}
+        </span>
+      )}
+    </Link>
   );
 }
 
-/** Phase 3C — updated to show pending verification count and rework count. */
+/**
+ * Complaint Intelligence & Governance Panel for the Administrator Dashboard.
+ */
 export function AdminComplaintSummary() {
   const complaints = useAdminComplaintIntelligence();
   const workload = useAuthorityWorkload();
 
   if (complaints.isLoading) {
     return (
-      <div className="flex items-center justify-center h-48">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      <div className="flex flex-col items-center justify-center h-48 gap-2 text-muted-foreground">
+        <Loader2 className="size-5 animate-spin" />
+        <span className="text-xs">Loading complaint governance data…</span>
       </div>
     );
   }
+
   if (complaints.isError) {
     return (
-      <p className="text-sm text-destructive">Couldn't load complaint data. Try refreshing.</p>
+      <div className="p-3.5 rounded-xl border border-destructive/30 bg-destructive/5 text-xs text-destructive">
+        Couldn't load complaint telemetry. Try refreshing the dashboard.
+      </div>
     );
   }
 
@@ -59,7 +84,9 @@ export function AdminComplaintSummary() {
 
   if (!d || d.summary.total === 0) {
     return (
-      <p className="text-sm text-muted-foreground text-center py-8">No complaints logged yet.</p>
+      <p className="text-xs text-muted-foreground text-center py-8">
+        No complaints registered in the system yet.
+      </p>
     );
   }
 
@@ -67,92 +94,125 @@ export function AdminComplaintSummary() {
   const openCount = byStatus("pending") + byStatus("in-progress") + byStatus("rework");
   const pendingVerify = byStatus("resolved");
   const reworkCount = byStatus("rework");
-
-  const buckets: Bucket[] = [
-    { label: "Total", value: d.summary.total, accent: "info" },
-    { label: "Pending", value: byStatus("pending"), accent: "warning" },
-    {
-      label: "Unassigned",
-      value: unassigned,
-      accent: unassigned !== null && unassigned > 0 ? "destructive" : "success",
-      note: "Awaiting admin",
-    },
-    { label: "In Progress", value: byStatus("in-progress"), accent: "info" },
-    {
-      label: "Verification",
-      value: pendingVerify,
-      accent: pendingVerify > 0 ? "info" : "muted",
-      note: "Awaiting review",
-    },
-    {
-      label: "Rework",
-      value: reworkCount,
-      accent: reworkCount > 0 ? "destructive" : "muted",
-      note: "Returned to authority",
-    },
-    { label: "Closed", value: byStatus("closed"), accent: "success" },
-    { label: "Rejected", value: byStatus("rejected"), accent: "muted" },
-  ];
+  const closedCount = byStatus("closed");
+  const resolutionRate = d.summary.resolutionRate ?? 0;
 
   return (
-    <div>
-      {/* Unassigned alert */}
+    <div className="space-y-2.5">
+      {/* ── Urgent Action Alert Banners ── */}
       {unassigned !== null && unassigned > 0 && (
-        <div className="flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/8 px-3 py-2 mb-3 text-xs">
-          <AlertTriangle className="size-3.5 text-warning shrink-0" />
-          <span className="font-medium text-warning">{unassigned}</span>
-          <span className="text-muted-foreground">
-            complaint{unassigned !== 1 ? "s" : ""} need assignment
-          </span>
-        </div>
-      )}
-
-      {/* Verification alert */}
-      {pendingVerify > 0 && (
         <Link
           to="/admin/complaints"
-          className="flex items-center gap-2 rounded-lg border border-info/30 bg-info/8 px-3 py-2 mb-3 text-xs hover:bg-info/15 transition-colors"
+          className="flex items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs hover:bg-amber-500/15 transition-colors group select-none"
         >
-          <CheckSquare className="size-3.5 text-info shrink-0" />
-          <span className="font-medium text-info">{pendingVerify}</span>
-          <span className="text-muted-foreground">
-            resolution{pendingVerify !== 1 ? "s" : ""} awaiting your verification
-          </span>
-          <ChevronRight className="size-3.5 ml-auto text-muted-foreground" />
+          <div className="size-5 rounded-md bg-amber-500/20 grid place-items-center shrink-0">
+            <AlertTriangle className="size-3 text-amber-500" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="font-semibold text-amber-500">{unassigned} complaint{unassigned !== 1 ? "s" : ""}</span>
+            <span className="text-muted-foreground ml-1.5">awaiting officer assignment</span>
+          </div>
+          <ChevronRight className="size-3.5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0" />
         </Link>
       )}
 
-      {/* Rework alert */}
-      {reworkCount > 0 && (
-        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 mb-3 text-xs">
-          <RotateCcw className="size-3.5 text-destructive shrink-0" />
-          <span className="font-medium text-destructive">{reworkCount}</span>
-          <span className="text-muted-foreground">
-            complaint{reworkCount !== 1 ? "s" : ""} in rework with authority
-          </span>
-        </div>
+      {pendingVerify > 0 && (
+        <Link
+          to="/admin/complaints"
+          className="flex items-center gap-2.5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs hover:bg-sky-500/15 transition-colors group select-none"
+        >
+          <div className="size-5 rounded-md bg-sky-500/20 grid place-items-center shrink-0">
+            <CheckSquare className="size-3 text-sky-500" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="font-semibold text-sky-500">{pendingVerify} resolution{pendingVerify !== 1 ? "s" : ""}</span>
+            <span className="text-muted-foreground ml-1.5">ready for administrator verification</span>
+          </div>
+          <ChevronRight className="size-3.5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0" />
+        </Link>
       )}
 
-      {/* Open count link */}
+      {reworkCount > 0 && (
+        <Link
+          to="/admin/complaints"
+          className="flex items-center gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs hover:bg-destructive/15 transition-colors group select-none"
+        >
+          <div className="size-5 rounded-md bg-destructive/20 grid place-items-center shrink-0">
+            <RotateCcw className="size-3 text-destructive" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="font-semibold text-destructive">{reworkCount} complaint{reworkCount !== 1 ? "s" : ""}</span>
+            <span className="text-muted-foreground ml-1.5">returned in rework with agency</span>
+          </div>
+          <ChevronRight className="size-3.5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0" />
+        </Link>
+      )}
+
+      {/* ── Hero Open Complaints & Progress Bar ── */}
       <Link
         to="/admin/complaints"
-        className="flex items-center justify-between rounded-lg border border-border p-3 mb-3 hover:bg-muted/60 transition-colors"
+        className="group block p-3 rounded-xl border border-border/70 bg-muted/30 hover:bg-muted/50 hover:border-primary/40 transition-all select-none"
       >
-        <div>
-          <div className="text-2xl font-semibold tabular-nums leading-tight">{openCount}</div>
-          <div className="text-xs text-muted-foreground">Open Complaints → Complaint Queue</div>
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="text-[10px] uppercase font-bold tracking-[0.14em] text-muted-foreground/80">
+              Active Case Backlog
+            </div>
+            <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums font-display mt-0.5">
+              {openCount}{" "}
+              <span className="text-xs font-normal text-muted-foreground tracking-normal">
+                open of {d.summary.total} total
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 text-xs font-medium text-primary group-hover:translate-x-0.5 transition-transform">
+            <span>Queue</span>
+            <ChevronRight className="size-3.5" />
+          </div>
         </div>
-        <ChevronRight className="size-4 text-muted-foreground" />
+
+        {/* Resolution progress bar */}
+        <div className="mt-2.5">
+          <div className="flex items-center justify-between text-[10.5px] text-muted-foreground/80 mb-1">
+            <span>Overall Resolution Rate</span>
+            <span className="font-semibold text-foreground tabular-nums">{resolutionRate}%</span>
+          </div>
+          <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-primary to-emerald-400 transition-all duration-500 rounded-full"
+              style={{ width: `${Math.min(100, Math.max(0, resolutionRate))}%` }}
+            />
+          </div>
+        </div>
       </Link>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {buckets.map((b) => (
-          <BucketCell key={b.label} {...b} />
-        ))}
-      </div>
-      <div className="mt-3 text-xs text-muted-foreground">
-        {d.summary.resolutionRate}% resolution rate overall
+      {/* ── 8-Bucket Status Breakdown ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+        <StatusTile label="Total" value={d.summary.total} accent="info" />
+        <StatusTile label="Pending" value={byStatus("pending")} accent="warning" note="Unprocessed" />
+        <StatusTile
+          label="Unassigned"
+          value={unassigned}
+          accent={unassigned !== null && unassigned > 0 ? "destructive" : "success"}
+          note="Needs officer"
+        />
+        <StatusTile label="In Progress" value={byStatus("in-progress")} accent="info" note="Field active" />
+        <StatusTile
+          label="Verification"
+          value={pendingVerify}
+          accent={pendingVerify > 0 ? "info" : "muted"}
+          note="Resolved review"
+        />
+        <StatusTile
+          label="Rework"
+          value={reworkCount}
+          accent={reworkCount > 0 ? "destructive" : "muted"}
+          note="Returned"
+        />
+        <StatusTile label="Closed" value={closedCount} accent="success" note="Archived" />
+        <StatusTile label="Rejected" value={byStatus("rejected")} accent="muted" note="Invalid" />
       </div>
     </div>
   );
 }
+

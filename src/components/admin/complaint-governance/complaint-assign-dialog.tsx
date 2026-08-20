@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, Users, AlertTriangle } from "lucide-react";
+import { Loader2, Users, AlertTriangle, ShieldCheck, Check } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,14 +20,6 @@ interface ComplaintAssignDialogProps {
   isSubmitting: boolean;
 }
 
-/**
- * Phase 3B — redesigned assign dialog.
- *
- * Shows a card-per-authority layout instead of a plain select. Each card
- * displays the authority's current workload (open complaint count) so the
- * administrator can make an informed assignment decision. The current assignee
- * (if any) is highlighted and auto-selected, enabling one-click reassignment.
- */
 export function ComplaintAssignDialog({
   complaint,
   onOpenChange,
@@ -52,21 +44,27 @@ export function ComplaintAssignDialog({
 
   return (
     <Dialog open={!!complaint} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto p-4 sm:p-6 bg-card border-border/60">
         <DialogHeader>
-          <DialogTitle>{isReassign ? "Reassign Complaint" : "Assign Complaint"}</DialogTitle>
-          <DialogDescription>
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground/80">
+            <ShieldCheck className="size-3.5 text-primary" />
+            <span>Authority Dispatch</span>
+          </div>
+          <DialogTitle className="text-base sm:text-lg font-bold font-display mt-0.5">
+            {isReassign ? "Reassign Authority Officer" : "Assign Authority Officer"}
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
             {complaint && (
               <>
                 {isReassign ? (
                   <>
-                    Reassign <strong className="text-foreground">{complaint.title}</strong> from{" "}
-                    {complaint.assignedTo?.name} to a different officer.
+                    Reassign case <strong className="text-foreground">#{complaint._id.slice(-6).toUpperCase()}</strong> ({complaint.title}) from{" "}
+                    <span className="font-semibold text-foreground">{complaint.assignedTo?.name}</span> to an alternative responder.
                   </>
                 ) : (
                   <>
-                    Assign <strong className="text-foreground">{complaint.title}</strong> in{" "}
-                    {complaint.cityId} to an authority officer.
+                    Dispatch an authority officer to investigate incident <strong className="text-foreground">#{complaint._id.slice(-6).toUpperCase()}</strong> ({complaint.title}) in{" "}
+                    <span className="font-semibold text-foreground capitalize">{complaint.cityId}</span>.
                   </>
                 )}
               </>
@@ -74,16 +72,16 @@ export function ComplaintAssignDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2 max-h-60 sm:max-h-72 overflow-y-auto pr-1">
+        <div className="space-y-2 max-h-60 sm:max-h-72 overflow-y-auto pr-1 my-2">
           {authorities.isLoading || workload.isLoading ? (
-            <div className="flex items-center justify-center h-24 gap-2 text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              <span className="text-sm">Loading officers…</span>
+            <div className="flex items-center justify-center h-28 gap-2 text-muted-foreground">
+              <Loader2 className="size-4 animate-spin text-primary" />
+              <span className="text-xs font-medium">Checking officer availability…</span>
             </div>
           ) : !authorities.data?.length ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground py-6 justify-center">
               <Users className="size-4 shrink-0" />
-              No active authority accounts available for assignment.
+              <span>No active authority accounts registered for dispatch.</span>
             </div>
           ) : (
             authorities.data.map((a) => {
@@ -96,62 +94,60 @@ export function ComplaintAssignDialog({
               return (
                 <button
                   key={a._id}
+                  type="button"
                   onClick={() => setSelectedId(a._id)}
                   className={cn(
-                    "w-full flex items-center justify-between gap-2.5 sm:gap-3 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 border text-left transition-all",
+                    "w-full flex items-center justify-between gap-2.5 sm:gap-3 rounded-xl p-3 border text-left transition-all cursor-pointer select-none",
                     isSelected
-                      ? "border-primary bg-primary/8 shadow-[0_0_0_1px_var(--color-primary)]"
-                      : "border-border hover:border-primary/40 hover:bg-muted/30 active:bg-muted/60",
+                      ? "border-primary bg-primary/10 shadow-2xs ring-1 ring-primary"
+                      : "border-border/60 hover:border-primary/40 hover:bg-muted/30 active:bg-muted/60",
                   )}
                 >
                   <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
                     {/* Avatar */}
                     <div
                       className={cn(
-                        "size-8 rounded-full grid place-items-center text-xs font-bold shrink-0",
+                        "size-8 rounded-xl grid place-items-center text-xs font-bold shrink-0 border",
                         isSelected
-                          ? "aurora text-primary-foreground"
-                          : "bg-muted text-muted-foreground",
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-muted text-muted-foreground border-border/50",
                       )}
                     >
                       {a.name[0].toUpperCase()}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-sm font-medium truncate">{a.name}</span>
+                        <span className="text-xs font-semibold text-foreground truncate">{a.name}</span>
                         {isCurrent && (
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-info/15 text-info shrink-0">
-                            Current
+                          <span className="text-[9.5px] font-semibold px-1.5 py-0.2 rounded-full bg-sky-500/10 text-sky-500 border border-sky-500/20 shrink-0">
+                            Current Assignee
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-muted-foreground truncate block">{a.email}</span>
+                      <span className="text-[11px] text-muted-foreground truncate block">{a.email}</span>
                     </div>
                   </div>
 
-                  {/* Workload indicator */}
+                  {/* Workload status */}
                   <div className="shrink-0 text-right">
                     {load ? (
                       <>
                         <div
                           className={cn(
-                            "text-sm font-semibold tabular-nums",
+                            "text-xs font-bold tabular-nums",
                             overloaded
                               ? "text-destructive"
                               : workloadTotal >= 3
-                                ? "text-warning"
-                                : "text-success",
+                                ? "text-amber-500"
+                                : "text-emerald-500",
                           )}
                         >
-                          {workloadTotal}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground leading-tight">
-                          open case{workloadTotal !== 1 ? "s" : ""}
+                          {workloadTotal} active
                         </div>
                         {overloaded && (
                           <div className="flex items-center gap-0.5 justify-end mt-0.5">
                             <AlertTriangle className="size-2.5 text-destructive" />
-                            <span className="text-[9px] text-destructive">heavy load</span>
+                            <span className="text-[9px] font-medium text-destructive">Heavy Load</span>
                           </div>
                         )}
                       </>
@@ -165,20 +161,21 @@ export function ComplaintAssignDialog({
           )}
         </div>
 
-        <DialogFooter className="flex-col-reverse sm:flex-row gap-2 pt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="w-full sm:w-auto">
+        <DialogFooter className="flex-col-reverse sm:flex-row gap-2 pt-2 border-t border-border/40">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="w-full sm:w-auto h-8.5 text-xs">
             Cancel
           </Button>
           <Button
             onClick={() => selectedId && onConfirm(selectedId)}
             disabled={!selectedId || isSubmitting || selectedId === complaint?.assignedTo?._id}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto h-8.5 text-xs font-semibold cursor-pointer shadow-xs"
           >
             {isSubmitting && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
-            {isReassign ? "Reassign" : "Assign"}
+            {isReassign ? "Confirm Reassignment" : "Confirm Assignment"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
