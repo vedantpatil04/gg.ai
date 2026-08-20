@@ -86,6 +86,36 @@ if (process.env.NODE_ENV !== "production") app.use(morgan("dev"));
 // provider would return its own CDN URL instead).
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
+// ─── Health Checks (Registered before rate limiting for zero-latency Render probes) ─
+const DB_STATE_LABELS: Record<number, string> = {
+  0: "disconnected",
+  1: "connected",
+  2: "connecting",
+  3: "disconnecting",
+};
+
+const handleHealthCheck = (_req: express.Request, res: express.Response) => {
+  const dbState = mongoose.connection.readyState;
+  res.status(200).json({
+    success: true,
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    version: "6.0.0",
+    environment: process.env.NODE_ENV || "development",
+    aiEnabled: !!process.env.GEMINI_API_KEY,
+    pushEnabled: isPushConfigured(),
+    database: {
+      connected: dbState === 1,
+      state: DB_STATE_LABELS[dbState] ?? "unknown",
+    },
+    scheduler: getSchedulerStatus(),
+  });
+};
+
+app.get("/",           handleHealthCheck);
+app.get("/health",     handleHealthCheck);
+app.get("/api/health", handleHealthCheck);
+
 // ─── Rate Limiters ────────────────────────────────────────────────────────────
 const limiter = rateLimit({
   windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
@@ -141,51 +171,25 @@ app.use("/api/community",        communityRoutes);
 // Phase 3 — GET /api/cities/:city/ai-insights  (spec-required top-level path)
 app.get("/api/cities/:city/ai-insights", aiLimiter, getCityAIInsights);
 
-// ─── Health Checks ────────────────────────────────────────────────────────────
-const DB_STATE_LABELS: Record<number, string> = {
-  0: "disconnected",
-  1: "connected",
-  2: "connecting",
-  3: "disconnecting",
-};
-
-const handleHealthCheck = (_req: express.Request, res: express.Response) => {
-  const dbState = mongoose.connection.readyState;
-  res.json({
-    success: true,
-    status: "healthy",
-    timestamp: new Date().toISOString(),
-    version: "6.0.0",
-    environment: process.env.NODE_ENV || "development",
-    aiEnabled: !!process.env.GEMINI_API_KEY,
-    pushEnabled: isPushConfigured(),
-    database: {
-      connected: dbState === 1,
-      state: DB_STATE_LABELS[dbState] ?? "unknown",
-    },
-    scheduler: getSchedulerStatus(),
-  });
-};
-
-app.get("/",           handleHealthCheck);
-app.get("/health",     handleHealthCheck);
-app.get("/api",        handleHealthCheck);
-app.get("/api/health", handleHealthCheck);
-
 // ─── Error Handling ───────────────────────────────────────────────────────────
 app.use(notFound);
 app.use(errorHandler);
 
 // ─── Bootstrap Server ─────────────────────────────────────────────────────────
 async function bootstrap() {
-  await connectDB();
   app.listen(PORT, "0.0.0.0", () => {
     logger.info(`🚀 GreenGuard API v6.0 running on port ${PORT} (bound to 0.0.0.0)`);
     logger.info(`🤖 Gemini AI: ${process.env.GEMINI_API_KEY ? "✅ enabled" : "⚠️ disabled — set GEMINI_API_KEY"}`);
     logger.info(`📱 Push Notifications (FCM): ${isPushConfigured() ? "✅ enabled" : "⚠️ disabled — set FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY"}`);
     logger.info(`🌍 Real-time data: Open-Meteo ✅ (no API key required) — weather ${process.env.OPEN_METEO_WEATHER_BASE_URL || "https://api.open-meteo.com/v1/forecast"}`);
   });
-  startScheduler();
+
+  try {
+    await connectDB();
+    startScheduler();
+  } catch (err) {
+    logger.error("Bootstrap background tasks failed:", err);
+  }
 }
 
 bootstrap().catch((err) => {
