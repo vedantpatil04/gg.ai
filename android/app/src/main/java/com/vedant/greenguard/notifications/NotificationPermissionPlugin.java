@@ -5,6 +5,7 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.google.firebase.FirebaseApp;
 import com.vedant.greenguard.MainActivity;
 import com.vedant.greenguard.permissions.PermissionManager;
 
@@ -62,6 +63,20 @@ public class NotificationPermissionPlugin extends Plugin {
         });
     }
 
+    /**
+     * Checks if the Default FirebaseApp is initialized before JS calls PushNotifications.register().
+     * This prevents native uncaught IllegalStateException from crashing the app process.
+     */
+    @PluginMethod
+    public void isFirebaseReady(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            boolean ready = checkFirebaseReady();
+            JSObject result = new JSObject();
+            result.put("ready", ready);
+            call.resolve(result);
+        });
+    }
+
     /** Opens the app's system settings screen — used by the JS side to
      *  recover from a permanent denial, same as every other capability. */
     @PluginMethod
@@ -75,6 +90,14 @@ public class NotificationPermissionPlugin extends Plugin {
         });
     }
 
+    private boolean checkFirebaseReady() {
+        try {
+            return !FirebaseApp.getApps(getContext()).isEmpty();
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
     private PermissionManager permissionManager() {
         if (getActivity() instanceof MainActivity) {
             return ((MainActivity) getActivity()).getPermissionManager();
@@ -86,6 +109,7 @@ public class NotificationPermissionPlugin extends Plugin {
         JSObject result = new JSObject();
         result.put("status", status.name());
         result.put("granted", status == PermissionManager.PermissionStatus.GRANTED);
+        result.put("firebaseReady", checkFirebaseReady());
         return result;
     }
 }

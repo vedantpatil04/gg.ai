@@ -28,11 +28,13 @@ import { deviceApi } from "../api/device.api";
 interface NotificationPermissionResult {
   status: string;
   granted: boolean;
+  firebaseReady?: boolean;
 }
 
 interface NotificationPermissionBridgePlugin {
   getStatus(): Promise<NotificationPermissionResult>;
   requestPermission(): Promise<NotificationPermissionResult>;
+  isFirebaseReady?(): Promise<{ ready: boolean }>;
   openAppSettings(): Promise<void>;
 }
 
@@ -160,6 +162,25 @@ export async function startPushNotifications(handlers: PushEventHandlers): Promi
   try {
     const result = await NotificationPermissionBridge.requestPermission();
     if (!result.granted) return;
+
+    // Verify Firebase readiness BEFORE calling PushNotifications.register()
+    // This prevents the native CapacitorPlugins thread from throwing an uncaught
+    // IllegalStateException if FirebaseApp is not initialized.
+    let isReady = result.firebaseReady;
+    if (isReady === undefined && NotificationPermissionBridge.isFirebaseReady) {
+      try {
+        const readyCheck = await NotificationPermissionBridge.isFirebaseReady();
+        isReady = readyCheck.ready;
+      } catch {
+        isReady = false;
+      }
+    }
+
+    if (isReady === false) {
+      console.warn("[push] Firebase is not initialized yet. Skipping PushNotifications.register() to prevent crash.");
+      return;
+    }
+
     // register() only fetches the token — it does not itself prompt for
     // permission, which is why the request above happens first.
     try {
