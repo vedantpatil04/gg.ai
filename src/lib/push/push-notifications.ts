@@ -162,9 +162,13 @@ export async function startPushNotifications(handlers: PushEventHandlers): Promi
     if (!result.granted) return;
     // register() only fetches the token — it does not itself prompt for
     // permission, which is why the request above happens first.
-    await PushNotifications.register();
+    try {
+      await PushNotifications.register();
+    } catch (regErr) {
+      console.warn("[push] PushNotifications.register() failed gracefully:", regErr);
+    }
   } catch (err) {
-    console.error("[push] startPushNotifications failed", err);
+    console.warn("[push] startPushNotifications failed gracefully:", err);
   }
 }
 

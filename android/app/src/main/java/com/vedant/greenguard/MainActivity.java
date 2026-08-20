@@ -6,6 +6,7 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 
 import com.getcapacitor.BridgeActivity;
+import com.google.firebase.FirebaseApp;
 import com.vedant.greenguard.downloads.WebDownloadManager;
 import com.vedant.greenguard.notifications.NotificationPermissionPlugin;
 import com.vedant.greenguard.permissions.PermissionManager;
@@ -17,6 +18,8 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+        ensureFirebaseApp();
+
         // Phase 3: local plugins must be registered before super.onCreate()
         // runs (that's what actually starts the Capacitor bridge). This is
         // the JS bridge onto PermissionManager's NOTIFICATIONS category —
@@ -40,6 +43,17 @@ public class MainActivity extends BridgeActivity {
         // place, so no bridge is needed for those. The one gap is blob-based
         // PDF/report downloads, which this wires up.
         new WebDownloadManager(this, getBridge()).attach();
+    }
+
+    private void ensureFirebaseApp() {
+        try {
+            if (FirebaseApp.getApps(this).isEmpty()) {
+                FirebaseApp.initializeApp(this);
+                Log.i(TAG, "FirebaseApp successfully initialized from resources");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "FirebaseApp initialization check: " + e.getMessage());
+        }
     }
 
     /**
