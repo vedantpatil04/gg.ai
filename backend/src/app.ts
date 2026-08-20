@@ -41,7 +41,7 @@ import { startScheduler, getSchedulerStatus }  from "./jobs/scheduler";
 import { isPushConfigured }                    from "./services/push.service";
 
 const app  = express();
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 5000;
 
 // Trust first proxy hop (Render, Vercel, Cloudflare, load balancers) so req.ip reflects the real client IP
 app.set("trust proxy", 1);
@@ -179,8 +179,8 @@ app.use(errorHandler);
 // ─── Bootstrap Server ─────────────────────────────────────────────────────────
 async function bootstrap() {
   await connectDB();
-  app.listen(PORT, () => {
-    logger.info(`🚀 GreenGuard API v6.0 → http://localhost:${PORT}`);
+  app.listen(PORT, "0.0.0.0", () => {
+    logger.info(`🚀 GreenGuard API v6.0 running on port ${PORT} (bound to 0.0.0.0)`);
     logger.info(`🤖 Gemini AI: ${process.env.GEMINI_API_KEY ? "✅ enabled" : "⚠️ disabled — set GEMINI_API_KEY"}`);
     logger.info(`📱 Push Notifications (FCM): ${isPushConfigured() ? "✅ enabled" : "⚠️ disabled — set FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY"}`);
     logger.info(`🌍 Real-time data: Open-Meteo ✅ (no API key required) — weather ${process.env.OPEN_METEO_WEATHER_BASE_URL || "https://api.open-meteo.com/v1/forecast"}`);
