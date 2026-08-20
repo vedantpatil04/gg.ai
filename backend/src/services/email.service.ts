@@ -1,15 +1,41 @@
 import nodemailer from "nodemailer";
 import { logger } from "../utils/logger";
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.gmail.com",
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === "true",
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+function getTransporter(): nodemailer.Transporter | null {
+  const host = (process.env.SMTP_HOST || "smtp.gmail.com").trim();
+  const port = Number(process.env.SMTP_PORT) || 587;
+  const isSecure =
+    process.env.SMTP_SECURE !== undefined
+      ? process.env.SMTP_SECURE === "true" || process.env.SMTP_SECURE === "1"
+      : port === 465;
+
+  const rawUser = process.env.SMTP_USER?.trim();
+  let rawPass = process.env.SMTP_PASS?.trim();
+
+  // If a 16-character Gmail App Password with spaces was provided (e.g. "xxxx xxxx xxxx xxxx"), normalize it
+  if (rawPass && host.includes("gmail.com") && rawPass.replace(/\s+/g, "").length === 16) {
+    rawPass = rawPass.replace(/\s+/g, "");
+  }
+
+  const transportConfig: nodemailer.TransportOptions = {
+    host,
+    port,
+    secure: isSecure,
+    ...(rawUser && rawPass
+      ? {
+          auth: {
+            user: rawUser,
+            pass: rawPass,
+          },
+        }
+      : {}),
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 15_000,
+  } as unknown as nodemailer.TransportOptions;
+
+  return nodemailer.createTransport(transportConfig);
+}
 
 export interface EmailOptions {
   to: string;
@@ -18,20 +44,35 @@ export interface EmailOptions {
 }
 
 export async function sendEmail(options: EmailOptions): Promise<void> {
-  if (!process.env.SMTP_USER) {
-    logger.warn("Email service not configured — skipping send");
+  const smtpUser = process.env.SMTP_USER?.trim();
+  if (!smtpUser) {
+    logger.warn("Email service not configured (SMTP_USER missing) — skipping email send");
     return;
   }
+
   try {
+    const transporter = getTransporter();
+    if (!transporter) {
+      logger.warn("Email transporter could not be initialized — skipping email send");
+      return;
+    }
+
+    const fromAddress = process.env.EMAIL_FROM?.trim() || `GreenGuard AI <${smtpUser}>`;
+
     await transporter.sendMail({
-      from: process.env.EMAIL_FROM || "GreenGuard AI <noreply@greenguard.ai>",
+      from: fromAddress,
       to: options.to,
       subject: options.subject,
       html: options.html,
     });
-    logger.info(`Email sent to ${options.to}`);
-  } catch (err) {
-    logger.error("Failed to send email:", err);
+    logger.info(`Email sent successfully to ${options.to}`);
+  } catch (err: unknown) {
+    const errorObj = err as { message?: string; code?: string; response?: string };
+    logger.error("Failed to send email:", {
+      to: options.to,
+      errorCode: errorObj?.code,
+      errorMessage: errorObj?.message,
+    });
   }
 }
 

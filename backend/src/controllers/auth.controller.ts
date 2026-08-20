@@ -351,11 +351,17 @@ export async function forgotPassword(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { email } = req.body;
+    const rawEmail = req.body?.email;
+    if (!rawEmail || typeof rawEmail !== "string") {
+      res.json({ success: true, message: "If that email exists, a reset link has been sent." });
+      return;
+    }
+
+    const email = rawEmail.trim().toLowerCase();
     const user = await User.findOne({ email });
 
     // Always respond 200 to prevent email enumeration
-    if (!user) {
+    if (!user || !user.isActive) {
       res.json({ success: true, message: "If that email exists, a reset link has been sent." });
       return;
     }
@@ -368,8 +374,8 @@ export async function forgotPassword(
       passwordResetExpires: new Date(Date.now() + 60 * 60 * 1000),
     });
 
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-    const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+    const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").trim().replace(/\/+$/, "");
+    const resetUrl = `${frontendUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
 
     await sendEmail({
       to: user.email,

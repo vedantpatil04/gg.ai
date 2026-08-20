@@ -61,7 +61,7 @@ export const loginValidator = [
 ];
 
 export const forgotPasswordValidator = [
-  body("email").isEmail().normalizeEmail().withMessage("Invalid email"),
+  body("email").trim().isEmail().normalizeEmail().withMessage("Invalid email"),
 ];
 
 export const resetPasswordValidator = [

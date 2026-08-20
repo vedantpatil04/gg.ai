@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Shield, AlertCircle, CheckCircle } from "lucide-react";
+import { Shield, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { authApi } from "@/lib/api/auth.api";
 
@@ -16,17 +16,25 @@ function ForgotPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
       setError("Please enter your email address.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError("Enter a valid email address.");
       return;
     }
     setError("");
     setLoading(true);
     try {
-      await authApi.forgotPassword(email);
+      await authApi.forgotPassword(trimmedEmail);
       setSent(true);
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Could not send reset link. Please check your email and try again.";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -49,7 +57,7 @@ function ForgotPasswordPage() {
             </div>
             <h1 className="mt-4 text-xl font-semibold">Check your inbox</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              If <span className="text-foreground font-medium">{email}</span> is registered, a reset
+              If <span className="text-foreground font-medium">{email.trim()}</span> is registered, a reset
               link has been sent. Check your spam folder if you don't see it.
             </p>
             <Link
@@ -73,7 +81,7 @@ function ForgotPasswordPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="mt-6 space-y-4">
               <label className="block">
                 <span className="text-xs text-muted-foreground">Email address</span>
                 <input
@@ -87,9 +95,16 @@ function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full aurora text-primary-foreground rounded-lg py-2.5 text-sm font-medium shadow-[var(--shadow-glow)] disabled:opacity-60"
+                className="w-full aurora text-primary-foreground rounded-lg py-2.5 text-sm font-medium shadow-[var(--shadow-glow)] disabled:opacity-60 inline-flex items-center justify-center gap-2"
               >
-                {loading ? "Sending…" : "Send reset link"}
+                {loading ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Sending…
+                  </>
+                ) : (
+                  "Send reset link"
+                )}
               </button>
             </form>
 
