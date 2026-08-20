@@ -1,3 +1,4 @@
+import axios from "axios";
 import nodemailer from "nodemailer";
 import { logger } from "../utils/logger";
 
@@ -53,40 +54,150 @@ export interface EmailOptions {
   html: string;
 }
 
-export async function sendEmail(options: EmailOptions): Promise<boolean> {
+/**
+ * Check whether any email provider (HTTPS API or local SMTP) is configured.
+ */
+export function isEmailConfigured(): boolean {
+  const resendApiKey = process.env.RESEND_API_KEY?.trim();
+  const brevoApiKey = process.env.BREVO_API_KEY?.trim();
   const smtpUser = process.env.SMTP_USER?.trim();
-  if (!smtpUser) {
-    logger.warn("Email service not configured (SMTP_USER missing) — skipping email send");
-    return false;
-  }
+  return !!(resendApiKey || brevoApiKey || smtpUser);
+}
 
-  try {
-    const transporter = getTransporter();
-    if (!transporter) {
-      logger.warn("Email transporter could not be initialized — skipping email send");
+/**
+ * Sends email using either HTTPS-based email provider APIs (Resend, Brevo)
+ * or local/direct SMTP (Nodemailer), depending on environment configuration.
+ *
+ * In production environments like Render (which block outbound SMTP ports 25, 465, 587),
+ * this automatically uses the HTTPS REST API (port 443) to guarantee deliverability.
+ */
+export async function sendEmail(options: EmailOptions): Promise<boolean> {
+  const provider = (process.env.EMAIL_PROVIDER || "").toLowerCase().trim();
+  const resendApiKey = process.env.RESEND_API_KEY?.trim();
+  const brevoApiKey = process.env.BREVO_API_KEY?.trim();
+  const smtpUser = process.env.SMTP_USER?.trim();
+
+  // 1. Resend HTTPS API (Preferred for Render/production environments)
+  if ((provider === "resend" || (!provider && resendApiKey)) && resendApiKey) {
+    try {
+      const defaultFrom = "GreenGuard AI <onboarding@resend.dev>";
+      const configuredFrom = process.env.RESEND_FROM?.trim() || process.env.EMAIL_FROM?.trim();
+      // Resend requires a verified domain or onboarding@resend.dev for test sends
+      let fromAddress = configuredFrom || defaultFrom;
+      if (!process.env.RESEND_FROM && configuredFrom && /@(gmail|yahoo|hotmail|outlook)\.com/i.test(configuredFrom)) {
+        fromAddress = defaultFrom;
+      }
+
+      const response = await axios.post(
+        "https://api.resend.com/emails",
+        {
+          from: fromAddress,
+          to: [options.to],
+          subject: options.subject,
+          html: options.html,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+            "User-Agent": "GreenGuardAI-Backend/1.0",
+          },
+          timeout: 15_000,
+        }
+      );
+
+      if (response.status >= 200 && response.status < 300) {
+        logger.info(`Email sent successfully via Resend HTTPS API to ${options.to}`);
+        return true;
+      }
+      logger.warn(`Resend API returned non-success status code ${response.status}`, { to: options.to });
+      return false;
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string; error?: string } }; message?: string; code?: string };
+      logger.error("Failed to send email via Resend HTTPS API:", {
+        to: options.to,
+        status: axiosErr.response?.status,
+        errorMessage: axiosErr.response?.data?.message || axiosErr.message,
+        errorCode: axiosErr.code,
+      });
       return false;
     }
-
-    const fromAddress = process.env.EMAIL_FROM?.trim() || `GreenGuard AI <${smtpUser}>`;
-
-    await transporter.sendMail({
-      from: fromAddress,
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-    });
-    logger.info(`Email sent successfully to ${options.to}`);
-    return true;
-  } catch (err: unknown) {
-    const errorObj = err as { message?: string; code?: string; response?: string; command?: string };
-    logger.error("Failed to send email on Render:", {
-      to: options.to,
-      errorCode: errorObj?.code,
-      errorMessage: errorObj?.message,
-      command: errorObj?.command,
-    });
-    return false;
   }
+
+  // 2. Brevo (Sendinblue) HTTPS API (Alternative HTTPS provider)
+  if ((provider === "brevo" || (!provider && brevoApiKey)) && brevoApiKey) {
+    try {
+      const fromEmail = process.env.BREVO_FROM_EMAIL?.trim() || process.env.EMAIL_FROM?.match(/<([^>]+)>/)?.[1] || "notifications@greenguard.ai";
+      const fromName = process.env.BREVO_FROM_NAME?.trim() || "GreenGuard AI";
+
+      const response = await axios.post(
+        "https://api.brevo.com/v3/smtp/email",
+        {
+          sender: { name: fromName, email: fromEmail },
+          to: [{ email: options.to }],
+          subject: options.subject,
+          htmlContent: options.html,
+        },
+        {
+          headers: {
+            "api-key": brevoApiKey,
+            "Content-Type": "application/json",
+          },
+          timeout: 15_000,
+        }
+      );
+
+      if (response.status >= 200 && response.status < 300) {
+        logger.info(`Email sent successfully via Brevo HTTPS API to ${options.to}`);
+        return true;
+      }
+      logger.warn(`Brevo API returned non-success status code ${response.status}`, { to: options.to });
+      return false;
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string } }; message?: string; code?: string };
+      logger.error("Failed to send email via Brevo HTTPS API:", {
+        to: options.to,
+        status: axiosErr.response?.status,
+        errorMessage: axiosErr.response?.data?.message || axiosErr.message,
+        errorCode: axiosErr.code,
+      });
+      return false;
+    }
+  }
+
+  // 3. Fallback to Direct SMTP (Preserved for local development)
+  if (smtpUser) {
+    try {
+      const transporter = getTransporter();
+      if (!transporter) {
+        logger.warn("Email transporter could not be initialized — skipping email send");
+        return false;
+      }
+
+      const fromAddress = process.env.EMAIL_FROM?.trim() || `GreenGuard AI <${smtpUser}>`;
+
+      await transporter.sendMail({
+        from: fromAddress,
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+      });
+      logger.info(`Email sent successfully via SMTP to ${options.to}`);
+      return true;
+    } catch (err: unknown) {
+      const errorObj = err as { message?: string; code?: string; response?: string; command?: string };
+      logger.error("Failed to send email via SMTP:", {
+        to: options.to,
+        errorCode: errorObj?.code,
+        errorMessage: errorObj?.message,
+        command: errorObj?.command,
+      });
+      return false;
+    }
+  }
+
+  logger.warn("Email service not configured (neither RESEND_API_KEY nor SMTP_USER provided) — skipping email send");
+  return false;
 }
 
 // ─── Base Email Shell Helper ──────────────────────────────────────────────────

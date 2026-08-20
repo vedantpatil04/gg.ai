@@ -25,6 +25,7 @@ import { AppError } from "../middleware/errorHandler";
 import { AuthRequest } from "../middleware/auth";
 import { getSchedulerStatus } from "../jobs/scheduler";
 import { logger } from "../utils/logger";
+import { isEmailConfigured } from "../services/email.service";
 
 // ─── In-memory audit ring (capped at 500 entries, session-scoped) ─────────────
 
@@ -340,7 +341,7 @@ export async function getPlatformConfig(
         features: {
           aiEnabled: !!process.env.GEMINI_API_KEY,
           schedulerEnabled: scheduler.enabled,
-          emailEnabled: !!process.env.SMTP_HOST,
+          emailEnabled: isEmailConfigured(),
           uploadsEnabled: true,
         },
         security: { sessionTimeoutDays: 7, maxFailedLogins: 5, accountLockMinutes: 15, twoFactorAvailable: true },
