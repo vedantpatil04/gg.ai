@@ -344,22 +344,42 @@ export async function refreshToken(req: Request, res: Response, next: NextFuncti
   }
 }
 
-function resolveFrontendUrl(req: Request): string {
-  if (process.env.FRONTEND_URL && process.env.FRONTEND_URL.trim().length > 0) {
-    return process.env.FRONTEND_URL.trim().replace(/\/+$/, "");
-  }
-  const originHeader = req.headers.origin || req.headers.referer;
+export function resolveFrontendUrl(req?: Request): string {
+  // 1. Check request origin / referer header first (accurately mirrors active client domain)
+  const originHeader = req?.headers?.origin || req?.headers?.referer;
   if (originHeader && typeof originHeader === "string") {
     try {
       const originUrl = new URL(originHeader);
-      if (originUrl.hostname.endsWith("vercel.app") || originUrl.hostname.includes("greenguard")) {
+      const isLocalhost = originUrl.hostname === "localhost" || originUrl.hostname === "127.0.0.1";
+      if (process.env.NODE_ENV === "production" && isLocalhost) {
+        // In production, ignore localhost origin spoofing
+      } else if (
+        originUrl.hostname.endsWith("vercel.app") ||
+        originUrl.hostname.includes("greenguard") ||
+        originUrl.hostname === "localhost" ||
+        originUrl.hostname === "127.0.0.1"
+      ) {
         return `${originUrl.protocol}//${originUrl.host}`;
       }
     } catch {}
   }
+
+  // 2. Check FRONTEND_URL environment variable
+  const configuredUrl = process.env.FRONTEND_URL?.trim().replace(/\/+$/, "");
+  if (configuredUrl && configuredUrl.length > 0) {
+    const isLocalhost = configuredUrl.includes("localhost") || configuredUrl.includes("127.0.0.1");
+    if (process.env.NODE_ENV === "production" && isLocalhost) {
+      return "https://gg-ai-system.vercel.app";
+    }
+    return configuredUrl;
+  }
+
+  // 3. In production mode, always default to the verified production frontend URL
   if (process.env.NODE_ENV === "production") {
     return "https://gg-ai-system.vercel.app";
   }
+
+  // 4. Default fallback for local development
   return "http://localhost:5173";
 }
 

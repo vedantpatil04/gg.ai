@@ -33,7 +33,18 @@ import {
   criticalEscalationEmailHtml,
 } from "./email.service";
 
-const FRONTEND_URL = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/+$/, "");
+function getNotificationFrontendUrl(): string {
+  const envUrl = process.env.FRONTEND_URL?.trim().replace(/\/+$/, "");
+  if (process.env.NODE_ENV === "production") {
+    if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
+      return envUrl;
+    }
+    return "https://gg-ai-system.vercel.app";
+  }
+  return envUrl || "http://localhost:5173";
+}
+
+const FRONTEND_URL = getNotificationFrontendUrl();
 
 // ─── Deduplication / Idempotency Cache ────────────────────────────────────────
 const recentEvents = new Map<string, number>();
