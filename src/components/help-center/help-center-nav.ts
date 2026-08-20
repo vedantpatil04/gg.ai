@@ -2,7 +2,6 @@ import type { ComponentType } from "react";
 import {
   Home,
   BookOpen,
-  GraduationCap,
   HeadphonesIcon,
   MessageSquarePlus,
   Users,
@@ -34,12 +33,6 @@ export const HELP_NAV_ITEMS: HelpNavItem[] = [
     to: "/help/knowledge-base",
   },
   {
-    id: "tutorials",
-    label: "Tutorials & Guides",
-    icon: GraduationCap,
-    to: "/help/tutorials",
-  },
-  {
     id: "support",
     label: "Support Center",
     icon: HeadphonesIcon,
@@ -62,14 +55,12 @@ export const HELP_NAV_ITEMS: HelpNavItem[] = [
     label: "System Status",
     icon: Activity,
     to: "/help/status",
-    comingSoon: true,
   },
   {
     id: "whats-new",
     label: "What's New",
     icon: Sparkles,
     to: "/help/whats-new",
-    comingSoon: true,
     badge: "v2.4",
   },
   {
@@ -77,7 +68,6 @@ export const HELP_NAV_ITEMS: HelpNavItem[] = [
     label: "About & Policies",
     icon: ScrollText,
     to: "/help/about",
-    comingSoon: true,
   },
 ];
 

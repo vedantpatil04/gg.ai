@@ -26,6 +26,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useCity } from "@/lib/city-context";
 import { useSubmitComplaint, useUploadComplaintImages } from "./citizen-queries";
@@ -322,21 +329,32 @@ export function CitizenSubmitForm({ onSuccess, initialDraftId }: CitizenSubmitFo
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Issue Type */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground/80">Issue Category</label>
-              <div className="relative">
-                <select
-                  className="w-full appearance-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm pr-8 outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                  value={form.issueType}
-                  onChange={(e) => set("issueType")(e.target.value)}
+              <label htmlFor="citizen-issue-category" className="text-xs font-medium text-foreground/80">
+                Issue Category
+              </label>
+              <Select
+                value={form.issueType}
+                onValueChange={(val) => set("issueType")(val)}
+              >
+                <SelectTrigger
+                  id="citizen-issue-category"
+                  aria-label="Issue Category"
+                  className="w-full h-10 rounded-xl border border-input bg-background/40 px-3.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 >
+                  <SelectValue placeholder="Select an issue category" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border border-border/80 bg-popover/95 dark:bg-[#121822] backdrop-blur-md shadow-lg dark:border-border/60 p-1.5">
                   {ISSUE_TYPES.map((t) => (
-                    <option key={t} value={t}>
+                    <SelectItem
+                      key={t}
+                      value={t}
+                      className="rounded-lg py-2 pl-3 pr-8 text-sm font-medium cursor-pointer transition-colors focus:bg-primary/10 focus:text-primary dark:focus:bg-primary/15 dark:focus:text-primary data-[state=checked]:font-semibold"
+                    >
                       {humanizeIssueType(t)}
-                    </option>
+                    </SelectItem>
                   ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-              </div>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Optional Title */}

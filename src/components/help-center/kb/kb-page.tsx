@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { KbHome } from "./kb-home";
 import { KbArticleList } from "./kb-article-list";
@@ -37,7 +37,19 @@ function PageTransition({ children, viewKey }: { children: React.ReactNode; view
 // HelpCenterLayout and HelpSearchBar are provided by the /help layout route.
 
 export function KnowledgeBasePage() {
-  const [view, setView] = useState<KbView>({ type: "home" });
+  const initialParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const initialArticle = initialParams.get("article");
+  const initialQuery = initialParams.get("q");
+
+  const [view, setView] = useState<KbView>(() => {
+    if (initialArticle && KB_ARTICLES_BY_ID[initialArticle]) {
+      return { type: "article", articleId: initialArticle };
+    }
+    if (initialQuery) {
+      return { type: "list", query: initialQuery };
+    }
+    return { type: "home" };
+  });
 
   const goHome     = useCallback(() => setView({ type: "home" }), []);
   const goList     = useCallback((categoryId?: string, query?: string) =>

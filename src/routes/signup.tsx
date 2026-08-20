@@ -5,6 +5,13 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { getRoleLandingPage } from "@/components/protected-route";
 import { Pill } from "@/components/ui-bits";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AUTHORITY_DEPARTMENTS, AUTHORITY_DEPARTMENT_LABELS } from "@/lib/authority-departments";
 
 export const Route = createFileRoute("/signup")({
@@ -223,23 +230,34 @@ function SignupPage() {
               onChange={set("organization")}
             />
             {role === "authority" && (
-              <label className="block">
-                <span className="text-xs text-muted-foreground">Department *</span>
-                <select
+              <div className="space-y-1.5">
+                <label htmlFor="authority-department" className="text-xs text-muted-foreground block">
+                  Department *
+                </label>
+                <Select
                   value={form.department}
-                  onChange={set("department")}
-                  className="mt-1.5 w-full rounded-lg border border-input bg-background/40 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  onValueChange={(val) => setForm((v) => ({ ...v, department: val }))}
                 >
-                  <option value="" disabled>
-                    Select a department
-                  </option>
-                  {AUTHORITY_DEPARTMENTS.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {AUTHORITY_DEPARTMENT_LABELS[dept]}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  <SelectTrigger
+                    id="authority-department"
+                    aria-label="Department"
+                    className="w-full h-10 rounded-xl border border-input bg-background/40 px-3.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  >
+                    <SelectValue placeholder="Select a department" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border border-border/80 bg-popover/95 dark:bg-[#121822] backdrop-blur-md shadow-lg dark:border-border/60 p-1.5">
+                    {AUTHORITY_DEPARTMENTS.map((dept) => (
+                      <SelectItem
+                        key={dept}
+                        value={dept}
+                        className="rounded-lg py-2 pl-3 pr-8 text-sm font-medium cursor-pointer transition-colors focus:bg-primary/10 focus:text-primary dark:focus:bg-primary/15 dark:focus:text-primary data-[state=checked]:font-semibold"
+                      >
+                        {AUTHORITY_DEPARTMENT_LABELS[dept]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
             <Field
               label="Phone"
