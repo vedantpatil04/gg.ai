@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import {
   Shield,
   Eye,
@@ -177,6 +178,7 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 function LoginPage() {
+  const { t } = useTranslation("authentication");
   const navigate = useNavigate();
   const { login, user, isAuthenticated, isLoading, authMessage, clearAuthMessage } = useAuth();
   const { resolvedTheme } = useTheme();
@@ -282,31 +284,35 @@ function LoginPage() {
   // or password step here — the person continues the flow from their inbox.
   const handleFpEmailSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!fpEmail) {
-      setFpError("Email address is required.");
+    if (fpLoading) return;
+    if (!fpEmail.trim()) {
+      setFpError("Please enter your email address.");
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fpEmail)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fpEmail.trim())) {
       setFpError("Enter a valid email address.");
       return;
     }
     setFpError("");
     setFpLoading(true);
     try {
-      await authApi.forgotPassword(fpEmail);
+      await authApi.forgotPassword(fpEmail.trim());
       setView("fp-done");
-    } catch {
-      setFpError("Something went wrong. Please try again.");
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Could not send reset link. Please check your email and try again.";
+      setFpError(message);
     } finally {
       setFpLoading(false);
     }
   };
 
   const resetFp = () => {
+    setView("login");
     setFpEmail("");
     setFpError("");
-    setFpLoading(false);
-    setView("login");
+    setError("");
   };
 
   const ErrorBanner = ({ message }: { message: string }) =>
@@ -335,7 +341,7 @@ function LoginPage() {
           className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground ml-auto"
         >
           <ArrowLeft className="size-3.5" />
-          Back to home
+          {t("backToHome", "Back to home")}
         </Link>
       </div>
 
@@ -362,7 +368,7 @@ function LoginPage() {
                   : "font-medium text-muted-foreground hover:text-foreground",
               )}
             >
-              {ROLES[r].tab}
+              {t(`role.${r === "admin" ? "administrator" : r}` as never, ROLES[r].tab)}
             </button>
           );
         })}
@@ -378,7 +384,7 @@ function LoginPage() {
       {role === "authority" && (
         <div className="mb-5 flex items-start gap-2 rounded-lg border border-warning/25 bg-warning/8 px-3.5 py-2.5 text-xs leading-relaxed text-foreground/75">
           <Info className="mt-0.5 size-3.5 shrink-0 text-warning" />
-          <span>Authority accounts require Administrator approval before first login.</span>
+          <span>{t("authorityNotice", "Authority accounts require Administrator approval before first login.")}</span>
         </div>
       )}
 
@@ -388,7 +394,7 @@ function LoginPage() {
         {/* Email */}
         <div>
           <label htmlFor="gg-email" className="mb-1.5 block text-xs font-medium text-muted-foreground">
-            Email address
+            {t("email", "Email address")}
           </label>
           <input
             id="gg-email"
@@ -405,7 +411,7 @@ function LoginPage() {
         <div>
           <div className="mb-1.5 flex items-center justify-between gap-2">
             <label htmlFor="gg-pw" className="block text-xs font-medium text-muted-foreground">
-              Password
+              {t("password", "Password")}
             </label>
             <button
               type="button"
@@ -416,7 +422,7 @@ function LoginPage() {
               }}
               className={cn("text-xs font-medium underline-offset-4 hover:underline", ac.text)}
             >
-              Forgot password?
+              {t("forgotPassword", "Forgot password?")}
             </button>
           </div>
           <div className="relative">
@@ -448,7 +454,7 @@ function LoginPage() {
             onSuccess={(token) => {
               setTurnstileToken(token);
               setError((prev) =>
-                prev === "Please complete the security verification." ? "" : prev,
+                prev === "Security verification failed. Please check the box again." ? "" : prev,
               );
             }}
             onError={() => {
@@ -463,16 +469,16 @@ function LoginPage() {
           type="submit"
           disabled={loading}
           style={glowStyle}
-          className={cn(ctaClass, "aurora")}
+          className={cn(ctaClass, "aurora cursor-pointer")}
         >
           {loading ? (
             <>
               <Loader2 className="size-4 animate-spin" />
-              Signing in…
+              {t("signingIn", "Signing in…")}
             </>
           ) : (
             <>
-              Sign In
+              {t("login", "Sign In")}
               <ChevronRight className="size-4" />
             </>
           )}
@@ -480,9 +486,9 @@ function LoginPage() {
       </form>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        New to GreenGuard?{" "}
+        {t("dontHaveAccount", "New to GreenGuard?")}{" "}
         <Link to="/signup" className={cn("font-medium underline-offset-4 hover:underline", ac.text)}>
-          Request access
+          {t("signup", "Request access")}
         </Link>
       </p>
     </>

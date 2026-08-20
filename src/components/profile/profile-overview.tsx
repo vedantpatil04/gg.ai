@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AlertCircle,
   BarChart3,
@@ -203,6 +204,7 @@ function SectionHeader({ title }: { title: string }) {
 // ─── Main ProfileOverview Component ───────────────────────────────────────────
 
 export function ProfileOverview({ profile }: { profile: EnterpriseProfile }) {
+  const { t } = useTranslation("profile");
   const memberSince = formatDate(profile.createdAt);
   const lastLogin = formatDateTime(profile.lastLogin);
   const accountStatus = formatApprovalStatus(profile.approvalStatus);
@@ -216,97 +218,97 @@ export function ProfileOverview({ profile }: { profile: EnterpriseProfile }) {
     <div className="space-y-6">
       {/* ── Quick Statistics ──────────────────────────────────────────────── */}
       <div>
-        <SectionHeader title="Activity Overview" />
+        <SectionHeader title={t("activityOverview", "Activity Overview")} />
         <StatisticsSection />
       </div>
 
       {/* ── Account Details (3-Column Grid) ───────────────────────────────── */}
       <div>
-        <SectionHeader title="Account Details" />
+        <SectionHeader title={t("accountDetails", "Account Details")} />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
           {/* Column 1: Identity */}
           <Panel
-            eyebrow="Identity"
-            title={<h3 className="text-sm font-semibold tracking-tight">Identity</h3>}
+            eyebrow={t("identity", "Identity")}
+            title={<h3 className="text-sm font-semibold tracking-tight">{t("identity", "Identity")}</h3>}
             className="h-full p-4.5 sm:p-5"
           >
             <InfoList>
               <InfoRow
                 icon={<User className="size-3.5" aria-hidden="true" />}
-                label="Full name"
+                label={t("displayName", "Full name")}
                 value={profile.name}
               />
-              <InfoRow label="Username" value={getUsername(profile.email)} />
+              <InfoRow label={t("username", "Username")} value={getUsername(profile.email)} />
               <InfoRow
                 icon={<Shield className="size-3.5" aria-hidden="true" />}
-                label="Role"
+                label={t("role", "Role")}
                 value={formatRole(profile.role)}
               />
               {hasValue(profile.organization) && (
-                <InfoRow label="Organization" value={profile.organization} />
+                <InfoRow label={t("organization", "Organization")} value={profile.organization} />
               )}
             </InfoList>
           </Panel>
 
           {/* Column 2: Contact */}
           <Panel
-            eyebrow="Contact"
-            title={<h3 className="text-sm font-semibold tracking-tight">Contact Information</h3>}
+            eyebrow={t("contact", "Contact")}
+            title={<h3 className="text-sm font-semibold tracking-tight">{t("contactInfo", "Contact Information")}</h3>}
             className="h-full p-4.5 sm:p-5"
           >
             {hasContact ? (
               <InfoList>
                 <InfoRow
                   icon={<Mail className="size-3.5" aria-hidden="true" />}
-                  label="Email"
+                  label={t("email", "Email")}
                   value={profile.email}
                 />
                 <InfoRow
                   icon={<Phone className="size-3.5" aria-hidden="true" />}
-                  label="Phone"
+                  label={t("phone", "Phone")}
                   value={profile.phone}
                 />
                 <InfoRow
                   icon={<MapPin className="size-3.5" aria-hidden="true" />}
-                  label="City"
+                  label={t("city", "City")}
                   value={
                     hasValue(profile.city)
                       ? profile.city[0].toUpperCase() + profile.city.slice(1)
                       : undefined
                   }
                 />
-                <InfoRow label="Country" value={profile.country} />
+                <InfoRow label={t("country", "Country")} value={profile.country} />
               </InfoList>
             ) : (
-              <p className="text-xs text-muted-foreground py-2">No contact info on file yet.</p>
+              <p className="text-xs text-muted-foreground py-2">{t("noContactInfo", "No contact info on file yet.")}</p>
             )}
           </Panel>
 
           {/* Column 3: Account */}
           <Panel
-            eyebrow="Account"
-            title={<h3 className="text-sm font-semibold tracking-tight">Account Status</h3>}
+            eyebrow={t("account", "Account")}
+            title={<h3 className="text-sm font-semibold tracking-tight">{t("accountStatus", "Account Status")}</h3>}
             className="h-full p-4.5 sm:p-5"
           >
             <InfoList>
               <InfoRow
                 icon={<ShieldCheck className="size-3.5" aria-hidden="true" />}
-                label="Status"
+                label={t("accountStatus", "Status")}
                 value={accountStatus}
               />
               <InfoRow
                 icon={<CheckCircle2 className="size-3.5" aria-hidden="true" />}
-                label="Verification"
-                value={profile.isVerified ? "Verified" : "Unverified"}
+                label={t("verification", "Verification")}
+                value={profile.isVerified ? t("verified", "Verified") : t("unverified", "Unverified")}
               />
               <InfoRow
                 icon={<Calendar className="size-3.5" aria-hidden="true" />}
-                label="Member since"
+                label={t("memberSince", "Member since")}
                 value={memberSince}
               />
               <InfoRow
                 icon={<Clock3 className="size-3.5" aria-hidden="true" />}
-                label="Last login"
+                label={t("lastLogin", "Last login")}
                 value={lastLogin}
               />
             </InfoList>

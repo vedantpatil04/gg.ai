@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import {
@@ -241,6 +242,7 @@ function ErrorState({
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function SecurityCenter() {
+  const { t } = useTranslation("settings");
   const { user } = useAuth();
 
   const {
@@ -270,26 +272,26 @@ export function SecurityCenter() {
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                Security Center
+                {t("security.title", "Security Center")}
               </h1>
               {!statusLoading && !statusError && (
                 <Pill tone={isProtected ? "success" : "warning"}>
                   {isProtected ? (
                     <>
                       <ShieldCheck className="size-3" />
-                      Account Protected
+                      {t("security.accountProtected", "Account Protected")}
                     </>
                   ) : (
                     <>
                       <ShieldAlert className="size-3" />
-                      Attention Required
+                      {t("security.attentionRequired", "Attention Required")}
                     </>
                   )}
                 </Pill>
               )}
             </div>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-relaxed">
-              Protect your GreenGuard account, manage active sessions, and review security access.
+              {t("security.description", "Protect your GreenGuard account, manage active sessions, and review security access.")}
             </p>
           </div>
         </div>
@@ -372,6 +374,7 @@ function SecurityOverview({
   email?: string;
   phone?: string;
 }) {
+  const { t } = useTranslation("settings");
   const { data: lastLogin } = useQuery({
     queryKey: ["security-last-login"],
     queryFn: () => securityApi.getLoginHistory(1, 1, "successful").then((r) => r.data.history[0]),
@@ -383,11 +386,11 @@ function SecurityOverview({
 
   return (
     <Panel
-      eyebrow="Health Status"
+      eyebrow={t("security.healthStatus", "Health Status")}
       title={
         <span className="inline-flex items-center gap-2 text-base font-semibold">
           <ShieldCheck className="size-4 text-primary" />
-          Security Overview
+          {t("security.overview", "Security Overview")}
         </span>
       }
     >
@@ -397,13 +400,13 @@ function SecurityOverview({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <CompactStatCard
             icon={Mail}
-            label="Email"
+            label={t("security.email", "Email")}
             value={
               loading ? (
                 "…"
               ) : (
                 <Pill tone={status?.email.verified ? "success" : "warning"}>
-                  {status?.email.verified ? "Verified" : "Unverified"}
+                  {status?.email.verified ? t("security.verified", "Verified") : t("security.unverified", "Unverified")}
                 </Pill>
               )
             }
@@ -411,15 +414,15 @@ function SecurityOverview({
           />
           <CompactStatCard
             icon={Phone}
-            label="Phone"
+            label={t("security.phone", "Phone")}
             value={
               loading ? (
                 "…"
               ) : !phone ? (
-                <Pill tone="muted">Not added</Pill>
+                <Pill tone="muted">{t("security.notAdded", "Not added")}</Pill>
               ) : (
                 <Pill tone={status?.phone.verified ? "success" : "warning"}>
-                  {status?.phone.verified ? "Verified" : "Unverified"}
+                  {status?.phone.verified ? t("security.verified", "Verified") : t("security.unverified", "Unverified")}
                 </Pill>
               )
             }
@@ -427,13 +430,13 @@ function SecurityOverview({
           />
           <CompactStatCard
             icon={Lock}
-            label="Password"
+            label={t("security.password", "Password")}
             value={
               loading
                 ? "…"
                 : status?.passwordLastChangedAt
                   ? formatDateOnly(status.passwordLastChangedAt)
-                  : "Never changed"
+                  : t("security.neverChanged", "Never changed")
             }
             hint={
               loading
@@ -445,7 +448,7 @@ function SecurityOverview({
           />
           <CompactStatCard
             icon={History}
-            label="Last Login"
+            label={t("security.loginHistory", "Last Login")}
             value={
               loading
                 ? "…"
@@ -463,23 +466,23 @@ function SecurityOverview({
           />
           <CompactStatCard
             icon={Monitor}
-            label="Active Sessions"
+            label={t("security.activeSessions", "Active Sessions")}
             value={loading ? "…" : `${status?.activeSessionCount ?? 0} active`}
-            hint={loading ? undefined : "Devices currently signed in"}
+            hint={loading ? undefined : t("security.devicesSignedIn", "Devices currently signed in")}
           />
           <CompactStatCard
             icon={ShieldOff}
-            label="Two-Factor Auth"
+            label={t("security.twoFactor", "Two-Factor Auth")}
             value={
               loading ? (
                 "…"
               ) : (
                 <Pill tone={is2FAEnabled ? "success" : "warning"}>
-                  {is2FAEnabled ? "Enabled" : "Disabled"}
+                  {is2FAEnabled ? t("security.enabled", "Enabled") : t("security.disabled", "Disabled")}
                 </Pill>
               )
             }
-            hint={loading ? undefined : is2FAEnabled ? "Authenticator app (TOTP)" : "Not enabled"}
+            hint={loading ? undefined : is2FAEnabled ? t("security.authenticatorApp", "Authenticator app (TOTP)") : t("security.notEnabled", "Not enabled")}
           />
         </div>
       )}
@@ -545,6 +548,7 @@ function SecurityWidgetsGrid({
   email?: string;
   phone?: string;
 }) {
+  const { t } = useTranslation("settings");
   const [open, setOpen] = useState<WidgetKey | null>(null);
   const is2FAEnabled = status?.twoFactorAuthentication === "ENABLED";
 
@@ -559,56 +563,56 @@ function SecurityWidgetsGrid({
     {
       key: "email",
       icon: Mail,
-      title: "Email Address",
-      statusLabel: loading ? "…" : status?.email.verified ? "Verified" : "Unverified",
+      title: t("security.email", "Email Address"),
+      statusLabel: loading ? "…" : status?.email.verified ? t("security.verified", "Verified") : t("security.unverified", "Unverified"),
       tone: status?.email.verified ? "success" : "warning",
       description: maskEmail(email) ?? "No email on file",
     },
     {
       key: "phone",
       icon: Phone,
-      title: "Phone Number",
+      title: t("security.phone", "Phone Number"),
       statusLabel: loading
         ? "…"
         : !phone
-          ? "Not added"
+          ? t("security.notAdded", "Not added")
           : status?.phone.verified
-            ? "Verified"
-            : "Unverified",
+            ? t("security.verified", "Verified")
+            : t("security.unverified", "Unverified"),
       tone: !phone ? "primary" : status?.phone.verified ? "success" : "warning",
-      description: phone ? (maskPhone(phone) ?? phone) : "Add a phone number for alerts",
+      description: phone ? (maskPhone(phone) ?? phone) : t("security.addPhoneAlerts", "Add a phone number for alerts"),
     },
     {
       key: "password",
       icon: Lock,
-      title: "Account Password",
+      title: t("security.password", "Account Password"),
       statusLabel: loading
         ? "…"
         : status?.passwordLastChangedAt
           ? relativeTime(status.passwordLastChangedAt)
-          : "Never changed",
+          : t("security.neverChanged", "Never changed"),
       tone: "muted",
-      description: "Update your account password regularly",
+      description: t("security.updatePasswordRegularly", "Update your account password regularly"),
     },
     {
       key: "2fa",
       icon: ShieldOff,
-      title: "Two-Factor Authentication",
-      statusLabel: loading ? "…" : is2FAEnabled ? "Enabled" : "Disabled",
+      title: t("security.twoFactor", "Two-Factor Authentication"),
+      statusLabel: loading ? "…" : is2FAEnabled ? t("security.enabled", "Enabled") : t("security.disabled", "Disabled"),
       tone: is2FAEnabled ? "success" : "warning",
       description: is2FAEnabled
-        ? "Protected with an authenticator app (TOTP)"
-        : "Add an extra layer of protection to your account",
+        ? t("security.protectedWithApp", "Protected with an authenticator app (TOTP)")
+        : t("security.extraLayerProtection", "Add an extra layer of protection to your account"),
     },
   ];
 
   return (
     <Panel
-      eyebrow="Access & Protection"
+      eyebrow={t("security.accessProtection", "Access & Protection")}
       title={
         <span className="inline-flex items-center gap-2 text-base font-semibold">
           <KeyRound className="size-4 text-primary" />
-          Account Security Controls
+          {t("security.controls", "Account Security Controls")}
         </span>
       }
     >
@@ -1789,6 +1793,7 @@ function SessionCard({
 }
 
 function SessionsSection() {
+  const { t } = useTranslation("settings");
   const qc = useQueryClient();
   const [viewAllOpen, setViewAllOpen] = useState(false);
   const {
@@ -1851,17 +1856,17 @@ function SessionsSection() {
       ) : (
         <LogOut className="size-3.5" />
       )}
-      Log out other sessions
+      {t("security.logOutOtherSessions", "Log out other sessions")}
     </button>
   );
 
   return (
     <Panel
-      eyebrow="Device Access"
+      eyebrow={t("security.deviceAccess", "Device Access")}
       title={
         <span className="inline-flex items-center gap-2 text-base font-semibold">
           <Monitor className="size-4 text-primary" />
-          Active Sessions
+          {t("security.activeSessions", "Active Sessions")}
           {!isLoading && !isError && (
             <span className="text-xs font-normal text-muted-foreground">
               ({sessions?.length ?? 0})
@@ -1898,7 +1903,7 @@ function SessionsSection() {
           onClick={() => setViewAllOpen(true)}
           className="mt-3 text-xs font-semibold text-primary inline-flex items-center gap-1 hover:underline cursor-pointer"
         >
-          View all {sessions?.length} sessions <ChevronRight className="size-3.5" />
+          {t("security.viewAllSessions", { count: sessions?.length, defaultValue: `View all ${sessions?.length} sessions` })} <ChevronRight className="size-3.5" />
         </button>
       )}
 
@@ -1907,7 +1912,7 @@ function SessionsSection() {
           <DialogHeader>
             <DialogTitle className="inline-flex items-center gap-2">
               <Monitor className="size-4 text-primary" />
-              All Active Sessions
+              {t("security.activeSessions", "All Active Sessions")}
             </DialogTitle>
             <DialogDescription>Every device currently signed in to your account.</DialogDescription>
           </DialogHeader>
@@ -1966,6 +1971,7 @@ function LoginHistoryRow({ h }: { h: LoginHistoryEntry }) {
 }
 
 function LoginHistorySection() {
+  const { t } = useTranslation("settings");
   const [viewAllOpen, setViewAllOpen] = useState(false);
   const [filter, setFilter] = useState<LoginHistoryFilter>("all");
   const [page, setPage] = useState(1);
@@ -1996,11 +2002,11 @@ function LoginHistorySection() {
 
   return (
     <Panel
-      eyebrow="Audit Log"
+      eyebrow={t("security.auditLog", "Audit Log")}
       title={
         <span className="inline-flex items-center gap-2 text-base font-semibold">
           <History className="size-4 text-primary" />
-          Login History
+          {t("security.loginHistory", "Login History")}
           {!isLoading && !isError && totalCount > 0 && (
             <span className="text-xs font-normal text-muted-foreground">({totalCount})</span>
           )}
@@ -2026,7 +2032,7 @@ function LoginHistorySection() {
           onClick={() => setViewAllOpen(true)}
           className="mt-3 text-xs font-semibold text-primary inline-flex items-center gap-1 hover:underline cursor-pointer"
         >
-          View all {totalCount} logins <ChevronRight className="size-3.5" />
+          {t("security.viewAllLogins", { count: totalCount, defaultValue: `View all ${totalCount} logins` })} <ChevronRight className="size-3.5" />
         </button>
       )}
 
@@ -2041,7 +2047,7 @@ function LoginHistorySection() {
           <DialogHeader>
             <DialogTitle className="inline-flex items-center gap-2">
               <History className="size-4 text-primary" />
-              Login History
+              {t("security.loginHistory", "Login History")}
             </DialogTitle>
             <DialogDescription>Every recorded sign-in attempt for your account.</DialogDescription>
           </DialogHeader>
@@ -2139,6 +2145,7 @@ function ActivityRow({ e }: { e: SecurityEventEntry }) {
 }
 
 function RecentActivitySection() {
+  const { t } = useTranslation("settings");
   const [viewAllOpen, setViewAllOpen] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -2162,11 +2169,11 @@ function RecentActivitySection() {
 
   return (
     <Panel
-      eyebrow="Timeline"
+      eyebrow={t("security.timeline", "Timeline")}
       title={
         <span className="inline-flex items-center gap-2 text-base font-semibold">
           <Activity className="size-4 text-primary" />
-          Recent Security Activity
+          {t("security.recentActivity", "Recent Security Activity")}
           {!isLoading && !isError && totalCount > 0 && (
             <span className="text-xs font-normal text-muted-foreground">({totalCount})</span>
           )}
@@ -2200,7 +2207,7 @@ function RecentActivitySection() {
           onClick={() => setViewAllOpen(true)}
           className="mt-3 text-xs font-semibold text-primary inline-flex items-center gap-1 hover:underline cursor-pointer"
         >
-          View all {totalCount} events <ChevronRight className="size-3.5" />
+          {t("security.viewAllEvents", { count: totalCount, defaultValue: `View all ${totalCount} events` })} <ChevronRight className="size-3.5" />
         </button>
       )}
 
@@ -2215,7 +2222,7 @@ function RecentActivitySection() {
           <DialogHeader>
             <DialogTitle className="inline-flex items-center gap-2">
               <Activity className="size-4 text-primary" />
-              Recent Security Activity
+              {t("security.recentActivity", "Recent Security Activity")}
             </DialogTitle>
             <DialogDescription>Every recorded security event on your account.</DialogDescription>
           </DialogHeader>
@@ -2281,6 +2288,7 @@ function RecentActivitySection() {
 
 // ─── Danger Zone Section ──────────────────────────────────────────────────────
 function DangerZoneSection() {
+  const { t } = useTranslation("settings");
   const { logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
@@ -2321,7 +2329,7 @@ function DangerZoneSection() {
     <div className="rounded-2xl border border-destructive/30 bg-destructive/[0.03] p-5 sm:p-6 shadow-sm">
       <div className="flex items-center justify-between gap-2 mb-3">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-destructive">
-          Destructive Action
+          {t("security.destructiveAction", "Destructive Action")}
         </span>
       </div>
 
@@ -2329,18 +2337,17 @@ function DangerZoneSection() {
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-base font-semibold text-destructive">
             <AlertTriangle className="size-4.5" />
-            Deactivate Account
+            {t("security.deactivateAccount", "Deactivate Account")}
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-xl leading-relaxed">
-            Deactivating your account will immediately revoke all active sessions and block further
-            logins until restored by an administrator.
+            {t("security.deactivateDesc", "Deactivating your account will immediately revoke all active sessions and block further logins until restored by an administrator.")}
           </p>
         </div>
 
         <AlertDialog open={open} onOpenChange={handleOpenChange}>
           <AlertDialogTrigger asChild>
             <button className="w-full sm:w-auto shrink-0 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold border border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40 cursor-pointer">
-              Deactivate Account
+              {t("security.deactivateAccount", "Deactivate Account")}
             </button>
           </AlertDialogTrigger>
 
@@ -2396,7 +2403,7 @@ function DangerZoneSection() {
                 )}
               >
                 {deactivateMutation.isPending && <Loader2 className="size-3.5 animate-spin" />}
-                Deactivate account
+                {t("security.deactivateAccount", "Deactivate account")}
               </button>
             </AlertDialogFooter>
           </AlertDialogContent>

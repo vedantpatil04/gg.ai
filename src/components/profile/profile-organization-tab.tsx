@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Building2, RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 import { Panel } from "@/components/ui-bits";
@@ -37,11 +38,6 @@ function StaggerCard({ children, index = 0 }: { children: ReactNode; index?: num
 
 // ─── Field rows ──────────────────────────────────────────────────────────────
 
-/**
- * Uses <dl>/<dt>/<dd> for accessible label/value pairs — mirrors the
- * InfoRow / InfoList pattern used in the Overview and Personal Info tabs
- * so the whole module is semantically consistent.
- */
 function OrgField({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 py-2.5 border-b border-border/60 last:border-0">
@@ -88,38 +84,40 @@ function OrgRows({ rows }: { rows: OrgInfoRow[] }) {
 // ─── Section cards ───────────────────────────────────────────────────────────
 
 function OrganizationCard({ name }: { name?: string }) {
+  const { t } = useTranslation("profile");
   if (!name) {
     return (
       <Panel
-        eyebrow="Organization"
-        title={<h3 className="text-base font-semibold tracking-tight">Organization</h3>}
+        eyebrow={t("organization", "Organization")}
+        title={<h3 className="text-base font-semibold tracking-tight">{t("organization", "Organization")}</h3>}
         className="hover:shadow-md transition-shadow duration-200"
       >
         <p className="text-sm text-muted-foreground py-1">
-          This account is not associated with an organization.
+          {t("noOrg", "This account is not associated with an organization.")}
         </p>
       </Panel>
     );
   }
   return (
     <Panel
-      eyebrow="Organization"
-      title={<h3 className="text-base font-semibold tracking-tight">Organization</h3>}
+      eyebrow={t("organization", "Organization")}
+      title={<h3 className="text-base font-semibold tracking-tight">{t("organization", "Organization")}</h3>}
       className="hover:shadow-md transition-shadow duration-200"
     >
       <dl>
-        <OrgField label="Organization name" value={name} />
+        <OrgField label={t("organization", "Organization name")} value={name} />
       </dl>
     </Panel>
   );
 }
 
 function EmploymentCard({ rows }: { rows: OrgInfoRow[] }) {
+  const { t } = useTranslation("profile");
   if (rows.length === 0) return null;
   return (
     <Panel
-      eyebrow="Employment"
-      title={<h3 className="text-base font-semibold tracking-tight">Employment information</h3>}
+      eyebrow={t("employment", "Employment")}
+      title={<h3 className="text-base font-semibold tracking-tight">{t("employment", "Employment information")}</h3>}
       className="hover:shadow-md transition-shadow duration-200"
     >
       <OrgRows rows={rows} />
@@ -128,11 +126,12 @@ function EmploymentCard({ rows }: { rows: OrgInfoRow[] }) {
 }
 
 function AssignmentCard({ rows }: { rows: OrgInfoRow[] }) {
+  const { t } = useTranslation("profile");
   if (rows.length === 0) return null;
   return (
     <Panel
-      eyebrow="Assignment"
-      title={<h3 className="text-base font-semibold tracking-tight">Assignment</h3>}
+      eyebrow={t("assignment", "Assignment")}
+      title={<h3 className="text-base font-semibold tracking-tight">{t("assignment", "Assignment")}</h3>}
       className="hover:shadow-md transition-shadow duration-200"
     >
       <OrgRows rows={rows} />

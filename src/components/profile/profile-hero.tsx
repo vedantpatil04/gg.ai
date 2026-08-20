@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import {
   Calendar,
   Camera,
@@ -126,6 +127,8 @@ function ProfileHeaderCard({
   onLogout: () => void;
   onChangePhoto: () => void;
 }) {
+  const { t } = useTranslation("profile");
+  const { t: tAuth } = useTranslation("authentication");
   const memberSince = formatDate(profile.createdAt);
   const lastLogin = formatDateTime(profile.lastLogin);
   const approvalLabel = formatApprovalStatus(profile.approvalStatus);
@@ -145,7 +148,7 @@ function ProfileHeaderCard({
             <button
               onClick={onChangePhoto}
               type="button"
-              aria-label="Change profile photo"
+              aria-label={t("changeAvatar", "Change photo")}
               className="group relative block rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer"
             >
               <ProfileAvatar
@@ -163,8 +166,8 @@ function ProfileHeaderCard({
             {profile.isVerified && (
               <span
                 className="absolute top-0 right-0 size-3.5 rounded-full bg-success border-2 border-background shadow"
-                title="Verified"
-                aria-label="Verified account"
+                title={t("verified", "Verified")}
+                aria-label={t("verified", "Verified")}
               />
             )}
           </div>
@@ -180,7 +183,7 @@ function ProfileHeaderCard({
                 {profile.isVerified && (
                   <Pill tone="success">
                     <ShieldCheck className="size-3" aria-hidden="true" />
-                    Verified
+                    {t("verified", "Verified")}
                   </Pill>
                 )}
                 {profile.role === "authority" && (
@@ -218,13 +221,13 @@ function ProfileHeaderCard({
 
               {memberSince && (
                 <MetaItem icon={<Calendar className="size-3.5 text-muted-foreground shrink-0" />}>
-                  Since {memberSince}
+                  {t("memberSince", "Member since")} {memberSince}
                 </MetaItem>
               )}
 
               {lastLogin && (
                 <MetaItem icon={<Clock3 className="size-3.5 text-muted-foreground shrink-0" />}>
-                  Login {lastLogin}
+                  {t("lastLogin", "Last login")} {lastLogin}
                 </MetaItem>
               )}
             </div>
@@ -239,7 +242,7 @@ function ProfileHeaderCard({
             className="gap-1.5 h-9 rounded-xl font-medium shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           >
             <Pencil className="size-3.5" aria-hidden="true" />
-            Edit Profile
+            {t("editProfile", "Edit Profile")}
           </Button>
 
           <Button
@@ -249,7 +252,7 @@ function ProfileHeaderCard({
             className="gap-1.5 h-9 rounded-xl font-medium transition-all hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 active:scale-[0.98] cursor-pointer"
           >
             <LogOut className="size-3.5" aria-hidden="true" />
-            Log out
+            {tAuth("logout", "Log out")}
           </Button>
         </div>
       </div>
@@ -260,6 +263,7 @@ function ProfileHeaderCard({
 // ─── Compact Profile Completion Banner ────────────────────────────────────────
 
 function ProfileCompletionBanner({ onEditProfile }: { onEditProfile: () => void }) {
+  const { t } = useTranslation("profile");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ["profile", "completion"],
@@ -296,7 +300,7 @@ function ProfileCompletionBanner({ onEditProfile }: { onEditProfile: () => void 
 
           <div className="min-w-0 space-y-0.5">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-semibold text-foreground">Profile Completion</span>
+              <span className="text-sm font-semibold text-foreground">{t("completion", "Profile Completion")}</span>
               <span
                 className="text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-full"
                 style={{ color, background: bg }}
@@ -327,7 +331,7 @@ function ProfileCompletionBanner({ onEditProfile }: { onEditProfile: () => void 
               className="h-8 px-3 rounded-lg text-xs font-medium gap-1.5 cursor-pointer"
             >
               <Sparkles className="size-3" />
-              Continue
+              {t("continue", "Continue")}
             </Button>
             <Button
               size="sm"
@@ -335,7 +339,7 @@ function ProfileCompletionBanner({ onEditProfile }: { onEditProfile: () => void 
               onClick={() => setDrawerOpen(true)}
               className="h-8 px-3 rounded-lg text-xs text-muted-foreground hover:text-foreground cursor-pointer"
             >
-              View All
+              {t("viewAll", "View All")}
             </Button>
           </div>
         )}

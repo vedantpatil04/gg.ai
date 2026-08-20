@@ -10,54 +10,61 @@
  */
 
 import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { Activity, Map, CloudSun, Megaphone, Bot, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, useReducedMotion } from "framer-motion";
 import { STAGGER, HOVER_LIFT, TAP_PRESS } from "@/lib/motion";
 
-interface QuickAction {
-  label: string;
+interface QuickActionDef {
+  key: string;
+  defaultLabel: string;
+  defaultDescription: string;
   icon: React.ComponentType<{ className?: string }>;
   href: string;
   accent: string;
-  description: string;
 }
 
-const ACTIONS: QuickAction[] = [
+const ACTIONS: QuickActionDef[] = [
   {
-    label: "Environmental Overview",
+    key: "environmentalOverview",
+    defaultLabel: "Environmental Overview",
+    defaultDescription: "Deep environmental intelligence",
     icon: Activity,
     href: "/environment",
     accent: "var(--color-success)",
-    description: "Deep environmental intelligence",
   },
   {
-    label: "Smart Map",
+    key: "smartMap",
+    defaultLabel: "Smart Map",
+    defaultDescription: "Explore conditions spatially",
     icon: Map,
     href: "/map",
     accent: "var(--color-info)",
-    description: "Explore conditions spatially",
   },
   {
-    label: "Forecast",
+    key: "forecast",
+    defaultLabel: "Forecast",
+    defaultDescription: "Weather & environmental outlook",
     icon: CloudSun,
     href: "/forecast",
     accent: "var(--color-warning)",
-    description: "Weather & environmental outlook",
   },
   {
-    label: "Report Issue",
+    key: "reportIssue",
+    defaultLabel: "Report Issue",
+    defaultDescription: "Report an environmental problem",
     icon: Megaphone,
     href: "/citizen",
     accent: "var(--color-destructive)",
-    description: "Report an environmental problem",
   },
   {
-    label: "GreenGuard Intelligence",
+    key: "intelligence",
+    defaultLabel: "GreenGuard Intelligence",
+    defaultDescription: "Ask GreenGuard about your environment",
     icon: Bot,
     href: "/copilot",
     accent: "var(--color-primary)",
-    description: "Ask GreenGuard about your environment",
   },
 ];
 
@@ -66,7 +73,8 @@ const tileVariant = {
   show: { opacity: 1, y: 0 },
 };
 
-function ActionTile({ action, spanClass }: { action: QuickAction; spanClass?: string }) {
+function ActionTile({ action, spanClass }: { action: QuickActionDef; spanClass?: string }) {
+  const { t } = useTranslation("dashboard");
   const prefersReduced = useReducedMotion();
 
   return (
@@ -110,10 +118,10 @@ function ActionTile({ action, spanClass }: { action: QuickAction; spanClass?: st
 
         <div className="mt-4 relative">
           <div className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-tight">
-            {action.label}
+            {t(action.key as never, action.defaultLabel)}
           </div>
           <div className="text-xs text-muted-foreground mt-1 leading-snug">
-            {action.description}
+            {action.defaultDescription}
           </div>
         </div>
       </motion.div>
@@ -133,7 +141,7 @@ export function QuickActions({ showReports: _showReports }: { showReports?: bool
     >
       {ACTIONS.map((a, index) => (
         <ActionTile
-          key={a.label}
+          key={a.key}
           action={a}
           // 5 tiles on a 2-column tablet grid leaves the last tile alone in
           // its row with empty space beside it; let it fill the row instead.

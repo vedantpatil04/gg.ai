@@ -12,6 +12,7 @@
 
 import { Panel } from "@/components/ui-bits";
 import { CardSkeleton } from "@/components/dashboard/dashboard-skeletons";
+import { useTranslation } from "react-i18next";
 import { ShieldCheck, AlertTriangle, AlertOctagon, Info, Megaphone, ArrowRight } from "lucide-react";
 import { useReducedMotion, motion } from "framer-motion";
 import { STAGGER, FADE_UP } from "@/lib/motion";
@@ -37,22 +38,23 @@ export function AlertsCard({
   onAdvisory?: () => void;
   isLoading?: boolean;
 }) {
+  const { t } = useTranslation("dashboard");
   const prefersReduced = useReducedMotion();
 
   return (
     <Panel
-      eyebrow="Monitoring & Advisories"
-      title="Alerts & Advisories"
+      eyebrow={t("alerts", "Monitoring & Advisories")}
+      title={t("criticalAlerts", "Alerts & Advisories")}
       surface="card"
       action={
         alerts.length > 0 ? (
           <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/30">
-            {alerts.length} Active {alerts.length === 1 ? "Alert" : "Alerts"}
+            {t("activeAlerts", { count: alerts.length })}
           </span>
         ) : (
           <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
             <span className="size-1.5 rounded-full bg-[var(--color-success)]" />
-            Normal
+            {t("allClear", "All Clear")}
           </span>
         )
       }
@@ -65,10 +67,10 @@ export function AlertsCard({
             <ShieldCheck className="size-5" />
           </div>
           <h4 className="text-sm font-semibold text-foreground">
-            No active environmental alerts
+            {t("allClear", "No active environmental alerts")}
           </h4>
           <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-            Everything is currently within normal advisory thresholds for your region.
+            {t("allClearDesc", "Everything is currently within normal advisory thresholds for your region.")}
           </p>
           {onAdvisory && (
             <button

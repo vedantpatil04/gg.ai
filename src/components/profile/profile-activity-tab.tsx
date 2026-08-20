@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import {
   Activity,
   Camera,
@@ -222,13 +223,14 @@ function ActivitySkeleton() {
 // ─── Empty state ─────────────────────────────────────────────────────────────
 
 function ActivityEmpty() {
+  const { t } = useTranslation("profile");
   return (
     <div className="glass rounded-2xl p-12 sm:p-16 flex flex-col items-center text-center gap-4 animate-in fade-in-0 zoom-in-95 duration-400">
       <div className="size-14 rounded-2xl bg-muted grid place-items-center text-muted-foreground">
         <Activity className="size-7" aria-hidden="true" />
       </div>
       <div className="space-y-1.5">
-        <h3 className="text-lg font-semibold">No recent activity</h3>
+        <h3 className="text-lg font-semibold">{t("noActivity", "No recent activity")}</h3>
         <p className="text-sm text-muted-foreground max-w-sm">
           Activity will appear here as you use your account — sign-ins, profile updates, and
           security changes.

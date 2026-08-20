@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import {
   Shield,
   User,
@@ -117,6 +118,7 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
 
 // ─── Main Signup Page ─────────────────────────────────────────────────────────
 function SignupPage() {
+  const { t } = useTranslation("authentication");
   const navigate = useNavigate();
   const { signup, user, isAuthenticated, isLoading } = useAuth();
   const [role, setRole] = useState<PublicRole>("citizen");
@@ -337,7 +339,7 @@ function SignupPage() {
               to="/login"
               className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors sm:text-sm"
             >
-              Have an account? <span className="font-semibold text-primary">Sign in</span>
+              {t("alreadyHaveAccount", "Have an account?")} <span className="font-semibold text-primary">{t("login", "Sign in")}</span>
             </Link>
           </div>
 
@@ -346,17 +348,17 @@ function SignupPage() {
             {/* Heading */}
             <div className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-300">
               <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                {copy.heading}
+                {isAuthority ? "Authority Access Request" : t("createAccount", "Create your account")}
               </h1>
               <p className="mt-1.5 text-sm text-muted-foreground max-w-xl leading-relaxed">
-                {copy.subheading}
+                {isAuthority ? "Submit your official request to access the GreenGuard Authority Portal." : t("citizenRoleDesc", "Join the environmental intelligence network.")}
               </p>
             </div>
 
             {/* Role Selection */}
             <div className="mt-7 sm:mt-8">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                <span>Select Account Type</span>
+                <span>{t("accountType", "Select Account Type")}</span>
               </div>
 
               <div
@@ -467,8 +469,8 @@ function SignupPage() {
               <div className="grid sm:grid-cols-2 gap-4">
                 <InputField
                   id="signup-name"
-                  label="Full name *"
-                  placeholder="Enter your full name"
+                  label={`${t("name", "Full name")} *`}
+                  placeholder={t("enterName", "Enter your full name")}
                   autoComplete="name"
                   value={form.name}
                   error={fieldErrors.name}
@@ -479,9 +481,9 @@ function SignupPage() {
 
                 <InputField
                   id="signup-email"
-                  label="Email *"
+                  label={`${t("email", "Email")} *`}
                   type="email"
-                  placeholder="you@gmail.com"
+                  placeholder={t("enterEmail", "you@gmail.com")}
                   autoComplete="email"
                   value={form.email}
                   error={fieldErrors.email}
@@ -496,7 +498,7 @@ function SignupPage() {
                 <div className="grid sm:grid-cols-2 gap-4 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-200">
                   <InputField
                     id="signup-org"
-                    label="Organization / Board *"
+                    label={`${t("organization", "Organization / Board")} *`}
                     placeholder="e.g. State Pollution Control Board"
                     autoComplete="organization"
                     value={form.organization}
@@ -511,7 +513,7 @@ function SignupPage() {
                       htmlFor="authority-department"
                       className="text-xs font-medium text-muted-foreground block"
                     >
-                      Department *
+                      {t("department", "Department")} *
                     </label>
                     <Select
                       value={form.department}
@@ -536,7 +538,7 @@ function SignupPage() {
                             : "border-input focus:border-info focus:ring-2 focus:ring-info/20",
                         )}
                       >
-                        <SelectValue placeholder="Select your department" />
+                        <SelectValue placeholder={t("selectDepartment", "Select your department")} />
                       </SelectTrigger>
                       <SelectContent className="max-h-72 rounded-xl border border-border/80 bg-popover/95 dark:bg-[#121822] backdrop-blur-md shadow-xl dark:border-border/60 p-1.5 z-50">
                         {AUTHORITY_DEPARTMENTS.map((dept) => (
@@ -564,7 +566,7 @@ function SignupPage() {
               <div>
                 <InputField
                   id="signup-phone"
-                  label="Phone"
+                  label={t("phone", "Phone")}
                   type="tel"
                   placeholder="+91 98XXXXXXX"
                   autoComplete="tel"
@@ -583,14 +585,14 @@ function SignupPage() {
                     htmlFor="signup-password"
                     className="text-xs font-medium text-muted-foreground block"
                   >
-                    Password *
+                    {t("password", "Password")} *
                   </label>
                   <div className="relative">
                     <input
                       id="signup-password"
                       type={showPassword ? "text" : "password"}
                       autoComplete="new-password"
-                      placeholder="Create a password"
+                      placeholder={t("createPassword", "Create a password")}
                       value={form.password}
                       onChange={(e) => handleInputChange("password", e.target.value)}
                       onBlur={() => handleBlur("password")}
@@ -619,7 +621,7 @@ function SignupPage() {
                     </p>
                   ) : (
                     <p className="text-[11px] text-muted-foreground mt-1">
-                      Min 8 characters, uppercase, lowercase, and a number.
+                      {t("minChars", "Min 8 characters")}, uppercase, lowercase, and a number.
                     </p>
                   )}
                 </div>
@@ -630,14 +632,14 @@ function SignupPage() {
                     htmlFor="signup-confirm-password"
                     className="text-xs font-medium text-muted-foreground block"
                   >
-                    Confirm password *
+                    {t("confirmPassword", "Confirm password")} *
                   </label>
                   <div className="relative">
                     <input
                       id="signup-confirm-password"
                       type={showConfirmPassword ? "text" : "password"}
                       autoComplete="new-password"
-                      placeholder="Re-enter your password"
+                      placeholder={t("confirmYourPassword", "Re-enter your password")}
                       value={form.confirmPassword}
                       onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                       onBlur={() => handleBlur("confirmPassword")}
@@ -744,11 +746,11 @@ function SignupPage() {
                   {loading ? (
                     <>
                       <Loader2 className="size-4 animate-spin" />
-                      <span>{copy.submitLoadingLabel}</span>
+                      <span>{isAuthority ? "Submitting request…" : t("creatingAccount", "Creating account…")}</span>
                     </>
                   ) : (
                     <>
-                      <span>{copy.submitLabel}</span>
+                      <span>{isAuthority ? t("submitAccessRequest", "Submit access request") : t("createAccount", "Create account")}</span>
                       <ChevronRight className="size-4" />
                     </>
                   )}
@@ -758,12 +760,12 @@ function SignupPage() {
 
             {/* Bottom Sign-in Link */}
             <p className="mt-8 text-center text-sm text-muted-foreground">
-              Already have an account?{" "}
+              {t("alreadyHaveAccount", "Already have an account?")}{" "}
               <Link
                 to="/login"
                 className="font-semibold text-primary hover:underline underline-offset-4 transition-colors"
               >
-                Sign in
+                {t("login", "Sign in")}
               </Link>
             </p>
           </div>

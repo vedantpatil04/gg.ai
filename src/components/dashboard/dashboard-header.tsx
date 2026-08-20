@@ -29,6 +29,7 @@
  */
 
 import { RefreshCw, Download, Megaphone, WifiOff, Signal, Loader2, AlertTriangle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Pill } from "@/components/ui-bits";
 import type { EnvHealthBand } from "@/lib/environmental-health";
 import { freshnessColor, type DataFreshness } from "@/lib/data-freshness";
@@ -56,6 +57,8 @@ export function DashboardHeader({
   exportStatus?:   { state: "idle" | "pending" | "success" | "error"; message?: string };
   advisoryStatus?: { state: "idle" | "pending" | "success" | "error"; message?: string };
 }) {
+  const { t } = useTranslation("dashboard");
+  const { t: tCommon } = useTranslation("common");
   const prefersReduced = useReducedMotion();
 
   const envTone =
@@ -70,7 +73,7 @@ export function DashboardHeader({
 
   const freshnessDotColor = freshnessColor(freshness);
   const freshnessText =
-    freshness === "current" ? "Live" : freshness === "delayed" ? "Data delayed" : "Data unavailable";
+    freshness === "current" ? t("live", "Live") : freshness === "delayed" ? "Data delayed" : "Data unavailable";
 
   return (
     <motion.header
@@ -81,7 +84,7 @@ export function DashboardHeader({
     >
       <div>
         <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground font-medium">
-          Citizen dashboard
+          {t("citizenDashboard", "Citizen dashboard")}
         </div>
         <h1 className="text-3xl font-semibold tracking-tight mt-1">
           {cityName}, {country}
@@ -105,10 +108,7 @@ export function DashboardHeader({
             </Pill>
           </motion.div>
 
-          {/* Data freshness indicator — Phase 2A: driven by the same
-              `freshness` state as Current Conditions/Data Status (not raw
-              API connectivity + a ticking clock), so this can never say
-              "Live" while the rest of the dashboard reports stale data. */}
+          {/* Data freshness indicator */}
           <div
             role="status"
             aria-live="polite"
@@ -134,7 +134,7 @@ export function DashboardHeader({
             />
             {freshnessText}
             {freshness !== "unavailable" && (
-              <span className="text-muted-foreground">· Updated {lastUpdatedLabel}</span>
+              <span className="text-muted-foreground">· {tCommon("lastUpdated", "Updated")} {lastUpdatedLabel}</span>
             )}
           </div>
 
@@ -168,10 +168,10 @@ export function DashboardHeader({
             "transition-colors duration-150",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
           )}
-          aria-label="Refresh dashboard data"
+          aria-label={t("refresh", "Refresh data")}
         >
           <RefreshCw className={cn("size-3.5", isRefreshing && "animate-spin")} />
-          {isRefreshing ? "Refreshing…" : "Refresh"}
+          {isRefreshing ? tCommon("loading", "Refreshing…") : tCommon("refresh", "Refresh")}
         </motion.button>
 
         {/* Export */}
@@ -193,10 +193,10 @@ export function DashboardHeader({
           ) : (
             <Download className="size-3.5" />
           )}
-          {exportStatus?.state === "pending" ? "Exporting…" : "Export"}
+          {exportStatus?.state === "pending" ? "Exporting…" : t("exportReport", "Export")}
         </motion.button>
 
-        {/* Issue Advisory — the one clearly-primary action in this row */}
+        {/* Issue Advisory */}
         <motion.button
           whileTap={prefersReduced ? undefined : TAP_PRESS}
           onClick={onAdvisory}
@@ -213,7 +213,7 @@ export function DashboardHeader({
           ) : (
             <Megaphone className="size-3.5" />
           )}
-          {advisoryStatus?.state === "pending" ? "Preparing…" : "Issue advisory"}
+          {advisoryStatus?.state === "pending" ? "Preparing…" : t("issueAdvisory", "Issue advisory")}
         </motion.button>
       </div>
 

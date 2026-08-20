@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { HelpCenterSidebar } from "./help-center-sidebar";
 import { HelpCenterHeader } from "./help-center-header";
+import { FloatingHelpWidget } from "./floating-help-widget";
 
 export function HelpCenterLayout({
   children,
@@ -38,6 +39,9 @@ export function HelpCenterLayout({
         />
         <main className="flex-1 min-w-0">{children}</main>
       </div>
+
+      {/* Floating Help & Support Widget */}
+      <FloatingHelpWidget />
     </div>
   );
 }

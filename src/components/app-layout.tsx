@@ -42,6 +42,7 @@ import { NotificationBell } from "@/components/notifications/notification-center
 import { LocationIntelligenceButton, LocationIntelligenceSidebarWidget, ensureDefaultCity } from "@/components/location/location-intelligence";
 import { CommandPaletteProvider, useCommandPalette } from "@/components/command-palette/command-palette";
 import { PlatformStatusBar } from "@/components/status-bar/platform-status-bar";
+import { FloatingHelpWidget } from "@/components/help-center/floating-help-widget";
 import { useTheme } from "@/lib/theme";
 import { useAuth, type UserRole } from "@/lib/auth-context";
 import { i18n } from "@/i18n";
@@ -826,6 +827,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
         {/* Phase 7 — Enterprise Platform Status Bar */}
         <PlatformStatusBar />
       </div>
+
+      {/* Floating Help & Support Widget (Quick entry point to existing Support & Copilot) */}
+      <FloatingHelpWidget />
     </div>
     </CommandPaletteProvider>
   );

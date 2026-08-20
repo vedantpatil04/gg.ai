@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Calendar, Home, MapPin, Pencil, Phone, User, Mail } from "lucide-react";
 import { Panel } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ export function PersonalInformationTab({
   profile: EnterpriseProfile;
   onEditProfile: () => void;
 }) {
+  const { t } = useTranslation("profile");
   const hasAddress =
     hasValue(profile.addressLine) ||
     hasValue(profile.city) ||
@@ -29,20 +31,20 @@ export function PersonalInformationTab({
       {/* ── Subtitle & Edit Button Header ─────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Personal Records</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("personalRecords", "Personal Records")}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Your personal identity, contact, and jurisdiction address records.
+            {t("personalRecordsDesc", "Your personal identity, contact, and jurisdiction address records.")}
           </p>
         </div>
 
         <Button
           size="sm"
           onClick={onEditProfile}
-          aria-label="Open edit profile drawer"
+          aria-label={t("editDetails", "Edit Details")}
           className="h-8.5 px-3 rounded-xl text-xs font-medium gap-1.5 cursor-pointer shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
           <Pencil className="size-3" aria-hidden="true" />
-          Edit Details
+          {t("editDetails", "Edit Details")}
         </Button>
       </div>
 
@@ -50,41 +52,41 @@ export function PersonalInformationTab({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
         {/* Card 1: Basic Information */}
         <Panel
-          eyebrow="Identity"
-          title={<h3 className="text-sm font-semibold tracking-tight">Basic Information</h3>}
+          eyebrow={t("identity", "Identity")}
+          title={<h3 className="text-sm font-semibold tracking-tight">{t("basicInfo", "Basic Information")}</h3>}
           className="p-4.5 sm:p-5"
         >
           <InfoList>
             <InfoRow
               icon={<User className="size-3.5" aria-hidden="true" />}
-              label="First name"
+              label={t("firstName", "First name")}
               value={profile.firstName}
             />
             <InfoRow
               icon={<User className="size-3.5" aria-hidden="true" />}
-              label="Last name"
+              label={t("lastName", "Last name")}
               value={profile.lastName}
             />
-            <InfoRow label="Display name" value={profile.name} />
-            <InfoRow label="Username" value={getUsername(profile.email)} />
+            <InfoRow label={t("displayName", "Display name")} value={profile.name} />
+            <InfoRow label={t("username", "Username")} value={getUsername(profile.email)} />
           </InfoList>
         </Panel>
 
         {/* Card 2: Contact Information */}
         <Panel
-          eyebrow="Contact"
-          title={<h3 className="text-sm font-semibold tracking-tight">Contact Channels</h3>}
+          eyebrow={t("contact", "Contact")}
+          title={<h3 className="text-sm font-semibold tracking-tight">{t("contactChannels", "Contact Channels")}</h3>}
           className="p-4.5 sm:p-5"
         >
           <InfoList>
             <InfoRow
               icon={<Mail className="size-3.5" aria-hidden="true" />}
-              label="Email address"
+              label={t("email", "Email address")}
               value={profile.email}
             />
             <InfoRow
               icon={<Phone className="size-3.5" aria-hidden="true" />}
-              label="Phone number"
+              label={t("phone", "Phone number")}
               value={profile.phone}
             />
           </InfoList>
@@ -92,52 +94,52 @@ export function PersonalInformationTab({
 
         {/* Card 3: Personal Details */}
         <Panel
-          eyebrow="Personal"
-          title={<h3 className="text-sm font-semibold tracking-tight">Demographic Details</h3>}
+          eyebrow={t("personal", "Personal")}
+          title={<h3 className="text-sm font-semibold tracking-tight">{t("demographicDetails", "Demographic Details")}</h3>}
           className="p-4.5 sm:p-5"
         >
           {hasValue(profile.dateOfBirth) || formatGender(profile.gender) ? (
             <InfoList>
               <InfoRow
                 icon={<Calendar className="size-3.5" aria-hidden="true" />}
-                label="Date of birth"
+                label={t("dateOfBirth", "Date of birth")}
                 value={formatDate(profile.dateOfBirth)}
               />
-              <InfoRow label="Gender" value={formatGender(profile.gender)} />
+              <InfoRow label={t("gender", "Gender")} value={formatGender(profile.gender)} />
             </InfoList>
           ) : (
-            <p className="text-xs text-muted-foreground py-2">No personal details on file yet.</p>
+            <p className="text-xs text-muted-foreground py-2">{t("noPersonalDetails", "No personal details on file yet.")}</p>
           )}
         </Panel>
 
         {/* Card 4: Address */}
         <Panel
-          eyebrow="Location"
-          title={<h3 className="text-sm font-semibold tracking-tight">Address & Region</h3>}
+          eyebrow={t("location", "Location")}
+          title={<h3 className="text-sm font-semibold tracking-tight">{t("addressRegion", "Address & Region")}</h3>}
           className="p-4.5 sm:p-5"
         >
           {hasAddress ? (
             <InfoList>
               <InfoRow
                 icon={<Home className="size-3.5" aria-hidden="true" />}
-                label="Address line"
+                label={t("addressLine", "Address line")}
                 value={profile.addressLine}
               />
               <InfoRow
                 icon={<MapPin className="size-3.5" aria-hidden="true" />}
-                label="City"
+                label={t("city", "City")}
                 value={
                   hasValue(profile.city)
                     ? profile.city[0].toUpperCase() + profile.city.slice(1)
                     : undefined
                 }
               />
-              <InfoRow label="State" value={profile.state} />
-              <InfoRow label="Country" value={profile.country} />
-              <InfoRow label="PIN code" value={profile.pinCode} />
+              <InfoRow label={t("state", "State")} value={profile.state} />
+              <InfoRow label={t("country", "Country")} value={profile.country} />
+              <InfoRow label={t("pinCode", "PIN code")} value={profile.pinCode} />
             </InfoList>
           ) : (
-            <p className="text-xs text-muted-foreground py-2">No address on file yet.</p>
+            <p className="text-xs text-muted-foreground py-2">{t("noAddress", "No address on file yet.")}</p>
           )}
         </Panel>
       </div>

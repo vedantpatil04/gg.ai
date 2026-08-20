@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Building2, History, LayoutGrid, UserCog, type LucideIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { EnterpriseProfile } from "./profile-utils";
@@ -9,21 +10,23 @@ import { ActivityTab } from "./profile-activity-tab";
 
 interface TabItemDef {
   value: "overview" | "personal" | "organization" | "activity";
-  label: string;
+  labelKey: string;
+  defaultLabel: string;
   icon: LucideIcon;
   roles?: Array<"citizen" | "authority" | "administrator">;
 }
 
 const ALL_TABS: TabItemDef[] = [
-  { value: "overview", label: "Overview", icon: LayoutGrid },
-  { value: "personal", label: "Personal Info", icon: UserCog },
+  { value: "overview", labelKey: "overview", defaultLabel: "Overview", icon: LayoutGrid },
+  { value: "personal", labelKey: "personal", defaultLabel: "Personal Info", icon: UserCog },
   {
     value: "organization",
-    label: "Organization",
+    labelKey: "organization",
+    defaultLabel: "Organization",
     icon: Building2,
     roles: ["authority", "administrator"],
   },
-  { value: "activity", label: "Activity", icon: History },
+  { value: "activity", labelKey: "activity", defaultLabel: "Activity", icon: History },
 ];
 
 type TabValue = TabItemDef["value"];
@@ -69,6 +72,7 @@ export function ProfileTabs({
   profile: EnterpriseProfile;
   onEditProfile: () => void;
 }) {
+  const { t } = useTranslation("profile");
   const isCitizen = profile.role === "citizen";
 
   // Filter tabs dynamically based on user role
@@ -96,7 +100,7 @@ export function ProfileTabs({
           className="h-auto p-0 gap-1 bg-transparent flex w-max min-w-full sm:min-w-0 sm:inline-flex"
           aria-label="Profile sections"
         >
-          {tabItems.map(({ value, label, icon: Icon }) => (
+          {tabItems.map(({ value, labelKey, defaultLabel, icon: Icon }) => (
             <TabsTrigger
               key={value}
               value={value}
@@ -123,7 +127,7 @@ export function ProfileTabs({
               "
             >
               <Icon className="size-4 shrink-0" aria-hidden="true" />
-              <span>{label}</span>
+              <span>{t(labelKey as never, defaultLabel)}</span>
             </TabsTrigger>
           ))}
         </TabsList>
