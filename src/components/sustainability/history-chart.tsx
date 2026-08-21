@@ -162,7 +162,7 @@ function DirectionTag({ dir }: { dir: "up" | "down" | "steady" }) {
   );
 }
 
-export function SustainabilityHistoryChart({ cityId, cityName }: { cityId: string; cityName: string }) {
+export function SustainabilityHistorySection({ cityId, cityName }: { cityId: string; cityName: string }) {
   const [range, setRange] = useState<RangeKey>("7d");
   const [metricKey, setMetricKey] = useState<MetricKey>("ecoScore");
   const metric = METRICS.find((m) => m.key === metricKey)!;
@@ -226,7 +226,7 @@ export function SustainabilityHistoryChart({ cityId, cityName }: { cityId: strin
   const change = current && previous ? current.value - previous.value : null;
   const direction = change == null ? null : classifyChange(change, metric);
 
-  // ── Coverage / freshness (drives from the same currentRaw, no extra fetch) ──
+  // ── Coverage / freshness ──
   const coverageLabel =
     range === "24h"
       ? `Based on ${currentRaw.length} recorded reading${currentRaw.length === 1 ? "" : "s"}`
@@ -248,8 +248,7 @@ export function SustainabilityHistoryChart({ cityId, cityName }: { cityId: strin
     [currentRaw],
   );
 
-  // ── Period-over-period comparison — average of this period vs average
-  //    of the equivalent prior period, per metric ─────────────────────
+  // ── Period-over-period comparison ────
   const comparison = useMemo(
     () =>
       METRICS.map((m) => {
@@ -268,11 +267,6 @@ export function SustainabilityHistoryChart({ cityId, cityName }: { cityId: strin
   const TARGET_TICKS = range === "24h" ? 6 : 7;
   const tickInterval = points.length > TARGET_TICKS ? Math.ceil(points.length / TARGET_TICKS) - 1 : 0;
 
-  // Sparse-data honesty: if we have well under the readings a full window
-  // would show, don't let a smooth line imply continuity that isn't real —
-  // dash the stroke and rely on visible per-point dots rather than an
-  // unbroken curve. (Coverage text above is the primary, accessible
-  // signal; this is a secondary visual reinforcement.)
   const expectedPoints = range === "24h" ? 24 : (cfg.days ?? 7);
   const isSparse = points.length > 0 && points.length < expectedPoints * 0.5;
 
@@ -296,198 +290,238 @@ export function SustainabilityHistoryChart({ cityId, cityName }: { cityId: strin
       : `${metric.label} for ${cityName} over ${cfg.label.toLowerCase()}: from ${fmt(previous!.value, metric)} to ${fmt(current!.value, metric)}, a change of ${change! > 0 ? "+" : ""}${change!.toFixed(metric.decimals)}${metric.suffix}.`;
 
   return (
-    <Panel
-      eyebrow="Environmental History"
-      title={`How ${cityName} has changed over time`}
-      action={
-        <div className="flex items-center gap-1 rounded-full border border-border bg-muted/30 p-0.5" role="group" aria-label="Time range">
-          {RANGES.map((r) => (
-            <button
-              key={r}
-              onClick={() => setRange(r)}
-              aria-pressed={range === r}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors ${
-                range === r ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {RANGE_CONFIG[r].label}
-            </button>
-          ))}
-        </div>
-      }
-    >
-      {/* Metric toggle */}
-      <div className="flex flex-wrap gap-1.5 mb-4 overflow-x-auto" role="group" aria-label="Metric">
-        {METRICS.map((m) => (
-          <button
-            key={m.key}
-            onClick={() => setMetricKey(m.key)}
-            aria-pressed={metricKey === m.key}
-            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-              metricKey === m.key
-                ? "border-transparent text-white"
-                : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
-            }`}
-            style={metricKey === m.key ? { background: m.color } : undefined}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
-
-      {isLoading ? (
-        <div className="h-56 sm:h-64 grid place-items-center">
-          <span className="text-xs text-muted-foreground">Loading history…</span>
-        </div>
-      ) : points.length < 2 ? (
-        <EmptyState
-          icon={<History className="size-4" />}
-          title="Not enough historical data"
-          description={`Historical data isn't available for ${metric.label} yet. Check back once more readings have been recorded.`}
-        />
-      ) : (
-        <>
-          <p className="sr-only">{chartA11ySummary}</p>
-          <div className="h-56 sm:h-64" aria-hidden="true">
-            <ResponsiveContainer>
-              <AreaChart data={points} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="historyChartGrad" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor={metric.color} stopOpacity={0.45} />
-                    <stop offset="100%" stopColor={metric.color} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey="label"
-                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval={tickInterval}
-                  minTickGap={24}
-                />
-                <YAxis hide domain={["auto", "auto"]} />
-                <Tooltip
-                  content={<CustomTooltip metric={metric} />}
-                  cursor={{ stroke: "var(--color-border)", strokeWidth: 1, strokeDasharray: "4 4" }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke={metric.color}
-                  strokeWidth={2.5}
-                  strokeDasharray={isSparse ? "5 4" : undefined}
-                  fill="url(#historyChartGrad)"
-                  dot={{ r: 2.5, fill: metric.color, strokeWidth: 0 }}
-                  activeDot={{ r: 4, fill: metric.color, stroke: "var(--color-background)", strokeWidth: 2 }}
-                  isAnimationActive
-                  animationDuration={700}
-                />
-                {current && (
-                  <ReferenceDot
-                    x={current.label}
-                    y={current.value}
-                    r={4}
-                    fill={metric.color}
-                    stroke="var(--color-background)"
-                    strokeWidth={2}
-                    isFront
-                  />
-                )}
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Coverage / freshness — small, unobtrusive */}
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <Radio className="size-3 shrink-0" aria-hidden="true" />
-            <span>{coverageLabel}</span>
-            {lastRecordedIso && <span>· Last recorded {formatRelativeTime(lastRecordedIso)}</span>}
-          </div>
-
-          {/* Previous / Current / Change for the selected period */}
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground border-t border-border/60 pt-3">
-            <span>
-              Previous: <span className="font-medium text-foreground">{fmt(previous!.value, metric)}</span>
-            </span>
-            <span>
-              Current: <span className="font-medium text-foreground">{fmt(current!.value, metric)}</span>
-            </span>
-            <span
-              className="flex items-center gap-1 font-semibold"
-              style={{ color: direction === "steady" ? "var(--color-muted-foreground)" : direction === "up" ? "var(--color-success)" : "var(--color-warning)" }}
-            >
-              {change! > 0 ? "+" : ""}{change!.toFixed(metric.decimals)}{metric.suffix}
-            </span>
-          </div>
-
-          {/* Humanized trend summary */}
-          <div className="mt-4 rounded-xl bg-muted/30 border border-border/60 px-4 py-3">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-semibold">{trendSentence.headline}</span>
-              {direction && <DirectionTag dir={direction} />}
-            </div>
-            <p className="text-xs text-muted-foreground">{trendSentence.body}</p>
-          </div>
-        </>
-      )}
-
-      {/* ── What changed? ─────────────────────────────────────────── */}
-      {whatChanged.length > 0 && (
-        <div className="mt-6 border-t border-border/60 pt-4">
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">What changed?</div>
-          <div className="overflow-x-auto -mx-1">
-            <table className="w-full text-xs min-w-[420px]">
-              <thead>
-                <tr className="text-muted-foreground">
-                  <th className="text-left font-medium py-1.5 px-1">Metric</th>
-                  <th className="text-right font-medium py-1.5 px-1">Previous</th>
-                  <th className="text-right font-medium py-1.5 px-1">Current</th>
-                  <th className="text-right font-medium py-1.5 px-1">Change</th>
-                </tr>
-              </thead>
-              <tbody>
-                {whatChanged.map((row) => (
-                  <tr key={row.metric.key} className="border-t border-border/40">
-                    <td className="py-1.5 px-1 font-medium">{row.metric.label}</td>
-                    <td className="py-1.5 px-1 text-right tabular-nums text-muted-foreground">{fmt(row.previous, row.metric)}</td>
-                    <td className="py-1.5 px-1 text-right tabular-nums font-medium">{fmt(row.current, row.metric)}</td>
-                    <td className="py-1.5 px-1 text-right">
-                      <DirectionTag dir={row.direction} />
-                      <span className="ml-1 tabular-nums text-muted-foreground">
-                        {row.change > 0 ? "+" : ""}{row.change.toFixed(row.metric.decimals)}{row.metric.suffix}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ── Compared with the previous period ─────────────────────── */}
-      <div className="mt-6 border-t border-border/60 pt-4">
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-          Compared with {cfg.compareLabel}
-        </div>
-        {comparison.length > 0 ? (
-          <div className="flex flex-wrap gap-x-5 gap-y-2">
-            {comparison.map((row) => (
-              <div key={row.metric.key} className="flex items-center gap-1.5 text-xs">
-                <span className="text-muted-foreground">{row.metric.label}:</span>
-                <span
-                  className="font-semibold tabular-nums"
-                  style={{ color: row.direction === "steady" ? "var(--color-muted-foreground)" : row.direction === "up" ? "var(--color-success)" : "var(--color-warning)" }}
+    <div className="space-y-8 sm:space-y-10 md:space-y-12">
+      {/* ── SECTION 3: ENVIRONMENTAL HISTORY ──────────────────────────── */}
+      <section id="environmental-history" aria-label="Environmental History">
+        <Panel
+          eyebrow="Environmental History"
+          title={`How ${cityName} has changed over time`}
+          action={
+            <div className="flex items-center gap-1 rounded-full border border-border bg-muted/30 p-0.5" role="group" aria-label="Time range">
+              {RANGES.map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setRange(r)}
+                  aria-pressed={range === r}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors ${
+                    range === r ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
                 >
-                  {row.pct > 0 ? "+" : ""}{row.pct.toFixed(1)}%
-                </span>
-              </div>
+                  {RANGE_CONFIG[r].label}
+                </button>
+              ))}
+            </div>
+          }
+        >
+          {/* Metric toggle */}
+          <div className="flex flex-wrap gap-1.5 mb-4 overflow-x-auto" role="group" aria-label="Metric selector">
+            {METRICS.map((m) => (
+              <button
+                key={m.key}
+                onClick={() => setMetricKey(m.key)}
+                aria-pressed={metricKey === m.key}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                  metricKey === m.key
+                    ? "border-transparent text-white"
+                    : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+                }`}
+                style={metricKey === m.key ? { background: m.color } : undefined}
+              >
+                {m.label}
+              </button>
             ))}
           </div>
-        ) : (
-          <p className="text-xs text-muted-foreground">Not enough historical data</p>
-        )}
-      </div>
-    </Panel>
+
+          {isLoading ? (
+            <div className="h-56 sm:h-64 grid place-items-center">
+              <span className="text-xs text-muted-foreground">Loading history…</span>
+            </div>
+          ) : points.length < 2 ? (
+            <EmptyState
+              icon={<History className="size-4" />}
+              title="Not enough historical data"
+              description={`Historical data isn't available for ${metric.label} yet. Check back once more readings have been recorded.`}
+            />
+          ) : (
+            <>
+              <p className="sr-only">{chartA11ySummary}</p>
+              <div className="h-56 sm:h-64" aria-hidden="true">
+                <ResponsiveContainer>
+                  <AreaChart data={points} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="historyChartGrad" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stopColor={metric.color} stopOpacity={0.45} />
+                        <stop offset="100%" stopColor={metric.color} stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                      axisLine={false}
+                      tickLine={false}
+                      interval={tickInterval}
+                      minTickGap={24}
+                    />
+                    <YAxis hide domain={["auto", "auto"]} />
+                    <Tooltip
+                      content={<CustomTooltip metric={metric} />}
+                      cursor={{ stroke: "var(--color-border)", strokeWidth: 1, strokeDasharray: "4 4" }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="value"
+                      stroke={metric.color}
+                      strokeWidth={2.5}
+                      strokeDasharray={isSparse ? "5 4" : undefined}
+                      fill="url(#historyChartGrad)"
+                      dot={{ r: 2.5, fill: metric.color, strokeWidth: 0 }}
+                      activeDot={{ r: 4, fill: metric.color, stroke: "var(--color-background)", strokeWidth: 2 }}
+                      isAnimationActive
+                      animationDuration={700}
+                    />
+                    {current && (
+                      <ReferenceDot
+                        x={current.label}
+                        y={current.value}
+                        r={4}
+                        fill={metric.color}
+                        stroke="var(--color-background)"
+                        strokeWidth={2}
+                        isFront
+                      />
+                    )}
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Coverage / freshness */}
+              <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <Radio className="size-3 shrink-0" aria-hidden="true" />
+                <span>{coverageLabel}</span>
+                {lastRecordedIso && <span>· Last recorded {formatRelativeTime(lastRecordedIso)}</span>}
+              </div>
+
+              {/* Previous / Current / Change */}
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground border-t border-border/60 pt-3">
+                <span>
+                  Previous: <span className="font-medium text-foreground">{fmt(previous!.value, metric)}</span>
+                </span>
+                <span>
+                  Current: <span className="font-medium text-foreground">{fmt(current!.value, metric)}</span>
+                </span>
+                <span
+                  className="flex items-center gap-1 font-semibold"
+                  style={{ color: direction === "steady" ? "var(--color-muted-foreground)" : direction === "up" ? "var(--color-success)" : "var(--color-warning)" }}
+                >
+                  {change! > 0 ? "+" : ""}{change!.toFixed(metric.decimals)}{metric.suffix}
+                </span>
+              </div>
+
+              {/* Deterministic trend status */}
+              <div className="mt-4 rounded-xl bg-muted/30 border border-border/60 px-4 py-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-semibold">{trendSentence.headline}</span>
+                  {direction && <DirectionTag dir={direction} />}
+                </div>
+                <p className="text-xs text-muted-foreground">{trendSentence.body}</p>
+              </div>
+            </>
+          )}
+        </Panel>
+      </section>
+
+      {/* ── SECTION 4: WHAT CHANGED? ──────────────────────────────────── */}
+      <section id="what-changed" aria-label="What Changed?">
+        <Panel
+          eyebrow="Period Comparison"
+          title="What Changed?"
+          action={
+            <span className="text-xs text-muted-foreground font-medium">
+              Compared with {cfg.compareLabel}
+            </span>
+          }
+        >
+          {whatChanged.length > 0 ? (
+            <div className="space-y-6">
+              <div className="overflow-x-auto -mx-1">
+                <table className="w-full text-xs min-w-[500px]">
+                  <thead>
+                    <tr className="text-muted-foreground border-b border-border/60">
+                      <th className="text-left font-semibold py-2.5 px-2">Metric</th>
+                      <th className="text-right font-semibold py-2.5 px-2">Previous</th>
+                      <th className="text-right font-semibold py-2.5 px-2">Current</th>
+                      <th className="text-right font-semibold py-2.5 px-2">Change</th>
+                      <th className="text-right font-semibold py-2.5 px-2">Interpretation</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {whatChanged.map((row) => (
+                      <tr key={row.metric.key} className="border-b border-border/30 hover:bg-white/[0.02] transition-colors">
+                        <td className="py-2.5 px-2 font-medium flex items-center gap-2">
+                          <span className="size-2 rounded-full" style={{ background: row.metric.color }} />
+                          {row.metric.label}
+                        </td>
+                        <td className="py-2.5 px-2 text-right tabular-nums text-muted-foreground">
+                          {fmt(row.previous, row.metric)}
+                        </td>
+                        <td className="py-2.5 px-2 text-right tabular-nums font-semibold text-foreground">
+                          {fmt(row.current, row.metric)}
+                        </td>
+                        <td className="py-2.5 px-2 text-right tabular-nums font-medium text-foreground">
+                          {row.change > 0 ? "+" : ""}{row.change.toFixed(row.metric.decimals)}{row.metric.suffix}
+                        </td>
+                        <td className="py-2.5 px-2 text-right">
+                          <DirectionTag dir={row.direction} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Period-over-period percentage metrics */}
+              {comparison.length > 0 && (
+                <div className="border-t border-border/60 pt-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                    Period Average Shift vs {cfg.compareLabel}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                    {comparison.map((row) => (
+                      <div key={row.metric.key} className="rounded-xl border border-border/60 bg-muted/20 p-2.5">
+                        <div className="text-[10px] text-muted-foreground truncate font-medium">{row.metric.label}</div>
+                        <div
+                          className="text-sm font-bold tabular-nums mt-0.5 flex items-center justify-between"
+                          style={{
+                            color: row.direction === "steady"
+                              ? "var(--color-muted-foreground)"
+                              : row.direction === "up"
+                              ? "var(--color-success)"
+                              : "var(--color-warning)",
+                          }}
+                        >
+                          <span>{row.pct > 0 ? "+" : ""}{row.pct.toFixed(1)}%</span>
+                          <span className="text-[10px] font-normal uppercase opacity-80">
+                            {row.direction === "steady" ? "Stable" : row.direction === "up" ? "Better" : "Worse"}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <EmptyState
+              icon={<History className="size-4" />}
+              title="Not enough comparison data"
+              description={`At least two historical readings are needed to compare changes over ${cfg.label.toLowerCase()}.`}
+            />
+          )}
+        </Panel>
+      </section>
+    </div>
   );
 }
+
+// Backward compatibility export alias
+export { SustainabilityHistorySection as SustainabilityHistoryChart };

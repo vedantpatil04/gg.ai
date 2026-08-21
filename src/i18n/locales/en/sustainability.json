@@ -1,25 +1,23 @@
 {
   "title": "Sustainability",
-  "subtitle": "Environmental performance overview for {{city}}.",
+  "subtitle": "Environmental analytics and sustainability performance for {{city}}.",
   "overview": "Environmental Overview",
   "currentConditions": "Current conditions in {{city}}.",
-  "ecoScore": "Eco Score",
+  "ecoScore": "EcoScore",
   "grade": "Grade",
   "kpis": {
     "aqi": "AQI",
-    "greenCover": "Green cover",
-    "renewable": "Renewable energy",
-    "water": "Water quality",
-    "waste": "Waste diversion"
+    "greenCover": "Green Cover",
+    "renewable": "Renewable Energy",
+    "water": "Water Quality",
+    "waste": "Waste Diversion"
   },
   "targets": {
     "above": "Above the current {{target}} target",
     "needsImprovement": "Needs improvement"
   },
-  "aiSummary": "GreenGuard Intelligence Center",
-  "aiSummaryDesc": "Ask GreenGuard about {{city}}’s current environmental performance.",
-  "history": "Historical Trends",
-  "ecoBreakdown": "Eco Score Breakdown",
+  "history": "Environmental History",
+  "ecoBreakdown": "EcoScore Breakdown",
   "loading": "Loading sustainability data…",
   "noData": "No sustainability data available.",
   "apiConnected": "Live data",

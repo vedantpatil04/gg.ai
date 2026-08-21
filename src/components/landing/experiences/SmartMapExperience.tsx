@@ -3,10 +3,15 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Map as MapIcon, Radio } from "lucide-react";
 import { useCity } from "@/lib/city-context";
 import { LandingMapPreview } from "./LandingMapPreview";
-import { StickyProductStory, type StickyStoryStep } from "./StickyProductStory";
 import { ExperienceHeader, ExperienceCTA, FloatingInsightPanel } from "./shared";
+import { LANDING_CONTAINER } from "@/components/landing/shared";
 
-const MAP_STORY_STEPS: readonly StickyStoryStep[] = [
+interface StoryStep {
+  title: string;
+  description: string;
+}
+
+const MAP_STORY_STEPS: readonly StoryStep[] = [
   {
     title: "See the geography",
     description:
@@ -25,13 +30,11 @@ const MAP_STORY_STEPS: readonly StickyStoryStep[] = [
 ] as const;
 
 /**
- * Phase 4: the map now sits inside `StickyProductStory` — on desktop it pins
- * in place while three short capability steps scroll past beside it; on
- * mobile the layout falls back to a simple stacked sequence (visual, then
- * each step). The map itself is untouched: `LandingMapPreview` still wraps
- * the real production `SmartMapCanvas` directly, with no overlay, no second
- * lifecycle and no interference with zoom/pan/controls — this only changes
- * how the section around it scrolls.
+ * Smart Map Experience — Product Capability Showcase
+ *
+ * Compact, balanced, and responsive two-column layout on desktop, transitioning
+ * to a clean single-column sequence on mobile. The map occupies the primary visual
+ * focus with the three progressive steps and CTA grouped in close proximity.
  */
 export function SmartMapExperience() {
   const { cities, isApiConnected } = useCity();
@@ -43,12 +46,12 @@ export function SmartMapExperience() {
   );
 
   return (
-    <section className="relative overflow-hidden py-14 lg:py-16">
+    <section className="relative overflow-hidden py-14 lg:py-18">
       {/* Satellite-inspired backdrop with a faint topographic grid */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-[color:var(--color-info)]/[0.05] to-background" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-[color:var(--color-info)]/[0.04] to-background" />
         <div
-          className="grid-bg absolute inset-0 opacity-[0.3]"
+          className="grid-bg absolute inset-0 opacity-[0.25]"
           style={{
             maskImage: "radial-gradient(ellipse 80% 70% at 50% 30%, black 20%, transparent 85%)",
             WebkitMaskImage:
@@ -57,7 +60,7 @@ export function SmartMapExperience() {
         />
       </div>
 
-      <div className="mx-auto flex w-full max-w-[1900px] flex-col gap-8 px-4 sm:px-6 lg:px-10">
+      <div className={LANDING_CONTAINER}>
         <ExperienceHeader
           tone="info"
           eyebrow="Smart Map"
@@ -65,41 +68,65 @@ export function SmartMapExperience() {
           sub="Real coordinates, real AQI-weighted markers, from the same tile layer and city data that power the production Smart Map."
         />
 
-        <StickyProductStory
-          steps={MAP_STORY_STEPS}
-          accentColor="var(--color-info)"
-          visual={
-            // Transform-only (scale + opacity), so this never touches the
-            // map's actual layout box or resizes its canvas — purely a
-            // gentle "settle into place" as the section enters view, and
-            // back as it leaves, per the brief's optional scroll-into-map
-            // interaction (§7). Pointer events pass straight through to the
-            // map at all times; nothing is overlaid on top of it.
-            <motion.div
-              initial={reducedMotion ? undefined : { opacity: 0.85, scale: 0.97 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: false, amount: 0.4 }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="relative"
-            >
-              <LandingMapPreview />
+        <div className="mt-10 grid gap-8 lg:grid-cols-12 lg:items-center lg:gap-12">
+          {/* Left Column: Smart Map Visual Focus */}
+          <motion.div
+            initial={reducedMotion ? undefined : { opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.5 }}
+            className="lg:col-span-7"
+          >
+            <div className="relative">
+              <LandingMapPreview className="h-[340px] sm:h-[400px] lg:h-[450px]" />
 
               {avgAqi !== null && (
                 <FloatingInsightPanel
                   icon={Radio}
                   label={isApiConnected ? "Live network average AQI" : "Network average AQI"}
                   value={`${avgAqi} across ${cities.length} cities`}
-                  className="absolute bottom-5 left-5 hidden sm:flex"
+                  className="absolute bottom-4 left-4 hidden sm:flex"
                 />
               )}
-            </motion.div>
-          }
-        />
+            </div>
+          </motion.div>
 
-        <ExperienceCTA to="/map" tone="info" className="mx-auto">
-          <MapIcon className="size-4" />
-          Open Smart Map
-        </ExperienceCTA>
+          {/* Right Column: Progressive Explanation Steps + CTA */}
+          <motion.div
+            initial={reducedMotion ? undefined : { opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="lg:col-span-5 flex flex-col justify-center space-y-6"
+          >
+            <div className="space-y-5 sm:space-y-6">
+              {MAP_STORY_STEPS.map((step, index) => (
+                <div key={step.title} className="flex items-start gap-3.5 sm:gap-4">
+                  <span
+                    className="grid size-7 shrink-0 place-items-center rounded-full border border-info/40 bg-info/10 font-mono text-[11px] font-bold text-info mt-0.5"
+                  >
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <div className="space-y-1">
+                    <h3 className="text-base sm:text-lg font-semibold tracking-tight text-foreground">
+                      {step.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                      {step.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2">
+              <ExperienceCTA to="/map" tone="info">
+                <MapIcon className="size-4" />
+                Open Smart Map
+              </ExperienceCTA>
+            </div>
+          </motion.div>
+        </div>
       </div>
     </section>
   );

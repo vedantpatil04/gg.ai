@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ArrowRight, Brain, Zap, Database, CheckCircle2, Radio, Globe2 } from "lucide-react";
+import { ArrowRight, Brain, Zap, Database, CheckCircle2 } from "lucide-react";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { Hero } from "@/components/landing/hero/Hero";
@@ -46,7 +46,6 @@ function Landing() {
       <RealWorldSection />
 
       <PlatformOverview />
-      <LiveOperations />
 
       {/* ── Phase 2: live platform experiences ── */}
       <EnvironmentalOverviewExperience />
@@ -116,189 +115,6 @@ function PlatformOverview() {
               </motion.div>
             ))}
           </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ---------------- LIVE OPERATIONS ---------------- */
-
-// Hand-placed marker positions for the stylized world grid below. Not a
-// precise geographic projection — just enough to read as "roughly where
-// this city sits" — but every id here is a REAL id from `CITIES`, so every
-// dot on the map corresponds to an actual monitored city and nothing else.
-const CITY_MAP_POSITIONS: Record<string, { x: number; y: number }> = {
-  london: { x: 22, y: 38 },
-  newyork: { x: 18, y: 48 },
-  dubai: { x: 48, y: 50 },
-  delhi: { x: 54, y: 44 },
-  ahmedabad: { x: 51, y: 49 },
-  kolkata: { x: 65, y: 51 },
-  mumbai: { x: 58, y: 56 },
-  pune: { x: 58, y: 57 },
-  belagavi: { x: 55, y: 61 },
-  hyderabad: { x: 59, y: 59 },
-  bengaluru: { x: 60, y: 64 },
-  chennai: { x: 62, y: 65 },
-  singapore: { x: 78, y: 50 },
-  tokyo: { x: 82, y: 38 },
-};
-
-function aqiTone(aqi: number): "success" | "warning" | "destructive" {
-  if (aqi >= 150) return "destructive";
-  if (aqi >= 100) return "warning";
-  return "success";
-}
-
-function LiveOperations() {
-  // Ranked directly from the real, live city record — highest AQI first.
-  // No invented incidents, no fabricated timestamps or neighbourhood-level
-  // claims the data model doesn't actually have; just what's really there.
-  const ranked = [...CITIES].sort((a, b) => b.aqi - a.aqi).slice(0, 6);
-
-  return (
-    <section className="py-16 lg:py-20">
-      <div className={LANDING_CONTAINER}>
-        <SectionHead
-          eyebrow="Live Operations"
-          title="The world's environment, in one live picture."
-          sub="Every monitored city's current reading — geo-tagged and ranked by risk, from the same data every module on this page reads from."
-        />
-
-        <div className="mt-12 grid gap-6 lg:grid-cols-3">
-          {/* Map mock */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.5 }}
-            className="lg:col-span-2 rounded-2xl border border-border/60 bg-card overflow-hidden"
-          >
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Globe2 className="size-4 text-[color:var(--color-primary)]" />
-                Global Risk Map
-              </div>
-              <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-[color:var(--color-success)]" />
-                  Good
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-[color:var(--color-warning)]" />
-                  Moderate
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-[color:var(--color-destructive)]" />
-                  Severe
-                </span>
-              </div>
-            </div>
-            <div className="relative aspect-[16/8] bg-background overflow-hidden">
-              {/* Stylized map grid */}
-              <div
-                className="absolute inset-0 opacity-30"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(to right, var(--color-border) 1px, transparent 1px), linear-gradient(to bottom, var(--color-border) 1px, transparent 1px)",
-                  backgroundSize: "32px 32px",
-                }}
-              />
-              <div
-                className="absolute inset-0"
-                style={{
-                  background:
-                    "radial-gradient(ellipse 60% 80% at 50% 50%, color-mix(in oklab, var(--color-primary) 8%, transparent), transparent 70%)",
-                }}
-              />
-              {/* Dots — one per real monitored city, colored by its real current AQI band */}
-              {CITIES.map((c, i) => {
-                const pos = CITY_MAP_POSITIONS[c.id];
-                if (!pos) return null;
-                const tone = aqiTone(c.aqi);
-                return (
-                  <motion.div
-                    key={c.id}
-                    initial={{ scale: 0, opacity: 0 }}
-                    whileInView={{ scale: 1, opacity: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.2 + i * 0.04, duration: 0.4 }}
-                    className="absolute"
-                    style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
-                    title={`${c.name}, ${c.country} · AQI ${c.aqi}`}
-                  >
-                    <span className="relative grid place-items-center">
-                      <span
-                        className="absolute size-6 rounded-full opacity-50 blur-md"
-                        style={{ background: `var(--color-${tone})` }}
-                      />
-                      <span
-                        className="relative size-2 rounded-full ring-2"
-                        style={
-                          {
-                            background: `var(--color-${tone})`,
-                            boxShadow: `0 0 0 4px color-mix(in oklab, var(--color-${tone}) 20%, transparent)`,
-                            // @ts-ignore
-                            "--tw-ring-color": "var(--color-background)",
-                          } as any
-                        }
-                      />
-                    </span>
-                  </motion.div>
-                );
-              })}
-            </div>
-            <div className="px-5 py-3 border-t border-border/60 text-xs text-muted-foreground">
-              {CITIES.length} cities monitored
-            </div>
-          </motion.div>
-
-          {/* Cities by risk */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="rounded-2xl border border-border/60 bg-card overflow-hidden"
-          >
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Radio className="size-4 text-[color:var(--color-warning)]" />
-                Cities By AQI
-              </div>
-              <span className="text-[10px] font-mono text-muted-foreground">live</span>
-            </div>
-            <ul className="divide-y divide-border/60">
-              {ranked.map((c, i) => {
-                const tone = aqiTone(c.aqi);
-                return (
-                  <motion.li
-                    key={c.id}
-                    initial={{ opacity: 0, x: -8 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.05 }}
-                    className="px-5 py-3 flex items-start gap-3"
-                  >
-                    <span
-                      className="mt-1.5 size-1.5 rounded-full shrink-0"
-                      style={{ background: `var(--color-${tone})` }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[13px] leading-snug">
-                        {c.name}, {c.country}
-                      </div>
-                      <div className="mt-0.5 text-[11px] text-muted-foreground">
-                        AQI <span className="font-mono">{c.aqi}</span> ·{" "}
-                        {tone === "destructive" ? "unhealthy" : tone === "warning" ? "elevated" : "good"}
-                      </div>
-                    </div>
-                  </motion.li>
-                );
-              })}
-            </ul>
-          </motion.div>
         </div>
       </div>
     </section>

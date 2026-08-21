@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   MapPin, Clock, RadioTower,
-  Gauge, Thermometer, Droplets, CloudCog, Waves, Sparkles,
+  Gauge, Thermometer, Droplets, CloudCog, Waves, Activity,
 } from "lucide-react";
 import type { City } from "@/lib/mock-data";
 import { StatusChip, type Tone } from "@/components/map/intelligence-ui";
@@ -28,24 +28,19 @@ export function SustainabilityHero({
 }) {
   const [now, setNow] = useState(() => new Date());
 
-  // Clock tick — also keeps the "Updated" freshness label below in sync
-  // each second, since it's derived from city.updatedAt on every render.
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
 
-  // Real reading timestamp (same field used across the Environment page,
-  // Dashboard, and the rest of this page) — not a client-side "last
-  // component render" clock.
-  const updatedLabel = formatRelativeTime(city.updatedAt);
+  const updatedLabel = city.updatedAt ? formatRelativeTime(city.updatedAt) : "Live";
 
   const summary = [
     { icon: Gauge, label: "AQI", value: city.aqi, decimals: 0, suffix: "" },
     { icon: Thermometer, label: "Temperature", value: city.temp, decimals: 0, suffix: "°C" },
     { icon: Droplets, label: "Humidity", value: city.humidity, decimals: 0, suffix: "%" },
     { icon: CloudCog, label: "CO₂", value: city.co2, decimals: 0, suffix: " ppm" },
-    { icon: Waves, label: "Water quality", value: city.water, decimals: 0, suffix: "%" },
+    { icon: Waves, label: "Water Quality", value: city.water, decimals: 0, suffix: "%" },
   ];
 
   return (
@@ -61,7 +56,7 @@ export function SustainabilityHero({
         aria-hidden="true"
       />
 
-      {/* Background ambient lighting — a single soft glow, not two */}
+      {/* Background ambient lighting */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         <div className="absolute -top-20 -left-20 size-80 rounded-full bg-primary/15 blur-3xl floaty" style={{ animationDuration: "9s" }} />
       </div>
@@ -71,8 +66,8 @@ export function SustainabilityHero({
           {/* Left — identity & status */}
           <motion.div variants={fadeUp} custom={0} className="lg:col-span-5 space-y-4">
             <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground font-bold flex items-center gap-2">
-              <Sparkles className="size-4 text-primary shrink-0" />
-              Sustainability Overview
+              <Activity className="size-4 text-primary shrink-0" />
+              SUSTAINABILITY OVERVIEW
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight flex items-center gap-3">
               <MapPin className="size-8 sm:size-10 text-primary shrink-0" />
@@ -81,7 +76,7 @@ export function SustainabilityHero({
             <div className="flex flex-wrap items-center gap-2.5">
               <StatusChip tone={tone} pulse>{band}</StatusChip>
               <StatusChip tone={isApiConnected ? "good" : "neutral"}>
-                {isApiConnected ? "Live data" : "Mock data"}
+                {isApiConnected ? "Live Data" : "Mock Data"}
               </StatusChip>
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs sm:text-sm text-muted-foreground pt-1">
@@ -97,7 +92,7 @@ export function SustainabilityHero({
             </div>
           </motion.div>
 
-          {/* Center — EcoScore preview */}
+          {/* Center — EcoScore visualization */}
           <motion.div variants={fadeUp} custom={1} className="lg:col-span-3 grid place-items-center">
             <div className="relative size-44 sm:size-52 grid place-items-center">
               <div
@@ -130,12 +125,12 @@ export function SustainabilityHero({
 
           {/* Right — live environmental summary */}
           <motion.div variants={fadeUp} custom={2} className="lg:col-span-4">
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-3" role="group" aria-label="Live environmental summary">
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3" role="group" aria-label="Current environmental conditions">
               {summary.map((s) => (
                 <div
                   key={s.label}
                   className="rounded-xl border border-border/80 bg-white/5 p-3 sm:p-3.5 flex items-center gap-3 hover:border-primary/40 transition-colors"
-                  aria-label={`${s.label}: ${s.value}${s.suffix}`}
+                  aria-label={`${s.label}: ${s.value != null ? `${s.value}${s.suffix}` : "Not available"}`}
                 >
                   <div className="size-8 sm:size-9 rounded-lg bg-muted/30 grid place-items-center shrink-0">
                     <s.icon className="size-4.5 sm:size-5 text-primary shrink-0" />
@@ -143,8 +138,14 @@ export function SustainabilityHero({
                   <div className="min-w-0">
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold truncate">{s.label}</div>
                     <div className="text-base sm:text-lg font-bold tabular-nums">
-                      <CountUp value={s.value} decimals={s.decimals} />
-                      {s.suffix}
+                      {s.value != null ? (
+                        <>
+                          <CountUp value={s.value} decimals={s.decimals} />
+                          {s.suffix}
+                        </>
+                      ) : (
+                        <span className="text-xs font-medium text-muted-foreground">Not available</span>
+                      )}
                     </div>
                   </div>
                 </div>

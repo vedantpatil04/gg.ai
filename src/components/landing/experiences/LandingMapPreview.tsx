@@ -7,6 +7,8 @@ import { aqiBand } from "@/lib/mock-data";
 import { type LayerId } from "@/lib/map/map-visuals";
 import { SmartMapCanvas } from "@/components/map/SmartMapCanvas";
 
+import { cn } from "@/lib/utils";
+
 const DEFAULT_ACTIVE_LAYERS: LayerId[] = ["aqi", "water"];
 
 /**
@@ -16,7 +18,7 @@ const DEFAULT_ACTIVE_LAYERS: LayerId[] = ["aqi", "water"];
  * Reuses the working production SmartMapCanvas directly instead of maintaining
  * a separate MapLibre lifecycle, style, fitBounds, or marker pipeline.
  */
-export function LandingMapPreview() {
+export function LandingMapPreview({ className }: { className?: string } = {}) {
   const { city, isApiConnected } = useCity();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeLayers, setActiveLayers] = useState<LayerId[]>(DEFAULT_ACTIVE_LAYERS);
@@ -62,7 +64,7 @@ export function LandingMapPreview() {
     : "–";
 
   return (
-    <div className="relative h-[480px] w-full overflow-hidden rounded-3xl border border-border/40 bg-card/60 shadow-2xl backdrop-blur-xl flex flex-col">
+    <div className={cn("relative h-[360px] sm:h-[420px] lg:h-[480px] w-full overflow-hidden rounded-3xl border border-border/40 bg-card/60 shadow-2xl backdrop-blur-xl flex flex-col", className)}>
       <SmartMapCanvas
         city={city}
         hotspots={hotspots}

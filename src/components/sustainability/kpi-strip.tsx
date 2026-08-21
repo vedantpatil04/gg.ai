@@ -26,7 +26,8 @@ export function ExecutiveKpiStrip({ items }: { items: KpiItem[] }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
       {items.map((k, i) => {
-        const progress = k.target ? Math.min(100, Math.round((k.value / k.target) * 100)) : null;
+        const isUnavailable = k.value == null || Number.isNaN(k.value);
+        const progress = (!isUnavailable && k.target) ? Math.min(100, Math.round((k.value / k.target) * 100)) : null;
         const toneColors = k.status ? TONE_COLORS[k.status.tone] : null;
 
         const TrendIcon = k.trend?.direction === "up"
@@ -50,7 +51,7 @@ export function ExecutiveKpiStrip({ items }: { items: KpiItem[] }) {
             className="glass rounded-2xl p-4 sm:p-5 relative overflow-hidden group transition-shadow duration-300 flex flex-col justify-between"
             style={{ boxShadow: "var(--shadow-elev)" }}
             role="group"
-            aria-label={`${k.label}: ${k.value}${k.suffix ?? ""}`}
+            aria-label={`${k.label}: ${isUnavailable ? "Not available" : `${k.value}${k.suffix ?? ""}`}`}
           >
             {/* Hover glow overlay */}
             <div
@@ -71,14 +72,20 @@ export function ExecutiveKpiStrip({ items }: { items: KpiItem[] }) {
               </div>
             </div>
 
-            {/* Value (+15% larger typography) */}
+            {/* Value */}
             <div className="relative text-2xl sm:text-3xl font-extrabold tabular-nums tracking-tight mt-3">
-              <CountUp value={k.value} decimals={k.decimals ?? 0} />
-              {k.suffix}
+              {isUnavailable ? (
+                <span className="text-base font-semibold text-muted-foreground">Not available</span>
+              ) : (
+                <>
+                  <CountUp value={k.value} decimals={k.decimals ?? 0} />
+                  {k.suffix}
+                </>
+              )}
             </div>
 
             {/* Trend indicator */}
-            {k.trend && (
+            {!isUnavailable && k.trend && (
               <div
                 className="relative inline-flex items-center gap-1 text-xs font-semibold mt-1 tabular-nums"
                 style={{ color: trendColor }}
