@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { authApi, type LoginPortal } from "./api/auth.api";
 import { setTokens, clearTokens } from "./api/client";
@@ -111,6 +112,7 @@ const AuthContext = createContext<AuthContextValue>({
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [state, setState] = useState<AuthState>({
     user: null,
     isLoading: true,
@@ -137,16 +139,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState((s) => ({ ...s, user: res.data.user, isLoading: false, isAuthenticated: true }));
     } catch {
       clearTokens();
+      queryClient.clear();
       setState((s) => ({ ...s, user: null, isLoading: false, isAuthenticated: false }));
     }
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     refreshUser();
     // Listen for forced logout from the token interceptor (expired/invalid
     // refresh token). Uses a functional update so it can't race with — or
     // get clobbered by — the refreshUser() catch branch above.
-    const handleLogout = () =>
+    const handleLogout = () => {
+      clearTokens();
+      queryClient.clear();
       setState((s) => ({
         ...s,
         user: null,
@@ -154,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: false,
         authMessage: "Your session has expired. Please sign in again.",
       }));
+    };
 
     // Listen for a 403 from an authenticated request (session is still
     // valid — this role just isn't allowed to do that particular thing).
@@ -172,7 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("gg:logout", handleLogout);
       window.removeEventListener("gg:forbidden", handleForbidden);
     };
-  }, [refreshUser, navigate]);
+  }, [refreshUser, navigate, queryClient]);
 
   // ─── Login ─────────────────────────────────────────────────────────────────
   const login = useCallback(
@@ -194,6 +200,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { user, accessToken, refreshToken } = res.data;
 
+      // Invalidate/clear any prior cached queries before installing new session tokens
+      queryClient.clear();
       setTokens(accessToken, refreshToken);
       setState({
         user,
@@ -204,7 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return user;
     },
-    [],
+    [queryClient],
   );
 
   // ─── Signup ────────────────────────────────────────────────────────────────
@@ -231,11 +239,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { user, pending: true };
       }
 
+      queryClient.clear();
       setTokens(accessToken, refreshToken);
       setState({ user, isLoading: false, isAuthenticated: true, authMessage: null });
       return { user, pending: false };
     },
-    [],
+    [queryClient],
   );
 
   // ─── Logout ────────────────────────────────────────────────────────────────
@@ -247,9 +256,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Ignore errors on logout
     } finally {
       clearTokens();
+      queryClient.clear();
       setState({ user: null, isLoading: false, isAuthenticated: false, authMessage: null });
     }
-  }, []);
+  }, [queryClient]);
 
   // ─── Consume the current session message ──────────────────────────────────
   const clearAuthMessage = useCallback(() => {

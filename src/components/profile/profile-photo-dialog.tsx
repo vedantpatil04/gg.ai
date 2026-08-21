@@ -75,8 +75,7 @@ export function ProfilePhotoDialog({
 
   async function refreshEverywhere() {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["profile", "me"] }),
-      queryClient.invalidateQueries({ queryKey: ["profile", "completion"] }),
+      queryClient.invalidateQueries({ queryKey: ["profile"] }),
       refreshUser(),
     ]);
   }

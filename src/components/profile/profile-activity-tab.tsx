@@ -267,18 +267,19 @@ function ActivityError({ onRetry }: { onRetry: () => void }) {
 const PAGE_LIMIT = 20;
 const GROUP_ORDER: DateGroup[] = ["Today", "Yesterday", "This Week", "Earlier"];
 
-export function ActivityTab() {
+export function ActivityTab({ userId }: { userId?: string } = {}) {
   const [loadingMore, setLoadingMore] = useState(false);
 
   const { data, isLoading, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery({
-      queryKey: ["profile", "activity"],
+      queryKey: ["profile", "activity", userId],
       queryFn: ({ pageParam }) => profileApi.getActivity(pageParam as number, PAGE_LIMIT),
       initialPageParam: 1,
       getNextPageParam: (lastPage) => {
         const d = lastPage.data;
         return d.hasMore ? d.page + 1 : undefined;
       },
+      enabled: userId !== undefined ? !!userId : true,
     });
 
   if (isLoading) return <ActivitySkeleton />;

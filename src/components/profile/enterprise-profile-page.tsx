@@ -35,7 +35,7 @@ export function EnterpriseProfilePage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isPhotoOpen, setIsPhotoOpen] = useState(false);
 
-  // Dedicated fetch so this page has its own loading / error lifecycle
+  // Dedicated fetch so this page has its own loading / error lifecycle, bound to authenticated user
   const {
     data: response,
     isLoading,
@@ -43,8 +43,9 @@ export function EnterpriseProfilePage() {
     isFetching,
     refetch,
   } = useQuery({
-    queryKey: ["profile", "me"],
+    queryKey: ["profile", "me", sessionUser?._id],
     queryFn: () => authApi.getMe(),
+    enabled: !!sessionUser?._id,
     retry: 1,
   });
 
@@ -58,7 +59,7 @@ export function EnterpriseProfilePage() {
 
   if (!sessionUser) return null;
 
-  const profile = (response?.data?.user ?? null) as EnterpriseProfile | null;
+  const profile = (response?.data?.user ?? sessionUser) as EnterpriseProfile | null;
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6" aria-label="Profile page">

@@ -262,12 +262,13 @@ function ProfileHeaderCard({
 
 // ─── Compact Profile Completion Banner ────────────────────────────────────────
 
-function ProfileCompletionBanner({ onEditProfile }: { onEditProfile: () => void }) {
+function ProfileCompletionBanner({ onEditProfile, userId }: { onEditProfile: () => void; userId?: string }) {
   const { t } = useTranslation("profile");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { data, isLoading } = useQuery({
-    queryKey: ["profile", "completion"],
+    queryKey: ["profile", "completion", userId],
     queryFn: () => profileApi.getCompletion(),
+    enabled: !!userId,
     retry: 1,
   });
   const c = data?.data;
@@ -379,7 +380,7 @@ export function ProfileHero({
         onChangePhoto={onChangePhoto}
       />
 
-      <ProfileCompletionBanner onEditProfile={onEditProfile} />
+      <ProfileCompletionBanner onEditProfile={onEditProfile} userId={profile._id} />
     </div>
   );
 }

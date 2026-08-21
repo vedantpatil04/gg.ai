@@ -158,7 +158,7 @@ export function ProfileTabs({
           value="organization"
           className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 mt-0 outline-none"
         >
-          <OrganizationTab />
+          <OrganizationTab userId={profile._id} />
         </TabsContent>
       )}
 
@@ -166,7 +166,7 @@ export function ProfileTabs({
         value="activity"
         className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 mt-0 outline-none"
       >
-        <ActivityTab />
+        <ActivityTab userId={profile._id} />
       </TabsContent>
     </Tabs>
   );

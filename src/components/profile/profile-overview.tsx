@@ -128,10 +128,11 @@ function CompactStatCard({
   );
 }
 
-function StatisticsSection() {
+function StatisticsSection({ userId }: { userId?: string }) {
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
-    queryKey: ["profile", "statistics"],
+    queryKey: ["profile", "statistics", userId],
     queryFn: () => profileApi.getStatistics(),
+    enabled: !!userId,
     retry: 1,
   });
 
@@ -219,7 +220,7 @@ export function ProfileOverview({ profile }: { profile: EnterpriseProfile }) {
       {/* ── Quick Statistics ──────────────────────────────────────────────── */}
       <div>
         <SectionHeader title={t("activityOverview", "Activity Overview")} />
-        <StatisticsSection />
+        <StatisticsSection userId={profile._id} />
       </div>
 
       {/* ── Account Details (3-Column Grid) ───────────────────────────────── */}

@@ -102,8 +102,7 @@ export function ProfileEditDrawer({
     mutationFn: (payload: ProfileUpdatePayload) => profileApi.updateProfile(payload),
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["profile", "me"] }),
-        queryClient.invalidateQueries({ queryKey: ["profile", "completion"] }),
+        queryClient.invalidateQueries({ queryKey: ["profile"] }),
         refreshUser(),
       ]);
       form.reset(form.getValues());

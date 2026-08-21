@@ -198,10 +198,11 @@ function OrganizationError({ onRetry, isRetrying }: { onRetry: () => void; isRet
  *  - role="alert" on error, role="status" on empty.
  *  - isFetching passed to retry button.
  */
-export function OrganizationTab() {
+export function OrganizationTab({ userId }: { userId?: string } = {}) {
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ["profile", "organization"],
+    queryKey: ["profile", "organization", userId],
     queryFn: () => profileApi.getOrganization(),
+    enabled: userId !== undefined ? !!userId : true,
     retry: 1,
   });
 

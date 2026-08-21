@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, CheckCircle2, ChevronRight, RefreshCw } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Panel } from "@/components/ui-bits";
@@ -150,10 +151,13 @@ function CompletionError({ onRetry, isRetrying }: { onRetry: () => void; isRetry
 
 // ─── Main card ─────────────────────────────────────────────────────────────
 
-export function ProfileCompletionCard() {
+export function ProfileCompletionCard({ userId }: { userId?: string } = {}) {
+  const { user } = useAuth();
+  const targetId = userId ?? user?._id;
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
-    queryKey: ["profile", "completion"],
+    queryKey: ["profile", "completion", targetId],
     queryFn: () => profileApi.getCompletion(),
+    enabled: !!targetId,
     retry: 1,
   });
 
