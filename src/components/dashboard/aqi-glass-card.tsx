@@ -15,26 +15,22 @@
  */
 
 import { motion, useReducedMotion, useSpring, useMotionValue, useMotionValueEvent } from "framer-motion";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { TrendingUp, TrendingDown, Minus, Wind } from "lucide-react";
 import { SPRING_SLOW, HOVER_LIFT, SPRING_SNAP } from "@/lib/motion";
 import { findAqiBand } from "@/lib/mock-data";
+import { cn } from "@/lib/utils";
 
 // ─── AQI theme palette (overrides band color for cinematic effect) ──────────
 function getAqiTheme(aqi: number) {
-  if (aqi <= 50)  return { primary: "#10b981", glow: "rgba(16,185,129,0.35)",  label: "Good",          ringColor: "#10b981" };
-  if (aqi <= 100) return { primary: "#eab308", glow: "rgba(234,179,8,0.35)",   label: "Moderate",      ringColor: "#eab308" };
-  if (aqi <= 150) return { primary: "#f97316", glow: "rgba(249,115,22,0.35)",  label: "Unhealthy (SG)",ringColor: "#f97316" };
-  if (aqi <= 200) return { primary: "#ef4444", glow: "rgba(239,68,68,0.35)",   label: "Unhealthy",     ringColor: "#ef4444" };
-  return            { primary: "#a855f7", glow: "rgba(168,85,247,0.35)",   label: "Hazardous",     ringColor: "#a855f7" };
+  if (aqi <= 50)  return { primary: "#10b981", glow: "rgba(16,185,129,0.25)",  label: "Good",          ringColor: "#10b981" };
+  if (aqi <= 100) return { primary: "#eab308", glow: "rgba(234,179,8,0.25)",   label: "Moderate",      ringColor: "#eab308" };
+  if (aqi <= 150) return { primary: "#f97316", glow: "rgba(249,115,22,0.25)",  label: "Unhealthy (SG)",ringColor: "#f97316" };
+  if (aqi <= 200) return { primary: "#ef4444", glow: "rgba(239,68,68,0.25)",   label: "Unhealthy",     ringColor: "#ef4444" };
+  return            { primary: "#a855f7", glow: "rgba(168,85,247,0.25)",   label: "Hazardous",     ringColor: "#a855f7" };
 }
 
 // ─── Animated counter hook ───────────────────────────────────────────────────
-// FIX: Previously returned a MotionValue object which React 19 cannot render
-// as a child ("Objects are not valid as a React child").
-// Now syncs the spring to a plain string state via useMotionValueEvent so
-// only primitive strings ever reach JSX.
-
 function useAnimatedCounter(target: number, skipAnimation: boolean): string {
   const motionVal = useMotionValue(skipAnimation ? target : 0);
   const spring = useSpring(motionVal, { stiffness: 55, damping: 18 });
@@ -87,7 +83,8 @@ function AQIRing({
         cy="54"
         r={RING_R}
         fill="none"
-        stroke="rgba(255,255,255,0.08)"
+        stroke="currentColor"
+        className="text-border/70 dark:text-white/10"
         strokeWidth="6"
       />
       {/* Progress arc */}
@@ -126,7 +123,6 @@ export function AQIGlassCard({ aqi, previousAqi, className = "" }: AQIGlassCardP
   const prefersReduced = useReducedMotion() ?? false;
   const theme = getAqiTheme(aqi);
   const band = findAqiBand(aqi);
-  // FIX: useAnimatedCounter now always returns a plain string — never a MotionValue
   const displayValue = useAnimatedCounter(aqi, prefersReduced);
 
   // Trend
@@ -138,21 +134,20 @@ export function AQIGlassCard({ aqi, previousAqi, className = "" }: AQIGlassCardP
         : TrendingDown;
   const trendColor =
     previousAqi == null || Math.abs(aqi - previousAqi) < 3
-      ? "text-white/60"
+      ? "text-muted-foreground dark:text-white/60"
       : aqi > previousAqi
-        ? "text-red-400"
-        : "text-emerald-400";
+        ? "text-red-500 dark:text-red-400"
+        : "text-emerald-600 dark:text-emerald-400";
 
   return (
     <motion.div
-      className={`relative rounded-2xl overflow-hidden cursor-default ${className}`}
-      style={{
-        background: "rgba(0,0,0,0.45)",
-        backdropFilter: "blur(18px) saturate(1.4)",
-        WebkitBackdropFilter: "blur(18px) saturate(1.4)",
-        border: `1px solid ${theme.primary}40`,
-        boxShadow: `0 8px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.10)`,
-      }}
+      className={cn(
+        "relative rounded-2xl overflow-hidden cursor-default transition-colors",
+        "bg-card/90 dark:bg-black/45 backdrop-blur-xl",
+        "border border-border/80 dark:border-white/10",
+        "shadow-md dark:shadow-[0_8px_32px_rgba(0,0,0,0.35)]",
+        className,
+      )}
       whileHover={prefersReduced ? {} : HOVER_LIFT}
       initial={prefersReduced ? false : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
@@ -161,7 +156,7 @@ export function AQIGlassCard({ aqi, previousAqi, className = "" }: AQIGlassCardP
       {/* AQI glow halo */}
       <div
         aria-hidden
-        className="absolute inset-0 pointer-events-none rounded-2xl"
+        className="absolute inset-0 pointer-events-none rounded-2xl opacity-60 dark:opacity-100"
         style={{
           background: `radial-gradient(ellipse 80% 60% at 50% 0%, ${theme.glow}, transparent 70%)`,
         }}
@@ -180,8 +175,8 @@ export function AQIGlassCard({ aqi, previousAqi, className = "" }: AQIGlassCardP
         {/* Header row */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1.5">
-            <Wind className="size-3.5 text-white/50" />
-            <span className="text-[11px] font-medium uppercase tracking-widest text-white/50">
+            <Wind className="size-3.5 text-muted-foreground dark:text-white/50" />
+            <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground dark:text-white/50">
               Air Quality
             </span>
           </div>
@@ -202,14 +197,13 @@ export function AQIGlassCard({ aqi, previousAqi, className = "" }: AQIGlassCardP
           <div className="relative size-[108px] shrink-0 flex items-center justify-center">
             <AQIRing aqi={aqi} color={theme.primary} prefersReduced={prefersReduced} />
             <div className="relative z-10 text-center">
-              {/* displayValue is always a primitive string — safe to render directly */}
               <motion.span
-                className="text-3xl font-bold tabular-nums text-white leading-none"
-                style={{ textShadow: `0 0 20px ${theme.primary}80` }}
+                className="text-3xl font-bold tabular-nums text-foreground dark:text-white leading-none"
+                style={{ textShadow: `0 0 20px ${theme.primary}50` }}
               >
                 {displayValue}
               </motion.span>
-              <div className="text-[10px] text-white/45 mt-0.5 font-medium">AQI</div>
+              <div className="text-[10px] text-muted-foreground dark:text-white/45 mt-0.5 font-medium">AQI</div>
             </div>
           </div>
 
@@ -219,8 +213,8 @@ export function AQIGlassCard({ aqi, previousAqi, className = "" }: AQIGlassCardP
             <motion.div
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full mb-2"
               style={{
-                background: `${theme.primary}20`,
-                border: `1px solid ${theme.primary}50`,
+                background: `color-mix(in oklab, ${theme.primary} 15%, transparent)`,
+                border: `1px solid color-mix(in oklab, ${theme.primary} 35%, transparent)`,
               }}
               initial={prefersReduced ? false : { opacity: 0, scale: 0.85 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -244,7 +238,7 @@ export function AQIGlassCard({ aqi, previousAqi, className = "" }: AQIGlassCardP
             </motion.div>
 
             {/* Secondary info */}
-            <p className="text-[11px] text-white/45 leading-relaxed">
+            <p className="text-[11px] text-muted-foreground dark:text-white/65 leading-relaxed">
               {aqi <= 50
                 ? "Safe for all activities"
                 : aqi <= 100

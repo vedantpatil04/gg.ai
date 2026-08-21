@@ -29,7 +29,7 @@ import { complaintApi } from "@/lib/api/services.api";
 import { Panel, Pill, WorkspaceHeader } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { resolveAssetUrl } from "@/components/profile/profile-utils";
+import { resolveAssetUrl, extractComplaintImages } from "@/components/profile/profile-utils";
 import {
   ISSUE_LABELS,
   SEVERITY_TONE,
@@ -659,7 +659,7 @@ export function ResolutionVerificationWorkspace({
 
               {/* Evidence gallery */}
               <Panel eyebrow="Evidence" title="Uploaded Evidence">
-                <EvidenceGallery images={complaint.images ?? []} />
+                <EvidenceGallery images={extractComplaintImages(complaint)} />
               </Panel>
 
               {/* Activity timeline */}

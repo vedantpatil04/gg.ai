@@ -35,20 +35,26 @@ client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 });
 
 // ─── Response interceptor: silent refresh on 401, forbidden handling on 403 ─
+interface QueueItem {
+  resolve: (token: string) => void;
+  reject: (err: unknown) => void;
+}
+
 let isRefreshing = false;
-let queue: Array<(token: string) => void> = [];
+let queue: QueueItem[] = [];
 
 client.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
     const original = (error.config || {}) as any;
+    const url = original.url || "";
     const isAuthBypass =
-      original.url?.startsWith("/auth/login") ||
-      original.url?.startsWith("/auth/refresh") ||
-      original.url?.startsWith("/auth/signup") ||
-      original.url?.startsWith("/auth/forgot-password") ||
-      original.url?.startsWith("/auth/reset-password") ||
-      original.url?.startsWith("/auth/2fa-challenge");
+      url.includes("/auth/login") ||
+      url.includes("/auth/refresh") ||
+      url.includes("/auth/signup") ||
+      url.includes("/auth/forgot-password") ||
+      url.includes("/auth/reset-password") ||
+      url.includes("/auth/2fa-challenge");
 
     if (error.response?.status === 401 && !original._retry && !isAuthBypass) {
       const refreshToken = localStorage.getItem("gg_refresh_token");
@@ -59,10 +65,15 @@ client.interceptors.response.use(
       }
 
       if (isRefreshing) {
-        return new Promise((resolve) => {
-          queue.push((token) => {
-            if (original.headers) original.headers.Authorization = `Bearer ${token}`;
-            resolve(client(original));
+        return new Promise((resolve, reject) => {
+          queue.push({
+            resolve: (token: string) => {
+              if (original.headers) original.headers.Authorization = `Bearer ${token}`;
+              resolve(client(original));
+            },
+            reject: (err: unknown) => {
+              reject(err);
+            },
           });
         });
       }
@@ -73,18 +84,22 @@ client.interceptors.response.use(
       try {
         const { data } = await axios.post(`${API_BASE}/auth/refresh`, { refreshToken });
         const { accessToken, refreshToken: newRefresh } = data.data;
-        localStorage.setItem("gg_access_token", accessToken);
-        localStorage.setItem("gg_refresh_token", newRefresh);
+        setTokens(accessToken, newRefresh);
 
-        queue.forEach((cb) => cb(accessToken));
+        const currentQueue = queue;
         queue = [];
+        currentQueue.forEach((item) => item.resolve(accessToken));
 
         if (original.headers) original.headers.Authorization = `Bearer ${accessToken}`;
         return client(original);
-      } catch {
+      } catch (refreshErr) {
+        const currentQueue = queue;
+        queue = [];
+        currentQueue.forEach((item) => item.reject(refreshErr));
+
         clearTokens();
         window.dispatchEvent(new Event("gg:logout"));
-        return Promise.reject(error);
+        return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;
       }

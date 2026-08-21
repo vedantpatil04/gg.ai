@@ -88,34 +88,22 @@ export function EnvironmentBackground({
         </div>
       )}
 
-      {/* Layer 3A — Global vertical darkening gradient (light on top horizon, deep on ground) */}
+      {/* Layer 3A — Global vertical contrast gradient */}
       <div
         aria-hidden
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            "linear-gradient(to bottom, rgba(0,0,0,0.40) 0%, rgba(0,0,0,0.18) 35%, rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.85) 100%)",
-        }}
+        className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_bottom,rgba(0,0,0,0.25)_0%,rgba(0,0,0,0.12)_35%,rgba(0,0,0,0.38)_70%,rgba(0,0,0,0.65)_100%)] dark:bg-[linear-gradient(to_bottom,rgba(0,0,0,0.40)_0%,rgba(0,0,0,0.18)_35%,rgba(0,0,0,0.55)_70%,rgba(0,0,0,0.85)_100%)]"
       />
 
-      {/* Layer 3B — Directional horizontal vignette (protects text contrast on the left side across all screens) */}
+      {/* Layer 3B — Directional horizontal vignette (protects text contrast on the left side) */}
       <div
         aria-hidden
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            "linear-gradient(to right, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.45) 45%, rgba(0,0,0,0.12) 80%, transparent 100%)",
-        }}
+        className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(0,0,0,0.55)_0%,rgba(0,0,0,0.32)_45%,rgba(0,0,0,0.08)_80%,transparent_100%)] dark:bg-[linear-gradient(to_right,rgba(0,0,0,0.72)_0%,rgba(0,0,0,0.45)_45%,rgba(0,0,0,0.12)_80%,transparent_100%)]"
       />
 
       {/* Layer 3C — Mobile-specific bottom-left radial contrast boost */}
       <div
         aria-hidden
-        className="absolute inset-0 pointer-events-none md:hidden"
-        style={{
-          background:
-            "radial-gradient(ellipse 90% 70% at 10% 90%, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.25) 60%, transparent 100%)",
-        }}
+        className="absolute inset-0 pointer-events-none md:hidden bg-[radial-gradient(ellipse_90%_70%_at_10%_90%,rgba(0,0,0,0.45)_0%,rgba(0,0,0,0.15)_60%,transparent_100%)] dark:bg-[radial-gradient(ellipse_90%_70%_at_10%_90%,rgba(0,0,0,0.65)_0%,rgba(0,0,0,0.25)_60%,transparent_100%)]"
       />
 
       {/* CSS keyframe for subtle zoom */}

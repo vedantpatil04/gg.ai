@@ -144,10 +144,7 @@ export function WelcomeHero({
       variants={FADE_UP}
       initial={prefersReduced ? false : "hidden"}
       animate="show"
-      className="relative overflow-hidden rounded-2xl sm:rounded-3xl select-none"
-      style={{
-        boxShadow: `0 0 0 1px rgba(255,255,255,0.06), 0 20px 60px rgba(0,0,0,0.40), 0 0 50px ${aqiGlow}`,
-      }}
+      className="relative overflow-hidden rounded-2xl sm:rounded-3xl select-none border border-border/80 dark:border-white/10 shadow-lg dark:shadow-[0_20px_60px_rgba(0,0,0,0.40)]"
       aria-label={`Citizen dashboard hero. ${greet}${userName ? `, ${userName.split(" ")[0]}` : ""}. ${outdoorMessage}`}
     >
       {/* ═══════════════════════════════════════════════════════════════════
@@ -309,10 +306,7 @@ export function WelcomeHero({
           duplicated at that breakpoint.
           ═══════════════════════════════════════════════════════════════ */}
       <div
-        className="md:hidden px-4 sm:px-5 pt-3.5 pb-4 sm:pb-5 space-y-3"
-        style={{
-          background: "linear-gradient(to bottom, rgba(0,0,0,0.82), rgba(10,12,16,0.94))",
-        }}
+        className="md:hidden px-4 sm:px-5 pt-3.5 pb-4 sm:pb-5 space-y-3 bg-card/95 dark:bg-[linear-gradient(to_bottom,rgba(0,0,0,0.82),rgba(10,12,16,0.94))] border-t border-border/60 dark:border-white/10"
       >
         <AQIGlassCard aqi={aqi} />
         <WeatherGlassCard temp={temp} humidity={humidity} windSpeed={windSpeed} />

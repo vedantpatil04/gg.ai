@@ -15,6 +15,7 @@ export interface DirectoryUser {
   city?: string;
   isVerified: boolean;
   isActive: boolean;
+  avatar?: string;
   lastLogin?: string;
   createdAt: string;
   updatedAt: string;

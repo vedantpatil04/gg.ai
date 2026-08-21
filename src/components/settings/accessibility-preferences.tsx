@@ -176,7 +176,8 @@ export function AccessibilityPreferencesPanel() {
               <label
                 key={opt.field}
                 className={cn(
-                  "group flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-colors duration-200",
+                  "group flex items-start gap-3 rounded-xl border p-4 transition-colors duration-200",
+                  mutation.isPending ? "cursor-wait opacity-80" : "cursor-pointer",
                   checked
                     ? "border-primary/40 bg-primary/[0.04]"
                     : "border-border hover:border-primary/30",
@@ -200,6 +201,7 @@ export function AccessibilityPreferencesPanel() {
                 </div>
                 <Switch
                   checked={checked}
+                  disabled={mutation.isPending}
                   onCheckedChange={(v) => setField(opt.field, v)}
                   aria-label={opt.label}
                   className="mt-0.5 shrink-0"

@@ -15,9 +15,14 @@ import {
   getMapComplaints,
   // Phase 1: Real Forecast Data Foundation
   getCityWeatherForecast,
+  // Manual environmental data refresh
+  refreshEnvironmentalData,
 } from "../controllers/environmental.controller";
 
 const router = Router();
+
+// ─── Manual dashboard refresh override ──────────────────────────────────────
+router.post("/refresh", refreshEnvironmentalData);
 
 // ─── Existing Phase 3 routes (fully preserved — no frontend changes needed) ──
 router.get("/cities", getCities);

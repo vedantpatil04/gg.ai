@@ -12,6 +12,10 @@ export const createComplaintValidator = [
   body("location.address").optional().trim(),
   body("location.lat").optional().isFloat({ min: -90,  max: 90  }),
   body("location.lng").optional().isFloat({ min: -180, max: 180 }),
+  body("images").optional().isArray().withMessage("Images must be an array"),
+  body("photos").optional().isArray().withMessage("Photos must be an array"),
+  body("evidence").optional().isArray().withMessage("Evidence must be an array"),
+  body("attachments").optional().isArray().withMessage("Attachments must be an array"),
 ];
 
 export const updateComplaintValidator = [

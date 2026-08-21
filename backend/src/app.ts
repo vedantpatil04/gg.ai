@@ -175,11 +175,13 @@ app.get("/api/cities/:city/ai-insights", aiLimiter, getCityAIInsights);
 app.use(notFound);
 app.use(errorHandler);
 
+import { logAIProvidersStatus } from "./services/ai/config";
+
 // ─── Bootstrap Server ─────────────────────────────────────────────────────────
 async function bootstrap() {
   const server = app.listen(PORT, "0.0.0.0", () => {
     logger.info(`🚀 GreenGuard API v6.0 running on port ${PORT} (bound to 0.0.0.0)`);
-    logger.info(`🤖 Gemini AI: ${process.env.GEMINI_API_KEY ? "✅ enabled" : "⚠️ disabled — set GEMINI_API_KEY"}`);
+    logAIProvidersStatus();
     logger.info(`📱 Push Notifications (FCM): ${isPushConfigured() ? "✅ enabled" : "⚠️ disabled — set FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY"}`);
     logger.info(`🌍 Real-time data: Open-Meteo ✅ (no API key required) — weather ${process.env.OPEN_METEO_WEATHER_BASE_URL || "https://api.open-meteo.com/v1/forecast"}`);
   });

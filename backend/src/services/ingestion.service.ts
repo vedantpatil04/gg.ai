@@ -94,18 +94,32 @@ async function ingestCity(
       return false;
     }
 
-    // Get last reading for this city to carry forward fields not in real APIs
+    // Get last reading for this city to carry forward unmeasured fields or fallback on upstream outage
     const prev = await EnvironmentalData.findOne({ cityId: city.cityId })
       .sort({ timestamp: -1 })
       .lean();
+
+    if (!aq && !wx && !prev) {
+      logger.warn(`[ingestion] No live data or historical baseline for ${city.name} — skipping`);
+      return false;
+    }
+
+    const aqi = aq?.aqi ?? prev?.aqi;
+    const pm25 = aq?.pm25 ?? prev?.pm25;
+    const temp = wx?.temp ?? prev?.temp;
+    const humidity = wx?.humidity ?? prev?.humidity;
+
+    if (aqi === undefined || pm25 === undefined || temp === undefined || humidity === undefined) {
+      logger.warn(
+        `[ingestion] Incomplete environmental data for ${city.name} (live fetch unavailable and no previous record) — skipping`,
+      );
+      return false;
+    }
 
     const water = prev?.water ?? 70;
     const renewableShare = prev?.renewableShare ?? 20;
     const greenCover = prev?.greenCover ?? 20;
     const co2 = prev?.co2 ?? 415; // background CO2
-
-    const aqi = aq?.aqi ?? prev?.aqi ?? 80;
-    const pm25 = aq?.pm25 ?? prev?.pm25 ?? 25;
 
     const doc = {
       cityId: city.cityId,
@@ -122,8 +136,8 @@ async function ingestCity(
       so2: aq?.so2 ?? prev?.so2,
       co: aq?.co ?? prev?.co,
       // Weather — real or carried forward
-      temp: wx?.temp ?? prev?.temp ?? 25,
-      humidity: wx?.humidity ?? prev?.humidity ?? 60,
+      temp,
+      humidity,
       windSpeed: wx?.windSpeed ?? prev?.windSpeed,
       windDirection: wx?.windDirection ?? prev?.windDirection,
       pressure: wx?.pressure ?? prev?.pressure,
@@ -150,6 +164,7 @@ async function ingestCity(
 
 export interface IngestionRunOptions {
   force?: boolean;
+  forceRefresh?: boolean;
 }
 
 // ─── Main ingestion run — iterates all active cities from DB ─────────────────
@@ -165,8 +180,10 @@ export async function runIngestion(
     return { success: 0, failed: 0, total: 0 };
   }
 
+  const isForced = Boolean(options.force || options.forceRefresh);
+
   // Cross-instance / restart check: Skip if database data is already fresh (unless forced)
-  if (!options.force) {
+  if (!isForced) {
     const freshness = await checkDatabaseFreshness(MIN_INGESTION_FRESHNESS_MINUTES);
     if (freshness.isFresh) {
       logger.info(
@@ -174,6 +191,10 @@ export async function runIngestion(
       );
       return { success: cities.length, failed: 0, total: cities.length, skipped: true };
     }
+  } else {
+    logger.info(
+      `[ingestion] Manual refresh requested — bypassing freshness threshold for ${cities.length} cities`,
+    );
   }
 
   // If rate limit cooldown is active, inform logs
@@ -191,8 +212,8 @@ export async function runIngestion(
 
   // Pre-fetch weather and air quality concurrently in batched requests (1 request each)
   const [weatherMap, aqMap] = await Promise.all([
-    fetchWeatherBatch(targets),
-    fetchAirQualityBatch(targets),
+    fetchWeatherBatch(targets, { forceRefresh: isForced }),
+    fetchAirQualityBatch(targets, { forceRefresh: isForced }),
   ]);
 
   let success = 0;

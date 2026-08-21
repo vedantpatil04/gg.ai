@@ -52,6 +52,7 @@ import { AUTHORITY_ROLES } from "@/components/protected-route";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ProfileAvatar } from "@/components/profile/profile-avatar";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -396,7 +397,7 @@ function FloatingSidebar({ mobileOpen, onMobileClose }: FloatingSidebarProps) {
   const togglePin = useCallback(() => {
     setPinned((p) => {
       const next = !p;
-      try { localStorage.setItem(SIDEBAR_PIN_KEY, String(next)); } catch {}
+      try { localStorage.setItem(SIDEBAR_PIN_KEY, String(next)); } catch { }
       return next;
     });
   }, []);
@@ -797,40 +798,40 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <CommandPaletteProvider>
       <div className="min-h-screen flex w-full shell-bg text-foreground">
-      {/* Floating sidebar */}
-      <FloatingSidebar
-        mobileOpen={mobileOpen}
-        onMobileClose={() => setMobileOpen(false)}
-      />
+        {/* Floating sidebar */}
+        <FloatingSidebar
+          mobileOpen={mobileOpen}
+          onMobileClose={() => setMobileOpen(false)}
+        />
 
-      {/*
+        {/*
         Main content column.
         Left padding = collapsed width (64px) + gap from edge (12px) + sidebar-to-content gap (24px) = 100px.
         This keeps the content stable — the sidebar floats over it when expanded.
       */}
-      <div
-        className="flex-1 flex flex-col min-w-0 lg:pl-[100px]"
-        style={{ minHeight: "100dvh" }}
-      >
-        <TopBar
-          onMenu={() => setMobileOpen((o) => !o)}
-          mobileOpen={mobileOpen}
-        />
-
-        <main
-          key={enterKeyRef.current}
-          className="flex-1 min-w-0 page-enter"
+        <div
+          className="flex-1 flex flex-col min-w-0 lg:pl-[100px]"
+          style={{ minHeight: "100dvh" }}
         >
-          {children}
-        </main>
+          <TopBar
+            onMenu={() => setMobileOpen((o) => !o)}
+            mobileOpen={mobileOpen}
+          />
 
-        {/* Phase 7 — Enterprise Platform Status Bar */}
-        <PlatformStatusBar />
+          <main
+            key={enterKeyRef.current}
+            className="flex-1 min-w-0 page-enter"
+          >
+            {children}
+          </main>
+
+          {/* Phase 7 — Enterprise Platform Status Bar */}
+          <PlatformStatusBar />
+        </div>
+
+        {/* Floating Help & Support Widget (Quick entry point to existing Support & Copilot) */}
+        <FloatingHelpWidget />
       </div>
-
-      {/* Floating Help & Support Widget (Quick entry point to existing Support & Copilot) */}
-      <FloatingHelpWidget />
-    </div>
     </CommandPaletteProvider>
   );
 }
@@ -859,53 +860,53 @@ interface BreadcrumbEntry {
 
 const BREADCRUMB_MAP: Record<string, BreadcrumbEntry> = {
   // ── Top-level workspace ───────────────────────────────────────────────────
-  "/dashboard":      { label: "Dashboard", labelKey: "dashboard" },
-  "/environment":    { label: "Environmental Overview", labelKey: "environment" },
-  "/map":            { label: "Smart Map", labelKey: "map" },
-  "/copilot":        { label: "GreenGuard Intelligence Center", labelKey: "aiCopilot" },
-  "/forecast":       { label: "Forecast", labelKey: "forecast" },
-  "/citizen":        { label: "Citizen Hub", labelKey: "citizenHub" },
-  "/reports":        { label: "Reports", labelKey: "reports" },
+  "/dashboard": { label: "Dashboard", labelKey: "dashboard" },
+  "/environment": { label: "Environmental Overview", labelKey: "environment" },
+  "/map": { label: "Smart Map", labelKey: "map" },
+  "/copilot": { label: "GreenGuard Intelligence Center", labelKey: "aiCopilot" },
+  "/forecast": { label: "Forecast", labelKey: "forecast" },
+  "/citizen": { label: "Citizen Hub", labelKey: "citizenHub" },
+  "/reports": { label: "Reports", labelKey: "reports" },
   "/sustainability": { label: "Sustainability", labelKey: "sustainability" },
-  "/simulator":      { label: "Policy Sim", labelKey: "simulator" },
-  "/intelligence":   { label: "Intelligence", labelKey: "intelligence" },
+  "/simulator": { label: "Policy Sim", labelKey: "simulator" },
+  "/intelligence": { label: "Intelligence", labelKey: "intelligence" },
   "/command-center": { label: "Command Center", labelKey: "commandCenter" },
   // ── Account ───────────────────────────────────────────────────────────────
-  "/profile":        { label: "Profile", labelKey: "profile" },
-  "/settings":       { label: "Settings", labelKey: "settings" },
-  "/security":       { label: "Security", labelKey: "security" },
+  "/profile": { label: "Profile", labelKey: "profile" },
+  "/settings": { label: "Settings", labelKey: "settings" },
+  "/security": { label: "Security", labelKey: "security" },
   // ── Admin portal ──────────────────────────────────────────────────────────
-  "/admin":                          { label: "Admin Portal", labelKey: "adminPortal" },
-  "/admin/":                         { label: "Admin Portal", labelKey: "adminPortal" },
-  "/admin/analytics":                { label: "Analytics",               parent: "/admin" },
-  "/admin/authorities":              { label: "Authorities",             parent: "/admin" },
-  "/admin/authority-management":     { label: "Authority Management",    parent: "/admin" },
-  "/admin/authority-requests":       { label: "Authority Requests",      parent: "/admin" },
-  "/admin/cities":                   { label: "Cities",                  parent: "/admin" },
-  "/admin/city-management":          { label: "City Management",         parent: "/admin" },
-  "/admin/complaint-management":     { label: "Complaint Management",    parent: "/admin" },
-  "/admin/complaints":               { label: "Complaints",              parent: "/admin" },
-  "/admin/environmental-monitoring": { label: "Env. Monitoring",         parent: "/admin" },
-  "/admin/platform":                 { label: "Platform",                parent: "/admin" },
-  "/admin/platform-administration":  { label: "Platform Administration", parent: "/admin" },
-  "/admin/platform-health":          { label: "Platform Health",         parent: "/admin" },
-  "/admin/platform-settings":        { label: "Platform Settings",       parent: "/admin" },
-  "/admin/profile":                  { label: "Admin Profile",           parent: "/admin" },
-  "/admin/reports":                  { label: "Reports",                 parent: "/admin" },
-  "/admin/security-center":          { label: "Security Center",         parent: "/admin" },
-  "/admin/user-management":          { label: "User Management",         parent: "/admin" },
-  "/admin/users":                    { label: "Users",                   parent: "/admin" },
+  "/admin": { label: "Admin Portal", labelKey: "adminPortal" },
+  "/admin/": { label: "Admin Portal", labelKey: "adminPortal" },
+  "/admin/analytics": { label: "Analytics", parent: "/admin" },
+  "/admin/authorities": { label: "Authorities", parent: "/admin" },
+  "/admin/authority-management": { label: "Authority Management", parent: "/admin" },
+  "/admin/authority-requests": { label: "Authority Requests", parent: "/admin" },
+  "/admin/cities": { label: "Cities", parent: "/admin" },
+  "/admin/city-management": { label: "City Management", parent: "/admin" },
+  "/admin/complaint-management": { label: "Complaint Management", parent: "/admin" },
+  "/admin/complaints": { label: "Complaints", parent: "/admin" },
+  "/admin/environmental-monitoring": { label: "Env. Monitoring", parent: "/admin" },
+  "/admin/platform": { label: "Platform", parent: "/admin" },
+  "/admin/platform-administration": { label: "Platform Administration", parent: "/admin" },
+  "/admin/platform-health": { label: "Platform Health", parent: "/admin" },
+  "/admin/platform-settings": { label: "Platform Settings", parent: "/admin" },
+  "/admin/profile": { label: "Admin Profile", parent: "/admin" },
+  "/admin/reports": { label: "Reports", parent: "/admin" },
+  "/admin/security-center": { label: "Security Center", parent: "/admin" },
+  "/admin/user-management": { label: "User Management", parent: "/admin" },
+  "/admin/users": { label: "Users", parent: "/admin" },
   // ── Help center ───────────────────────────────────────────────────────────
-  "/help":                  { label: "Help Center", labelKey: "helpCenter" },
-  "/help/":                 { label: "Help Center", labelKey: "helpCenter" },
-  "/help/knowledge-base":   { label: "Knowledge Base",  parent: "/help" },
-  "/help/tutorials":        { label: "Tutorials",       parent: "/help" },
-  "/help/support":          { label: "Support",         parent: "/help" },
-  "/help/community":        { label: "Community",       parent: "/help" },
-  "/help/feedback":         { label: "Feedback",        parent: "/help" },
-  "/help/status":           { label: "System Status",   parent: "/help" },
-  "/help/about":            { label: "About",           parent: "/help" },
-  "/help/whats-new":        { label: "What's New",      parent: "/help" },
+  "/help": { label: "Help Center", labelKey: "helpCenter" },
+  "/help/": { label: "Help Center", labelKey: "helpCenter" },
+  "/help/knowledge-base": { label: "Knowledge Base", parent: "/help" },
+  "/help/tutorials": { label: "Tutorials", parent: "/help" },
+  "/help/support": { label: "Support", parent: "/help" },
+  "/help/community": { label: "Community", parent: "/help" },
+  "/help/feedback": { label: "Feedback", parent: "/help" },
+  "/help/status": { label: "System Status", parent: "/help" },
+  "/help/about": { label: "About", parent: "/help" },
+  "/help/whats-new": { label: "What's New", parent: "/help" },
 };
 
 /** Resolve an entry's display label — translated when a `labelKey` exists
@@ -1003,10 +1004,10 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
   // ── Fullscreen toggle ─────────────────────────────────────────────────────
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
+      document.documentElement.requestFullscreen().catch(() => { });
       setIsFullscreen(true);
     } else {
-      document.exitFullscreen().catch(() => {});
+      document.exitFullscreen().catch(() => { });
       setIsFullscreen(false);
     }
   }, []);
@@ -1045,9 +1046,9 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
   // Search placeholder varies by active section
   const searchPlaceholder = (() => {
     if (pathname.startsWith("/admin")) return t("searchAdmin");
-    if (pathname.startsWith("/help"))  return t("searchHelp");
-    if (pathname === "/map")           return t("searchMap");
-    if (pathname === "/copilot")       return t("searchCopilot");
+    if (pathname.startsWith("/help")) return t("searchHelp");
+    if (pathname === "/map") return t("searchMap");
+    if (pathname === "/copilot") return t("searchCopilot");
     return t("searchDefault");
   })();
 
@@ -1234,9 +1235,11 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
                 aria-expanded={profileOpen}
               >
                 {/* Avatar */}
-                <div className="size-6 sm:size-7 rounded-lg aurora grid place-items-center text-primary-foreground text-[10px] sm:text-[11px] font-bold shrink-0">
-                  {initials}
-                </div>
+                <ProfileAvatar
+                  profile={user}
+                  className="size-6 sm:size-7 rounded-lg border border-border/50"
+                  fallbackClassName="text-[10px] sm:text-[11px]"
+                />
                 {/* Name + role — desktop */}
                 <div className="hidden xl:block text-left leading-none min-w-0">
                   <div className="text-xs font-semibold text-foreground truncate max-w-[100px]">
@@ -1266,9 +1269,11 @@ function TopBar({ onMenu, mobileOpen }: { onMenu: () => void; mobileOpen: boolea
                     {/* User info header */}
                     <div className="p-3 border-b border-border/60">
                       <div className="flex items-center gap-2.5">
-                        <div className="size-9 rounded-xl aurora grid place-items-center text-primary-foreground text-sm font-bold shrink-0">
-                          {initials}
-                        </div>
+                        <ProfileAvatar
+                          profile={user}
+                          className="size-9 rounded-xl border border-border/50"
+                          fallbackClassName="text-sm font-bold"
+                        />
                         <div className="min-w-0">
                           <div className="text-sm font-semibold truncate">{user?.name}</div>
                           <div className="text-xs text-muted-foreground capitalize">{roleLabel}</div>

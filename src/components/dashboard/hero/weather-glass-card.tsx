@@ -13,8 +13,9 @@
  */
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Droplets, Wind, Thermometer, Sun, CloudRain, Eye } from "lucide-react";
+import { Droplets, Wind, Thermometer, Sun, CloudRain } from "lucide-react";
 import { SPRING_SLOW, HOVER_LIFT } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 
 // ─── Animated weather icon ───────────────────────────────────────────────────
 
@@ -174,13 +175,13 @@ function StatRow({
   if (value == null) return null;
   return (
     <div className="flex items-center justify-between py-1.5">
-      <div className="flex items-center gap-2 text-white/50">
+      <div className="flex items-center gap-2 text-muted-foreground dark:text-white/50">
         <Icon className="size-3.5 shrink-0" />
         <span className="text-[11px]">{label}</span>
       </div>
-      <span className="text-[12px] font-semibold text-white/80 tabular-nums">
+      <span className="text-[12px] font-semibold text-foreground dark:text-white/80 tabular-nums">
         {value}
-        {unit && <span className="text-[10px] font-normal text-white/45 ml-0.5">{unit}</span>}
+        {unit && <span className="text-[10px] font-normal text-muted-foreground dark:text-white/45 ml-0.5">{unit}</span>}
       </span>
     </div>
   );
@@ -212,15 +213,13 @@ export function WeatherGlassCard({
 
   return (
     <motion.div
-      className={`relative rounded-2xl overflow-hidden cursor-default ${className}`}
-      style={{
-        background: "rgba(0,0,0,0.40)",
-        backdropFilter: "blur(18px) saturate(1.3)",
-        WebkitBackdropFilter: "blur(18px) saturate(1.3)",
-        border: "1px solid rgba(255,255,255,0.12)",
-        boxShadow:
-          "0 8px 32px rgba(0,0,0,0.30), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.08)",
-      }}
+      className={cn(
+        "relative rounded-2xl overflow-hidden cursor-default transition-colors",
+        "bg-card/90 dark:bg-black/40 backdrop-blur-xl",
+        "border border-border/80 dark:border-white/12",
+        "shadow-md dark:shadow-[0_8px_32px_rgba(0,0,0,0.30)]",
+        className,
+      )}
       whileHover={prefersReduced ? {} : HOVER_LIFT}
       initial={prefersReduced ? false : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
@@ -237,7 +236,7 @@ export function WeatherGlassCard({
       {/* Reflection sheen (upper-left) */}
       <div
         aria-hidden
-        className="absolute top-0 left-0 w-1/2 h-1/3 pointer-events-none"
+        className="absolute top-0 left-0 w-1/2 h-1/3 pointer-events-none opacity-40 dark:opacity-100"
         style={{
           background:
             "radial-gradient(ellipse 80% 60% at 20% 10%, rgba(255,255,255,0.06), transparent)",
@@ -250,19 +249,19 @@ export function WeatherGlassCard({
           <WeatherIcon condition={condition} prefersReduced={prefersReduced} />
           <div>
             {temp != null ? (
-              <div className="text-2xl font-bold text-white leading-none">
+              <div className="text-2xl font-bold text-foreground dark:text-white leading-none">
                 {temp}
-                <span className="text-base font-normal text-white/55">°C</span>
+                <span className="text-base font-normal text-muted-foreground dark:text-white/55">°C</span>
               </div>
             ) : (
-              <div className="text-sm font-medium text-white/60">Temperature</div>
+              <div className="text-sm font-medium text-muted-foreground dark:text-white/60">Temperature</div>
             )}
-            <div className="text-[11px] text-white/45 mt-0.5 capitalize">{condition}</div>
+            <div className="text-[11px] text-muted-foreground dark:text-white/45 mt-0.5 capitalize">{condition}</div>
           </div>
         </div>
 
         {/* Divider */}
-        <div className="border-t border-white/08 mb-1" />
+        <div className="border-t border-border/60 dark:border-white/10 mb-1" />
 
         {/* Stats */}
         <div>

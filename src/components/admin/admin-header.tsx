@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ProfileAvatar } from "@/components/profile/profile-avatar";
 
 function humanize(segment: string): string {
   return segment
@@ -90,11 +90,11 @@ export function AdminHeader({ onMenuClick, mobileOpen }: AdminHeaderProps) {
               className="flex items-center gap-2 rounded-full pl-0.5 sm:pl-1 pr-1 sm:pr-2 py-0.5 sm:py-1 hover:bg-muted active:bg-muted/80 shrink-0 transition-colors"
               aria-label="Administrator profile menu"
             >
-              <Avatar className="size-7 sm:size-8">
-                <AvatarFallback className="aurora text-primary-foreground text-[11px] sm:text-xs font-semibold">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
+              <ProfileAvatar
+                profile={user}
+                className="size-7 sm:size-8 rounded-full"
+                fallbackClassName="text-[11px] sm:text-xs font-semibold"
+              />
               <ChevronDown className="size-3.5 text-muted-foreground hidden sm:block" />
             </button>
           </DropdownMenuTrigger>

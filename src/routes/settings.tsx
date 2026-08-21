@@ -71,23 +71,6 @@ function SettingsPage() {
   const { t } = useTranslation("settings");
   const { t: tErrors } = useTranslation("errors");
 
-  // Reconcile with the server-persisted preference once on mount — covers
-  // the case where this is a new device/browser whose localStorage doesn't
-  // yet know this user's saved theme.
-  useEffect(() => {
-    let cancelled = false;
-    appearanceApi
-      .get()
-      .then(({ data }) => {
-        if (!cancelled && data.appearance.theme) setTheme(data.appearance.theme);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const selectTheme = async (next: Theme) => {
     setTheme(next); // live preview
     setAppearanceSaving(true);
@@ -244,10 +227,12 @@ function AppearanceSection({
           <button
             key={opt.id}
             role="radio"
+            disabled={appearanceSaving}
             aria-checked={theme === opt.id}
             onClick={() => selectTheme(opt.id)}
             className={cn(
               "text-left rounded-xl border p-4 transition-all hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+              appearanceSaving && "cursor-wait opacity-80",
               theme === opt.id
                 ? "border-primary bg-primary/5 shadow-[var(--shadow-glow)]"
                 : "border-border hover:border-primary/40",

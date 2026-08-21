@@ -48,6 +48,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InvestigationWorkspace, type ComplaintRecord } from "./investigation-workspace";
 import { ISSUE_LABELS, SEVERITY_TONE, STATUS_TONE, STATUS_LABEL } from "./investigation-workspace";
+import { extractComplaintImages } from "@/components/profile/profile-utils";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 
@@ -161,11 +162,15 @@ function ComplaintQueueRow({
               {complaint.assignmentSource === "automatic" ? "Auto-assigned" : "Manually assigned"}
             </span>
           )}
-          {complaint.images?.length > 0 && (
-            <span className="inline-flex items-center text-[10px] text-muted-foreground bg-muted/60 rounded-full px-2 py-0.5">
-              {complaint.images.length} image{complaint.images.length !== 1 ? "s" : ""}
-            </span>
-          )}
+          {(() => {
+            const count = extractComplaintImages(complaint).length;
+            if (count === 0) return null;
+            return (
+              <span className="inline-flex items-center text-[10px] text-muted-foreground bg-muted/60 rounded-full px-2 py-0.5">
+                {count} image{count !== 1 ? "s" : ""}
+              </span>
+            );
+          })()}
           {unreadMessages > 0 && (
             <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/10 rounded-full px-2 py-0.5">
               <MessageSquare className="size-2.5" />

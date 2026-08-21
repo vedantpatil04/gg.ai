@@ -9,6 +9,17 @@ function getSystemTheme(): ResolvedTheme {
     : "dark";
 }
 
+function getInitialTheme(): Theme {
+  if (typeof window === "undefined") return "system";
+  try {
+    const stored = localStorage.getItem("gg-theme") as Theme | null;
+    if (stored === "light" || stored === "dark" || stored === "system") {
+      return stored;
+    }
+  } catch {}
+  return "system";
+}
+
 const ThemeCtx = createContext<{
   theme: Theme;
   /** The actual applied appearance — resolves "system" to the OS preference. */
@@ -16,21 +27,18 @@ const ThemeCtx = createContext<{
   setTheme: (t: Theme) => void;
   toggle: () => void;
 }>({
-  theme: "dark",
+  theme: "system",
   resolvedTheme: "dark",
   setTheme: () => {},
   toggle: () => {},
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("dark");
-
-  useEffect(() => {
-    const stored = (typeof window !== "undefined" && (localStorage.getItem("gg-theme") as Theme | null)) || null;
-    const initial: Theme = stored ?? "system";
-    setThemeState(initial);
-  }, []);
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {
+    const initial = getInitialTheme();
+    return initial === "system" ? getSystemTheme() : initial;
+  });
 
   useEffect(() => {
     const applyResolved = () => {
@@ -42,12 +50,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     };
 
     applyResolved();
-    try { localStorage.setItem("gg-theme", theme); } catch {}
+    try {
+      localStorage.setItem("gg-theme", theme);
+    } catch {}
 
     // Live-follow the OS preference while "system" is selected, so a user
     // who leaves the tab open across a day/night switch sees it update
     // without needing to revisit Settings.
-    if (theme === "system" && window.matchMedia) {
+    if (theme === "system" && typeof window !== "undefined" && window.matchMedia) {
       const mql = window.matchMedia("(prefers-color-scheme: light)");
       const onChange = () => applyResolved();
       mql.addEventListener("change", onChange);

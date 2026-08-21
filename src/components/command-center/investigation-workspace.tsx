@@ -39,7 +39,7 @@ import { Pill } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { resolveAssetUrl } from "@/components/profile/profile-utils";
+import { resolveAssetUrl, extractComplaintImages } from "@/components/profile/profile-utils";
 import type { AuthUser } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 
@@ -62,6 +62,10 @@ export interface ComplaintRecord {
   cityId: string;
   location?: { address?: string; lat?: number; lng?: number };
   images: string[];
+  photos?: string[];
+  evidence?: string[];
+  attachments?: string[];
+  citizenEvidence?: string[];
   internalNotes?: string;
   events?: ComplaintEventEntry[];
   resolution?: string;
@@ -243,13 +247,24 @@ function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
             alt="Evidence"
             className="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain border border-border/40"
           />
-          <button
-            onClick={onClose}
-            aria-label="Close image preview"
-            className="absolute top-2 right-2 size-8 rounded-full bg-black/70 hover:bg-black text-white grid place-items-center transition-colors border border-white/20"
-          >
-            <X className="size-4" />
-          </button>
+          <div className="absolute top-2 right-2 flex items-center gap-2">
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Open full resolution image in new tab"
+              className="size-8 rounded-full bg-black/70 hover:bg-black text-white grid place-items-center transition-colors border border-white/20"
+            >
+              <ExternalLink className="size-3.5" />
+            </a>
+            <button
+              onClick={onClose}
+              aria-label="Close image preview"
+              className="size-8 rounded-full bg-black/70 hover:bg-black text-white grid place-items-center transition-colors border border-white/20 cursor-pointer"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
         </motion.div>
       </motion.div>
     </AnimatePresence>
@@ -364,11 +379,23 @@ function EvidenceTile({
   const src = resolveAssetUrl(img) ?? img;
   const [failed, setFailed] = useState(false);
 
+  const displayName = (() => {
+    try {
+      const parts = img.split("/");
+      const last = parts[parts.length - 1];
+      if (last && last.length > 3) {
+        return last.length > 25 ? `${last.slice(0, 10)}...${last.slice(-8)}` : last;
+      }
+    } catch {}
+    return `Photo ${index + 1}`;
+  })();
+
   if (failed) {
     return (
-      <div className="relative flex flex-col items-center justify-center gap-1 rounded-lg border border-border/60 bg-muted/20 aspect-video text-muted-foreground p-2 text-center">
-        <ImageOff className="size-4" />
-        <span className="text-[10px] uppercase tracking-wider">Unavailable</span>
+      <div className="relative flex flex-col items-center justify-center gap-1 rounded-lg border border-destructive/20 bg-destructive/5 aspect-video text-muted-foreground p-2 text-center select-none">
+        <ImageOff className="size-4 text-destructive/60" />
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-destructive/80">Evidence Unavailable</span>
+        <span className="text-[9px] text-muted-foreground/80">Photo could not be loaded</span>
         {canRemove && onRemove && (
           <button
             onClick={onRemove}
@@ -393,17 +420,21 @@ function EvidenceTile({
           onOpen(src);
         }
       }}
-      aria-label={`View evidence photo ${index + 1}`}
-      className="group relative rounded-lg overflow-hidden border border-border/60 bg-muted/20 aspect-video cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 transition-all hover:border-border"
+      aria-label={`View evidence photo ${index + 1}: ${displayName}`}
+      className="group relative rounded-lg overflow-hidden border border-border/60 bg-muted/20 aspect-video cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 transition-all hover:border-primary/50 shadow-2xs"
     >
       <img
         src={src}
         alt={`Evidence photo ${index + 1}`}
+        loading="lazy"
         className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
         onError={() => setFailed(true)}
       />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/35 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
         <ExternalLink className="size-4 text-white drop-shadow" />
+      </div>
+      <div className="absolute bottom-0 inset-x-0 bg-linear-to-t from-black/80 via-black/40 to-transparent p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <p className="text-[10px] text-white/90 font-medium truncate">{displayName}</p>
       </div>
       {canRemove && onRemove && (
         <button
@@ -557,7 +588,7 @@ function OverviewTabContent({
   complaint: ComplaintRecord;
   onOpenLightbox: (url: string) => void;
 }) {
-  const images = complaint.images ?? [];
+  const images = extractComplaintImages(complaint);
 
   return (
     <div className="rounded-xl border border-border/50 bg-card/60 backdrop-blur-xs p-4 sm:p-5 space-y-4">
@@ -995,25 +1026,34 @@ function InvestigationTabContent({
         )}
 
         {/* Evidence Photos Grid */}
-        {complaint.images?.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-            {complaint.images.map((img, i) => (
-              <EvidenceTile
-                key={i}
-                img={img}
-                index={i}
-                canRemove={canEdit}
-                isRemoving={removeMutation.isPending}
-                onOpen={onOpenLightbox}
-                onRemove={() => removeMutation.mutate(img)}
-              />
-            ))}
-          </div>
-        ) : !canEdit ? (
-          <p className="text-xs text-muted-foreground italic py-1">
-            No investigation evidence attached.
-          </p>
-        ) : null}
+        {(() => {
+          const evidenceImages = extractComplaintImages(complaint);
+          if (evidenceImages.length > 0) {
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                {evidenceImages.map((img, i) => (
+                  <EvidenceTile
+                    key={i}
+                    img={img}
+                    index={i}
+                    canRemove={canEdit}
+                    isRemoving={removeMutation.isPending}
+                    onOpen={onOpenLightbox}
+                    onRemove={() => removeMutation.mutate(img)}
+                  />
+                ))}
+              </div>
+            );
+          }
+          if (!canEdit) {
+            return (
+              <p className="text-xs text-muted-foreground italic py-1">
+                No investigation evidence attached.
+              </p>
+            );
+          }
+          return null;
+        })()}
       </div>
     </div>
   );

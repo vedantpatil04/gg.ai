@@ -2,6 +2,11 @@ import axios from "axios";
 import { logger } from "../utils/logger";
 import { TtlCache } from "../utils/ttlCache";
 import { openMeteoRateLimiter } from "../utils/openMeteoRateLimiter";
+import {
+  executeWithRetry,
+  RateLimitExceededError,
+  parseRetryAfterHeader,
+} from "../utils/httpRetry";
 
 // ─── Open-Meteo Current Weather API ──────────────────────────────────────────
 // Docs: https://open-meteo.com/en/docs#current
@@ -96,22 +101,27 @@ function coordKey(lat: number, lng: number): string {
 }
 
 /**
- * Generate a safe deterministic baseline weather reading for unprimed cities on 429/failure.
+ * Helper to get the cached / stale weather reading for a city or coordinate.
+ * Returns undefined if no real observation has been cached yet.
  */
-export function generateFallbackWeatherReading(lat: number, lng: number): WeatherReading {
-  const baseTemp = 24 + Math.sin(lat) * 4;
-  return {
-    temp: Math.round(baseTemp * 10) / 10,
-    humidity: 62,
-    pressure: 1013,
-    windSpeed: 3.5,
-    windDirection: 210,
-    visibility: null,
-    rainfall: 0,
-    apparentTemperature: Math.round(baseTemp * 10) / 10,
-    weatherCode: 1,
-    rain: 0,
-  };
+export function getCachedWeather(
+  cityIdOrKey: string,
+  lat?: number,
+  lng?: number,
+): WeatherReading | undefined {
+  const fresh =
+    weatherCache.get(cityIdOrKey) ||
+    (lat !== undefined && lng !== undefined
+      ? weatherCache.get(coordKey(lat, lng))
+      : undefined);
+  if (fresh) return fresh;
+
+  return (
+    weatherCache.getStale(cityIdOrKey) ||
+    (lat !== undefined && lng !== undefined
+      ? weatherCache.getStale(coordKey(lat, lng))
+      : undefined)
+  );
 }
 
 /**
@@ -215,20 +225,80 @@ function mapResponseToCities(
 }
 
 /**
+ * Execute a single HTTP query for an array of coordinate targets with retry support.
+ */
+async function queryOpenMeteoWeatherBatch(
+  targets: CityCoordinateTarget[],
+): Promise<{ mapped: Map<string, WeatherReading>; attempts: number; durationMs: number; recovered: boolean }> {
+  const lats = targets.map((c) => c.lat).join(",");
+  const lngs = targets.map((c) => c.lng).join(",");
+
+  const retryResult = await executeWithRetry(
+    async () => {
+      const res = await axios.get<OpenMeteoLocationItem | OpenMeteoLocationItem[]>(
+        WEATHER_BASE_URL,
+        {
+          timeout: 10000,
+          params: {
+            latitude: lats,
+            longitude: lngs,
+            current: CURRENT_WEATHER_VARS,
+            wind_speed_unit: "ms",
+            precipitation_unit: "mm",
+          },
+        },
+      );
+      return res.data;
+    },
+    {
+      serviceName: "weather",
+      maxAttempts: 3,
+      baseDelayMs: 600,
+      maxDelayMs: 3000,
+      backoffFactor: 2,
+      jitterMs: 250,
+      maxAllowedRetryAfterMs: 3000,
+    },
+  );
+
+  const items: OpenMeteoLocationItem[] = Array.isArray(retryResult.data)
+    ? retryResult.data
+    : retryResult.data
+      ? [retryResult.data]
+      : [];
+
+  const mapped = mapResponseToCities(targets, items);
+  return {
+    mapped,
+    attempts: retryResult.attempts,
+    durationMs: retryResult.durationMs,
+    recovered: retryResult.recovered,
+  };
+}
+
+export interface FetchWeatherBatchOptions {
+  forceRefresh?: boolean;
+}
+
+/**
  * Fetch current weather for multiple cities in a single batched Open-Meteo request.
- * Automatically checks TtlCache first, and only queries uncached coordinates.
- * Deterministically maps results to each cityId.
+ * Automatically checks TtlCache first (unless forceRefresh is true), and only queries uncached coordinates.
+ * Handles transient 503/502/504/429 upstream errors with bounded exponential backoff.
+ * When upstream is temporarily unavailable, retains real last-known-good readings.
  */
 export async function fetchWeatherBatch(
   cities: CityCoordinateTarget[],
+  options?: FetchWeatherBatchOptions | boolean,
 ): Promise<Map<string, WeatherReading>> {
+  const isForced = typeof options === "boolean" ? options : Boolean(options?.forceRefresh);
   const finalMap = new Map<string, WeatherReading>();
   const toFetch: CityCoordinateTarget[] = [];
 
   for (const city of cities) {
-    const cached =
-      weatherCache.get(city.cityId) ||
-      weatherCache.get(coordKey(city.lat, city.lng));
+    const cached = !isForced
+      ? weatherCache.get(city.cityId) ||
+        weatherCache.get(coordKey(city.lat, city.lng))
+      : undefined;
 
     if (cached) {
       finalMap.set(city.cityId, cached);
@@ -245,7 +315,7 @@ export async function fetchWeatherBatch(
     return finalMap;
   }
 
-  // If rate limit cooldown is actively in effect, immediately serve stale data or fallback
+  // If rate limit cooldown is actively in effect, immediately serve last-known-good stale data
   if (openMeteoRateLimiter.isRateLimitActive()) {
     logger.info(
       `[weather] Skipped upstream fetch for ${toFetch.length} cities — rate limit cooldown active (${openMeteoRateLimiter.getCooldownRemainingSeconds()}s remaining)`,
@@ -256,10 +326,6 @@ export async function fetchWeatherBatch(
         weatherCache.getStale(coordKey(city.lat, city.lng));
       if (stale) {
         finalMap.set(city.cityId, stale);
-      } else {
-        const fallback = generateFallbackWeatherReading(city.lat, city.lng);
-        weatherCache.set(city.cityId, fallback, 5 * 60 * 1000);
-        finalMap.set(city.cityId, fallback);
       }
     }
     return finalMap;
@@ -281,50 +347,80 @@ export async function fetchWeatherBatch(
 
   const batchExecution = (async () => {
     try {
-      const lats = toFetch.map((c) => c.lat).join(",");
-      const lngs = toFetch.map((c) => c.lng).join(",");
-
-      const { data } = await axios.get<
-        OpenMeteoLocationItem | OpenMeteoLocationItem[]
-      >(WEATHER_BASE_URL, {
-        timeout: 10000,
-        params: {
-          latitude: lats,
-          longitude: lngs,
-          current: CURRENT_WEATHER_VARS,
-          wind_speed_unit: "ms",
-          precipitation_unit: "mm",
-        },
-      });
+      const { mapped, attempts, durationMs, recovered } =
+        await queryOpenMeteoWeatherBatch(toFetch);
 
       openMeteoRateLimiter.recordSuccess();
 
-      const items: OpenMeteoLocationItem[] = Array.isArray(data)
-        ? data
-        : data
-          ? [data]
-          : [];
-
-      const mapped = mapResponseToCities(toFetch, items);
       for (const [cId, reading] of mapped.entries()) {
         finalMap.set(cId, reading);
       }
 
-      logger.info(
-        `[weather] Batched fetch successful for ${mapped.size}/${toFetch.length} uncached cities (1 upstream request)`,
-      );
+      if (recovered) {
+        logger.info(
+          `[weather] Open-Meteo current batch recovered after retry (attempt ${attempts}/3 for ${toFetch.length} cities in ${durationMs}ms)`,
+        );
+      } else {
+        logger.info(
+          `[weather] Batched fetch successful for ${mapped.size}/${toFetch.length} uncached cities (1 upstream request)`,
+        );
+      }
       return finalMap;
     } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.status === 429) {
-        openMeteoRateLimiter.triggerRateLimitCooldown("weather");
-      } else {
-        const msg = err instanceof Error ? err.message : String(err);
-        logger.warn(
-          `[weather] Open-Meteo batched current fetch failed for ${toFetch.length} cities: ${msg}`,
+      let status: number | null = null;
+      if (axios.isAxiosError(err)) {
+        status = err.response?.status ?? null;
+      }
+
+      if (err instanceof RateLimitExceededError || status === 429) {
+        const retryAfter = parseRetryAfterHeader(err);
+        openMeteoRateLimiter.triggerRateLimitCooldown(
+          "weather",
+          retryAfter ? retryAfter : undefined,
         );
       }
 
-      // Populate any remaining uncached cities from stale cache or baseline
+      // Small bounded sub-batch fallback on 503/504 if primary 14-city batch timed out or failed
+      if ((status === 503 || status === 504 || status === null) && toFetch.length >= 8) {
+        try {
+          const mid = Math.ceil(toFetch.length / 2);
+          const chunk1 = toFetch.slice(0, mid);
+          const chunk2 = toFetch.slice(mid);
+
+          logger.debug(
+            `[weather] Attempting sub-batch fallback for ${toFetch.length} cities (chunks of ${chunk1.length} and ${chunk2.length})...`,
+          );
+
+          const [res1, res2] = await Promise.allSettled([
+            queryOpenMeteoWeatherBatch(chunk1),
+            queryOpenMeteoWeatherBatch(chunk2),
+          ]);
+
+          if (res1.status === "fulfilled") {
+            for (const [cId, reading] of res1.value.mapped.entries()) {
+              finalMap.set(cId, reading);
+            }
+          }
+          if (res2.status === "fulfilled") {
+            for (const [cId, reading] of res2.value.mapped.entries()) {
+              finalMap.set(cId, reading);
+            }
+          }
+
+          if (finalMap.size > 0) {
+            openMeteoRateLimiter.recordSuccess();
+            logger.info(
+              `[weather] Sub-batch fallback succeeded for ${finalMap.size}/${toFetch.length} cities`,
+            );
+            return finalMap;
+          }
+        } catch {
+          // Sub-batch fallback failed; proceed to last-known-good stale retention
+        }
+      }
+
+      // Retain last-known-good stale readings for any uncached cities without fabricating data
+      let staleRetainedCount = 0;
       for (const city of toFetch) {
         if (!finalMap.has(city.cityId)) {
           const stale =
@@ -332,13 +428,23 @@ export async function fetchWeatherBatch(
             weatherCache.getStale(coordKey(city.lat, city.lng));
           if (stale) {
             finalMap.set(city.cityId, stale);
-          } else {
-            const fallback = generateFallbackWeatherReading(city.lat, city.lng);
-            weatherCache.set(city.cityId, fallback, 5 * 60 * 1000);
-            finalMap.set(city.cityId, fallback);
+            staleRetainedCount++;
           }
         }
       }
+
+      const errorMsg =
+        status !== null
+          ? `HTTP ${status}`
+          : err instanceof Error
+            ? err.message
+            : String(err);
+
+      logger.warn(
+        `[weather] Open-Meteo batched current fetch temporarily unavailable (${errorMsg} after 3 attempts for ${toFetch.length} cities). ` +
+          `Retaining last-known-good weather readings for ${staleRetainedCount}/${toFetch.length} cities.`,
+      );
+
       return finalMap;
     }
   })();
@@ -383,5 +489,6 @@ export async function fetchWeather(
   const stale =
     (cityId ? weatherCache.getStale(cityId) : undefined) ||
     weatherCache.getStale(coordKey(lat, lng));
-  return stale ?? generateFallbackWeatherReading(lat, lng);
+
+  return stale ?? null;
 }

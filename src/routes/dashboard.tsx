@@ -203,6 +203,14 @@ function Dashboard() {
     if (isRefreshing) return;
     setIsRefreshing(true);
     try {
+      // 1. Explicitly trigger fresh upstream Open-Meteo ingestion (bypasses 20-min DB freshness gate)
+      try {
+        await environmentalApi.refreshEnvironmentalData();
+      } catch (err) {
+        console.warn("[dashboard] Manual environmental refresh request failed:", err);
+      }
+
+      // 2. Refetch all active dashboard queries with updated database state
       await Promise.all([
         refreshCity(),
         refetchAlerts(),

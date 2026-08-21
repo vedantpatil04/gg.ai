@@ -31,18 +31,62 @@ export function getUsername(email: string): string {
 }
 
 /**
- * The backend stores `avatar` as an app-relative path ("/uploads/avatars/
- * xyz.jpg") rather than baking in its own origin — this resolves it to a
- * renderable URL against the API's current origin. Already-absolute values
- * (an "http(s)://..." URL, e.g. from a future Cloudinary/S3 provider) pass
- * through untouched, so this keeps working across a storage migration
- * without any change here.
+ * The backend stores `avatar` and complaint `images` as app-relative paths
+ * ("/uploads/avatars/xyz.jpg" or "/uploads/evidence/abc.jpg") rather than
+ * baking in its own origin. This resolves it to a renderable URL against the
+ * API's current origin.
+ *
+ * Production resilience:
+ * - Passes through data: and blob: URLs untouched.
+ * - If a localhost development URL was stored in historical/seed records,
+ *   it rewrites the host to the active production API origin.
+ * - Passes through external HTTPS URLs (S3/Cloudinary/etc.) untouched.
+ * - Handles leading/missing slashes reliably.
  */
 export function resolveAssetUrl(path?: string | null): string | undefined {
-  if (!path) return undefined;
-  if (/^https?:\/\//i.test(path)) return path;
+  if (!path || typeof path !== "string" || path.trim().length === 0) return undefined;
+  const trimmed = path.trim();
+  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return trimmed;
+
   const origin = API_BASE.replace(/\/api\/?$/, "");
-  return `${origin}${path}`;
+
+  // If a localhost or 127.0.0.1 development URL was saved in historical records,
+  // rewrite the origin to the current active API origin in production.
+  const localhostMatch = trimmed.match(/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(\/.*)$/i);
+  if (localhostMatch) {
+    const pathname = localhostMatch[1];
+    return `${origin}${pathname}`;
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+
+  const cleanPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return `${origin}${cleanPath}`;
+}
+
+/**
+ * Extracts and normalizes evidence image paths from any complaint object
+ * regardless of property naming variations (images, photos, evidence, attachments, etc.)
+ */
+export function extractComplaintImages(complaint?: Record<string, any> | null): string[] {
+  if (!complaint) return [];
+  const raw =
+    complaint.images ??
+    complaint.photos ??
+    complaint.evidence ??
+    complaint.attachments ??
+    complaint.citizenEvidence ??
+    complaint.files ??
+    complaint.media ??
+    [];
+
+  if (Array.isArray(raw)) {
+    return raw.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  }
+  if (typeof raw === "string" && raw.trim().length > 0) {
+    return [raw.trim()];
+  }
+  return [];
 }
 
 /** Up-to-two-letter initials for the avatar fallback, used whenever the

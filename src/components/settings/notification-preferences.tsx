@@ -15,6 +15,7 @@ import {
 import { Panel } from "@/components/ui-bits";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 import {
   notificationApi,
   type NotificationCategory,
@@ -244,7 +245,7 @@ export function NotificationPreferencesPanel() {
 
                 <div className="mt-3 space-y-1.5">
                   {/* In-App */}
-                  <label className="flex items-center justify-between gap-3 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors cursor-pointer">
+                  <label className={cn("flex items-center justify-between gap-3 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors", mutation.isPending ? "cursor-wait opacity-80" : "cursor-pointer")}>
                     <span className="inline-flex items-center gap-2 text-sm">
                       <Bell
                         className="size-3.5 text-muted-foreground shrink-0"
@@ -254,6 +255,7 @@ export function NotificationPreferencesPanel() {
                     </span>
                     <Switch
                       checked={value.inApp}
+                      disabled={mutation.isPending}
                       onCheckedChange={(checked) =>
                         setChannel(category, "inApp", checked)
                       }
@@ -263,7 +265,7 @@ export function NotificationPreferencesPanel() {
                   </label>
 
                   {/* Email */}
-                  <label className="flex items-center justify-between gap-3 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors cursor-pointer">
+                  <label className={cn("flex items-center justify-between gap-3 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors", mutation.isPending ? "cursor-wait opacity-80" : "cursor-pointer")}>
                     <span className="inline-flex items-center gap-2 text-sm">
                       <Mail
                         className="size-3.5 text-muted-foreground shrink-0"
@@ -273,6 +275,7 @@ export function NotificationPreferencesPanel() {
                     </span>
                     <Switch
                       checked={value.email}
+                      disabled={mutation.isPending}
                       onCheckedChange={(checked) =>
                         setChannel(category, "email", checked)
                       }

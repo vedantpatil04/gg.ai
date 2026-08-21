@@ -61,15 +61,28 @@ export function errorHandler(
     message = "Too many requests — please slow down and try again later";
   }
 
-  if (process.env.NODE_ENV !== "production") {
-    logger.error(`${statusCode} — ${message}`, { stack: err.stack });
+  const isExpectedTokenExpiry = err.name === "TokenExpiredError";
+
+  if (isExpectedTokenExpiry) {
+    // Expected access token expiration — log as debug diagnostics rather than an application error
+    logger.debug("[auth] Access token expired — awaiting client token refresh");
+  } else if (process.env.NODE_ENV !== "production") {
+    if (statusCode >= 500) {
+      logger.error(`${statusCode} — ${message}`, { stack: err.stack });
+    } else if (statusCode === 401) {
+      logger.warn(`[auth] Authentication failure: ${message}`);
+    } else {
+      logger.warn(`${statusCode} — ${message}`);
+    }
   } else if (statusCode >= 500) {
     logger.error("Server Error:", err);
+  } else if (statusCode === 401) {
+    logger.warn(`[auth] Authentication failure: ${message}`);
   }
 
   res.status(statusCode).json({
     success: false,
     message,
-    ...(process.env.NODE_ENV !== "production" && { stack: err.stack }),
+    ...(process.env.NODE_ENV !== "production" && !isExpectedTokenExpiry && { stack: err.stack }),
   });
 }

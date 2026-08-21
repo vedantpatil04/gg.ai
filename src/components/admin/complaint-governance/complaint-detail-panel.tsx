@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { resolveAssetUrl } from "@/components/profile/profile-utils";
+import { resolveAssetUrl, extractComplaintImages } from "@/components/profile/profile-utils";
 import { useState } from "react";
 import { humanizeIssueType } from "./issue-type";
 import { ActivityFeed, complaintEventsToActivityFeed } from "@/components/admin/shared/activity-feed";
@@ -318,26 +318,31 @@ export function ComplaintDetailPanel({
             </div>
 
             {/* Evidence Attachments */}
-            <div className="space-y-2">
-              <div className="text-[10.5px] uppercase font-bold tracking-[0.14em] text-muted-foreground/80 px-1 flex items-center justify-between">
-                <span>Citizen Evidence Attachments</span>
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  {complaint.images.length} {complaint.images.length === 1 ? "file" : "files"}
-                </span>
-              </div>
-              {complaint.images.length === 0 ? (
-                <div className="p-3 rounded-xl border border-border/40 bg-muted/10 flex items-center gap-2 text-xs text-muted-foreground select-none">
-                  <ImageOff className="size-4 text-muted-foreground/60" />
-                  <span>No photographic evidence attached to this report.</span>
+            {(() => {
+              const evidenceImages = extractComplaintImages(complaint);
+              return (
+                <div className="space-y-2">
+                  <div className="text-[10.5px] uppercase font-bold tracking-[0.14em] text-muted-foreground/80 px-1 flex items-center justify-between">
+                    <span>Citizen Evidence Attachments</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      {evidenceImages.length} {evidenceImages.length === 1 ? "photo" : "photos"}
+                    </span>
+                  </div>
+                  {evidenceImages.length === 0 ? (
+                    <div className="p-3 rounded-xl border border-border/40 bg-muted/10 flex items-center gap-2 text-xs text-muted-foreground select-none">
+                      <ImageOff className="size-4 text-muted-foreground/60" />
+                      <span>No citizen evidence photos attached to this report.</span>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {evidenceImages.map((src, i) => (
+                        <EvidenceThumb key={src + i} path={src} index={i} />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  {complaint.images.map((src, i) => (
-                    <EvidenceThumb key={src + i} path={src} index={i} />
-                  ))}
-                </div>
-              )}
-            </div>
+              );
+            })()}
 
             {/* Incident Lifecycle Timeline */}
             <div className="space-y-2">

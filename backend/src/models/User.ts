@@ -1,6 +1,10 @@
 import mongoose, { Document, Schema } from "mongoose";
 import bcrypt from "bcryptjs";
-import { NOTIFICATION_CATEGORIES, type NotificationPreferences } from "../constants/notifications";
+import {
+  NOTIFICATION_CATEGORIES,
+  defaultNotificationPreferences,
+  type NotificationPreferences,
+} from "../constants/notifications";
 
 import {
   SUPPORTED_LANGUAGES,
@@ -10,6 +14,7 @@ import {
   MEASUREMENT_UNITS,
   AUTO_TIMEZONE,
   isValidTimezone,
+  defaultLanguageRegionPreferences,
   type LanguageRegionPreferences,
 } from "../constants/languageRegion";
 
@@ -18,6 +23,7 @@ import {
   WIDGET_IDS,
   PINNABLE_CARD_IDS,
   DEFAULT_CITY_ID,
+  defaultDashboardPreferences,
   type DashboardPreferences,
 } from "../constants/dashboard";
 
@@ -27,11 +33,19 @@ import {
   ANIMATION_SPEEDS,
   MIN_ZOOM,
   MAX_ZOOM,
+  defaultMapPreferences,
   type MapPreferences,
 } from "../constants/maps";
 
-import { type AccessibilityPreferences } from "../constants/accessibility";
-import { type PrivacyPreferences } from "../constants/privacy";
+import {
+  defaultAccessibilityPreferences,
+  type AccessibilityPreferences,
+} from "../constants/accessibility";
+
+import {
+  defaultPrivacyPreferences,
+  type PrivacyPreferences,
+} from "../constants/privacy";
 
 export type UserRole = "citizen" | "authority" | "administrator";
 export type Gender = "male" | "female" | "other" | "prefer_not_to_say";
@@ -121,6 +135,286 @@ export interface IUser extends Document {
     createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
+}
+
+// ─── Sub-schemas for user preferences ──────────────────────────────────────────
+const AppearanceSchema = new Schema(
+  {
+    theme: {
+      type: String,
+      enum: ["light", "dark", "system"],
+      default: "system",
+    },
+  },
+  { _id: false },
+);
+
+const NotificationsSchema = new Schema(
+  NOTIFICATION_CATEGORIES.reduce((acc, category) => {
+    acc[category] = {
+      inApp: { type: Boolean, default: true },
+      email: { type: Boolean, default: true },
+      push: { type: Boolean, default: true },
+    };
+    return acc;
+  }, {} as Record<string, unknown>),
+  { _id: false },
+);
+
+const LanguageRegionSchema = new Schema(
+  {
+    language: {
+      type: String,
+      enum: SUPPORTED_LANGUAGES,
+      default: "en",
+    },
+    timezone: {
+      type: String,
+      default: AUTO_TIMEZONE,
+      validate: {
+        validator: isValidTimezone,
+        message: (props: { value: string }) =>
+          `${props.value} is not a supported timezone.`,
+      },
+    },
+    dateFormat: {
+      type: String,
+      enum: DATE_FORMATS,
+      default: "DD/MM/YYYY",
+    },
+    timeFormat: {
+      type: String,
+      enum: TIME_FORMATS,
+      default: "24h",
+    },
+    numberFormat: {
+      type: String,
+      enum: NUMBER_FORMATS,
+      default: "1,234.56",
+    },
+    measurementUnit: {
+      type: String,
+      enum: MEASUREMENT_UNITS,
+      default: "metric",
+    },
+  },
+  { _id: false },
+);
+
+const DashboardSchema = new Schema(
+  {
+    defaultLandingPage: {
+      type: String,
+      enum: LANDING_PAGE_IDS,
+      default: "dashboard",
+    },
+    visibleWidgets: {
+      type: [String],
+      enum: WIDGET_IDS,
+      default: () => [...WIDGET_IDS],
+    },
+    widgetOrder: {
+      type: [String],
+      enum: WIDGET_IDS,
+      default: () => [...WIDGET_IDS],
+    },
+    defaultCity: {
+      type: String,
+      default: DEFAULT_CITY_ID,
+    },
+    pinnedCards: {
+      type: [String],
+      enum: PINNABLE_CARD_IDS,
+      default: () => ["aqi", "forecast"],
+    },
+  },
+  { _id: false },
+);
+
+const MapsSchema = new Schema(
+  {
+    mapType: {
+      type: String,
+      enum: MAP_TYPES,
+      default: "street",
+    },
+    zoom: {
+      type: Number,
+      min: MIN_ZOOM,
+      max: MAX_ZOOM,
+      default: 10,
+    },
+    trafficLayer: {
+      type: Boolean,
+      default: false,
+    },
+    pollutionLayer: {
+      type: Boolean,
+      default: true,
+    },
+    weatherLayer: {
+      type: Boolean,
+      default: true,
+    },
+    measurementUnit: {
+      type: String,
+      enum: MAP_MEASUREMENT_UNITS,
+      default: "metric",
+    },
+    animationSpeed: {
+      type: String,
+      enum: ANIMATION_SPEEDS,
+      default: "normal",
+    },
+    rememberLastLocation: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  { _id: false },
+);
+
+const AccessibilitySchema = new Schema(
+  {
+    highContrast: {
+      type: Boolean,
+      default: false,
+    },
+    reduceMotion: {
+      type: Boolean,
+      default: false,
+    },
+    largeText: {
+      type: Boolean,
+      default: false,
+    },
+    keyboardNavigation: {
+      type: Boolean,
+      default: true,
+    },
+    focusHighlight: {
+      type: Boolean,
+      default: true,
+    },
+    screenReader: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { _id: false },
+);
+
+const PrivacySchema = new Schema(
+  {
+    anonymousAnalytics: {
+      type: Boolean,
+      default: true,
+    },
+    personalizedRecommendations: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  { _id: false },
+);
+
+const PreferencesSchema = new Schema(
+  {
+    appearance: {
+      type: AppearanceSchema,
+      default: () => ({ theme: "system" }),
+    },
+    notifications: {
+      type: NotificationsSchema,
+      default: () => defaultNotificationPreferences(),
+    },
+    languageRegion: {
+      type: LanguageRegionSchema,
+      default: () => defaultLanguageRegionPreferences(),
+    },
+    dashboard: {
+      type: DashboardSchema,
+      default: () => defaultDashboardPreferences(),
+    },
+    maps: {
+      type: MapsSchema,
+      default: () => defaultMapPreferences(),
+    },
+    accessibility: {
+      type: AccessibilitySchema,
+      default: () => defaultAccessibilityPreferences(),
+    },
+    privacy: {
+      type: PrivacySchema,
+      default: () => defaultPrivacyPreferences(),
+    },
+  },
+  { _id: false },
+);
+
+function toPlainObject<T>(val: unknown): T | undefined {
+  if (!val || typeof val !== "object") return undefined;
+  if (typeof (val as any).toObject === "function") {
+    return (val as any).toObject();
+  }
+  if (typeof (val as any).toJSON === "function") {
+    return (val as any).toJSON();
+  }
+  return val as T;
+}
+
+export interface NormalizedUserPreferences {
+  appearance: {
+    theme: "light" | "dark" | "system";
+  };
+  notifications: NotificationPreferences;
+  languageRegion: LanguageRegionPreferences;
+  dashboard: DashboardPreferences;
+  maps: MapPreferences;
+  accessibility: AccessibilityPreferences;
+  privacy: PrivacyPreferences;
+}
+
+export function normalizeUserPreferences(
+  raw?: Partial<IUser["preferences"]> | null,
+): NormalizedUserPreferences {
+  const rawObj = toPlainObject<Record<string, any>>(raw) || {};
+  return {
+    appearance: {
+      theme: toPlainObject<{ theme?: "light" | "dark" | "system" }>(rawObj.appearance)?.theme ?? "system",
+    },
+    notifications: (() => {
+      const notifs = toPlainObject<Record<string, any>>(rawObj.notifications);
+      const defaults = defaultNotificationPreferences();
+      if (!notifs) return defaults;
+      const merged: Record<string, any> = { ...defaults };
+      for (const cat of NOTIFICATION_CATEGORIES) {
+        const catObj = toPlainObject<Record<string, any>>(notifs[cat]);
+        merged[cat] = { ...(defaults as any)[cat], ...(catObj || {}) };
+      }
+      return merged as NotificationPreferences;
+    })(),
+    languageRegion: {
+      ...defaultLanguageRegionPreferences(),
+      ...(toPlainObject<LanguageRegionPreferences>(rawObj.languageRegion) || {}),
+    },
+    dashboard: {
+      ...defaultDashboardPreferences(),
+      ...(toPlainObject<DashboardPreferences>(rawObj.dashboard) || {}),
+    },
+    maps: {
+      ...defaultMapPreferences(),
+      ...(toPlainObject<MapPreferences>(rawObj.maps) || {}),
+    },
+    accessibility: {
+      ...defaultAccessibilityPreferences(),
+      ...(toPlainObject<AccessibilityPreferences>(rawObj.accessibility) || {}),
+    },
+    privacy: {
+      ...defaultPrivacyPreferences(),
+      ...(toPlainObject<PrivacyPreferences>(rawObj.privacy) || {}),
+    },
+  };
 }
 
 const UserSchema = new Schema<IUser>(
@@ -228,165 +522,17 @@ const UserSchema = new Schema<IUser>(
       default: undefined,
     },
     preferences: {
-  appearance: {
-    theme: {
-      type: String,
-      enum: ["light", "dark", "system"],
-      default: "system",
+      type: PreferencesSchema,
+      default: () => ({
+        appearance: { theme: "system" },
+        notifications: defaultNotificationPreferences(),
+        languageRegion: defaultLanguageRegionPreferences(),
+        dashboard: defaultDashboardPreferences(),
+        maps: defaultMapPreferences(),
+        accessibility: defaultAccessibilityPreferences(),
+        privacy: defaultPrivacyPreferences(),
+      }),
     },
-  },
-
-  notifications: NOTIFICATION_CATEGORIES.reduce((acc, category) => {
-    acc[category] = {
-      inApp: { type: Boolean, default: true },
-      email: { type: Boolean, default: true },
-      push: { type: Boolean, default: false },
-    };
-    return acc;
-  }, {} as Record<string, unknown>),
-
-  languageRegion: {
-    language: {
-      type: String,
-      enum: SUPPORTED_LANGUAGES,
-      default: "en",
-    },
-    timezone: {
-      type: String,
-      default: AUTO_TIMEZONE,
-      validate: {
-        validator: isValidTimezone,
-        message: (props: { value: string }) =>
-          `${props.value} is not a supported timezone.`,
-      },
-    },
-    dateFormat: {
-      type: String,
-      enum: DATE_FORMATS,
-      default: "DD/MM/YYYY",
-    },
-    timeFormat: {
-      type: String,
-      enum: TIME_FORMATS,
-      default: "24h",
-    },
-    numberFormat: {
-      type: String,
-      enum: NUMBER_FORMATS,
-      default: "1,234.56",
-    },
-    measurementUnit: {
-      type: String,
-      enum: MEASUREMENT_UNITS,
-      default: "metric",
-    },
-  },
-
-  dashboard: {
-    defaultLandingPage: {
-      type: String,
-      enum: LANDING_PAGE_IDS,
-      default: "dashboard",
-    },
-    visibleWidgets: {
-      type: [String],
-      enum: WIDGET_IDS,
-      default: () => [...WIDGET_IDS],
-    },
-    widgetOrder: {
-      type: [String],
-      enum: WIDGET_IDS,
-      default: () => [...WIDGET_IDS],
-    },
-    defaultCity: {
-      type: String,
-      default: DEFAULT_CITY_ID,
-    },
-    pinnedCards: {
-      type: [String],
-      enum: PINNABLE_CARD_IDS,
-      default: () => ["aqi", "forecast"],
-    },
-  },
-
-  maps: {
-    mapType: {
-      type: String,
-      enum: MAP_TYPES,
-      default: "street",
-    },
-    zoom: {
-      type: Number,
-      min: MIN_ZOOM,
-      max: MAX_ZOOM,
-      default: 10,
-    },
-    trafficLayer: {
-      type: Boolean,
-      default: false,
-    },
-    pollutionLayer: {
-      type: Boolean,
-      default: true,
-    },
-    weatherLayer: {
-      type: Boolean,
-      default: true,
-    },
-    measurementUnit: {
-      type: String,
-      enum: MAP_MEASUREMENT_UNITS,
-      default: "metric",
-    },
-    animationSpeed: {
-      type: String,
-      enum: ANIMATION_SPEEDS,
-      default: "normal",
-    },
-    rememberLastLocation: {
-      type: Boolean,
-      default: true,
-    },
-  },
-
-  accessibility: {
-    highContrast: {
-      type: Boolean,
-      default: false,
-    },
-    reduceMotion: {
-      type: Boolean,
-      default: false,
-    },
-    largeText: {
-      type: Boolean,
-      default: false,
-    },
-    keyboardNavigation: {
-      type: Boolean,
-      default: true,
-    },
-    focusHighlight: {
-      type: Boolean,
-      default: true,
-    },
-    screenReader: {
-      type: Boolean,
-      default: false,
-    },
-  },
-
-  privacy: {
-    anonymousAnalytics: {
-      type: Boolean,
-      default: true,
-    },
-    personalizedRecommendations: {
-      type: Boolean,
-      default: true,
-    },
-  },
-},
   },
   {
     timestamps: true,
@@ -403,6 +549,14 @@ const UserSchema = new Schema<IUser>(
     },
   },
 );
+
+// Normalize preferences before validation to prevent casting errors on sparse documents
+UserSchema.pre("validate", function (next) {
+  if (this.preferences) {
+    this.preferences = normalizeUserPreferences(this.preferences);
+  }
+  next();
+});
 
 // Hash password before saving
 UserSchema.pre("save", async function (next) {

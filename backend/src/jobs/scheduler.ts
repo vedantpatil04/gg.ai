@@ -37,7 +37,12 @@ async function safeRun(options: IngestionRunOptions = {}): Promise<{
   }
   isRunning = true;
   const cycleStart = Date.now();
-  logger.info("[scheduler] ⏳ Scheduled ingestion cycle started");
+  const isForced = Boolean(options.force || options.forceRefresh);
+  if (isForced) {
+    logger.info("[scheduler] ⏳ Manual ingestion cycle started (forced override)");
+  } else {
+    logger.info("[scheduler] ⏳ Scheduled ingestion cycle started");
+  }
 
   try {
     const result = await runIngestion(options);
@@ -139,5 +144,5 @@ export async function triggerManualIngestion(force = true): Promise<{
   if (isRunning) {
     return { success: 0, failed: 0, total: -1 }; // -1 signals "already running"
   }
-  return await safeRun({ force });
+  return await safeRun({ force, forceRefresh: force });
 }

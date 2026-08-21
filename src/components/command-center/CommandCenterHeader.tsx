@@ -31,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ProfileAvatar } from "@/components/profile/profile-avatar";
 
 export interface NavTab {
   id: string;
@@ -175,9 +176,12 @@ export function CommandCenterHeader({
                 aria-label={`Account menu for ${userName}`}
                 className="flex items-center gap-2 p-1 pl-1.5 pr-2 rounded-xl border border-border/60 hover:bg-muted/50 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
               >
-                <div className="size-7 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-bold text-xs grid place-items-center shadow-xs shrink-0">
-                  {initials}
-                </div>
+                <ProfileAvatar
+                  profile={user}
+                  name={userName}
+                  className="size-7 rounded-lg shadow-xs"
+                  fallbackClassName="text-xs font-bold"
+                />
                 <div className="hidden md:flex flex-col items-start text-left">
                   <span className="text-xs font-semibold leading-none text-foreground">
                     {userName}
@@ -193,9 +197,12 @@ export function CommandCenterHeader({
               {/* Profile Header: Avatar, User Name, Role */}
               <div className="p-2.5 rounded-lg bg-muted/40 border border-border/50 mb-1 space-y-1">
                 <div className="flex items-center gap-2.5">
-                  <div className="size-9 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-bold text-xs grid place-items-center shadow-xs shrink-0">
-                    {initials}
-                  </div>
+                  <ProfileAvatar
+                    profile={user}
+                    name={userName}
+                    className="size-9 rounded-lg shadow-xs"
+                    fallbackClassName="text-xs font-bold"
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-foreground truncate leading-none">
                       {userName}

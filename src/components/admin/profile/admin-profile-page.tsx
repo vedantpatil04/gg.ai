@@ -14,6 +14,7 @@ import {
   ClipboardCheck,
   MapPinned,
   HeartPulse,
+  Camera,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme";
@@ -21,6 +22,8 @@ import { Panel, Pill, SectionTitle } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { ProfileAvatar } from "@/components/profile/profile-avatar";
+import { ProfilePhotoDialog } from "@/components/profile/profile-photo-dialog";
 import { decodeJwtPayload, describeBrowserAndOS } from "./session-utils";
 
 function Row({ label, value, note }: { label: string; value: string; note?: string }) {
@@ -52,6 +55,7 @@ export function AdminProfilePage() {
   const [nameValue, setNameValue] = useState(user?.name ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [isPhotoOpen, setIsPhotoOpen] = useState(false);
 
   // ProtectedRoute guarantees an authenticated user by the time this renders.
   if (!user) return null;
@@ -72,9 +76,11 @@ export function AdminProfilePage() {
     setSaving(true);
     try {
       await updateProfile({ name: trimmed });
-      setEditingName(false);
       setSaved(true);
+      setEditingName(false);
       setTimeout(() => setSaved(false), 3000);
+    } catch {
+      // toast shown by authApi
     } finally {
       setSaving(false);
     }
@@ -95,8 +101,22 @@ export function AdminProfilePage() {
       <div className="glass rounded-2xl p-4 sm:p-6 relative overflow-hidden">
         <div className="absolute inset-0 aurora opacity-10" />
         <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5">
-          <div className="size-14 sm:size-16 rounded-2xl aurora grid place-items-center text-primary-foreground text-lg sm:text-xl font-semibold shrink-0">
-            {initials}
+          <div
+            className="relative group cursor-pointer shrink-0"
+            onClick={() => setIsPhotoOpen(true)}
+            title="Change photo"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setIsPhotoOpen(true)}
+          >
+            <ProfileAvatar
+              profile={user}
+              className="size-14 sm:size-16 rounded-2xl shadow-md ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all"
+              fallbackClassName="text-lg sm:text-xl font-semibold"
+            />
+            <div className="absolute inset-0 rounded-2xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+              <Camera className="size-5" />
+            </div>
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
@@ -117,6 +137,8 @@ export function AdminProfilePage() {
           </div>
         </div>
       </div>
+
+      <ProfilePhotoDialog open={isPhotoOpen} onOpenChange={setIsPhotoOpen} profile={user} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
         {/* Account Settings */}

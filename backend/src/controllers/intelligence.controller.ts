@@ -150,12 +150,10 @@ export async function getExecutiveInsights(
     const worstCity = latestPerCity[0];
     const bestCity = latestPerCity[latestPerCity.length - 1];
 
-    // Step 2: Run Gemini analyses in parallel using real data
-    const [aqiTrend, cityComparison, sustainability] = await Promise.all([
-      analyzeAQITrend(worstCity.cityId, 7),
-      compareCities(cityIds),
-      generateSustainabilityRecommendations(worstCity.cityId),
-    ]);
+    // Step 2: Run analyses with cache-awareness and circuit-protection
+    const aqiTrend = await analyzeAQITrend(worstCity.cityId, 7);
+    const cityComparison = await compareCities(cityIds);
+    const sustainability = await generateSustainabilityRecommendations(worstCity.cityId);
 
     res.json({
       success: true,

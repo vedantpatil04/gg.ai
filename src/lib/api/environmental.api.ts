@@ -249,6 +249,8 @@ export const environmentalApi = {
   getRankings: () => client.get("/environmental/rankings").then((r) => r.data),
 
   getNetworkSummary: () => client.get("/environmental/network-summary").then((r) => r.data),
+
+  refreshEnvironmentalData: () => client.post("/environmental/refresh").then((r) => r.data),
 };
 
 export const forecastApi = {

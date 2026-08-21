@@ -31,45 +31,54 @@ interface StatusPillProps {
 function StatusPill({ icon: Icon, label, value, unit, highlight, highlightColor }: StatusPillProps) {
   return (
     <div
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shrink-0 transition-colors"
-      style={{
-        background: highlight
-          ? `${highlightColor}18`
-          : "rgba(255,255,255,0.06)",
-        border: highlight
-          ? `1px solid ${highlightColor}40`
-          : "1px solid rgba(255,255,255,0.09)",
-      }}
+      className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0 transition-colors"
+      style={
+        highlight
+          ? {
+              background: `${highlightColor}18`,
+              border: `1px solid ${highlightColor}45`,
+              backdropFilter: "blur(12px)",
+            }
+          : undefined
+      }
     >
-      <Icon
-        className="size-3.5 shrink-0"
-        style={{ color: highlight ? highlightColor : "rgba(255,255,255,0.55)" }}
-      />
-      <span
-        className="text-[11px] font-medium tabular-nums"
-        style={{ color: highlight ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.65)" }}
+      <div
+        className={
+          highlight
+            ? "flex items-center gap-1.5"
+            : "flex items-center gap-1.5 px-0 rounded-full bg-white/[0.16] dark:bg-white/[0.08] border border-white/30 dark:border-white/12 backdrop-blur-md px-2.5 sm:px-3 py-1 sm:py-1.5 -mx-2.5 sm:-mx-3 -my-1 sm:-my-1.5"
+        }
       >
-        {value}
-        {unit && (
-          <span style={{ color: highlight ? highlightColor : "rgba(255,255,255,0.40)" }}>
-            &thinsp;{unit}
-          </span>
-        )}
-      </span>
-      <span className="text-[10px] hidden sm:inline" style={{ color: "rgba(255,255,255,0.30)" }}>
-        {label}
-      </span>
+        <Icon
+          className="size-3 sm:size-3.5 shrink-0"
+          style={highlight ? { color: highlightColor } : undefined}
+        />
+        <span
+          className="text-[10px] sm:text-[11px] font-semibold tabular-nums text-white dark:text-white/85"
+        >
+          {value}
+          {unit && (
+            <span
+              className="ml-0.5"
+              style={highlight ? { color: highlightColor } : undefined}
+            >
+              &thinsp;{unit}
+            </span>
+          )}
+        </span>
+        <span className="text-[9px] sm:text-[10px] hidden md:inline text-white/55 dark:text-white/40">
+          {label}
+        </span>
+      </div>
     </div>
   );
 }
 
-/** Separator between pills */
 function Sep() {
   return (
     <div
       aria-hidden
-      className="w-px h-4 shrink-0 self-center"
-      style={{ background: "rgba(255,255,255,0.10)" }}
+      className="w-px h-3.5 sm:h-4 shrink-0 self-center bg-white/25 dark:bg-white/15"
     />
   );
 }
@@ -94,40 +103,32 @@ export function LiveStatusBar({
   const prefersReduced = useReducedMotion() ?? false;
   const band = findAqiBand(aqi);
 
-  // Derive highlight color from AQI
-  const aqiColor =
-    aqi <= 50  ? "#10b981" :
-    aqi <= 100 ? "#eab308" :
-    aqi <= 150 ? "#f97316" :
-    aqi <= 200 ? "#ef4444" :
-                 "#a855f7";
+  const aqiColor = band.color;
 
   return (
     <motion.div
-      className="flex items-center gap-1.5 overflow-x-auto scrollbar-none"
+      className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-full py-0.5"
       initial={prefersReduced ? false : { opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={prefersReduced ? { duration: 0 } : { duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-      style={{ scrollbarWidth: "none" }}
+      style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
     >
       {/* Live indicator */}
       <div
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shrink-0"
-        style={{
-          background: "rgba(16,185,129,0.15)",
-          border: "1px solid rgba(16,185,129,0.35)",
-        }}
+        className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0 bg-emerald-500/[0.18] dark:bg-emerald-500/20 border border-emerald-400/40 dark:border-emerald-500/35 backdrop-blur-md"
       >
         <span
-          className="size-2 rounded-full shrink-0"
+          className="size-1.5 sm:size-2 rounded-full shrink-0"
           style={{
             background: "#10b981",
             boxShadow: "0 0 6px #10b981",
             animation: prefersReduced ? "none" : "live-pulse 2s ease-in-out infinite",
           }}
         />
-        <Radio className="size-3.5 text-emerald-400 shrink-0" />
-        <span className="text-[11px] font-semibold text-emerald-400">Live</span>
+        <Radio className="size-3 sm:size-3.5 text-emerald-300 dark:text-emerald-400 shrink-0" />
+        <span className="text-[10px] sm:text-[11px] font-bold text-emerald-300 dark:text-emerald-400 uppercase tracking-wider">
+          Live
+        </span>
       </div>
 
       <Sep />
@@ -170,17 +171,13 @@ export function LiveStatusBar({
         <>
           <Sep />
           <div
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shrink-0"
-            style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.09)",
-            }}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0 bg-white/[0.16] dark:bg-white/[0.08] border border-white/30 dark:border-white/12 backdrop-blur-md"
           >
             <span
-              className="size-1.5 rounded-full bg-emerald-400 shrink-0"
+              className="size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 shrink-0"
               style={{ animation: prefersReduced ? "none" : "live-pulse 3s ease-in-out 1s infinite" }}
             />
-            <span className="text-[11px] text-white/65 font-medium">
+            <span className="text-[10px] sm:text-[11px] text-white dark:text-white/75 font-medium">
               {sensorsOnline} sensors
             </span>
           </div>

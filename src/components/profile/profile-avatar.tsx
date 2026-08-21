@@ -11,23 +11,32 @@ import { getInitials, resolveAssetUrl, type EnterpriseProfile } from "./profile-
  * per-upload filenames (see profilePhoto.service.ts) mean a fresh photo
  * always has a fresh URL, so there's nothing to cache-bust here.
  */
-export function ProfileAvatar({
-  profile,
-  className,
-  fallbackClassName,
-}: {
-  profile: Pick<EnterpriseProfile, "name" | "avatar">;
+export interface ProfileAvatarProps {
+  profile?: { name?: string; avatar?: string | null } | null;
+  name?: string;
+  avatar?: string | null;
   className?: string;
   fallbackClassName?: string;
-}) {
-  const src = resolveAssetUrl(profile.avatar);
+}
+
+export function ProfileAvatar({
+  profile,
+  name,
+  avatar,
+  className,
+  fallbackClassName,
+}: ProfileAvatarProps) {
+  const resolvedName = name ?? profile?.name ?? "User";
+  const resolvedAvatar = avatar !== undefined ? avatar : profile?.avatar;
+  const src = resolveAssetUrl(resolvedAvatar);
+
   return (
-    <Avatar className={className}>
-      {src && <AvatarImage src={src} alt={profile.name} />}
+    <Avatar className={cn("shrink-0 overflow-hidden", className)}>
+      {src && <AvatarImage src={src} alt={resolvedName} className="object-cover size-full" />}
       <AvatarFallback
-        className={cn("aurora text-primary-foreground font-semibold", fallbackClassName)}
+        className={cn("aurora text-primary-foreground font-semibold select-none", fallbackClassName)}
       >
-        {getInitials(profile.name)}
+        {getInitials(resolvedName)}
       </AvatarFallback>
     </Avatar>
   );

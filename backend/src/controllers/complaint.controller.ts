@@ -105,6 +105,22 @@ export async function createComplaint(req: AuthRequest, res: Response, next: Nex
     const { assignedTo, assignedBy, assignedByName, assignedAt, assignmentSource, ...safeBody } = req.body;
     void assignedTo; void assignedBy; void assignedByName; void assignedAt; void assignmentSource;
 
+    const rawImages =
+      safeBody.images ??
+      safeBody.photos ??
+      safeBody.evidence ??
+      safeBody.attachments ??
+      safeBody.citizenEvidence ??
+      safeBody.media ??
+      safeBody.files ??
+      [];
+    const normalizedImages = Array.isArray(rawImages)
+      ? rawImages.filter((img): img is string => typeof img === "string" && img.trim().length > 0)
+      : typeof rawImages === "string" && rawImages.trim().length > 0
+        ? [rawImages.trim()]
+        : [];
+    safeBody.images = normalizedImages;
+
     let complaint = await Complaint.create({ ...safeBody, submittedBy: req.user._id });
 
     // Step 1: Always notify the citizen that complaint was submitted (Automation 3 requirement 1)

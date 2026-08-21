@@ -13,9 +13,9 @@ import {
   AICapabilityError,
   isRetryable,
 } from "./errors";
-import { GeminiCenterProvider } from "./providers/gemini.provider";
-import { GroqProvider } from "./providers/groq.provider";
-import { OpenRouterProvider } from "./providers/openrouter.provider";
+import { GeminiCenterProvider, ggCenterGeminiCircuit } from "./providers/gemini.provider";
+import { GroqProvider, ggCenterGroqCircuit } from "./providers/groq.provider";
+import { OpenRouterProvider, ggCenterOpenRouterCircuit } from "./providers/openrouter.provider";
 import { AUTO_FALLBACK_ORDER, AI_COOLDOWN_FAILURE_THRESHOLD, AI_COOLDOWN_MS, getProviderTimeoutMs } from "./config";
 
 // ─── Intelligence Center AI Gateway (Phase 3) ──────────────────────────────
@@ -92,7 +92,14 @@ export class IntelligenceCenterAIGateway {
 
   private isInCooldown(name: AIProviderName): boolean {
     const state = this.health[name];
-    return state.cooldownUntil !== null && Date.now() < state.cooldownUntil;
+    const isGatewayCooldown = state.cooldownUntil !== null && Date.now() < state.cooldownUntil;
+    if (isGatewayCooldown) return true;
+
+    if (name === "gemini" && !ggCenterGeminiCircuit.isAvailable()) return true;
+    if (name === "groq" && !ggCenterGroqCircuit.isAvailable()) return true;
+    if (name === "openrouter" && !ggCenterOpenRouterCircuit.isAvailable()) return true;
+
+    return false;
   }
 
   private recordSuccess(name: AIProviderName): void {

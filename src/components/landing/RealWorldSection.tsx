@@ -4,7 +4,6 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import { LANDING_CONTAINER } from "@/components/landing/shared";
 import { REAL_WORLD_IMAGES } from "@/assets/landing/imagery";
-import { CITIES } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 const AUTOPLAY_MS = 5600;
@@ -20,6 +19,10 @@ const AUTOPLAY_MS = 5600;
  * on hover/focus, disabled under `prefers-reduced-motion`) and a custom
  * dark-glass control cluster suited to sitting on top of a photo, matching
  * the visual language already used for `FloatingInsightPanel` on the map.
+ *
+ * Per-slide copy (label, headline, description) comes from `REAL_WORLD_IMAGES`
+ * so image and text are always in sync — driven by a single structured object
+ * per slide, never hardcoded separately.
  */
 export function RealWorldSection() {
   const reducedMotion = useReducedMotion();
@@ -80,7 +83,7 @@ export function RealWorldSection() {
           ))}
         </CarouselContent>
 
-        {/* Storytelling copy + controls, overlaid on the image */}
+        {/* Per-slide storytelling copy + controls, overlaid on the image */}
         <div
           className={cn(
             LANDING_CONTAINER,
@@ -88,26 +91,30 @@ export function RealWorldSection() {
           )}
         >
           <motion.div
+            key={selected}
             initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 0.6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
             className="pointer-events-auto max-w-xl"
           >
+            {/* City-specific label */}
             <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/70">
-              Real World
+              {active?.label ?? "City Environment"}
             </div>
+            {/* City-specific headline */}
             <h2 className="font-display mt-3 text-3xl font-semibold leading-[1.1] tracking-tight text-white lg:text-4xl">
-              The environment doesn't exist inside a dashboard.
+              {active?.headline ?? active?.caption ?? ""}
             </h2>
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-white/80 lg:text-base">
-              Environmental intelligence has to work wherever people live — from dense urban
-              corridors to coastlines and watersheds. GreenGuard already turns real conditions in{" "}
-              {CITIES.length} cities into one live operating picture.
-            </p>
+            {/* City-specific description */}
+            {active?.description && (
+              <p className="mt-3 max-w-md text-sm leading-relaxed text-white/80 lg:text-base">
+                {active.description}
+              </p>
+            )}
           </motion.div>
 
           <div className="pointer-events-auto flex flex-wrap items-center gap-3 self-start lg:self-auto">
+            {/* Counter — dynamically matches the real slide count */}
             <span className="rounded-full border border-white/15 bg-black/50 px-3 py-1.5 text-[11px] font-medium text-white/85 backdrop-blur-md">
               {active?.caption} · {selected + 1}/{REAL_WORLD_IMAGES.length}
             </span>

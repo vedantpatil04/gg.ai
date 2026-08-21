@@ -238,6 +238,7 @@ export interface SubmitComplaintPayload {
   severity: string;
   cityId: string;
   address?: string;
+  images?: string[];
   /** Phase 12: structured location with GPS coordinates */
   location?: {
     address?: string;
@@ -256,6 +257,7 @@ export function useSubmitComplaint() {
         issueType: payload.issueType,
         severity: payload.severity,
         cityId: payload.cityId,
+        images: payload.images,
         location: payload.location ?? (payload.address ? { address: payload.address } : undefined),
       }),
     onSuccess: () => {

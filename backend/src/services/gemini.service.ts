@@ -2,24 +2,53 @@ import { GoogleGenerativeAI, GenerativeModel } from "@google/generative-ai";
 import { logger } from "../utils/logger";
 import { EnvironmentalData } from "../models/EnvironmentalData";
 import { City } from "../models/City";
+import {
+  GeminiCircuitBreaker,
+  GeminiCache,
+  classifyGeminiError,
+  GeminiCircuitState,
+} from "../utils/geminiResilience";
 
-// ─── Client singleton ─────────────────────────────────────────────────────────
-let genAI: GoogleGenerativeAI | null = null;
+// ─── Website Gemini Resilience State (Independent from GG Center) ─────────────
+export const websiteGeminiCircuit = new GeminiCircuitBreaker("website");
+export const websiteGeminiCache = new GeminiCache("website-gemini", 20 * 60 * 1000);
+export const websiteGeminiInFlight = new Map<string, Promise<any>>();
+
+export function getWebsiteGeminiCircuitState(): GeminiCircuitState {
+  return websiteGeminiCircuit.getState();
+}
+
+export function resetWebsiteGeminiCircuit(): void {
+  websiteGeminiCircuit.reset();
+  websiteGeminiCache.clear();
+  websiteGeminiInFlight.clear();
+}
+
+import { getWebsiteAIConfig } from "./ai/config";
+
+// ─── Website Gemini Client Singleton ──────────────────────────────────────────
+let websiteGeminiClient: GoogleGenerativeAI | null = null;
+let currentWebsiteApiKey: string | undefined;
 
 function getClient(): GoogleGenerativeAI | null {
-  if (!process.env.GEMINI_API_KEY) {
-    logger.warn("GEMINI_API_KEY not set — AI features disabled");
+  const config = getWebsiteAIConfig();
+  if (!config.apiKey) {
+    logger.warn("GEMINI_WEBSITE_API_KEY / GEMINI_API_KEY not set — Website AI features disabled");
     return null;
   }
-  if (!genAI) genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  return genAI;
+  if (!websiteGeminiClient || currentWebsiteApiKey !== config.apiKey) {
+    websiteGeminiClient = new GoogleGenerativeAI(config.apiKey);
+    currentWebsiteApiKey = config.apiKey;
+  }
+  return websiteGeminiClient;
 }
 
 function getModel(systemInstruction: string): GenerativeModel | null {
   const client = getClient();
   if (!client) return null;
+  const config = getWebsiteAIConfig();
   return client.getGenerativeModel({
-    model: "gemini-2.5-flash",
+    model: config.model,
     systemInstruction,
     generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
   });
@@ -45,25 +74,106 @@ const SYSTEM_POLICY_ANALYST =
   "Quantify impacts where possible. Highlight trade-offs. Recommend phased implementation. " +
   "Reference real-world policy benchmarks where relevant.";
 
-// ─── Core generate helper ─────────────────────────────────────────────────────
+// ─── Core generate helper with Website Gemini Circuit Breaker & Retries ────────
 async function generate(prompt: string, system = SYSTEM_ENV_ANALYST): Promise<string> {
+  if (!websiteGeminiCircuit.isAvailable()) {
+    return _fallback("AI quota exceeded. Please try again shortly.");
+  }
+
   const model = getModel(system);
   if (!model) return _fallback("AI service not configured. Set GEMINI_API_KEY to enable.");
-  try {
-    const result = await model.generateContent(prompt);
-    return result.response.text().trim();
-  } catch (err: unknown) {
-    console.error("GEMINI FULL ERROR:", err);
-    const msg = err instanceof Error ? err.message : String(err);
-    logger.error(`Gemini error: ${msg}`);
-    if (msg.includes("quota")) return _fallback("AI quota exceeded. Please try again shortly.");
-    if (msg.includes("safety")) return _fallback("Response blocked by safety filters.");
-    return _fallback("AI temporarily unavailable.");
+
+  const maxRetries = 2;
+  let attempt = 0;
+
+  while (attempt <= maxRetries) {
+    try {
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().trim();
+      websiteGeminiCircuit.recordSuccess();
+      return text;
+    } catch (err: unknown) {
+      const classified = classifyGeminiError(err);
+
+      if (classified.type === "quota_exceeded") {
+        websiteGeminiCircuit.recordQuotaExhaustion({
+          reason: classified.message,
+          quotaMetric: classified.quotaMetric,
+        });
+        return _fallback("AI quota exceeded. Please try again shortly.");
+      }
+
+      if (classified.type === "rate_limit_exceeded" && attempt < maxRetries) {
+        attempt++;
+        const delay = (classified.retryDelayMs ?? 1000) * Math.pow(2, attempt - 1);
+        logger.warn(`[gemini][website] transient rate limit — retrying attempt ${attempt}/${maxRetries} in ${delay}ms`);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+
+      if (classified.type === "transient_server" && attempt < maxRetries) {
+        attempt++;
+        const delay = (classified.retryDelayMs ?? 500) * attempt;
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+
+      if (classified.type === "safety") {
+        logger.warn("[gemini][website] response blocked by safety filters");
+        return _fallback("Response blocked by safety filters.");
+      }
+
+      logger.warn(`[gemini][website] request failed: ${classified.message}`);
+      return _fallback("AI temporarily unavailable.");
+    }
   }
+
+  return _fallback("AI temporarily unavailable.");
 }
 
 function _fallback(msg: string): string {
   return msg;
+}
+
+// ─── Resilience Wrapper for Intelligence Analysis ─────────────────────────────
+async function executeWithWebsiteResilience<T>(
+  cacheKey: string,
+  generator: () => Promise<T>,
+  fallback: T,
+): Promise<T> {
+  const cached = websiteGeminiCache.get<T>(cacheKey);
+  if (cached) {
+    return { ...cached.data, cached: true, generatedAt: cached.generatedAt };
+  }
+
+  if (websiteGeminiInFlight.has(cacheKey)) {
+    return websiteGeminiInFlight.get(cacheKey)!;
+  }
+
+  if (!websiteGeminiCircuit.isAvailable()) {
+    const lkg = websiteGeminiCache.getLastKnownGood<T>(cacheKey);
+    if (lkg) {
+      return { ...lkg.data, cached: true, generatedAt: lkg.generatedAt };
+    }
+    return { ...fallback, cached: false, generatedAt: new Date() };
+  }
+
+  const promise = (async () => {
+    try {
+      const result = await generator();
+      websiteGeminiCache.set(cacheKey, result);
+      return { ...result, cached: false, generatedAt: new Date() };
+    } catch {
+      const lkg = websiteGeminiCache.getLastKnownGood<T>(cacheKey);
+      if (lkg) return { ...lkg.data, cached: true, generatedAt: lkg.generatedAt };
+      return { ...fallback, cached: false, generatedAt: new Date() };
+    } finally {
+      websiteGeminiInFlight.delete(cacheKey);
+    }
+  })();
+
+  websiteGeminiInFlight.set(cacheKey, promise);
+  return promise;
 }
 
 // ─── JSON helper — parses Gemini's JSON output robustly ──────────────────────
@@ -225,8 +335,8 @@ export async function generateSustainabilityIntelligenceResponse(
   const recentHistory = history.slice(-6); // last few turns only — enough for "why?"-style follow-ups
   const historyBlock = recentHistory.length
     ? `\nRECENT CONVERSATION (for context on follow-up questions like "why?"):\n${recentHistory
-        .map((m) => `${m.role === "user" ? "User" : "GreenGuard Intelligence"}: ${m.content}`)
-        .join("\n")}\n`
+      .map((m) => `${m.role === "user" ? "User" : "GreenGuard Intelligence"}: ${m.content}`)
+      .join("\n")}\n`
     : "";
 
   const prompt = `
@@ -421,9 +531,9 @@ export async function getInsightsFromData(
   const insights = await generateCityInsights(cityData);
   return [
     { icon: "trend", title: `AQI ${cityData.aqi} — ${Number(cityData.aqi) > 150 ? "Unhealthy" : Number(cityData.aqi) > 100 ? "Moderate" : "Good"}`, body: insights.aqiInsights, tag: "Air Quality" },
-    { icon: "drop",  title: `Water Quality Index: ${cityData.water}/100`, body: insights.environmentalSummary, tag: "Water" },
+    { icon: "drop", title: `Water Quality Index: ${cityData.water}/100`, body: insights.environmentalSummary, tag: "Water" },
     { icon: "alert", title: `Risk Score: ${cityData.risk}/100`, body: insights.riskAnalysis, tag: "Risk" },
-    { icon: "leaf",  title: `EcoScore: ${cityData.eco}/100`, body: insights.sustainabilityInsights, tag: "Sustainability" },
+    { icon: "leaf", title: `EcoScore: ${cityData.eco}/100`, body: insights.sustainabilityInsights, tag: "Sustainability" },
   ];
 }
 
@@ -677,11 +787,11 @@ export async function analyzeAQITrend(cityId: string, days: number = 7): Promise
     {
       $group: {
         _id: { $dateToString: { format: "%Y-%m-%d", date: "$timestamp" } },
-        avgAqi:  { $avg: "$aqi" },
+        avgAqi: { $avg: "$aqi" },
         avgPm25: { $avg: "$pm25" },
-        avgNo2:  { $avg: "$no2" },
-        avgO3:   { $avg: "$o3" },
-        maxAqi:  { $max: "$aqi" },
+        avgNo2: { $avg: "$no2" },
+        avgO3: { $avg: "$o3" },
+        maxAqi: { $max: "$aqi" },
       },
     },
     { $sort: { _id: 1 } },
@@ -971,10 +1081,10 @@ export async function generateSustainabilityRecommendations(cityId: string): Pro
     { $group: { _id: null, avgEco: { $avg: "$doc.eco" } } },
   ]);
 
-  const currentEco    = latest?.eco    ?? 50;
-  const avg30Eco      = avg30[0]?.avgEco ?? currentEco;
-  const networkEco    = networkAvg[0]?.avgEco ?? 50;
-  const trendDir      = currentEco >= avg30Eco ? "improving" : "declining";
+  const currentEco = latest?.eco ?? 50;
+  const avg30Eco = avg30[0]?.avgEco ?? currentEco;
+  const networkEco = networkAvg[0]?.avgEco ?? 50;
+  const trendDir = currentEco >= avg30Eco ? "improving" : "declining";
 
   const fallback: SustainabilityRecommendations = {
     overallScore: currentEco,
@@ -1012,7 +1122,7 @@ Return ONLY valid JSON:
   const text = await generate(prompt, SYSTEM_ENV_ANALYST);
   const result = parseJSON<SustainabilityRecommendations>(text, fallback);
   result.overallScore = currentEco;
-  result.trend        = trendDir;
+  result.trend = trendDir;
   return result;
 }
 
@@ -1161,15 +1271,15 @@ export async function generateNetworkExecutiveSummary(params: {
   totalComplaints: number;
 }): Promise<NetworkExecutiveSummary> {
   const { cities, activeAlerts, totalComplaints } = params;
-  const avgAqi  = cities.reduce((s, c) => s + c.aqi, 0) / cities.length;
+  const avgAqi = cities.reduce((s, c) => s + c.aqi, 0) / cities.length;
   const avgRisk = cities.reduce((s, c) => s + (c.risk ?? 0), 0) / cities.length;
-  const avgEco  = cities.reduce((s, c) => s + (c.eco ?? 0), 0) / cities.length;
+  const avgEco = cities.reduce((s, c) => s + (c.eco ?? 0), 0) / cities.length;
 
   const rating: NetworkExecutiveSummary["overallHealthRating"] =
     avgAqi > 200 ? "Critical" :
-    avgAqi > 150 ? "Poor" :
-    avgAqi > 100 ? "Moderate" :
-    avgAqi > 50  ? "Good" : "Excellent";
+      avgAqi > 150 ? "Poor" :
+        avgAqi > 100 ? "Moderate" :
+          avgAqi > 50 ? "Good" : "Excellent";
 
   const cityTable = cities.slice(0, 8).map(c =>
     `${c.cityName}: AQI ${c.aqi}, Risk ${c.risk}/100, EcoScore ${c.eco}/100`
@@ -1238,8 +1348,8 @@ export async function generateAuthorityActionPlan(
 ): Promise<AuthorityActionPlan> {
   const urgency: AuthorityActionPlan["urgencyLevel"] =
     cityData.aqi > 200 || alerts.critical > 0 ? "Immediate" :
-    cityData.aqi > 150 || complaints.pending > 10 ? "High" :
-    cityData.aqi > 100 ? "Moderate" : "Routine";
+      cityData.aqi > 150 || complaints.pending > 10 ? "High" :
+        cityData.aqi > 100 ? "Moderate" : "Routine";
 
   const prompt = `
 Generate a structured authority action plan for municipal officers.
@@ -1316,7 +1426,7 @@ export async function generateExecutiveReport(
     resolvedComplaints: number;
     resolutionRate: number;
     worstCity: { name: string; aqi: number } | null;
-    bestCity:  { name: string; aqi: number } | null;
+    bestCity: { name: string; aqi: number } | null;
   },
   reportType: string
 ): Promise<ExecutiveReportOutput> {
@@ -1324,8 +1434,8 @@ export async function generateExecutiveReport(
   const period = reportType === "Weekly"
     ? `Week of ${now.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}`
     : reportType === "Monthly"
-    ? now.toLocaleDateString("en-IN", { month: "long", year: "numeric" })
-    : `As of ${now.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}`;
+      ? now.toLocaleDateString("en-IN", { month: "long", year: "numeric" })
+      : `As of ${now.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}`;
 
   const prompt = `
 Generate a formal ${reportType} Environmental Intelligence Report for government authorities.
@@ -1542,7 +1652,7 @@ export async function getArticleRecommendations(
 ): Promise<ArticleRecommendation[]> {
   if (!query.trim() || query.length < 3) return [];
 
-  const kbList  = kbArticles.slice(0, 20).map(a => `KB:${a.id}|${a.title}|${a.tags.join(",")}`).join("\n");
+  const kbList = kbArticles.slice(0, 20).map(a => `KB:${a.id}|${a.title}|${a.tags.join(",")}`).join("\n");
   const tutList = tutorials.slice(0, 15).map(t => `TUT:${t.id}|${t.title}|${t.tags.join(",")}`).join("\n");
 
   const prompt = `
@@ -1593,15 +1703,15 @@ Return ONLY valid JSON:
 
   const text = await generate(prompt, SYSTEM_HELP_ASSISTANT);
   return parseJSON<TicketDraft>(text, {
-    subject:           userDescription.slice(0, 100),
-    category:          "Technical Issue",
-    priority:          "medium",
-    department:        "Other",
-    description:       userDescription,
-    expectedResult:    "The platform should function as described in the documentation.",
-    environment:       "Production",
-    stepsToReproduce:  "Please describe the steps to reproduce the issue.",
-    possibleCause:     "Unknown — further investigation required.",
+    subject: userDescription.slice(0, 100),
+    category: "Technical Issue",
+    priority: "medium",
+    department: "Other",
+    description: userDescription,
+    expectedResult: "The platform should function as described in the documentation.",
+    environment: "Production",
+    stepsToReproduce: "Please describe the steps to reproduce the issue.",
+    possibleCause: "Unknown — further investigation required.",
   });
 }
 
@@ -1670,11 +1780,11 @@ Return ONLY valid JSON:
 
   const text = await generate(prompt, SYSTEM_HELP_ASSISTANT);
   return parseJSON<ArticleSummary>(text, {
-    summary:             `This article covers ${title}.`,
-    keyTakeaways:        ["Read the full article for details."],
+    summary: `This article covers ${title}.`,
+    keyTakeaways: ["Read the full article for details."],
     estimatedReadingTime: "3 min read",
-    difficulty:          "Beginner",
-    prerequisites:       [],
+    difficulty: "Beginner",
+    prerequisites: [],
   });
 }
 
@@ -1685,9 +1795,9 @@ export async function explainSelection(
   mode: "explain" | "simplify" | "expand"
 ): Promise<string> {
   const instruction = {
-    explain:  "Explain this term or concept clearly for a non-expert user in 2-3 sentences.",
+    explain: "Explain this term or concept clearly for a non-expert user in 2-3 sentences.",
     simplify: "Rewrite this in the simplest possible language (ELI5 style) in 1-2 sentences.",
-    expand:   "Expand on this concept with more detail, context, and examples in 3-4 sentences.",
+    expand: "Expand on this concept with more detail, context, and examples in 3-4 sentences.",
   }[mode];
 
   const prompt = `${instruction}\n\nTEXT: "${selectedText}"`;
@@ -1739,8 +1849,8 @@ Return ONLY valid JSON:
 
   const text = await generate(prompt, SYSTEM_HELP_ASSISTANT);
   return parseJSON<HelpInsights>(text, {
-    topQuestions:      ["How do I submit a complaint?", "Why is AQI not updating?", "How do I reset my password?"],
-    trendingIssues:    ["Dashboard loading issues", "Sensor data gaps"],
+    topQuestions: ["How do I submit a complaint?", "Why is AQI not updating?", "How do I reset my password?"],
+    trendingIssues: ["Dashboard loading issues", "Sensor data gaps"],
     aiGeneratedInsight: "Support volume is within normal range. Dashboard and sensor-related queries are the most common this period.",
   });
 }

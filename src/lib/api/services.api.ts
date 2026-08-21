@@ -9,6 +9,7 @@ export const complaintApi = {
     severity?: string;
     cityId: string;
     location?: { address?: string; lat?: number; lng?: number };
+    images?: string[];
   }) => client.post("/complaints", data).then((r) => r.data),
 
   getAll: (params?: {

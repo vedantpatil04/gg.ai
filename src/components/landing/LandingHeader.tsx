@@ -20,11 +20,10 @@ export function LandingHeader() {
     <header className="sticky top-0 z-50">
       <div className={LANDING_CONTAINER}>
         <div
-          className={`flex h-14 items-center gap-1 rounded-2xl border px-3 transition-all duration-300 sm:mt-4 sm:h-16 sm:px-4 ${
-            scrolled
+          className={`flex h-14 items-center gap-1 rounded-2xl border px-3 transition-all duration-300 sm:mt-4 sm:h-16 sm:px-4 ${scrolled
               ? "mt-2 border-border/60 bg-background/85 backdrop-blur-xl"
               : "mt-3 border-white/[0.06] bg-background/35 backdrop-blur-md"
-          }`}
+            }`}
           style={scrolled ? { boxShadow: "var(--navbar-dropdown-shadow)" } : undefined}
         >
           <Link

@@ -235,12 +235,14 @@ export function LanguageRegionPanel() {
                     key={code}
                     type="button"
                     role="radio"
+                    disabled={mutation.isPending}
                     aria-checked={isActive}
                     aria-label={`${meta.english} (${meta.native})`}
                     onClick={() => setField("language", code as Language)}
                     className={cn(
                       "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+                      mutation.isPending && "cursor-wait opacity-80",
                       isActive
                         ? "border-primary bg-primary/10 text-primary font-medium"
                         : "border-border hover:border-primary/40",
@@ -280,6 +282,7 @@ export function LanguageRegionPanel() {
             </label>
             <Select
               value={prefs.timezone}
+              disabled={mutation.isPending}
               onValueChange={(v) => setField("timezone", v)}
             >
               <SelectTrigger aria-labelledby="tz-label">
@@ -317,13 +320,14 @@ export function LanguageRegionPanel() {
             </div>
             <RadioGroup
               value={prefs.dateFormat}
+              disabled={mutation.isPending}
               onValueChange={(v) => setField("dateFormat", v as DateFormat)}
               aria-label={t("language.dateFormat")}
             >
               {DATE_FORMAT_OPTIONS.map((opt) => (
                 <label
                   key={opt.value}
-                  className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors cursor-pointer text-sm"
+                  className={cn("flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors text-sm", mutation.isPending ? "cursor-wait opacity-80" : "cursor-pointer")}
                 >
                   <RadioGroupItem value={opt.value} id={`date-${opt.value}`} />
                   {opt.label}
@@ -340,13 +344,14 @@ export function LanguageRegionPanel() {
             </div>
             <RadioGroup
               value={prefs.timeFormat}
+              disabled={mutation.isPending}
               onValueChange={(v) => setField("timeFormat", v as TimeFormat)}
               aria-label={t("language.timeFormat")}
             >
               {TIME_FORMAT_OPTIONS.map((opt) => (
                 <label
                   key={opt.value}
-                  className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors cursor-pointer text-sm"
+                  className={cn("flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors text-sm", mutation.isPending ? "cursor-wait opacity-80" : "cursor-pointer")}
                 >
                   <RadioGroupItem value={opt.value} id={`time-${opt.value}`} />
                   {t(opt.labelKey as any)}
@@ -363,6 +368,7 @@ export function LanguageRegionPanel() {
             </div>
             <RadioGroup
               value={prefs.numberFormat}
+              disabled={mutation.isPending}
               onValueChange={(v) =>
                 setField("numberFormat", v as NumberFormat)
               }
@@ -371,7 +377,7 @@ export function LanguageRegionPanel() {
               {NUMBER_FORMAT_OPTIONS.map((opt) => (
                 <label
                   key={opt.value}
-                  className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors cursor-pointer text-sm"
+                  className={cn("flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors text-sm", mutation.isPending ? "cursor-wait opacity-80" : "cursor-pointer")}
                 >
                   <RadioGroupItem value={opt.value} id={`num-${opt.value}`} />
                   {opt.label}
@@ -388,6 +394,7 @@ export function LanguageRegionPanel() {
             </div>
             <RadioGroup
               value={prefs.measurementUnit}
+              disabled={mutation.isPending}
               onValueChange={(v) =>
                 setField("measurementUnit", v as MeasurementUnit)
               }
@@ -396,7 +403,7 @@ export function LanguageRegionPanel() {
               {UNIT_OPTIONS.map((opt) => (
                 <label
                   key={opt.value}
-                  className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors cursor-pointer text-sm"
+                  className={cn("flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/50 transition-colors text-sm", mutation.isPending ? "cursor-wait opacity-80" : "cursor-pointer")}
                 >
                   <RadioGroupItem
                     value={opt.value}

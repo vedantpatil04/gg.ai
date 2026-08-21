@@ -69,66 +69,115 @@ import {
   humanizeEventType,
 } from "./citizen-status-utils";
 import { exportComplaintPdf } from "@/lib/complaint-pdf-export";
+import { resolveAssetUrl, extractComplaintImages } from "@/components/profile/profile-utils";
 import { toast } from "sonner";
 
 // ─── Evidence Gallery Component ──────────────────────────────────────────────
 
-function EvidenceGallery({ images }: { images: string[] }) {
-  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+function EvidenceGalleryTile({
+  img,
+  index,
+  onOpen,
+}: {
+  img: string;
+  index: number;
+  onOpen: () => void;
+}) {
+  const src = resolveAssetUrl(img) ?? img;
+  const [failed, setFailed] = useState(false);
 
-  if (images.length === 0) {
+  if (failed) {
     return (
-      <div className="flex flex-col items-center justify-center py-10 text-center gap-2 rounded-2xl border border-dashed border-border/80 bg-muted/10">
-        <ImageIcon className="size-8 text-muted-foreground/40" />
-        <p className="text-sm font-medium text-foreground">No photographic evidence uploaded</p>
-        <p className="text-xs text-muted-foreground">Photographs attached by citizen will appear here.</p>
+      <div className="flex flex-col items-center justify-center gap-1.5 aspect-square rounded-xl border border-destructive/20 bg-destructive/5 text-muted-foreground p-2 text-center select-none">
+        <ImageIcon className="size-5 text-destructive/60" />
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-destructive/80">Unavailable</span>
+        <span className="text-[9px] text-muted-foreground/80">Photo not loadable</span>
       </div>
     );
   }
 
-  const apiBase = import.meta.env.VITE_API_URL?.replace("/api", "") ?? "http://localhost:5000";
-  const fullUrl = (url: string) => (url.startsWith("http") ? url : `${apiBase}${url}`);
+  return (
+    <button
+      type="button"
+      className="relative group aspect-square rounded-xl overflow-hidden border border-border/80 bg-muted/20 focus-visible:ring-2 focus-visible:ring-primary/40 cursor-pointer shadow-2xs hover:border-primary/50 transition-all"
+      onClick={onOpen}
+      aria-label={`View evidence photo ${index + 1}`}
+    >
+      <img
+        src={src}
+        alt={`Evidence ${index + 1}`}
+        loading="lazy"
+        className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+        onError={() => setFailed(true)}
+      />
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors flex items-center justify-center">
+        <ZoomIn className="size-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
+    </button>
+  );
+}
+
+function EvidenceGallery({ images }: { images: string[] }) {
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+  const validImages = Array.isArray(images) ? images.filter(Boolean) : [];
+
+  if (validImages.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 text-center gap-2 rounded-2xl border border-dashed border-border/80 bg-muted/10">
+        <ImageIcon className="size-8 text-muted-foreground/40" />
+        <p className="text-sm font-medium text-foreground">No citizen evidence photos attached</p>
+        <p className="text-xs text-muted-foreground">Photographs attached with this complaint will appear here.</p>
+      </div>
+    );
+  }
+
+  const currentLightboxSrc =
+    lightboxIdx !== null && validImages[lightboxIdx]
+      ? resolveAssetUrl(validImages[lightboxIdx]) ?? validImages[lightboxIdx]
+      : null;
 
   return (
     <>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-        {images.map((img, i) => (
-          <button
+        {validImages.map((img, i) => (
+          <EvidenceGalleryTile
             key={i}
-            type="button"
-            className="relative group aspect-square rounded-xl overflow-hidden border border-border/80 bg-muted/20 focus-visible:ring-2 focus-visible:ring-primary/40"
-            onClick={() => setLightboxIdx(i)}
-            aria-label={`View evidence photo ${i + 1}`}
-          >
-            <img
-              src={fullUrl(img)}
-              alt={`Evidence ${i + 1}`}
-              className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors flex items-center justify-center">
-              <ZoomIn className="size-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
-          </button>
+            img={img}
+            index={i}
+            onOpen={() => setLightboxIdx(i)}
+          />
         ))}
       </div>
 
       {/* Lightbox */}
-      {lightboxIdx !== null && (
+      {lightboxIdx !== null && currentLightboxSrc && (
         <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xs flex items-center justify-center p-4"
           onClick={() => setLightboxIdx(null)}
         >
+          <div className="absolute top-4 right-4 flex items-center gap-2">
+            <a
+              href={currentLightboxSrc}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Open full size image"
+              className="size-10 rounded-full bg-white/10 text-white hover:bg-white/20 flex items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ZoomIn className="size-4" />
+            </a>
+            <button
+              type="button"
+              className="size-10 rounded-full bg-white/10 text-white hover:bg-white/20 flex items-center justify-center cursor-pointer"
+              onClick={() => setLightboxIdx(null)}
+              aria-label="Close photo preview"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
           <button
             type="button"
-            className="absolute top-4 right-4 size-10 rounded-full bg-white/10 text-white hover:bg-white/20 flex items-center justify-center"
-            onClick={() => setLightboxIdx(null)}
-            aria-label="Close photo preview"
-          >
-            <X className="size-5" />
-          </button>
-          <button
-            type="button"
-            className="absolute left-4 top-1/2 -translate-y-1/2 size-10 rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-20 flex items-center justify-center"
+            className="absolute left-4 top-1/2 -translate-y-1/2 size-10 rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-20 flex items-center justify-center cursor-pointer"
             disabled={lightboxIdx === 0}
             onClick={(e) => {
               e.stopPropagation();
@@ -139,25 +188,25 @@ function EvidenceGallery({ images }: { images: string[] }) {
             <ChevronLeft className="size-6" />
           </button>
           <img
-            src={fullUrl(images[lightboxIdx])}
+            src={currentLightboxSrc}
             alt={`Evidence ${lightboxIdx + 1}`}
-            className="max-w-[90vw] max-h-[85vh] object-contain rounded-xl"
+            className="max-w-[90vw] max-h-[85vh] object-contain rounded-xl shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />
           <button
             type="button"
-            className="absolute right-4 top-1/2 -translate-y-1/2 size-10 rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-20 flex items-center justify-center"
-            disabled={lightboxIdx === images.length - 1}
+            className="absolute right-4 top-1/2 -translate-y-1/2 size-10 rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-20 flex items-center justify-center cursor-pointer"
+            disabled={lightboxIdx === validImages.length - 1}
             onClick={(e) => {
               e.stopPropagation();
-              setLightboxIdx((i) => Math.min(images.length - 1, (i ?? 0) + 1));
+              setLightboxIdx((i) => Math.min(validImages.length - 1, (i ?? 0) + 1));
             }}
             aria-label="Next photo"
           >
             <ChevronRight className="size-6" />
           </button>
-          <div className="absolute bottom-4 text-white/70 text-xs font-medium">
-            Photo {lightboxIdx + 1} of {images.length}
+          <div className="absolute bottom-4 text-white/80 text-xs font-medium bg-black/50 px-3 py-1 rounded-full">
+            Photo {lightboxIdx + 1} of {validImages.length}
           </div>
         </div>
       )}
@@ -669,7 +718,7 @@ export function CitizenComplaintWorkspace({
                   {[
                     { value: "overview", label: "Overview" },
                     { value: "timeline", label: "Timeline" },
-                    { value: "evidence", label: `Evidence (${complaint.images.length})` },
+                    { value: "evidence", label: `Evidence (${extractComplaintImages(complaint).length})` },
                     { value: "authority", label: "Authority" },
                     { value: "messages", label: "Messages" },
                     ...(isCompletedOrResolved ? [{ value: "resolution", label: "Resolution" }] : []),
@@ -803,7 +852,7 @@ export function CitizenComplaintWorkspace({
 
                 {/* ── TAB: EVIDENCE ── */}
                 <TabsContent value="evidence" className="mt-0 space-y-4">
-                  <EvidenceGallery images={complaint.images} />
+                  <EvidenceGallery images={extractComplaintImages(complaint)} />
                 </TabsContent>
 
                 {/* ── TAB: AUTHORITY ── */}

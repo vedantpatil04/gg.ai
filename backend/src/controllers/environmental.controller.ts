@@ -8,6 +8,7 @@ import { AppError } from "../middleware/errorHandler";
 import { computeLocationProfile } from "../services/locationEnvironment.service";
 import { computeEcoScore } from "../services/ecoScore.service";
 import { getCityForecast } from "../services/forecastProvider.service";
+import { triggerManualIngestion } from "../jobs/scheduler";
 
 // ─── Get all cities (latest reading per city) ────────────────────────────────
 export async function getCities(_req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -727,3 +728,25 @@ export async function getCityWeatherForecast(
     next(err);
   }
 }
+
+// ─── Manual environmental data refresh (dashboard override) ─────────────────
+export async function refreshEnvironmentalData(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const result = await triggerManualIngestion(true);
+    if (result.total === -1) {
+      res.json({
+        success: true,
+        data: { message: "Ingestion already running", skipped: true },
+      });
+      return;
+    }
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+}
+

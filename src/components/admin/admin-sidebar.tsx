@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ProfileAvatar } from "@/components/profile/profile-avatar";
 import { useAuth } from "@/lib/auth-context";
 import { ADMIN_NAV_GROUPS, type AdminNavItem } from "./admin-nav";
 
@@ -364,11 +364,11 @@ export function AdminSidebar({
                     onClick={onCloseMobile}
                     className="size-8.5 rounded-lg grid place-items-center hover:ring-2 hover:ring-primary/40 transition-all"
                   >
-                    <Avatar className="size-8">
-                      <AvatarFallback className="aurora text-primary-foreground text-[11px] font-bold">
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
+                    <ProfileAvatar
+                      profile={user}
+                      className="size-8 rounded-lg"
+                      fallbackClassName="text-[11px] font-bold"
+                    />
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={12}>
@@ -403,11 +403,11 @@ export function AdminSidebar({
                   onClick={onCloseMobile}
                   className="flex items-center gap-2.5 min-w-0 flex-1 hover:opacity-90 transition-opacity outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring rounded-lg px-1 py-0.5"
                 >
-                  <Avatar className="size-8 shrink-0">
-                    <AvatarFallback className="aurora text-primary-foreground text-[11px] font-bold">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
+                  <ProfileAvatar
+                    profile={user}
+                    className="size-8 shrink-0 rounded-lg"
+                    fallbackClassName="text-[11px] font-bold"
+                  />
                   <div className="min-w-0 flex-1 text-left">
                     <div className="text-[12.5px] font-semibold text-foreground truncate leading-tight">
                       {user?.name ?? "Administrator"}
