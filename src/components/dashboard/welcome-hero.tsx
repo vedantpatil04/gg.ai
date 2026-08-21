@@ -11,12 +11,32 @@
  *   Layer 4 — Responsively scaled floating clouds (FloatingClouds)
  *   Layer 5 — Environmental particles (EnvironmentParticles)
  *   Layer 6 — Glassmorphism cards for AQI + Weather (AQIGlassCard, WeatherGlassCard)
- *   Layer 7 — Foreground content (live status bar, greeting, outdoor guidance, mobile stats)
+ *   Layer 7 — Foreground content (live status bar, greeting, outdoor guidance)
  *
- * Responsive Height:
- *   Desktop: 420–480px
- *   Tablet: 380–440px
- *   Mobile: 360–420px
+ * Structure:
+ *   The hero shell is a neutral outer wrapper (rounded corners + shadow + clip)
+ *   that contains:
+ *     1. The photo panel — identical in every way to the original single-layer
+ *        implementation (same min-height formula, same layers, same
+ *        lg/md floating glass cards). This panel's rendered output for
+ *        md/lg/xl viewports is byte-for-byte unchanged from before this fix.
+ *     2. A mobile-only panel (md:hidden) that reuses the exact same
+ *        AQIGlassCard / WeatherGlassCard components desktop uses, stacked
+ *        full-width beneath the photo, so phones see the same premium glass
+ *        cards — not a simplified, visually inconsistent substitute.
+ *
+ * Responsive Height (photo panel):
+ *   Desktop: 420–480px  (unchanged — clamp(360px, 38vw, 480px))
+ *   Tablet:  360–480px  (unchanged — same clamp, same breakpoints)
+ *   Mobile:  400px      (scoped override, <768px only — see .gg-hero-photo
+ *                        media query at the bottom of this file). The original
+ *                        clamp() floors at 360px for effectively the entire
+ *                        phone width range, which is shorter than this file's
+ *                        own documented 360–420px mobile target and produces
+ *                        an overly-squashed, near-square crop window for the
+ *                        background photo. The override brings mobile in line
+ *                        with the documented range without touching the
+ *                        formula desktop/tablet rely on.
  */
 
 import { useReducedMotion, motion } from "framer-motion";
@@ -24,7 +44,6 @@ import { useRef, useState, useCallback } from "react";
 import { Sunrise, Sun, Moon, Moon as NightIcon, MapPin } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getGreetingText } from "@/lib/format-time";
-import { findAqiBand } from "@/lib/mock-data";
 import { computeSceneCondition } from "@/lib/hero-scene";
 import { FADE_UP, DUR_MD, EASE_OUT } from "@/lib/motion";
 
@@ -101,7 +120,6 @@ export function WelcomeHero({
         : t("goodEvening");
   const emoji = greetingEmoji(rawGreet);
   const Icon = greetingIcon(rawGreet);
-  const band = findAqiBand(aqi);
   const scene = computeSceneCondition({ aqi, temp, humidity, windSpeed });
   const outdoorMessage = getOutdoorMessage(aqi, cityName);
   const aqiGlow = getAqiGlow(aqi);
@@ -123,224 +141,181 @@ export function WelcomeHero({
 
   return (
     <motion.div
-      ref={containerRef}
       variants={FADE_UP}
       initial={prefersReduced ? false : "hidden"}
       animate="show"
-      onMouseMove={handleMouseMove}
       className="relative overflow-hidden rounded-2xl sm:rounded-3xl select-none"
       style={{
-        minHeight: "clamp(360px, 38vw, 480px)",
         boxShadow: `0 0 0 1px rgba(255,255,255,0.06), 0 20px 60px rgba(0,0,0,0.40), 0 0 50px ${aqiGlow}`,
       }}
       aria-label={`Citizen dashboard hero. ${greet}${userName ? `, ${userName.split(" ")[0]}` : ""}. ${outdoorMessage}`}
     >
-      {/* ── Layers 1–3: Environment background + photo + responsive overlays ── */}
-      <EnvironmentBackground aqi={aqi} cityName={cityName} cityId={cityId} />
-
-      {/* ── Layer 4: Responsive animated clouds ── */}
-      {!prefersReduced && <FloatingClouds />}
-
-      {/* ── Layer 5: Atmospheric environmental particles ── */}
-      <EnvironmentParticles aqi={aqi} />
-
-      {/* ── Ambient AQI glow orb (top-left) ── */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          PHOTO PANEL — single source of visual truth.
+          Everything in this div is unchanged from the original
+          implementation (same min-height formula, same layer stack, same
+          lg/md floating glass cards). Desktop and tablet render identically
+          to before. Only a scoped <768px min-height override (see the
+          .gg-hero-photo media query below) and the removal of the
+          mismatched mobile pill strip differ — the pill strip is replaced
+          by the mobile card panel that follows this div, not by anything
+          inside it.
+          ═══════════════════════════════════════════════════════════════ */}
       <div
-        aria-hidden
-        className="absolute -top-1/4 -left-1/6 w-2/3 h-2/3 rounded-full blur-3xl pointer-events-none"
+        ref={containerRef}
+        onMouseMove={handleMouseMove}
+        className="gg-hero-photo relative overflow-hidden"
         style={{
-          background: scene.glowColor,
-          opacity: 0.45,
+          minHeight: "clamp(360px, 38vw, 480px)",
         }}
-      />
+      >
+        {/* ── Layers 1–3: Environment background + photo + responsive overlays ── */}
+        <EnvironmentBackground aqi={aqi} cityName={cityName} cityId={cityId} />
 
-      {/* ── Mouse-reactive spotlight (desktop only) ── */}
-      {!prefersReduced && (
+        {/* ── Layer 4: Responsive animated clouds ── */}
+        {!prefersReduced && <FloatingClouds />}
+
+        {/* ── Layer 5: Atmospheric environmental particles ── */}
+        <EnvironmentParticles aqi={aqi} />
+
+        {/* ── Ambient AQI glow orb (top-left) ── */}
         <div
           aria-hidden
-          className="absolute inset-0 pointer-events-none hidden md:block"
+          className="absolute -top-1/4 -left-1/6 w-2/3 h-2/3 rounded-full blur-3xl pointer-events-none"
           style={{
-            background: `radial-gradient(ellipse 35% 40% at ${mousePos.x}% ${mousePos.y}%, rgba(255,255,255,0.05), transparent 70%)`,
+            background: scene.glowColor,
+            opacity: 0.45,
           }}
         />
-      )}
 
-      {/* ── Light sweep highlight ── */}
-      {!prefersReduced && (
-        <div
-          aria-hidden
-          className="absolute inset-0 pointer-events-none overflow-hidden"
-        >
+        {/* ── Mouse-reactive spotlight (desktop only) ── */}
+        {!prefersReduced && (
           <div
-            className="absolute top-0 left-[-100%] w-1/2 h-full"
+            aria-hidden
+            className="absolute inset-0 pointer-events-none hidden md:block"
             style={{
-              background:
-                "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%)",
-              animation: "hero-sweep 9s ease-in-out 1s infinite",
+              background: `radial-gradient(ellipse 35% 40% at ${mousePos.x}% ${mousePos.y}%, rgba(255,255,255,0.05), transparent 70%)`,
             }}
           />
-        </div>
-      )}
+        )}
 
-      {/* ── Noise grain texture ── */}
-      <div
-        aria-hidden
-        className="absolute inset-0 opacity-[0.025] pointer-events-none"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-          backgroundSize: "180px 180px",
-        }}
-      />
+        {/* ── Light sweep highlight ── */}
+        {!prefersReduced && (
+          <div
+            aria-hidden
+            className="absolute inset-0 pointer-events-none overflow-hidden"
+          >
+            <div
+              className="absolute top-0 left-[-100%] w-1/2 h-full"
+              style={{
+                background:
+                  "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%)",
+                animation: "hero-sweep 9s ease-in-out 1s infinite",
+              }}
+            />
+          </div>
+        )}
 
-      {/* ── Layer 6: Floating glassmorphism cards (Desktop: Stacked right) ── */}
-      <div className="absolute bottom-6 right-6 hidden lg:flex flex-col gap-3 w-[215px] z-20">
-        <AQIGlassCard aqi={aqi} />
-        <WeatherGlassCard
-          temp={temp}
-          humidity={humidity}
-          windSpeed={windSpeed}
+        {/* ── Noise grain texture ── */}
+        <div
+          aria-hidden
+          className="absolute inset-0 opacity-[0.025] pointer-events-none"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+            backgroundSize: "180px 180px",
+          }}
         />
-      </div>
 
-      {/* ── Medium screens (Tablet): Horizontal compact card row ── */}
-      <div className="absolute bottom-6 right-6 hidden md:flex lg:hidden flex-row gap-2.5 z-20 max-w-[320px]">
-        <AQIGlassCard aqi={aqi} className="flex-1" />
-      </div>
-
-      {/* ── Layer 7: Foreground interactive content ── */}
-      <div className="relative z-10 flex flex-col justify-between h-full p-4 sm:p-6 md:p-8 min-h-[inherit]">
-        {/* Top: Live status bar */}
-        <div className="w-full">
-          <LiveStatusBar
-            aqi={aqi}
+        {/* ── Layer 6: Floating glassmorphism cards (Desktop: Stacked right) ── */}
+        <div className="absolute bottom-6 right-6 hidden lg:flex flex-col gap-3 w-[215px] z-20">
+          <AQIGlassCard aqi={aqi} />
+          <WeatherGlassCard
             temp={temp}
             humidity={humidity}
             windSpeed={windSpeed}
-            sensorsOnline={sensorsOnline}
-            lastUpdated={lastUpdated}
           />
         </div>
 
-        {/* Bottom: Location, Greeting + outdoor message + mobile stats */}
-        <div className="mt-auto w-full md:max-w-[58%] lg:max-w-[50%] xl:max-w-[46%] pt-4">
-          {/* Location badge */}
-          <motion.div
-            initial={prefersReduced ? false : { opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: DUR_MD, ease: EASE_OUT }}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 border border-white/10 backdrop-blur-md text-[11px] font-medium text-white/80 mb-2"
-          >
-            <MapPin className="size-3 text-primary shrink-0" />
-            <span>{cityName}, {country}</span>
-          </motion.div>
-
-          {/* Greeting line */}
-          <motion.div
-            initial={prefersReduced ? false : { opacity: 0, x: -12 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.15, duration: DUR_MD, ease: EASE_OUT }}
-            className="flex items-center gap-2 sm:gap-2.5 flex-wrap"
-          >
-            <Icon className="size-5 sm:size-6 text-white/80 shrink-0" aria-hidden />
-            <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight text-white drop-shadow-md leading-tight">
-              {greet}
-              {userName ? `, ${userName.split(" ")[0]}` : ""}{" "}
-              <span aria-hidden>{emoji}</span>
-            </h1>
-          </motion.div>
-
-          {/* Subtitle / Outdoor message */}
-          <motion.p
-            initial={prefersReduced ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.25, duration: DUR_MD }}
-            className="mt-1.5 sm:mt-2 text-xs sm:text-sm md:text-base text-white/70 leading-relaxed drop-shadow-sm max-w-xl"
-          >
-            {outdoorMessage}
-          </motion.p>
-
-          {/* Mobile-only rich glass summary strip (under 768px) */}
-          <motion.div
-            initial={prefersReduced ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35, duration: DUR_MD, ease: EASE_OUT }}
-            className="mt-3.5 flex flex-wrap items-center gap-2 md:hidden"
-          >
-            {/* AQI Badge */}
-            <div
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm"
-              style={{
-                background: `color-mix(in oklab, ${band.color} 22%, rgba(0,0,0,0.60))`,
-                border: `1px solid color-mix(in oklab, ${band.color} 48%, transparent)`,
-                backdropFilter: "blur(14px)",
-                color: "white",
-              }}
-            >
-              {!prefersReduced && (
-                <span
-                  className="size-1.5 rounded-full shrink-0"
-                  style={{
-                    background: band.color,
-                    boxShadow: `0 0 6px ${band.color}`,
-                    animation: "live-dot 2s ease-in-out infinite",
-                  }}
-                />
-              )}
-              <span>AQI {aqi}</span>
-              <span
-                className="text-[10px] font-medium px-1.5 py-0.2 rounded"
-                style={{
-                  background: `color-mix(in oklab, ${band.color} 30%, transparent)`,
-                  color: band.color,
-                }}
-              >
-                {band.label}
-              </span>
-            </div>
-
-            {/* Weather pills */}
-            {temp != null && (
-              <div
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium text-white/90 shadow-sm"
-                style={{
-                  background: "rgba(0,0,0,0.45)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  backdropFilter: "blur(14px)",
-                }}
-              >
-                <span>{temp}°C</span>
-              </div>
-            )}
-
-            {humidity != null && (
-              <div
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium text-white/90 shadow-sm"
-                style={{
-                  background: "rgba(0,0,0,0.45)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  backdropFilter: "blur(14px)",
-                }}
-              >
-                <span className="text-white/60 text-[10px]">Humidity</span>
-                <span>{humidity}%</span>
-              </div>
-            )}
-
-            {windSpeed != null && (
-              <div
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium text-white/90 shadow-sm"
-                style={{
-                  background: "rgba(0,0,0,0.45)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  backdropFilter: "blur(14px)",
-                }}
-              >
-                <span className="text-white/60 text-[10px]">Wind</span>
-                <span>{windSpeed} km/h</span>
-              </div>
-            )}
-          </motion.div>
+        {/* ── Medium screens (Tablet): Horizontal compact card row ── */}
+        <div className="absolute bottom-6 right-6 hidden md:flex lg:hidden flex-row gap-2.5 z-20 max-w-[320px]">
+          <AQIGlassCard aqi={aqi} className="flex-1" />
         </div>
+
+        {/* ── Layer 7: Foreground interactive content ── */}
+        <div className="relative z-10 flex flex-col justify-between h-full p-4 sm:p-6 md:p-8 min-h-[inherit]">
+          {/* Top: Live status bar */}
+          <div className="w-full">
+            <LiveStatusBar
+              aqi={aqi}
+              temp={temp}
+              humidity={humidity}
+              windSpeed={windSpeed}
+              sensorsOnline={sensorsOnline}
+              lastUpdated={lastUpdated}
+            />
+          </div>
+
+          {/* Bottom: Location, Greeting + outdoor message */}
+          <div className="mt-auto w-full md:max-w-[58%] lg:max-w-[50%] xl:max-w-[46%] pt-4">
+            {/* Location badge */}
+            <motion.div
+              initial={prefersReduced ? false : { opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: DUR_MD, ease: EASE_OUT }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 border border-white/10 backdrop-blur-md text-[11px] font-medium text-white/80 mb-2"
+            >
+              <MapPin className="size-3 text-primary shrink-0" />
+              <span>{cityName}, {country}</span>
+            </motion.div>
+
+            {/* Greeting line */}
+            <motion.div
+              initial={prefersReduced ? false : { opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.15, duration: DUR_MD, ease: EASE_OUT }}
+              className="flex items-center gap-2 sm:gap-2.5 flex-wrap"
+            >
+              <Icon className="size-5 sm:size-6 text-white/80 shrink-0" aria-hidden />
+              <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight text-white drop-shadow-md leading-tight">
+                {greet}
+                {userName ? `, ${userName.split(" ")[0]}` : ""}{" "}
+                <span aria-hidden>{emoji}</span>
+              </h1>
+            </motion.div>
+
+            {/* Subtitle / Outdoor message */}
+            <motion.p
+              initial={prefersReduced ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.25, duration: DUR_MD }}
+              className="mt-1.5 sm:mt-2 text-xs sm:text-sm md:text-base text-white/70 leading-relaxed drop-shadow-sm max-w-xl"
+            >
+              {outdoorMessage}
+            </motion.p>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          MOBILE AQI + WEATHER PANEL (md:hidden — below 768px only)
+          Reuses the exact same AQIGlassCard / WeatherGlassCard components
+          the desktop floating layer uses (same ring, icons, glow, typography,
+          glassmorphism treatment), stacked full-width directly beneath the
+          photo panel instead of floating over it. This replaces the old
+          flattened "pill strip" so phones see the same premium cards
+          desktop sees, just rearranged to fit — not a different design.
+          Tablet (md, 768–1023px) keeps its existing single floating
+          AQIGlassCard inside the photo panel above, so nothing is
+          duplicated at that breakpoint.
+          ═══════════════════════════════════════════════════════════════ */}
+      <div
+        className="md:hidden px-4 sm:px-5 pt-3.5 pb-4 sm:pb-5 space-y-3"
+        style={{
+          background: "linear-gradient(to bottom, rgba(0,0,0,0.82), rgba(10,12,16,0.94))",
+        }}
+      >
+        <AQIGlassCard aqi={aqi} />
+        <WeatherGlassCard temp={temp} humidity={humidity} windSpeed={windSpeed} />
       </div>
 
       {/* ── Global CSS keyframes for this hero ── */}
@@ -356,6 +331,18 @@ export function WelcomeHero({
         @media (prefers-reduced-motion: reduce) {
           @keyframes hero-sweep { from {} to {} }
           @keyframes live-dot   { from {} to {} }
+        }
+        /*
+         * Mobile-only photo panel height override.
+         * The desktop/tablet clamp(360px, 38vw, 480px) formula floors at
+         * 360px for effectively the entire phone width range (320–767px),
+         * which is shorter than this component's own documented 360–420px
+         * mobile target and produces an overly-squashed background crop.
+         * Scoped strictly to <768px so md/lg/xl (tablet + desktop) are
+         * completely untouched.
+         */
+        @media (max-width: 767px) {
+          .gg-hero-photo { min-height: 400px !important; }
         }
       `}</style>
     </motion.div>

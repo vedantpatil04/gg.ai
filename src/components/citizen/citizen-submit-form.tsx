@@ -184,12 +184,12 @@ export function CitizenSubmitForm({ onSuccess, initialDraftId }: CitizenSubmitFo
         address: effectiveAddress,
         ...(location
           ? {
-              location: {
-                address: location.address,
-                lat: location.lat,
-                lng: location.lng,
-              },
-            }
+            location: {
+              address: location.address,
+              lat: location.lat,
+              lng: location.lng,
+            },
+          }
           : effectiveAddress
             ? { location: { address: effectiveAddress } }
             : {}),
@@ -199,7 +199,7 @@ export function CitizenSubmitForm({ onSuccess, initialDraftId }: CitizenSubmitFo
           const data = res as { data?: { complaint?: { _id?: string } } };
           const id = data?.data?.complaint?._id ?? "";
           if (files.length > 0 && id) {
-            await uploadMutation.mutateAsync({ id, files }).catch(() => {});
+            await uploadMutation.mutateAsync({ id, files }).catch(() => { });
           }
           draft.clearCurrentDraft();
           setSubmittedId(id);
@@ -479,7 +479,7 @@ export function CitizenSubmitForm({ onSuccess, initialDraftId }: CitizenSubmitFo
             onJoinExisting={(id) => {
               if (onSuccess) onSuccess(id);
             }}
-            onContinueNew={() => {}}
+            onContinueNew={() => { }}
           />
         </div>
 

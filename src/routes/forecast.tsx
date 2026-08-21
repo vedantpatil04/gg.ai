@@ -27,20 +27,16 @@ import { useTranslation } from "react-i18next";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
-  Cloud,
-  CloudDrizzle,
-  CloudFog,
-  CloudLightning,
-  CloudRain,
-  CloudSnow,
-  CloudSun,
   Droplets,
   Gauge,
   MapPin,
-  Sun,
   Wind as WindIcon,
-  type LucideIcon,
+  CloudRain,
 } from "lucide-react";
+import {
+  getWeatherConditionMeta,
+  weatherCodeToLabel,
+} from "@/lib/weather-codes";
 
 export const Route = createFileRoute("/forecast")({
   head: () => ({ meta: [{ title: "Forecast Center — GreenGuard AI" }] }),
@@ -153,56 +149,6 @@ function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
-// ─── Pure helpers — WMO weather code → human label / icon ───────────────────
-const WEATHER_CODE_LABELS: Record<number, string> = {
-  0: "Clear sky",
-  1: "Mainly clear",
-  2: "Partly cloudy",
-  3: "Overcast",
-  45: "Foggy",
-  48: "Foggy",
-  51: "Light drizzle",
-  53: "Drizzle",
-  55: "Dense drizzle",
-  56: "Freezing drizzle",
-  57: "Freezing drizzle",
-  61: "Light rain",
-  63: "Rain",
-  65: "Heavy rain",
-  66: "Freezing rain",
-  67: "Freezing rain",
-  71: "Light snow",
-  73: "Snow",
-  75: "Heavy snow",
-  77: "Snow grains",
-  80: "Rain showers",
-  81: "Rain showers",
-  82: "Heavy rain showers",
-  85: "Snow showers",
-  86: "Heavy snow showers",
-  95: "Thunderstorm",
-  96: "Thunderstorm with hail",
-  99: "Thunderstorm with hail",
-};
-
-function weatherCodeToLabel(code: number | null | undefined): string {
-  if (code == null) return "Not available";
-  return WEATHER_CODE_LABELS[code] ?? "Not available";
-}
-
-function weatherCodeToIcon(code: number | null | undefined): LucideIcon {
-  if (code == null) return Cloud;
-  if (code === 0) return Sun;
-  if (code === 1 || code === 2) return CloudSun;
-  if (code === 3) return Cloud;
-  if (code === 45 || code === 48) return CloudFog;
-  if (code >= 51 && code <= 57) return CloudDrizzle;
-  if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return CloudRain;
-  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return CloudSnow;
-  if (code >= 95) return CloudLightning;
-  return Cloud;
-}
-
 // ─── Pure helpers — local-time / local-date parsing ──────────────────────────
 function parseLocalTimestamp(ts: string): { date: string; hour: number } {
   const [datePart, timePart = "00:00"] = ts.split("T");
@@ -258,6 +204,8 @@ function parseSourceFlags(source: string | undefined): { hasWeather: boolean; ha
 // ─── Hourly row shape shared by the strip, chart, and timeline ─────────────
 interface HourlyRow {
   idx: number;
+  hour: number;
+  isDay: boolean;
   label: string;
   weatherCode: number | null;
   temperature: number | null;
@@ -315,7 +263,6 @@ function Forecast() {
     throwOnError: false,
   });
 
-
   const series = forecastData?.series ?? [];
   const current = series[0];
   const hasCurrent = !!current && typeof current.predicted === "number";
@@ -325,12 +272,18 @@ function Forecast() {
   const weekly = weeklyData?.weekly ?? [];
   const weeklyReady = !weeklyLoading && !weeklyErrored && weekly.length > 0;
 
+  const currentHour = current ? parseLocalTimestamp(current.timestamp).hour : 12;
+  const currentIsDay = currentHour >= 6 && currentHour < 19;
+
   const hourlyRows = useMemo<HourlyRow[]>(
     () =>
       series.map((p, i) => {
         const { hour } = parseLocalTimestamp(p.timestamp);
+        const isDay = hour >= 6 && hour < 19;
         return {
           idx: i,
+          hour,
+          isDay,
           label: i === 0 ? "Now" : formatClockLabel(hour),
           weatherCode: p.weatherCode,
           temperature: p.temperature,
@@ -462,9 +415,9 @@ function Forecast() {
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6">
                 {/* Hero weather block */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 min-w-0">
-                  {/* Weather Icon */}
+                  {/* Weather Icon Box */}
                   <div className="size-16 sm:size-18 rounded-2xl bg-muted/30 border border-border/60 flex items-center justify-center shrink-0 shadow-inner">
-                    <WeatherIcon code={current.weatherCode} className="size-9 sm:size-11 text-primary" />
+                    <WeatherIcon code={current.weatherCode} isDay={currentIsDay} size="hero" className="size-full" />
                   </div>
 
                   <div className="space-y-1 min-w-0">
@@ -482,7 +435,7 @@ function Forecast() {
                       <span className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight tabular-nums">
                         {typeof current.temperature === "number" ? `${current.temperature}°C` : "—"}
                       </span>
-                      <span className="text-sm sm:text-base font-semibold text-foreground/90">
+                      <span className="text-sm sm:text-base font-semibold text-foreground/90 flex items-center gap-1.5">
                         {weatherCodeToLabel(current.weatherCode)}
                       </span>
                     </div>
@@ -587,14 +540,17 @@ function Forecast() {
                         return (
                           <div
                             key={d.date}
-                            className="flex flex-col items-center gap-1 rounded-xl border border-border/60 bg-muted/15 py-3 px-2 min-w-0"
+                            className="flex flex-col items-center gap-1 rounded-xl border border-border/60 bg-muted/15 py-3 px-2 min-w-0 hover:bg-muted/30 transition-colors"
                           >
                             <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                               {weekday}
                             </div>
                             <div className="text-[10px] text-muted-foreground/80">{monthDay}</div>
-                            <WeatherIcon code={d.weatherCode} className="size-5 mt-1 text-muted-foreground" />
-                            <div className="text-[10px] text-muted-foreground text-center line-clamp-1 h-3.5">
+                            <WeatherIcon code={d.weatherCode} isDay={true} className="size-5 mt-1" />
+                            <div
+                              className="text-[10px] text-muted-foreground text-center line-clamp-1 h-3.5"
+                              title={weatherCodeToLabel(d.weatherCode)}
+                            >
                               {weatherCodeToLabel(d.weatherCode)}
                             </div>
                             <div className="flex items-baseline gap-1 text-sm font-semibold tabular-nums mt-0.5">
@@ -650,7 +606,7 @@ function Forecast() {
                             {hourlyRows.map((r) => (
                               <td key={r.idx} className="px-3 py-2.5">
                                 <div className="flex justify-center" title={weatherCodeToLabel(r.weatherCode)}>
-                                  <WeatherIcon code={r.weatherCode} className="size-4 text-muted-foreground" />
+                                  <WeatherIcon code={r.weatherCode} isDay={r.isDay} className="size-4" />
                                 </div>
                               </td>
                             ))}
@@ -748,7 +704,7 @@ function Forecast() {
                                 </TableCell>
                                 <TableCell className="whitespace-nowrap">
                                   <span className="inline-flex items-center gap-1.5">
-                                    <WeatherIcon code={d.weatherCode} className="size-4 text-muted-foreground" />
+                                    <WeatherIcon code={d.weatherCode} isDay={true} className="size-4" />
                                     {weatherCodeToLabel(d.weatherCode)}
                                   </span>
                                 </TableCell>
@@ -1012,9 +968,45 @@ function Forecast() {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function WeatherIcon({ code, className }: { code: number | null | undefined; className?: string }) {
-  const Icon = weatherCodeToIcon(code);
-  return <Icon className={className} aria-hidden />;
+function WeatherIcon({
+  code,
+  isDay = true,
+  className,
+  size = "md",
+}: {
+  code: number | null | undefined;
+  isDay?: boolean;
+  className?: string;
+  size?: "xs" | "sm" | "md" | "lg" | "hero";
+}) {
+  const meta = getWeatherConditionMeta(code, isDay);
+  const Icon = meta.Icon;
+
+  if (size === "hero") {
+    return (
+      <div
+        className={cn("relative flex items-center justify-center rounded-2xl p-2.5", className)}
+        style={{
+          background: meta.bgTint,
+          boxShadow: `0 0 24px ${meta.glow}`,
+        }}
+      >
+        <Icon
+          className="size-9 sm:size-11 transition-transform duration-300"
+          style={{ color: meta.color }}
+          aria-hidden
+        />
+      </div>
+    );
+  }
+
+  return (
+    <Icon
+      className={cn("shrink-0 transition-colors", className)}
+      style={{ color: meta.color }}
+      aria-hidden
+    />
+  );
 }
 
 function WeeklyPanel({ show, children }: { show: string; children: ReactNode }) {
@@ -1145,10 +1137,11 @@ function ForecastHourlyPanel({
             {rows.map((row) => (
               <div
                 key={row.idx}
-                className="flex flex-col items-center gap-1 shrink-0 w-15 rounded-xl border border-border/60 bg-muted/15 py-2.5 px-1"
+                className="flex flex-col items-center gap-1 shrink-0 w-15 rounded-xl border border-border/60 bg-muted/15 py-2.5 px-1 hover:bg-muted/30 transition-colors"
+                title={`${row.label} · ${weatherCodeToLabel(row.weatherCode)}`}
               >
                 <div className="text-[10px] text-muted-foreground font-medium">{row.label}</div>
-                <WeatherIcon code={row.weatherCode} className="size-4 text-muted-foreground" />
+                <WeatherIcon code={row.weatherCode} isDay={row.isDay} className="size-4" />
                 <div className="text-xs font-semibold tabular-nums">
                   {row.temperature != null ? `${Math.round(row.temperature)}°` : "—"}
                 </div>

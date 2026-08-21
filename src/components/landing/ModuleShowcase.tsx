@@ -18,11 +18,11 @@ const MODULES: readonly ModuleItem[] = [
   {
     to: "/reports",
     icon: FileBarChart,
-    name: "Reports",
-    tag: "Compliance",
-    desc: "Generate auditable, branded environmental reports for stakeholders in seconds.",
+    name: "Green Actions",
+    tag: "Operations",
+    desc: "Turn environmental intelligence into coordinated action.",
     detail:
-      "Every report pulls from the same live data fabric every other module reads from — so the numbers a stakeholder sees are exactly what your operations team is already acting on, with a full audit trail behind each figure.",
+      "Use environmental insights, alerts, complaints, and operational data to identify priorities and coordinate responses.",
   },
   {
     to: "/sustainability",

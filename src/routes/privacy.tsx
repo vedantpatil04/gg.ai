@@ -63,20 +63,30 @@ function PrivacyPage() {
         <p>
           Depending on your jurisdiction, you may have the right to access, correct, export or
           delete personal data we hold about you. Contact{" "}
-          <span className="font-mono">privacy@greenguard.ai</span>
+          <a
+            href="mailto:greengaurd.ai.in@gmail.com"
+            className="font-mono text-[color:var(--color-primary)] hover:underline"
+          >
+            greengaurd.ai.in@gmail.com
+          </a>{" "}
           to exercise these rights.
         </p>
 
         <h2>5. Security</h2>
         <p>
-          Data is encrypted in transit and at rest. Access is role-based and audited. We operate
-          under a SOC 2 control framework.
+          Data is encrypted in transit and at rest. Access is role-based and audited.
         </p>
 
         <h2>6. Contact</h2>
         <p>
-          Questions? Reach our Data Protection team at{" "}
-          <span className="font-mono">privacy@greenguard.ai</span>.
+          Questions? Reach the GreenGuard AI team at{" "}
+          <a
+            href="mailto:greengaurd.ai.in@gmail.com"
+            className="font-mono text-[color:var(--color-primary)] hover:underline"
+          >
+            greengaurd.ai.in@gmail.com
+          </a>
+          .
         </p>
       </Prose>
       <CTABlock />

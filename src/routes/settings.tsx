@@ -368,7 +368,7 @@ function AboutSection() {
             <ExternalLink className="size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
           </Link>
           <a
-            href="mailto:support@greenguard.ai"
+            href="mailto:greengaurd.ai.in@gmail.com"
             className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-accent/50 transition-colors text-sm group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           >
             <span>{t("about.support")}</span>

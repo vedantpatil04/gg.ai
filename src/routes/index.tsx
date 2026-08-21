@@ -341,7 +341,7 @@ function HowItWorks() {
       n: "03",
       icon: Zap,
       t: "Act",
-      d: "Alerts route to the right team. Reports generate on schedule. Policy decisions are simulated before they're announced.",
+      d: "Alerts route to the right team. Green actions coordinate responses on schedule. Policy decisions are simulated before they're announced.",
     },
   ];
   return (

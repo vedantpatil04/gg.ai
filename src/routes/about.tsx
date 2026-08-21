@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { InfoPageShell, Prose, CTABlock } from "@/components/landing/InfoPageShell";
+import { Code2, Server, Layout, Palette, type LucideIcon } from "lucide-react";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -19,6 +20,54 @@ export const Route = createFileRoute("/about")({
   }),
   component: AboutPage,
 });
+
+interface TeamMember {
+  name: string;
+  role: string;
+  description: string;
+  badge: string;
+  icon: LucideIcon;
+  initials: string;
+}
+
+const TEAM_MEMBERS: readonly TeamMember[] = [
+  {
+    name: "Vedant Patil",
+    role: "Full-Stack Developer & Tech Lead",
+    description:
+      "Leads system architecture, full-stack development, technical integration, and overall platform direction.",
+    badge: "Tech Lead",
+    icon: Code2,
+    initials: "VP",
+  },
+  {
+    name: "Om Mohite",
+    role: "Backend Developer",
+    description:
+      "Responsible for APIs, database integration, server-side logic, authentication, and backend services.",
+    badge: "Backend",
+    icon: Server,
+    initials: "OM",
+  },
+  {
+    name: "Sudarshan Gidganti",
+    role: "Frontend Developer",
+    description:
+      "Builds the user-facing application, responsive interfaces, component integration, and frontend functionality.",
+    badge: "Frontend",
+    icon: Layout,
+    initials: "SG",
+  },
+  {
+    name: "Ishita Sambhaji",
+    role: "UI/UX Designer",
+    description:
+      "Designs user experiences, interface systems, visual consistency, accessibility, and interaction flows.",
+    badge: "UI/UX",
+    icon: Palette,
+    initials: "IS",
+  },
+] as const;
 
 function AboutPage() {
   return (
@@ -48,7 +97,65 @@ function AboutPage() {
           ships because a real city operator asked for it. We measure success in outcomes: incidents
           prevented, response times reduced, advisories issued before the air got bad.
         </p>
+      </Prose>
 
+      <section aria-labelledby="team-heading" className="mt-14 lg:mt-18">
+        <div className="max-w-2xl">
+          <h2
+            id="team-heading"
+            className="font-display text-2xl font-semibold tracking-tight text-foreground"
+          >
+            Meet the GreenGuard AI Team
+          </h2>
+          <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
+            A multidisciplinary team building environmental intelligence for citizens, authorities,
+            and the cities they serve.
+          </p>
+        </div>
+
+        <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+          {TEAM_MEMBERS.map((member) => {
+            const Icon = member.icon;
+            return (
+              <div
+                key={member.name}
+                className="group relative flex flex-col justify-between rounded-2xl border border-border/60 bg-card/60 p-6 backdrop-blur-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-[color:var(--color-primary)]/40 hover:bg-card hover:shadow-md motion-reduce:transform-none"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="relative flex size-11 items-center justify-center rounded-xl border border-border/60 bg-[color:var(--color-primary)]/10 text-[color:var(--color-primary)] transition-colors group-hover:border-[color:var(--color-primary)]/30 group-hover:bg-[color:var(--color-primary)]/15">
+                      <span className="font-display text-xs font-semibold tracking-wider">
+                        {member.initials}
+                      </span>
+                      <span className="absolute -bottom-1 -right-1 grid size-5 place-items-center rounded-md border border-border/60 bg-background text-muted-foreground transition-colors group-hover:text-[color:var(--color-primary)]">
+                        <Icon className="size-3" />
+                      </span>
+                    </div>
+                    <span className="inline-flex items-center rounded-full border border-border/60 bg-secondary/60 px-2.5 py-0.5 text-[11px] font-medium tracking-tight text-muted-foreground transition-colors group-hover:text-foreground">
+                      {member.badge}
+                    </span>
+                  </div>
+
+                  <div className="mt-5">
+                    <h3 className="font-display text-base font-semibold tracking-tight text-foreground">
+                      {member.name}
+                    </h3>
+                    <div className="mt-1 text-xs font-medium text-[color:var(--color-primary)] tracking-tight">
+                      {member.role}
+                    </div>
+                  </div>
+
+                  <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                    {member.description}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <Prose>
         <h2>Principles</h2>
         <ul>
           <li>

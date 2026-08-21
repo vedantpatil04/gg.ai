@@ -20,14 +20,14 @@ import { getTimeSlot } from "@/lib/hero-scene";
 
 /** Gradient backgrounds per AQI tier (fallback + tint behind image) */
 const TIER_GRADIENTS: Record<string, string> = {
-  good:      "linear-gradient(145deg, oklch(0.22 0.08 165) 0%, oklch(0.12 0.04 200) 100%)",
-  moderate:  "linear-gradient(145deg, oklch(0.22 0.06 85) 0%, oklch(0.12 0.04 200) 100%)",
-  poor:      "linear-gradient(145deg, oklch(0.22 0.08 55) 0%, oklch(0.12 0.03 30) 100%)",
+  good: "linear-gradient(145deg, oklch(0.22 0.08 165) 0%, oklch(0.12 0.04 200) 100%)",
+  moderate: "linear-gradient(145deg, oklch(0.22 0.06 85) 0%, oklch(0.12 0.04 200) 100%)",
+  poor: "linear-gradient(145deg, oklch(0.22 0.08 55) 0%, oklch(0.12 0.03 30) 100%)",
   hazardous: "linear-gradient(145deg, oklch(0.18 0.06 20) 0%, oklch(0.10 0.08 300) 100%)",
 };
 
 function getAqiTier(aqi: number): string {
-  if (aqi <= 50)  return "good";
+  if (aqi <= 50) return "good";
   if (aqi <= 100) return "moderate";
   if (aqi <= 200) return "poor";
   return "hazardous";

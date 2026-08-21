@@ -30,11 +30,11 @@ function getTransporter(): nodemailer.Transporter | null {
     family: 4,
     ...(rawUser && rawPass
       ? {
-          auth: {
-            user: rawUser,
-            pass: rawPass,
-          },
-        }
+        auth: {
+          user: rawUser,
+          pass: rawPass,
+        },
+      }
       : {}),
     tls: {
       rejectUnauthorized: false,
@@ -364,15 +364,14 @@ ${highlightHtml}
 ${buttonHtml}
 
 <!-- Footer Note -->
-${
-  opts.footerNote
-    ? `<tr>
+${opts.footerNote
+      ? `<tr>
 <td class="email-padding" style="padding:24px 40px 0 40px;font-family:Arial,Helvetica,sans-serif;border-top:1px solid #F1F5F9;margin-top:20px;">
 <p style="margin:16px 0 0 0;font-size:12px;line-height:18px;color:#64748B;">${opts.footerNote}</p>
 </td>
 </tr>`
-    : ""
-}
+      : ""
+    }
 
 <!-- Standard Footer -->
 <tr>
@@ -744,13 +743,13 @@ export function complaintAssignedEmailHtml(params: {
       : "Your complaint has been assigned for investigation",
     bodyParagraphs: isAuthority
       ? [
-          `Complaint <strong>"${params.title}"</strong> (Ref #GG-${shortId}) has been assigned to your department work queue.`,
-          `Please begin the preliminary investigation and update the complaint status accordingly.`,
-        ]
+        `Complaint <strong>"${params.title}"</strong> (Ref #GG-${shortId}) has been assigned to your department work queue.`,
+        `Please begin the preliminary investigation and update the complaint status accordingly.`,
+      ]
       : [
-          `Your complaint <strong>"${params.title}"</strong> (Ref #GG-${shortId}) has been assigned to <strong>${params.authorityName || "the designated environmental authority"}</strong>.`,
-          `Investigation is underway. You will be notified as updates or resolution proposals are submitted.`,
-        ],
+        `Your complaint <strong>"${params.title}"</strong> (Ref #GG-${shortId}) has been assigned to <strong>${params.authorityName || "the designated environmental authority"}</strong>.`,
+        `Investigation is underway. You will be notified as updates or resolution proposals are submitted.`,
+      ],
     detailsTable: [
       { label: "Reference ID", value: `#GG-${shortId}` },
       { label: "Title", value: params.title },
@@ -891,13 +890,13 @@ export function reworkRequestedEmailHtml(params: {
       : "Citizen requested rework on resolved complaint",
     bodyParagraphs: isAuthority
       ? [
-          `The resolution submitted for <strong>"${params.title}"</strong> (Ref #GG-${shortId}) was not accepted by the ${params.requestedByRole === "citizen" ? "citizen" : "administrator"} and has been returned for corrective rework.`,
-          `Please inspect the feedback below, take remedial action, and resubmit when resolved.`,
-        ]
+        `The resolution submitted for <strong>"${params.title}"</strong> (Ref #GG-${shortId}) was not accepted by the ${params.requestedByRole === "citizen" ? "citizen" : "administrator"} and has been returned for corrective rework.`,
+        `Please inspect the feedback below, take remedial action, and resubmit when resolved.`,
+      ]
       : [
-          `Citizen has requested rework on complaint <strong>"${params.title}"</strong> (Ref #GG-${shortId}).`,
-          `The complaint has moved into the rework governance queue for administrative oversight.`,
-        ],
+        `Citizen has requested rework on complaint <strong>"${params.title}"</strong> (Ref #GG-${shortId}).`,
+        `The complaint has moved into the rework governance queue for administrative oversight.`,
+      ],
     highlightBox: {
       title: "Rework Feedback / Reason",
       content: `${params.reason}${params.comments ? `<br/><br/><strong>Additional Comments:</strong> ${params.comments}` : ""}`,
@@ -936,12 +935,12 @@ export function complaintClosedEmailHtml(params: {
     heading: isCitizen ? "Your complaint has been resolved and closed" : "Complaint successfully verified and closed",
     bodyParagraphs: isCitizen
       ? [
-          `Complaint <strong>"${params.title}"</strong> (Ref #GG-${shortId}) has been successfully completed and closed.`,
-          `Thank you for contributing to cleaner, healthier, and safer environmental governance with GreenGuard AI.`,
-        ]
+        `Complaint <strong>"${params.title}"</strong> (Ref #GG-${shortId}) has been successfully completed and closed.`,
+        `Thank you for contributing to cleaner, healthier, and safer environmental governance with GreenGuard AI.`,
+      ]
       : [
-          `Resolution for complaint <strong>"${params.title}"</strong> (Ref #GG-${shortId}) has been approved and the complaint is now closed in the system.`,
-        ],
+        `Resolution for complaint <strong>"${params.title}"</strong> (Ref #GG-${shortId}) has been approved and the complaint is now closed in the system.`,
+      ],
     detailsTable: [
       { label: "Reference ID", value: `#GG-${shortId}` },
       { label: "Complaint Title", value: params.title },

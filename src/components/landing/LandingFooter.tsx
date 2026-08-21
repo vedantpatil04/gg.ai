@@ -8,7 +8,7 @@ const cols = [
       { to: "/dashboard", label: "Dashboard" },
       { to: "/copilot", label: "GreenGuard Intelligence Center" },
       { to: "/forecast", label: "Forecast" },
-      { to: "/reports", label: "Reports" },
+      { to: "/reports", label: "Green Actions" },
       { to: "/map", label: "Smart Map" },
     ],
   },

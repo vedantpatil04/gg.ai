@@ -11,7 +11,7 @@ import {
 import { authenticate, authorize, AUTHORITY_ROLES } from "../middleware/auth";
 
 const router = Router();
-router.use(authenticate, authorize(...AUTHORITY_ROLES));
+router.use(authenticate, authorize("citizen", ...AUTHORITY_ROLES));
 
 // ─── Per-city intelligence ────────────────────────────────────────────────────
 router.get("/aqi-trend/:cityId", getAQITrend); // ?days=7|30

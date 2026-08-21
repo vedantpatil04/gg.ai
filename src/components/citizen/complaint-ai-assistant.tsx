@@ -59,43 +59,43 @@ const CATEGORY_PATTERNS: Array<{
   patterns: RegExp[];
   priority: "low" | "medium" | "high" | "critical";
 }> = [
-  {
-    key: "noise",
-    label: "Noise Pollution",
-    patterns: [/noise|loud|sound|music|party|construction|bang|drill|honk/i],
-    priority: "medium",
-  },
-  {
-    key: "air_pollution",
-    label: "Air Pollution",
-    patterns: [/smoke|smog|dust|fume|exhaust|emission|air|particulate|haze|fog/i],
-    priority: "high",
-  },
-  {
-    key: "water_contamination",
-    label: "Water Contamination",
-    patterns: [/water|river|lake|drain|sewage|effluent|discharge|flood|contamination/i],
-    priority: "high",
-  },
-  {
-    key: "waste_dumping",
-    label: "Waste Dumping",
-    patterns: [/garbage|waste|dump|litter|trash|rubbish|debris|illegal/i],
-    priority: "medium",
-  },
-  {
-    key: "chemical_spill",
-    label: "Chemical Spill",
-    patterns: [/chemical|spill|toxic|hazard|acid|oil|fuel|leak|factory|industrial/i],
-    priority: "critical",
-  },
-  {
-    key: "open_burning",
-    label: "Open Burning",
-    patterns: [/burn|fire|ash|incinerate|bonfire|flame|burning/i],
-    priority: "high",
-  },
-];
+    {
+      key: "noise",
+      label: "Noise Pollution",
+      patterns: [/noise|loud|sound|music|party|construction|bang|drill|honk/i],
+      priority: "medium",
+    },
+    {
+      key: "air_pollution",
+      label: "Air Pollution",
+      patterns: [/smoke|smog|dust|fume|exhaust|emission|air|particulate|haze|fog/i],
+      priority: "high",
+    },
+    {
+      key: "water_contamination",
+      label: "Water Contamination",
+      patterns: [/water|river|lake|drain|sewage|effluent|discharge|flood|contamination/i],
+      priority: "high",
+    },
+    {
+      key: "waste_dumping",
+      label: "Waste Dumping",
+      patterns: [/garbage|waste|dump|litter|trash|rubbish|debris|illegal/i],
+      priority: "medium",
+    },
+    {
+      key: "chemical_spill",
+      label: "Chemical Spill",
+      patterns: [/chemical|spill|toxic|hazard|acid|oil|fuel|leak|factory|industrial/i],
+      priority: "critical",
+    },
+    {
+      key: "open_burning",
+      label: "Open Burning",
+      patterns: [/burn|fire|ash|incinerate|bonfire|flame|burning/i],
+      priority: "high",
+    },
+  ];
 
 const LOCATION_PATTERNS = [/near|at|on|behind|beside|opposite|next to|in front of/i];
 const TIME_PATTERNS = [/morning|evening|night|afternoon|daily|weekly|yesterday|today|\d{1,2}:\d{2}|am|pm/i];

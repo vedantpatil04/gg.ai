@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { InfoPageShell } from "@/components/landing/InfoPageShell";
-import { Mail, MapPin, MessageSquare, Building2 } from "lucide-react";
+import { Mail, MapPin, MessageSquare, Building2, Code2 } from "lucide-react";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -9,7 +9,7 @@ export const Route = createFileRoute("/contact")({
       {
         name: "description",
         content:
-          "Talk to the GreenGuard AI team about a deployment for your municipality, agency or research organisation.",
+          "Connect with the GreenGuard AI team regarding platform inquiries, collaboration, and technical integration.",
       },
       { property: "og:title", content: "Contact — GreenGuard AI" },
       { property: "og:description", content: "Talk to the GreenGuard AI team." },
@@ -22,34 +22,35 @@ function ContactPage() {
   const channels = [
     {
       icon: Building2,
-      t: "Deployments",
-      d: "Pilot or production rollout for your city, agency or region.",
-      v: "deployments@greenguard.ai",
+      t: "Deployments & Collaboration",
+      d: "Discussions regarding platform integration, civic pilots, and municipal collaboration.",
+      v: "greengaurd.ai.in@gmail.com",
     },
     {
       icon: MessageSquare,
-      t: "Product",
-      d: "Questions about modules, integrations or the GreenGuard Intelligence Center.",
-      v: "hello@greenguard.ai",
+      t: "Product & Inquiries",
+      d: "Questions about modules, environmental data models, and GreenGuard AI features.",
+      v: "greengaurd.ai.in@gmail.com",
     },
     {
       icon: Mail,
-      t: "Press & research",
-      d: "Editorial, academic and partnership enquiries.",
-      v: "press@greenguard.ai",
+      t: "Press & Research",
+      d: "Academic research, publications, and collaborative partnerships.",
+      v: "greengaurd.ai.in@gmail.com",
     },
     {
-      icon: MapPin,
-      t: "Headquarters",
-      d: "Belagavi, Karnataka — India. Remote-first team across 6 timezones.",
-      v: "",
+      icon: Code2,
+      t: "Technical & Project Lead",
+      d: "Direct architecture, technical integration, and project queries.",
+      v: "vedantpatilbca@gmail.com",
     },
   ];
+
   return (
     <InfoPageShell
       eyebrow="Contact"
       title="Talk to the team."
-      lead="Whether you're a municipality evaluating a pilot, an agency planning a regional rollout, or a researcher exploring the platform — we'd like to hear from you."
+      lead="Whether you're exploring the platform, discussing a deployment, or have technical questions — we'd like to hear from you."
     >
       <div className="grid gap-px bg-border/60 rounded-2xl overflow-hidden border border-border/60 sm:grid-cols-2">
         {channels.map((c) => (
@@ -75,13 +76,27 @@ function ContactPage() {
         ))}
       </div>
 
-      <div className="mt-12 rounded-2xl border border-border/60 bg-card p-8">
-        <div className="font-display text-xl font-semibold tracking-tight">Operations support</div>
-        <p className="mt-2 text-sm text-muted-foreground max-w-xl">
-          Existing customers can reach 24/7 platform support directly from their command center, or
-          by emailing <span className="font-mono text-foreground">support@greenguard.ai</span>.
-          Average response time is under 12 minutes for severity-1 incidents.
-        </p>
+      <div className="mt-12 rounded-2xl border border-border/60 bg-card p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div>
+          <div className="font-display text-xl font-semibold tracking-tight">
+            Project & Technical Support
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground max-w-xl leading-relaxed">
+            For project enquiries, technical questions, or collaboration, contact the GreenGuard AI
+            team at{" "}
+            <a
+              href="mailto:greengaurd.ai.in@gmail.com"
+              className="font-mono text-[color:var(--color-primary)] hover:underline"
+            >
+              greengaurd.ai.in@gmail.com
+            </a>
+            .
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
+          <MapPin className="size-4 text-[color:var(--color-primary)]" />
+          <span>Belagavi, Karnataka — India</span>
+        </div>
       </div>
     </InfoPageShell>
   );

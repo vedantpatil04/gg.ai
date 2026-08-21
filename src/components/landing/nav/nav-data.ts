@@ -80,8 +80,8 @@ export const PLATFORM_ITEMS: readonly PlatformNavItem[] = [
   },
   {
     to: "/reports",
-    label: "Reports",
-    description: "Auditable, branded environmental reports in seconds.",
+    label: "Green Actions",
+    description: "Turn environmental intelligence into coordinated municipal action.",
     icon: FileBarChart,
   },
   {

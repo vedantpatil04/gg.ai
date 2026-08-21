@@ -164,8 +164,8 @@ function ContactChannelsSection({
       description: "Send a detailed message to the support team for written assistance.",
       icon: Mail,
       actionText: "Send Email",
-      actionHref: "mailto:support@greenguard.ai",
-      availability: "support@greenguard.ai",
+      actionHref: "mailto:greengaurd.ai.in@gmail.com",
+      availability: "greengaurd.ai.in@gmail.com",
       highlight: true,
     },
     {

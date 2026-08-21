@@ -69,7 +69,14 @@ function TermsPage() {
 
         <h2>7. Contact</h2>
         <p>
-          Legal questions: <span className="font-mono">legal@greenguard.ai</span>.
+          Questions or inquiries:{" "}
+          <a
+            href="mailto:greengaurd.ai.in@gmail.com"
+            className="font-mono text-[color:var(--color-primary)] hover:underline"
+          >
+            greengaurd.ai.in@gmail.com
+          </a>
+          .
         </p>
       </Prose>
       <CTABlock />

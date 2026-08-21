@@ -252,22 +252,15 @@ export function AboutPoliciesPage() {
               Questions regarding policies or data privacy?
             </span>
             <p className="text-xs text-muted-foreground">
-              Contact our Data Protection and Compliance team directly.
+              Contact the GreenGuard AI team directly.
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <a
-              href="mailto:privacy@greenguard.ai"
+              href="mailto:greengaurd.ai.in@gmail.com"
               className="text-xs font-semibold text-primary hover:underline"
             >
-              privacy@greenguard.ai
-            </a>
-            <span className="text-muted-foreground">·</span>
-            <a
-              href="mailto:legal@greenguard.ai"
-              className="text-xs font-semibold text-muted-foreground hover:text-foreground"
-            >
-              legal@greenguard.ai
+              greengaurd.ai.in@gmail.com
             </a>
           </div>
         </div>
