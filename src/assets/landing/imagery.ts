@@ -122,12 +122,6 @@ export const REAL_WORLD_IMAGES: LandingImage[] = [
   },
 ];
 
-/** Decorative backdrop behind `EnvironmentalOverviewExperience` — real greenery, kept low-opacity and masked. */
-export const ENVIRONMENTAL_OVERVIEW_BACKDROP: LandingImage = {
-  src: "/images/landing/backdrops/environmental-overview.webp",
-  alt: "",
-  position: "50% 68%",
-};
 
 /** Decorative backdrop behind `ForecastIntelligenceExperience` — real sky, kept low-opacity and masked. */
 export const FORECAST_BACKDROP: LandingImage = {

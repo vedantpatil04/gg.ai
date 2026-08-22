@@ -175,7 +175,7 @@ async function run() {
     });
 
     const req: any = {
-      body: { email: "auth@example.com", password: "Passw0rd!", portal: "authority", turnstileToken: "test-token" },
+      body: { email: "auth@example.com", password: "Passw0rd!", portal: "authority", turnstileToken: "1x0000000000000000000000000000000AA" },
     };
     const res = fakeRes();
     let caughtErr: any = null;
@@ -196,7 +196,7 @@ async function run() {
     });
 
     const req: any = {
-      body: { email: "auth@example.com", password: "Passw0rd!", portal: "authority", turnstileToken: "test-token" },
+      body: { email: "auth@example.com", password: "Passw0rd!", portal: "authority", turnstileToken: "1x0000000000000000000000000000000AA" },
     };
     const res = fakeRes();
     let caughtErr: any = null;
@@ -217,7 +217,7 @@ async function run() {
     (User as any).findByIdAndUpdate = async () => {};
 
     const req: any = {
-      body: { email: "auth@example.com", password: "Passw0rd!", portal: "authority", turnstileToken: "test-token" },
+      body: { email: "auth@example.com", password: "Passw0rd!", portal: "authority", turnstileToken: "1x0000000000000000000000000000000AA" },
     };
     const res = fakeRes();
     let caughtErr: any = null;
@@ -240,7 +240,7 @@ async function run() {
     (User as any).findByIdAndUpdate = async () => {};
 
     const req: any = {
-      body: { email: "admin@greenguard.ai", password: "Admin@123456", portal: "admin", turnstileToken: "test-token" },
+      body: { email: "admin@greenguard.ai", password: "Admin@123456", portal: "admin", turnstileToken: "1x0000000000000000000000000000000AA" },
     };
     const res = fakeRes();
     let caughtErr: any = null;
@@ -261,7 +261,7 @@ async function run() {
     (User as any).findByIdAndUpdate = async () => {};
 
     const req: any = {
-      body: { email: "citizen@example.com", password: "Passw0rd!", portal: "citizen", turnstileToken: "test-token" },
+      body: { email: "citizen@example.com", password: "Passw0rd!", portal: "citizen", turnstileToken: "1x0000000000000000000000000000000AA" },
     };
     const res = fakeRes();
     let caughtErr: any = null;

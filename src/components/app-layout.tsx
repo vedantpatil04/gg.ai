@@ -455,31 +455,42 @@ function FloatingSidebar({ mobileOpen, onMobileClose }: FloatingSidebarProps) {
           !expanded && !isMobile && "justify-center px-0",
         )}
       >
-        {/* Logo mark */}
-        <div className="size-8 rounded-lg aurora grid place-items-center text-primary-foreground shrink-0">
-          <Shield className="size-4" />
-        </div>
-
-        {/* Brand name — animated */}
-        <AnimatePresence initial={false}>
-          {(expanded || isMobile) && (
-            <motion.div
-              key="brand-text"
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: "auto" }}
-              exit={{ opacity: 0, width: 0 }}
-              transition={{ duration: prefersReduced ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="flex-1 min-w-0 overflow-hidden"
-            >
-              <div className="text-sm font-semibold tracking-tight whitespace-nowrap leading-tight">
-                GreenGuard AI
-              </div>
-              <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground whitespace-nowrap leading-tight">
-                {t("tagline")}
-              </div>
-            </motion.div>
+        {/* Brand link to public landing page */}
+        <Link
+          to="/"
+          onClick={handleNavigate}
+          className={cn(
+            "flex items-center gap-3 min-w-0 flex-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring transition-opacity hover:opacity-90",
+            !expanded && !isMobile && "justify-center flex-initial",
           )}
-        </AnimatePresence>
+          aria-label="GreenGuard AI Home"
+        >
+          {/* Logo mark */}
+          <div className="size-8 rounded-lg aurora grid place-items-center text-primary-foreground shrink-0 shadow-sm">
+            <Shield className="size-4" />
+          </div>
+
+          {/* Brand name — animated */}
+          <AnimatePresence initial={false}>
+            {(expanded || isMobile) && (
+              <motion.div
+                key="brand-text"
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: "auto" }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ duration: prefersReduced ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
+                className="flex-1 min-w-0 overflow-hidden text-left"
+              >
+                <div className="text-sm font-semibold tracking-tight whitespace-nowrap leading-tight text-foreground">
+                  GreenGuard AI
+                </div>
+                <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground whitespace-nowrap leading-tight">
+                  {t("tagline")}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Link>
 
         {/* Pin button — desktop expanded only */}
         <AnimatePresence initial={false}>

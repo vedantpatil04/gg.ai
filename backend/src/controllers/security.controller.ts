@@ -16,6 +16,7 @@ import {
   sendEmailChangedNotification,
   requestPhoneVerificationOtp,
   verifyPhoneOtp,
+  verifyPhoneWithMsg91Token,
   normalisePhone,
 } from "../services/security.service";
 import { getRequestMeta } from "../utils/requestMeta";
@@ -405,13 +406,14 @@ export async function sendPhoneVerificationOtp(
 
     void recordSecurityEvent(req.user._id, "PHONE_VERIFICATION_REQUESTED", "SUCCESS", meta);
 
-    // smsSent is always false in this project (no SMS provider configured).
-    // The client receives this flag so the UI can display an honest message
-    // instead of claiming a code was sent via SMS.
     res.json({
       success: true,
-      message: "Verification code generated.",
-      data: { smsSent: outcome.smsSent, reason: outcome.reason },
+      message: "Verification code requested.",
+      data: {
+        smsSent: outcome.smsSent,
+        reason: outcome.reason,
+        widgetId: process.env.MSG91_WIDGET_ID || undefined,
+      },
     });
   } catch (err) {
     next(err);
@@ -426,9 +428,30 @@ export async function verifyPhoneVerificationOtp(
 ): Promise<void> {
   try {
     if (!req.user) return next(new AppError("Not authenticated", 401));
-    const { otp } = req.body;
+    const { otp, accessToken, token, "access-token": bodyAccessToken } = req.body;
+    const tokenToVerify = accessToken || bodyAccessToken || token;
 
     const meta = getRequestMeta(req);
+
+    // 1. If an MSG91 verification access token is provided from the Web SDK
+    if (tokenToVerify && typeof tokenToVerify === "string" && tokenToVerify.trim()) {
+      const result = await verifyPhoneWithMsg91Token(req.user._id, tokenToVerify.trim());
+
+      if (result.status === "verified") {
+        void recordSecurityEvent(req.user._id, "PHONE_VERIFIED", "SUCCESS", meta);
+        res.json({ success: true, message: "Phone number verified successfully." });
+        return;
+      }
+
+      void recordSecurityEvent(req.user._id, "PHONE_VERIFICATION_FAILED", "FAILURE", meta);
+      res.status(400).json({
+        success: false,
+        message: result.message || "Invalid or expired verification token.",
+      });
+      return;
+    }
+
+    // 2. Fallback: Internal OTP verification
     const outcome = await verifyPhoneOtp(req.user._id, otp);
 
     if (outcome.status === "not_found" || outcome.status === "expired") {

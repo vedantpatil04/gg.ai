@@ -127,18 +127,23 @@ export const securityApi = {
   // message rather than claiming a code was delivered.
   sendPhoneVerificationOtp: () =>
     client
-      .post<{ success: boolean; message: string; data: { smsSent: boolean; reason?: string } }>(
+      .post<{ success: boolean; message: string; data: { smsSent: boolean; reason?: string; widgetId?: string } }>(
         "/security/phone/send-otp",
       )
       .then(
         (r: {
-          data: { success: boolean; message: string; data: { smsSent: boolean; reason?: string } };
+          data: { success: boolean; message: string; data: { smsSent: boolean; reason?: string; widgetId?: string } };
         }) => r.data,
       ),
 
-  verifyPhoneVerificationOtp: (otp: string) =>
+  verifyPhoneVerificationOtp: (
+    payload: string | { otp?: string; accessToken?: string; token?: string },
+  ) =>
     client
-      .post<{ success: boolean; message: string }>("/security/phone/verify-otp", { otp })
+      .post<{ success: boolean; message: string }>(
+        "/security/phone/verify-otp",
+        typeof payload === "string" ? { otp: payload } : payload,
+      )
       .then((r: { data: { success: boolean; message: string } }) => r.data),
 
   deactivateAccount: (password: string) =>

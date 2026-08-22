@@ -389,3 +389,11 @@ Every page works without the backend running. When the API is unreachable, the a
 curl http://localhost:5000/api/health
 # {"success":true,"status":"healthy","timestamp":"...","version":"1.0.0"}
 ```
+
+---
+
+## Author & Connect
+
+- **GitHub**: [vedantpatil04](https://github.com/vedantpatil04)
+- **LinkedIn**: [Vedant Patil](https://www.linkedin.com/in/vedantpatil04)
+

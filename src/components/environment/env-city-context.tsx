@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ImageOff } from "lucide-react";
 import { useCity } from "@/lib/city-context";
 import { findAqiBand } from "@/lib/mock-data";
-import { getCityVisual } from "@/lib/city-images";
+import { getEnvironmentalOverviewImage } from "@/assets/environment/environment-overview-images";
 import { formatRelativeTime } from "@/lib/format-time";
 import { EnvCityContextSkeleton } from "@/components/environment/env-loading-skeletons";
 import { EnvEmptyState, EnvErrorState } from "@/components/environment/env-state-views";
@@ -17,8 +17,8 @@ import { cn } from "@/lib/utils";
  *  - Current city title & subtitle
  *  - Live indicator & real-time update timestamp
  *  - Concise natural-language environmental summary
- *  - Data-driven contextual city photograph resolved via `getCityVisual(city.id, city.name)`
- *    (Belagavi active by default, future-ready for any city configuration)
+ *  - Data-driven contextual city photograph resolved via dedicated `getEnvironmentalOverviewImage(city.id, city.name)`
+ *    (Independent /environmental-overview/ assets, decoupled from Dashboard & Landing)
  */
 export function CityEnvironmentalContext({ className }: { className?: string }) {
   const { city, isApiConnected, isCityListLoading, isCityError, cityDataUpdatedAt, refreshCity } =
@@ -51,7 +51,7 @@ export function CityEnvironmentalContext({ className }: { className?: string }) 
   }
 
   const band = findAqiBand(city.aqi);
-  const cityVisual = getCityVisual(city.id, city.name);
+  const cityVisual = getEnvironmentalOverviewImage(city.id, city.name);
   const imageUrl = imageFailed ? undefined : cityVisual.image;
 
   const hasOwnTimestamp = typeof city.updatedAt === "string" && city.updatedAt.length > 0;
@@ -79,11 +79,12 @@ export function CityEnvironmentalContext({ className }: { className?: string }) 
           <img
             key={imageUrl}
             src={imageUrl}
-            alt={cityVisual.alt}
+            alt={cityVisual.alt || `${city.name} environmental photograph`}
             loading="lazy"
             decoding="async"
             onError={() => setImageFailed(true)}
             className="absolute inset-0 h-full w-full object-cover motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-500"
+            style={cityVisual.position ? { objectPosition: cityVisual.position } : undefined}
           />
         ) : (
           <div

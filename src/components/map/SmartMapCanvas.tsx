@@ -2492,7 +2492,7 @@ export function SmartMapCanvas({
                   }
                 />
                 <MetricTile label="CO" unit="ppm" value={popupLoc.co ?? "—"} />
-                <MetricTile label="Temp" unit="C" value={`${popupLoc.temp ?? city.temp}°`} />
+                <MetricTile label="Temp" unit="C" value={`${Math.round(popupLoc.temp ?? city.temp)}°`} />
                 <MetricTile label="Humidity" unit="%" value={popupLoc.humidity ?? city.humidity} />
                 <MetricTile label="Wind" unit="km/h" value={popupLoc.windSpeed ?? "—"} />
                 <MetricTile

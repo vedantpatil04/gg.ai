@@ -123,13 +123,24 @@ function clamp(v: number, lo: number, hi: number) {
 
 /** Determine primary weather condition from city ambient data */
 function deriveCondition(city: City, r: (i: number) => number): WeatherCondition {
+  if (city.weatherCode != null) {
+    const code = city.weatherCode;
+    if (code === 0 || code === 1) return "clear";
+    if (code === 2) return "partly-cloudy";
+    if (code === 3) return "overcast";
+    if (code === 45 || code === 48) return "fog";
+    if (code >= 51 && code <= 57) return "light-rain";
+    if (code >= 61 && code <= 65) return code >= 65 ? "heavy-rain" : "rain";
+    if (code >= 80 && code <= 82) return code === 82 ? "heavy-rain" : "rain";
+    if (code >= 95 && code <= 99) return "thunderstorm";
+  }
   const { humidity, aqi, temp } = city;
   // High-AQI cities trend toward haze/overcast even on nominally clear days
   if (aqi > 200 && r(0) > 0.3) return "haze";
-  if (humidity > 85 && r(1) > 0.4) return r(2) > 0.6 ? "rain" : "overcast";
-  if (humidity > 75 && r(3) > 0.5) return r(4) > 0.55 ? "light-rain" : "cloudy";
+  if (humidity > 90 && r(1) > 0.4) return "overcast";
+  if (humidity > 75 && r(3) > 0.5) return "cloudy";
   if (humidity > 65 && r(5) > 0.6) return "partly-cloudy";
-  if (temp > 36 && r(6) > 0.7) return r(7) > 0.5 ? "thunderstorm" : "heavy-rain";
+  if (temp > 36 && r(6) > 0.7) return "thunderstorm";
   if (r(8) > 0.85) return "windy";
   return "clear";
 }
@@ -290,8 +301,12 @@ function approxSunTimes(lat: number): { sunrise: string; sunset: string } {
   const offset = (Math.abs(lat) / 20) * 60; // minutes
   const srMin = 360 + offset; // ~6:00 AM
   const ssMin = 1080 - offset; // ~6:00 PM
-  const fmt = (m: number) =>
-    `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const fmt = (m: number) => {
+    const totalMinutes = Math.round(m);
+    const hours = Math.floor(totalMinutes / 60) % 24;
+    const mins = totalMinutes % 60;
+    return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+  };
   return { sunrise: fmt(srMin), sunset: fmt(ssMin) };
 }
 

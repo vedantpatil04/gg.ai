@@ -34,6 +34,14 @@ function mapBackendToCity(d: Record<string, unknown>): City {
     ph: d.ph as number | undefined,
     windSpeed: (d.windSpeed as number | undefined) ?? undefined,
     windDirection: (d.windDirection as number | undefined) ?? undefined,
+    apparentTemperature: (d.apparentTemperature as number | undefined) ?? undefined,
+    weatherCode:
+      (d.weatherCode as number | null | undefined) ??
+      (d.weather_code as number | null | undefined) ??
+      undefined,
+    rainfall: (d.rainfall as number | undefined) ?? (d.precipitation as number | undefined) ?? undefined,
+    rain: (d.rain as number | undefined) ?? undefined,
+    isDay: (d.isDay as boolean | undefined) ?? (d.is_day as boolean | undefined) ?? undefined,
     updatedAt:
       (d.timestamp as string | undefined) ?? (d.updatedAt as string | undefined) ?? undefined,
     ecoScore: d.ecoScore as EcoScoreBreakdown | undefined,
@@ -116,6 +124,86 @@ export function CityProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Resolve current city: live API → apiCities list → mock fallback
+  const cities = apiCities ?? CITIES;
+  const mockCity = CITIES.find((c) => c.id === cityId) ?? CITIES[0];
+  const listCity = apiCities?.find((c) => c.id === cityId);
+  const city = liveCity ?? listCity ?? mockCity;
+
+  return (
+    <CityCtx.Provider
+      value={{
+        city,
+        setCityId,
+        cities,
+        isApiConnected: citiesLoaded,
+        refreshCity: () => {
+          refreshCity();
+          refreshLiveCity();
+        },
+        isCityListLoading,
+        isCityError,
+        cityDataUpdatedAt,
+        isCityFetching,
+      }}
+    >
+      {children}
+    </CityCtx.Provider>
+  );
+}
+
+/**
+ * Scoped City Provider specifically for the public Landing Page (`/`).
+ * Maintains separate state (`localStorage["landing-city"]`), avoiding any
+ * mutation of the platform's `localStorage["gg-city"]` or dashboard state.
+ */
+export function LandingCityProvider({ children }: { children: ReactNode }) {
+  const [cityId, setCityIdState] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("landing-city");
+        if (saved) return saved;
+      } catch {}
+    }
+    return CITIES[0].id;
+  });
+
+  const {
+    data: apiCities,
+    isSuccess: citiesLoaded,
+    isLoading: isCityListLoading,
+    isError: isCityError,
+    dataUpdatedAt: cityDataUpdatedAt,
+    isFetching: isCityFetching,
+    refetch: refreshCity,
+  } = useQuery({
+    queryKey: ["cities"],
+    queryFn: async () => {
+      const res = await environmentalApi.getCities();
+      return (res.data.cities as Record<string, unknown>[]).map(mapBackendToCity);
+    },
+    staleTime: 2 * 60 * 1000,
+    retry: 1,
+    throwOnError: false,
+  });
+
+  const { data: liveCity, refetch: refreshLiveCity } = useQuery({
+    queryKey: ["landing-city-data", cityId],
+    queryFn: async () => {
+      const res = await environmentalApi.getCity(cityId);
+      return mapBackendToCity(res.data.city as Record<string, unknown>);
+    },
+    staleTime: 30_000,
+    retry: 1,
+    throwOnError: false,
+  });
+
+  const setCityId = useCallback((id: string) => {
+    setCityIdState(id);
+    try {
+      localStorage.setItem("landing-city", id);
+    } catch {}
+  }, []);
+
   const cities = apiCities ?? CITIES;
   const mockCity = CITIES.find((c) => c.id === cityId) ?? CITIES[0];
   const listCity = apiCities?.find((c) => c.id === cityId);

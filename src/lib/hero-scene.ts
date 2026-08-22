@@ -51,22 +51,36 @@ export function getAQITier(aqi: number): AQITier {
 export type WeatherProxy = "clear" | "cloudy" | "rainy" | "windy" | "foggy";
 
 export function getWeatherProxy({
+  weatherCode,
   humidity,
   windSpeed,
   temp,
 }: {
+  weatherCode?: number | null;
   humidity?: number;
   windSpeed?: number;
   temp?: number;
 }): WeatherProxy {
+  if (weatherCode != null) {
+    if (
+      (weatherCode >= 51 && weatherCode <= 67) ||
+      (weatherCode >= 80 && weatherCode <= 82) ||
+      (weatherCode >= 95 && weatherCode <= 99)
+    ) {
+      return "rainy";
+    }
+    if (weatherCode === 45 || weatherCode === 48) return "foggy";
+    if (weatherCode === 2 || weatherCode === 3) return "cloudy";
+    if (weatherCode === 0 || weatherCode === 1) return "clear";
+  }
+
   const h = humidity ?? 50;
   const w = windSpeed ?? 8;
   const t = temp ?? 25;
 
-  if (h >= 80 && w >= 10 && t < 30) return "rainy";
-  if (h >= 88) return "foggy";
-  if (h >= 72) return "cloudy";
-  if (w >= 15 && h < 60) return "windy";
+  if (h >= 90 && t < 18) return "foggy";
+  if (h >= 75) return "cloudy";
+  if (w >= 20 && h < 60) return "windy";
   return "clear";
 }
 
@@ -209,16 +223,18 @@ export function computeSceneCondition({
   temp,
   humidity,
   windSpeed,
+  weatherCode,
 }: {
   aqi?: number;
   temp?: number;
   humidity?: number;
   windSpeed?: number;
+  weatherCode?: number | null;
 }): SceneCondition {
   const hour = new Date().getHours();
   const slot = getTimeSlot(hour);
   const aqiTier = getAQITier(aqi);
-  const weather = getWeatherProxy({ humidity, windSpeed, temp });
+  const weather = getWeatherProxy({ weatherCode, humidity, windSpeed, temp });
   const sky = getSkyGradient(slot, aqiTier, weather);
 
   const isDay = slot === "morning" || slot === "afternoon";

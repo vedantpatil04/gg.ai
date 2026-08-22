@@ -91,8 +91,9 @@ function sunTimes(lat: number): { rise: string; set: string } {
   const riseH = 12 - haDeg / 15;
   const setH  = 12 + haDeg / 15;
   const fmt = (h: number) => {
-    const hr = Math.floor(h);
-    const mn = Math.round((h - hr) * 60);
+    const totalMinutes = Math.round(h * 60);
+    const hr = Math.floor(totalMinutes / 60) % 24;
+    const mn = totalMinutes % 60;
     return `${hr.toString().padStart(2, "0")}:${mn.toString().padStart(2, "0")}`;
   };
   return { rise: fmt(riseH), set: fmt(setH) };

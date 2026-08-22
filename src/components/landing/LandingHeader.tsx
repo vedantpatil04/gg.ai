@@ -6,6 +6,8 @@ import { MegaMenu } from "@/components/landing/nav/MegaMenu";
 import { MobileNav } from "@/components/landing/nav/MobileNav";
 import { PRIMARY_LINKS, SIGN_IN_LINK, LAUNCH_LINK } from "@/components/landing/nav/nav-data";
 import { LANDING_CONTAINER, CTA_PRIMARY_CLASS } from "@/components/landing/shared";
+import { LandingCitySelector } from "@/components/landing/LandingCitySelector";
+import { LandingThemeToggle } from "@/components/landing/LandingThemeToggle";
 
 /**
  * Floating enterprise navigation. Detached from the viewport edge with a
@@ -52,6 +54,9 @@ export function LandingHeader() {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
+            <LandingCitySelector className="sm:inline-block" />
+            <LandingThemeToggle />
+
             <Link
               to={SIGN_IN_LINK.to}
               className="hidden h-9 items-center rounded-full px-3.5 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-ring)] lg:inline-flex"

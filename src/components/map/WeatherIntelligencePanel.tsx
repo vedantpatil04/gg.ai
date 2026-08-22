@@ -562,8 +562,8 @@ function SunBar({
   theme: WeatherTheme;
 }) {
   const toMin = (s: string) => {
-    const [h, m] = s.split(":").map(Number);
-    return h * 60 + (m || 0);
+    const [h, m] = s.split(":").map((v) => Math.round(Number(v) || 0));
+    return (h || 0) * 60 + (m || 0);
   };
   const now = new Date().getHours() * 60 + new Date().getMinutes();
   const srMin = toMin(sunrise);

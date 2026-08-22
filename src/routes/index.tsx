@@ -16,6 +16,9 @@ import { ForecastIntelligenceExperience } from "@/components/landing/experiences
 import { AICopilotExperience } from "@/components/landing/experiences/AICopilotExperience";
 import { CITIES } from "@/lib/mock-data";
 
+import { LandingThemeProvider } from "@/components/landing/LandingThemeContext";
+import { LandingCityProvider } from "@/lib/city-context";
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -37,34 +40,38 @@ export const Route = createFileRoute("/")({
 
 function Landing() {
   return (
-    <div className="min-h-screen bg-background text-foreground antialiased selection:bg-[color:var(--color-primary)]/30 selection:text-foreground">
-      <LandingHeader />
-      <Hero />
-      <TrustStrip />
+    <LandingThemeProvider>
+      <LandingCityProvider>
+        <div className="min-h-screen bg-background text-foreground antialiased selection:bg-[color:var(--color-primary)]/30 selection:text-foreground">
+          <LandingHeader />
+          <Hero />
+          <TrustStrip />
 
-      {/* ── Phase 3: real world opener ── */}
-      <RealWorldSection />
+          {/* ── Phase 3: real world opener ── */}
+          <RealWorldSection />
 
-      <PlatformOverview />
+          <PlatformOverview />
 
-      {/* ── Phase 2: live platform experiences ── */}
-      <EnvironmentalOverviewExperience />
-      <SectionDivider tone="info" />
-      <SmartMapExperience />
-      <SectionDivider tone="info" />
-      <ForecastIntelligenceExperience />
-      <SectionDivider tone="chart5" />
-      <AICopilotExperience />
+          {/* ── Phase 2: live platform experiences ── */}
+          <EnvironmentalOverviewExperience />
+          <SectionDivider tone="info" />
+          <SmartMapExperience />
+          <SectionDivider tone="info" />
+          <ForecastIntelligenceExperience />
+          <SectionDivider tone="chart5" />
+          <AICopilotExperience />
 
-      {/* ── Phase 3: citizen action beat ── */}
-      <CitizenImpactSection />
+          {/* ── Phase 3: citizen action beat ── */}
+          <CitizenImpactSection />
 
-      <Modules />
-      <HowItWorks />
-      <Benefits />
-      <CTA />
-      <LandingFooter />
-    </div>
+          <Modules />
+          <HowItWorks />
+          <Benefits />
+          <CTA />
+          <LandingFooter />
+        </div>
+      </LandingCityProvider>
+    </LandingThemeProvider>
   );
 }
 

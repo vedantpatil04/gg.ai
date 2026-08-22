@@ -62,6 +62,13 @@ import {
   type LoginHistoryEntry,
   type SecurityEventEntry,
 } from "@/lib/api/security.api";
+import {
+  sendMsg91Otp,
+  verifyMsg91Otp,
+  retryMsg91Otp,
+  isMsg91Configured,
+  loadMsg91Sdk,
+} from "@/lib/msg91";
 
 // ─── Shared Input Field ───────────────────────────────────────────────────────
 function Field({
@@ -996,6 +1003,13 @@ function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: b
 
   const isVerified = status?.phone.verified ?? false;
   const hasPhone = Boolean(user?.phone);
+  const msg91Active = isMsg91Configured();
+
+  useEffect(() => {
+    if (msg91Active) {
+      void loadMsg91Sdk();
+    }
+  }, [msg91Active]);
 
   const extractError = (err: unknown) => {
     const res = (
@@ -1005,7 +1019,7 @@ function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: b
     )?.response;
     return {
       status: res?.status,
-      message: res?.data?.message ?? "Something went wrong.",
+      message: res?.data?.message ?? (err instanceof Error ? err.message : "Something went wrong."),
       data: res?.data?.data,
     };
   };
@@ -1039,12 +1053,36 @@ function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: b
   };
 
   const sendOtpMutation = useMutation({
-    mutationFn: () => securityApi.sendPhoneVerificationOtp(),
+    mutationFn: async () => {
+      const targetPhone = user?.phone || phone;
+      if (!targetPhone) {
+        throw new Error("No phone number on file. Please enter and save a phone number first.");
+      }
+
+      if (msg91Active) {
+        try {
+          const res = await sendMsg91Otp(targetPhone);
+          return { smsSent: true, msg91: true, data: res };
+        } catch (msg91Err: any) {
+          // If client-side MSG91 SDK call fails, attempt fallback to backend OTP endpoint
+          console.warn("[MSG91] sendOtp error, attempting backend fallback:", msg91Err);
+          const res = await securityApi.sendPhoneVerificationOtp();
+          return { smsSent: res.data.smsSent, msg91: false, data: res.data };
+        }
+      } else {
+        const res = await securityApi.sendPhoneVerificationOtp();
+        return { smsSent: res.data.smsSent, msg91: false, data: res.data };
+      }
+    },
     onSuccess: (res) => {
       setOtpRequested(true);
-      setSmsSent(res.data.smsSent);
+      setSmsSent(res.smsSent);
       setErrorMsg("");
       setAttemptsRemaining(null);
+      setCooldownUntil(Date.now() + 60_000);
+      toast.success("Verification code sent", {
+        description: `Code sent to ${user?.phone || phone}`,
+      });
     },
     onError: (err: unknown) => {
       const { status, message, data } = extractError(err);
@@ -1057,7 +1095,21 @@ function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: b
   });
 
   const verifyMutation = useMutation({
-    mutationFn: (code: string) => securityApi.verifyPhoneVerificationOtp(code),
+    mutationFn: async (code: string) => {
+      if (msg91Active) {
+        // 1. Verify via MSG91 SDK to obtain verification access token
+        const result = await verifyMsg91Otp(code);
+        const accessToken = result.accessToken;
+
+        // 2. Send token to backend to validate via https://control.msg91.com/api/v5/widget/verifyAccessToken
+        return securityApi.verifyPhoneVerificationOtp({
+          accessToken,
+          otp: code,
+        });
+      } else {
+        return securityApi.verifyPhoneVerificationOtp(code);
+      }
+    },
     onSuccess: async () => {
       toast.success("Phone verified", { description: "Your phone number is now verified." });
       resetVerify();
@@ -1070,14 +1122,31 @@ function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: b
       if (typeof data?.attemptsRemaining === "number") {
         setAttemptsRemaining(data.attemptsRemaining);
       } else {
-        setOtpRequested(false);
-        setOtp("");
         setAttemptsRemaining(null);
-        setSmsSent(null);
       }
       toast.error("Verification failed", { description: message });
     },
   });
+
+  const handleResend = async () => {
+    if (secondsLeft > 0 || sendOtpMutation.isPending) return;
+
+    if (msg91Active) {
+      try {
+        await retryMsg91Otp(user?.phone || phone);
+        setCooldownUntil(Date.now() + 60_000);
+        setErrorMsg("");
+        toast.success("Verification code resent", {
+          description: `A new code was sent to ${user?.phone || phone}`,
+        });
+      } catch (err: unknown) {
+        // If retryOtp failed, fallback to sendOtp mutation
+        sendOtpMutation.mutate();
+      }
+    } else {
+      sendOtpMutation.mutate();
+    }
+  };
 
   return (
     <Panel
@@ -1136,10 +1205,17 @@ function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: b
 
       {verifyMode && (
         <div className="mt-3 pt-3 border-t border-border space-y-3">
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400">
-            SMS delivery is not currently configured on this platform. To verify your phone, an
-            administrator must provide you with a verification code directly.
-          </div>
+          {msg91Active ? (
+            <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs text-foreground flex items-center gap-2">
+              <PhoneCall className="size-4 text-primary shrink-0" />
+              <span>A 6-digit verification code will be sent to your phone number via SMS.</span>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400">
+              SMS delivery is not currently configured on this platform. To verify your phone, an
+              administrator must provide you with a verification code directly.
+            </div>
+          )}
 
           {!otpRequested ? (
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -1166,9 +1242,14 @@ function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: b
             </div>
           ) : (
             <div className="space-y-3">
-              {smsSent === false && (
+              {smsSent === false && !msg91Active && (
                 <p className="text-xs text-muted-foreground">
                   Enter the 6-digit code provided by your administrator.
+                </p>
+              )}
+              {msg91Active && (
+                <p className="text-xs text-muted-foreground">
+                  Enter the 6-digit verification code sent to {user?.phone || phone}.
                 </p>
               )}
               <div className="flex flex-col sm:flex-row sm:items-end gap-3">
@@ -1185,7 +1266,7 @@ function PhoneSection({ status, loading }: { status?: SecurityStatus; loading: b
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <button
-                    onClick={() => sendOtpMutation.mutate()}
+                    onClick={handleResend}
                     disabled={sendOtpMutation.isPending || secondsLeft > 0}
                     className="rounded-lg px-3 py-2.5 text-sm font-medium border border-border hover:bg-accent cursor-pointer"
                   >

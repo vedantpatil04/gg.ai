@@ -808,7 +808,12 @@ function Dashboard() {
             temp={city.temp}
             humidity={city.humidity}
             windSpeed={city.windSpeed}
+            weatherCode={city.weatherCode}
+            isDay={city.isDay}
+            feelsLike={city.apparentTemperature}
+            rainfall={city.rainfall}
             lastUpdated={dataLastUpdatedLabel}
+            updatedAt={city.updatedAt}
           />
         </motion.div>
 

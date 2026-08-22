@@ -12,6 +12,8 @@ import {
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { CTA_PRIMARY_CLASS } from "@/components/landing/shared";
 import { PLATFORM_ITEMS, PRIMARY_LINKS, SIGN_IN_LINK, LAUNCH_LINK } from "./nav-data";
+import { LandingCitySelector } from "@/components/landing/LandingCitySelector";
+import { LandingThemeToggle } from "@/components/landing/LandingThemeToggle";
 
 /**
  * Fullscreen nav drawer for < lg viewports. Intentionally not a shrunk-down
@@ -44,13 +46,24 @@ export function MobileNav() {
           <SheetDescription>Browse GreenGuard AI platform modules and pages.</SheetDescription>
         </SheetHeader>
 
-        <div className="safe-top flex shrink-0 items-center gap-2.5 border-b border-border/60 px-5 pb-4 pt-6">
-          <div className="grid size-8 place-items-center rounded-lg bg-gradient-to-br from-[color:var(--color-primary)] to-[color:var(--color-info)] text-primary-foreground">
-            <Shield className="size-4" />
+        <div className="safe-top flex shrink-0 items-center justify-between border-b border-border/60 px-5 pb-4 pt-6">
+          <Link
+            to="/"
+            onClick={close}
+            className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-ring)]"
+          >
+            <div className="grid size-8 place-items-center rounded-lg bg-gradient-to-br from-[color:var(--color-primary)] to-[color:var(--color-info)] text-primary-foreground">
+              <Shield className="size-4" />
+            </div>
+            <span className="font-display text-[15px] font-semibold tracking-tight">
+              GreenGuard <span className="font-normal text-muted-foreground">AI</span>
+            </span>
+          </Link>
+
+          <div className="flex items-center gap-2">
+            <LandingCitySelector />
+            <LandingThemeToggle />
           </div>
-          <span className="font-display text-[15px] font-semibold tracking-tight">
-            GreenGuard <span className="font-normal text-muted-foreground">AI</span>
-          </span>
         </div>
 
         <nav aria-label="Mobile" className="flex-1 overflow-y-auto px-3 py-2">

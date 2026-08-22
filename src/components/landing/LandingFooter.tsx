@@ -1,5 +1,18 @@
 import { Link } from "@tanstack/react-router";
-import { Shield, Github, Twitter, Linkedin } from "lucide-react";
+import { Shield, Github, Linkedin } from "lucide-react";
+
+const SOCIAL_LINKS = [
+  {
+    label: "GitHub",
+    href: "https://github.com/vedantpatil04",
+    icon: Github,
+  },
+  {
+    label: "LinkedIn",
+    href: "https://www.linkedin.com/in/vedantpatil04",
+    icon: Linkedin,
+  },
+] as const;
 
 const cols = [
   {
@@ -56,11 +69,13 @@ export function LandingFooter() {
               serve.
             </p>
             <div className="mt-5 flex items-center gap-2">
-              {[Github, Twitter, Linkedin].map((Icon, i) => (
+              {SOCIAL_LINKS.map(({ label, href, icon: Icon }) => (
                 <a
-                  key={i}
-                  href="#"
-                  aria-label="Social link"
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={label}
                   className="grid size-9 place-items-center rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:border-border transition-colors"
                 >
                   <Icon className="size-4" />

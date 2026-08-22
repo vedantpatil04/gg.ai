@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import mongoose from "mongoose";
+import axios from "axios";
 import { User, MAX_FAILED_LOGIN_ATTEMPTS, ACCOUNT_LOCK_DURATION_MS } from "../models/User";
 import { Session } from "../models/Session";
 import { LoginHistory, LoginStatus } from "../models/LoginHistory";
@@ -492,4 +493,145 @@ export async function verifyPhoneOtp(
   await User.findByIdAndUpdate(userId, { phoneVerified: true, securityUpdatedAt: new Date() });
 
   return { status: "verified" };
+}
+
+// ─── MSG91 Custom UI Access Token Verification ──────────────────────────────
+export type VerifyMsg91TokenOutcome =
+  | { status: "verified"; message?: string }
+  | { status: "invalid"; message?: string }
+  | { status: "error"; message?: string };
+
+/**
+ * Validates an MSG91 access token obtained from the frontend Web SDK (verifyOtp)
+ * by calling MSG91 verifyAccessToken API (https://control.msg91.com/api/v5/widget/verifyAccessToken).
+ *
+ * Security:
+ * - MSG91_AUTH_KEY is stored on backend only.
+ * - Never logs or stores raw tokens/credentials.
+ * - Verifies user existence and updates phoneVerified status upon successful validation.
+ */
+export async function verifyPhoneWithMsg91Token(
+  userId: mongoose.Types.ObjectId | string,
+  accessToken: string,
+): Promise<VerifyMsg91TokenOutcome> {
+  const authKey = process.env.MSG91_AUTH_KEY;
+  if (!authKey) {
+    logger.warn("[MSG91] MSG91_AUTH_KEY is not configured on the backend.");
+    return {
+      status: "error",
+      message: "MSG91_AUTH_KEY is not configured on the server.",
+    };
+  }
+
+  if (!accessToken || typeof accessToken !== "string" || !accessToken.trim()) {
+    return { status: "invalid", message: "Verification access token is required." };
+  }
+
+  const user = await User.findById(userId).select("phone phoneVerified");
+  if (!user?.phone) {
+    return {
+      status: "error",
+      message: "No phone number on file. Please add your phone number first.",
+    };
+  }
+
+  try {
+    const endpoints = [
+      "https://control.msg91.com/api/v5/widget/verifyAccessToken",
+      "https://api.msg91.com/api/v5/widget/verifyAccessToken",
+    ];
+
+    let responseData: any = null;
+    let lastError: any = null;
+
+    for (const endpoint of endpoints) {
+      try {
+        const res = await axios.post(
+          endpoint,
+          { "access-token": accessToken.trim() },
+          {
+            headers: {
+              authkey: authKey.trim(),
+              "Content-Type": "application/json",
+            },
+            timeout: 10000,
+          },
+        );
+        if (res.status >= 200 && res.status < 300) {
+          responseData = res.data;
+          break;
+        }
+      } catch (err: any) {
+        lastError = err;
+        if (err.response?.status === 400 || err.response?.status === 401) {
+          // Token rejected by provider
+          break;
+        }
+      }
+    }
+
+    if (!responseData) {
+      const errMsg =
+        lastError?.response?.data?.message ||
+        lastError?.response?.data?.error ||
+        lastError?.message ||
+        "Verification token validation failed with MSG91.";
+      return { status: "invalid", message: errMsg };
+    }
+
+    // Check payload error flags if returned in 200 body
+    if (
+      responseData.type === "error" ||
+      responseData.status === "error" ||
+      responseData.status === "fail" ||
+      responseData.hasError === true
+    ) {
+      return {
+        status: "invalid",
+        message: responseData.message || "Invalid or expired verification token.",
+      };
+    }
+
+    // Optional phone validation: if MSG91 returned mobile, verify against profile
+    const verifiedPhone =
+      responseData.mobile ||
+      responseData.data?.mobile ||
+      responseData.number ||
+      responseData.data?.number ||
+      responseData.phone ||
+      responseData.data?.phone;
+
+    if (verifiedPhone) {
+      const cleanUserPhone = user.phone.replace(/\D/g, "");
+      const cleanVerifiedPhone = String(verifiedPhone).replace(/\D/g, "");
+      if (
+        cleanUserPhone &&
+        cleanVerifiedPhone &&
+        !cleanUserPhone.endsWith(cleanVerifiedPhone) &&
+        !cleanVerifiedPhone.endsWith(cleanUserPhone)
+      ) {
+        logger.warn(
+          `[MSG91] Phone mismatch for user ${userId}: user phone ${cleanUserPhone} vs token verified phone ${cleanVerifiedPhone}`,
+        );
+        return {
+          status: "invalid",
+          message: "Verified phone number does not match your profile phone number.",
+        };
+      }
+    }
+
+    // Mark user phone as verified in DB
+    await User.findByIdAndUpdate(userId, {
+      phoneVerified: true,
+      securityUpdatedAt: new Date(),
+    });
+
+    return { status: "verified" };
+  } catch (err: any) {
+    logger.error("[MSG91] Error in verifyPhoneWithMsg91Token:", err);
+    return {
+      status: "error",
+      message: "An error occurred while validating the token with MSG91.",
+    };
+  }
 }

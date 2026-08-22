@@ -93,7 +93,14 @@ export interface WelcomeHeroProps {
   temp?: number;
   humidity?: number;
   windSpeed?: number;
+  weatherCode?: number | null;
+  isDay?: boolean | null;
+  feelsLike?: number | null;
+  uvIndex?: number | null;
+  rainChance?: number | null;
+  rainfall?: number | null;
   lastUpdated?: string;
+  updatedAt?: string;
   sensorsOnline?: number;
 }
 
@@ -105,8 +112,15 @@ export function WelcomeHero({
   temp,
   humidity,
   windSpeed,
+  weatherCode,
+  isDay,
+  feelsLike,
+  uvIndex,
+  rainChance,
+  rainfall,
   sensorsOnline,
   lastUpdated,
+  updatedAt,
   userName,
 }: WelcomeHeroProps) {
   const { t } = useTranslation("dashboard");
@@ -120,7 +134,7 @@ export function WelcomeHero({
         : t("goodEvening");
   const emoji = greetingEmoji(rawGreet);
   const Icon = greetingIcon(rawGreet);
-  const scene = computeSceneCondition({ aqi, temp, humidity, windSpeed });
+  const scene = computeSceneCondition({ aqi, temp, humidity, windSpeed, weatherCode });
   const outdoorMessage = getOutdoorMessage(aqi, cityName);
   const aqiGlow = getAqiGlow(aqi);
 
@@ -230,6 +244,14 @@ export function WelcomeHero({
             temp={temp}
             humidity={humidity}
             windSpeed={windSpeed}
+            weatherCode={weatherCode}
+            isDay={isDay}
+            feelsLike={feelsLike ?? undefined}
+            uvIndex={uvIndex ?? undefined}
+            rainChance={rainChance ?? undefined}
+            rainfall={rainfall ?? undefined}
+            lastUpdated={lastUpdated}
+            updatedAt={updatedAt}
           />
         </div>
 
@@ -309,7 +331,19 @@ export function WelcomeHero({
         className="md:hidden px-4 sm:px-5 pt-3.5 pb-4 sm:pb-5 space-y-3 bg-card/95 dark:bg-[linear-gradient(to_bottom,rgba(0,0,0,0.82),rgba(10,12,16,0.94))] border-t border-border/60 dark:border-white/10"
       >
         <AQIGlassCard aqi={aqi} />
-        <WeatherGlassCard temp={temp} humidity={humidity} windSpeed={windSpeed} />
+        <WeatherGlassCard
+          temp={temp}
+          humidity={humidity}
+          windSpeed={windSpeed}
+          weatherCode={weatherCode}
+          isDay={isDay}
+          feelsLike={feelsLike ?? undefined}
+          uvIndex={uvIndex ?? undefined}
+          rainChance={rainChance ?? undefined}
+          rainfall={rainfall ?? undefined}
+          lastUpdated={lastUpdated}
+          updatedAt={updatedAt}
+        />
       </div>
 
       {/* ── Global CSS keyframes for this hero ── */}

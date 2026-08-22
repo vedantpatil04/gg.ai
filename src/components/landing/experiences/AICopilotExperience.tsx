@@ -1,11 +1,9 @@
-import { useEffect, useRef, useState, type FormEvent, type ChangeEvent } from "react";
-import { Link } from "@tanstack/react-router";
+import { useRef } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { motion, useReducedMotion } from "framer-motion";
-import { useMutation } from "@tanstack/react-query";
-import { Sparkles, Send, Loader2, ArrowUpRight } from "lucide-react";
+import { Sparkles, Send, Lock, ArrowUpRight, ShieldCheck } from "lucide-react";
 import { useCity } from "@/lib/city-context";
 import { useAuth } from "@/lib/auth-context";
-import { copilotApi } from "@/lib/api/services.api";
 import { findAqiBand, type City } from "@/lib/mock-data";
 import { LANDING_CONTAINER } from "@/components/landing/shared";
 import { ExperienceHeader, ExperienceCTA } from "./shared";
@@ -18,19 +16,16 @@ const SUGGESTIONS = [
   "Generate an environmental report.",
 ] as const;
 
-type ChatMsg = { role: "user" | "ai"; text: string; locked?: boolean };
+type ChatMsg = {
+  role: "user" | "ai";
+  text: string;
+  badge?: string;
+  locked?: boolean;
+};
 
-/**
- * The real `/copilot/chat` endpoint requires an authenticated session (by
- * design — it's the same endpoint the signed-in Copilot page uses). An
- * anonymous landing-page visitor can't reach it, so instead of a silent
- * failure or a fabricated "live" response, this grounds a preview answer in
- * the visitor's actual current city data and is upfront that a real
- * session unlocks the live model.
- */
-function groundedPreviewAnswer(question: string, city: City): string {
+function sampleAssistantResponse(city: City): string {
   const band = findAqiBand(city.aqi);
-  return `${city.name}'s AQI is currently ${city.aqi} (${band.label}). PM2.5 is ${city.pm25} µg/m³, PM10 is ${city.pm10} µg/m³. That's real current data — sign in for a live, personalized answer to "${question}" from the full GreenGuard Intelligence model.`;
+  return `${city.name}'s AQI is currently ${city.aqi} (${band.label}) with PM2.5 at ${city.pm25} µg/m³ and PM10 at ${city.pm10} µg/m³. Atmospheric conditions project steady dispersion over the next 24 hours.`;
 }
 
 function AiAvatar() {
@@ -54,7 +49,7 @@ function MessageBubble({ msg }: { msg: ChatMsg }) {
       {!isUser && <AiAvatar />}
       <div
         className={cn(
-          "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+          "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
           isUser
             ? "bg-foreground text-background"
             : "border border-border/60 bg-card text-foreground",
@@ -66,7 +61,8 @@ function MessageBubble({ msg }: { msg: ChatMsg }) {
             to="/login"
             className="mt-2 flex items-center gap-1 text-xs font-medium text-[color:var(--color-primary)] hover:underline"
           >
-            Sign in for live answers
+            <Lock className="size-3" />
+            Sign in for live conversational queries
             <ArrowUpRight className="size-3" />
           </Link>
         )}
@@ -78,50 +74,31 @@ function MessageBubble({ msg }: { msg: ChatMsg }) {
 export function AICopilotExperience() {
   const { city } = useCity();
   const { isAuthenticated } = useAuth();
-  const reducedMotion = useReducedMotion();
-  const [question, setQuestion] = useState("");
-  const [messages, setMessages] = useState<ChatMsg[]>([
-    {
-      role: "ai",
-      text: `Hi! I'm GreenGuard Intelligence. Ask me about ${city.name}'s air quality, forecasts, or environmental risk.`,
-    },
-  ]);
+  const navigate = useNavigate();
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (messages.length > 1 && chatContainerRef.current) {
-      chatContainerRef.current.scrollTo({
-        top: chatContainerRef.current.scrollHeight,
-        behavior: reducedMotion ? "auto" : "smooth",
-      });
-    }
-  }, [messages, reducedMotion]);
-
-  const chatMutation = useMutation({
-    mutationFn: (q: string) => copilotApi.chat(q, city.id).then((r) => r.data),
-    onSuccess: (data: { answer: string }) => {
-      setMessages((h) => [...h, { role: "ai", text: data.answer }]);
+  const previewMessages: ChatMsg[] = [
+    {
+      role: "ai",
+      text: `Hi! I'm GreenGuard Intelligence. Ask me about ${city.name}'s real-time air quality, 72-hour forecasts, or environmental risk analysis.`,
     },
-    // `variables` is the exact string passed to `.mutate()` below — using it
-    // instead of the `question` state avoids a stale value, since the input
-    // is already cleared by the time this fires.
-    onError: (_error: unknown, variables: string) => {
-      setMessages((h) => [...h, { role: "ai", text: groundedPreviewAnswer(variables, city), locked: true }]);
+    {
+      role: "user",
+      text: `How is ${city.name}'s air quality and predictive dispersion today?`,
     },
-  });
+    {
+      role: "ai",
+      text: sampleAssistantResponse(city),
+      locked: true,
+    },
+  ];
 
-  const handleSend = (raw?: string) => {
-    const text = (raw ?? question).trim();
-    if (!text || chatMutation.isPending) return;
-
-    setMessages((h) => [...h, { role: "user", text }]);
-    setQuestion("");
-
-    if (!isAuthenticated) {
-      setMessages((h) => [...h, { role: "ai", text: groundedPreviewAnswer(text, city), locked: true }]);
-      return;
+  const handleAuthGate = () => {
+    if (isAuthenticated) {
+      navigate({ to: "/intelligence" });
+    } else {
+      navigate({ to: "/login" });
     }
-    chatMutation.mutate(text);
   };
 
   return (
@@ -132,7 +109,7 @@ export function AICopilotExperience() {
         <div
           className={cn(
             "absolute left-1/2 top-0 size-[600px] -translate-x-1/2 rounded-full opacity-[0.1] blur-[130px]",
-            !reducedMotion && "drift-blob",
+            "drift-blob",
           )}
           style={{
             background:
@@ -154,27 +131,29 @@ export function AICopilotExperience() {
           tone="chart5"
           eyebrow="GreenGuard Intelligence Center"
           title="Ask GreenGuard Intelligence anything."
-          sub="A real conversational interface, grounded in real city data. Sign in from any answer to unlock the full, live AI model."
+          sub="An enterprise conversational intelligence system grounded in real environmental and sensor data. Sign in to start asking live questions."
         />
 
         <div className="glass-panel w-full max-w-2xl rounded-3xl p-4 shadow-2xl sm:p-6">
+          <div className="mb-3 flex items-center justify-between border-b border-border/50 pb-2.5 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5 font-medium text-foreground">
+              <Sparkles className="size-3.5 text-[color:var(--color-chart-5)]" />
+              <span>Live Demonstration Preview</span>
+            </div>
+            <span className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+              <ShieldCheck className="size-3 text-primary" />
+              Grounded Model
+            </span>
+          </div>
+
           <div
             ref={chatContainerRef}
             aria-live="polite"
             className="flex max-h-[320px] flex-col gap-3 overflow-y-auto pr-1"
           >
-            {messages.map((m, i) => (
+            {previewMessages.map((m, i) => (
               <MessageBubble key={i} msg={m} />
             ))}
-            {chatMutation.isPending && (
-              <div className="flex items-start gap-2">
-                <AiAvatar />
-                <div className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-card px-4 py-2.5 text-sm text-muted-foreground">
-                  <Loader2 className="size-3.5 animate-spin" />
-                  Thinking…
-                </div>
-              </div>
-            )}
           </div>
 
           <div className="mt-4">
@@ -186,42 +165,44 @@ export function AICopilotExperience() {
                 <button
                   key={s}
                   type="button"
-                  onClick={() => handleSend(s)}
-                  className="rounded-full border border-border/60 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-[color:var(--color-chart-5)]/40 hover:text-foreground"
+                  onClick={handleAuthGate}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border/60 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-[color:var(--color-chart-5)]/40 hover:text-foreground"
                 >
-                  {s}
+                  <span>{s}</span>
                 </button>
               ))}
             </div>
           </div>
 
+          {/* Interactive Chat Input & Send Button — gated behind authentication */}
           <form
-            onSubmit={(event: FormEvent<HTMLFormElement>) => {
-              event.preventDefault();
-              handleSend();
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleAuthGate();
             }}
             className="mt-4 flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-2 py-1.5 focus-within:border-[color:var(--color-chart-5)]/50 transition-colors"
           >
-            <Sparkles className="ml-1.5 size-4 shrink-0 text-muted-foreground/60" />
+            <Lock className="ml-1.5 size-4 shrink-0 text-muted-foreground/60" />
             <input
-              value={question}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => setQuestion(event.target.value)}
-              placeholder="Ask about air quality, forecasts, risk…"
-              aria-label="Ask GreenGuard Intelligence"
-              className="flex-1 bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground"
+              type="text"
+              readOnly
+              onClick={handleAuthGate}
+              onFocus={handleAuthGate}
+              placeholder="Sign in to ask GreenGuard Intelligence…"
+              aria-label="Sign in to ask GreenGuard Intelligence"
+              className="flex-1 cursor-pointer bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground"
             />
             <button
               type="submit"
-              disabled={!question.trim() || chatMutation.isPending}
-              className="grid size-9 shrink-0 place-items-center rounded-full bg-foreground text-background transition-opacity disabled:opacity-40"
-              aria-label="Send"
+              aria-label="Sign in to send"
+              className="grid size-9 shrink-0 place-items-center rounded-full bg-foreground text-background transition-transform hover:scale-105 active:scale-95"
             >
               <Send className="size-4" />
             </button>
           </form>
         </div>
 
-        <ExperienceCTA to="/intelligence" tone="chart5">
+        <ExperienceCTA to={isAuthenticated ? "/intelligence" : "/login"} tone="chart5">
           <Sparkles className="size-4" />
           Open GreenGuard Intelligence Center
         </ExperienceCTA>

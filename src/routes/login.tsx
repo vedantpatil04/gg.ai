@@ -188,6 +188,7 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [error, setError] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
   const turnstileRef = useRef<TurnstileRef>(null);
@@ -243,7 +244,7 @@ function LoginPage() {
   // ── Login submit ────────────────────────────────────────────────────────────
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (loading) return;
+    if (loading || isSubmittingRef.current) return;
     if (!email || !password) {
       setError("Please fill in all fields.");
       return;
@@ -252,6 +253,7 @@ function LoginPage() {
       setError("Please complete the security verification.");
       return;
     }
+    isSubmittingRef.current = true;
     setError("");
     setLoading(true);
     try {
@@ -275,6 +277,7 @@ function LoginPage() {
       setTurnstileToken("");
     } finally {
       setLoading(false);
+      isSubmittingRef.current = false;
     }
   };
 

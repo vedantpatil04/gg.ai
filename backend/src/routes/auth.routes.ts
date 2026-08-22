@@ -25,6 +25,15 @@ import {
 
 const router = Router();
 
+// ─── Authentication Rate Limiter (Brute-force protection for login, signup, recovery) ─
+export const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Too many authentication attempts. Please try again later." },
+});
+
 // Reuse express-rate-limit for the challenge endpoint — same approach as
 // the security routes' emailOtpLimiter; no new dependency.
 const challengeLimiter = rateLimit({
@@ -35,12 +44,12 @@ const challengeLimiter = rateLimit({
   message: { success: false, message: "Too many verification attempts. Please try again later." },
 });
 
-router.post("/signup", signupValidator, validate, signup);
-router.post("/login", loginValidator, validate, login);
+router.post("/signup", authLimiter, signupValidator, validate, signup);
+router.post("/login", authLimiter, loginValidator, validate, login);
 router.post("/logout", authenticate, logout);
 router.post("/refresh", refreshToken);
-router.post("/forgot-password", forgotPasswordValidator, validate, forgotPassword);
-router.post("/reset-password", resetPasswordValidator, validate, resetPassword);
+router.post("/forgot-password", authLimiter, forgotPasswordValidator, validate, forgotPassword);
+router.post("/reset-password", authLimiter, resetPasswordValidator, validate, resetPassword);
 
 // Phase 9: completes login for 2FA-enabled accounts using the challengeToken
 // issued by POST /login when twoFactorEnabled is true.

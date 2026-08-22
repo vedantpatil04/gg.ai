@@ -117,20 +117,18 @@ app.get("/health",     handleHealthCheck);
 app.get("/api/health", handleHealthCheck);
 
 // ─── Rate Limiters ────────────────────────────────────────────────────────────
+// General API telemetry & resource limiter (skips authentication routes which have dedicated brute-force limiters)
 const limiter = rateLimit({
   windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: Number(process.env.RATE_LIMIT_MAX) || 1000,
+  max: Number(process.env.RATE_LIMIT_MAX) || (process.env.NODE_ENV === "production" ? 1000 : 5000),
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: "Too many requests. Please try again later." },
-});
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: "Too many authentication attempts. Please try again later." },
+  skip: (req) =>
+    req.path.startsWith("/auth") ||
+    Boolean(req.originalUrl?.includes("/auth/")) ||
+    req.path === "/health" ||
+    req.path === "/api/health",
 });
 
 const aiLimiter = rateLimit({
@@ -144,7 +142,7 @@ const aiLimiter = rateLimit({
 app.use("/api", limiter);
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
-app.use("/api/auth",             authLimiter, authRoutes);
+app.use("/api/auth",             authRoutes);
 app.use("/api/users",            userRoutes);
 app.use("/api/environmental",    environmentalRoutes);
 app.use("/api/forecast",         forecastRoutes);

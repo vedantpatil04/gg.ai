@@ -25,7 +25,7 @@ import {
   Loader2, Heart, Wind, AlertTriangle, ChevronRight,
   Activity, Copy, RefreshCw, CheckCircle,
   MessageSquare, ThumbsUp, ThumbsDown, ArrowDown,
-  MapPin, RotateCcw, Globe2, FileText, Search, ShieldCheck,
+  RotateCcw, Globe2, FileText, Search, ShieldCheck,
   BarChart3, Layers, ArrowLeft,
 } from "lucide-react";
 import { useCity } from "@/lib/city-context";
@@ -967,7 +967,7 @@ function InsightsWorkspace({
 
 function IntelligenceCenterWorkspace() {
   const { t } = useTranslation("copilot");
-  const { city, cities, isApiConnected, setCityId } = useCity();
+  const { city, isApiConnected } = useCity();
   const { user } = useAuth();
   const reduced = useReducedMotion() ?? false;
 
@@ -1167,7 +1167,7 @@ function IntelligenceCenterWorkspace() {
           </div>
         </div>
 
-        {/* Right: Compact Environmental Context & City Selector */}
+        {/* Right: Compact Environmental Context */}
         <div className="flex items-center flex-wrap gap-2 justify-end">
           {/* Compact context line — full detail lives in Health/Insights, not repeated here */}
           <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 glass border border-border/60 text-xs shadow-none">
@@ -1176,23 +1176,6 @@ function IntelligenceCenterWorkspace() {
             <span className="text-muted-foreground">({aqiLabel(city.aqi)})</span>
             <span className="hidden sm:inline text-muted-foreground">·</span>
             <span className="hidden sm:inline text-muted-foreground tabular-nums">{city.temp}°C</span>
-          </div>
-
-          {/* City Switcher */}
-          <div className="flex items-center gap-1.5 glass rounded-lg px-2.5 py-1 border border-border/70">
-            <MapPin className="size-3 text-primary shrink-0" />
-            <select
-              value={city.id}
-              onChange={(e) => setCityId(e.target.value)}
-              className="text-xs bg-transparent text-foreground font-semibold outline-none cursor-pointer pr-1"
-              aria-label="Select city for AI workspace"
-            >
-              {cities.map((c) => (
-                <option key={c.id} value={c.id} className="bg-popover text-foreground">
-                  {c.name}
-                </option>
-              ))}
-            </select>
           </div>
         </div>
       </header>

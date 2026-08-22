@@ -34,11 +34,18 @@ export const verifyEmailOtpValidator = [
 ];
 
 export const verifyPhoneOtpValidator = [
-  body("otp")
-    .trim()
-    .isLength({ min: 6, max: 6 })
-    .isNumeric()
-    .withMessage("Enter the 6-digit verification code"),
+  body().custom((_, { req }) => {
+    const hasOtp =
+      typeof req.body?.otp === "string" && req.body.otp.trim().length === 6 && /^\d+$/.test(req.body.otp.trim());
+    const hasToken =
+      typeof (req.body?.accessToken || req.body?.["access-token"] || req.body?.token) === "string" &&
+      (req.body?.accessToken || req.body?.["access-token"] || req.body?.token).trim().length > 0;
+
+    if (!hasOtp && !hasToken) {
+      throw new Error("Enter the 6-digit verification code or provide a valid verification token.");
+    }
+    return true;
+  }),
 ];
 
 export const deactivateAccountValidator = [

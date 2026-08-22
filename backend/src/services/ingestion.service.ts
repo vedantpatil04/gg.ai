@@ -141,6 +141,11 @@ async function ingestCity(
       windSpeed: wx?.windSpeed ?? prev?.windSpeed,
       windDirection: wx?.windDirection ?? prev?.windDirection,
       pressure: wx?.pressure ?? prev?.pressure,
+      apparentTemperature: wx?.apparentTemperature ?? prev?.apparentTemperature,
+      weatherCode: wx?.weatherCode !== undefined ? wx.weatherCode : prev?.weatherCode,
+      rainfall: wx?.rainfall ?? prev?.rainfall,
+      rain: wx?.rain ?? prev?.rain,
+      isDay: wx?.isDay !== undefined ? wx.isDay : prev?.isDay,
       // Sustained / derived
       water,
       renewableShare,

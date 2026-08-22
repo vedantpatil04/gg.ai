@@ -25,6 +25,11 @@ export interface IEnvironmentalData extends Document {
   windSpeed?: number;
   windDirection?: number;
   pressure?: number;
+  apparentTemperature?: number;
+  weatherCode?: number;
+  rainfall?: number;
+  rain?: number;
+  isDay?: boolean;
   // Sustainability
   carbon: number;
   risk: number;
@@ -65,6 +70,11 @@ const EnvironmentalDataSchema = new Schema<IEnvironmentalData>(
     windSpeed: { type: Number, min: 0 },
     windDirection: { type: Number, min: 0, max: 360 },
     pressure: { type: Number },
+    apparentTemperature: { type: Number },
+    weatherCode: { type: Number },
+    rainfall: { type: Number },
+    rain: { type: Number },
+    isDay: { type: Boolean },
     // Sustainability
     carbon: { type: Number, required: true, min: 0 },
     risk: { type: Number, required: true, min: 0, max: 100 },

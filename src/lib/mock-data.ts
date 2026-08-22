@@ -47,6 +47,11 @@ export type City = {
   windSpeed?: number;
   windDirection?: number;
   pressure?: number;
+  apparentTemperature?: number;
+  weatherCode?: number | null;
+  rainfall?: number;
+  rain?: number;
+  isDay?: boolean;
   renewableShare?: number;
   co?: number;
   so2?: number;

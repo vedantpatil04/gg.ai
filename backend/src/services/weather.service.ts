@@ -35,6 +35,8 @@ export interface WeatherReading {
   weatherCode?: number | null;
   /** Open-Meteo `rain` — liquid rain component of precipitation (mm). */
   rain?: number | null;
+  /** Open-Meteo `is_day` (1 = day, 0 = night). */
+  isDay?: boolean | null;
 }
 
 export interface CityCoordinateTarget {
@@ -59,6 +61,7 @@ const CURRENT_WEATHER_VARS = [
   "pressure_msl",
   "wind_speed_10m",
   "wind_direction_10m",
+  "is_day",
 ].join(",");
 
 interface OpenMeteoCurrentBlock {
@@ -72,6 +75,7 @@ interface OpenMeteoCurrentBlock {
   pressure_msl?: number;
   wind_speed_10m?: number;
   wind_direction_10m?: number;
+  is_day?: number;
 }
 
 interface OpenMeteoLocationItem {
@@ -141,6 +145,7 @@ function parseCurrentWeather(c?: OpenMeteoCurrentBlock): WeatherReading | null {
   const apparentRaw = toFinite(c.apparent_temperature);
   const weatherCodeRaw = toFinite(c.weather_code);
   const rainRaw = toFinite(c.rain);
+  const isDayRaw = toFinite(c.is_day);
 
   return {
     temp: Math.round(temp * 10) / 10,
@@ -154,6 +159,7 @@ function parseCurrentWeather(c?: OpenMeteoCurrentBlock): WeatherReading | null {
       apparentRaw !== null ? Math.round(apparentRaw * 10) / 10 : null,
     weatherCode: weatherCodeRaw !== null ? Math.round(weatherCodeRaw) : null,
     rain: rainRaw !== null ? Math.round(rainRaw * 10) / 10 : null,
+    isDay: isDayRaw !== null ? isDayRaw === 1 : null,
   };
 }
 
